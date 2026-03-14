@@ -26,7 +26,7 @@ interface Translations {
 }
 
 const IMGS = {
-  hero:   'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=1600&q=80',
+  hero:   'https://images.unsplash.com/photo-1476611338391-6f395a0ebc7b?w=1600&q=80',
   lab:    'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&q=80',
   dozen:  'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=600&q=80',
   recipe: 'https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=600&q=80',
@@ -141,32 +141,32 @@ export default function HomePage() {
   };
 
   return (
-    <div className="font-sans bg-[#fafaf8] text-[#2a3632] overflow-x-hidden">
+    <div className="font-sans bg-[#fafaf8] text-[#1c2a2b] overflow-x-hidden">
 
       {/* ─── FLOATING NAV ─── */}
       <div className="absolute top-5 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-[1060px] z-50">
-        <nav className="flex items-center justify-between px-5 py-3 bg-white/90 backdrop-blur-md rounded-full border border-white/70 shadow-[0_4px_24px_rgba(44,95,82,0.1)]">
+        <nav className="flex items-center justify-between px-5 py-3 bg-white/90 backdrop-blur-md rounded-full border border-white/70 shadow-[0_4px_24px_rgba(14,57,61,0.1)]">
           <div className="flex items-center gap-2.5">
             <Image src="/evida-logo.png" alt="Evida Life" width={34} height={34} className="rounded-full" />
-            <span className="font-medium text-[0.8rem] tracking-[0.16em] uppercase text-[#2c5f52]">
+            <span className="font-medium text-[0.8rem] tracking-[0.16em] uppercase text-[#0e393d]">
               {t.brand}
             </span>
           </div>
           <div className="hidden md:flex gap-7 items-center">
             {[t.n1, t.n2, t.n3, t.n4].map((label) => (
-              <a key={label} className="text-[0.8rem] font-light text-[#5a7068] cursor-pointer hover:text-[#2c5f52] transition-colors">
+              <a key={label} className="text-[0.8rem] font-light text-[#5a6e6f] cursor-pointer hover:text-[#0e393d] transition-colors">
                 {label}
               </a>
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex gap-0.5 bg-[#2c5f52]/8 rounded-full p-0.5">
+            <div className="flex gap-0.5 bg-[#0e393d]/8 rounded-full p-0.5">
               {(['de', 'en'] as Lang[]).map((l) => (
                 <button
                   key={l}
                   onClick={() => setLang(l)}
                   className={`px-3 py-1 rounded-full text-[11px] font-medium uppercase tracking-wider transition-all ${
-                    lang === l ? 'bg-[#2c5f52] text-[#f5efe4]' : 'text-[#5a7068] hover:text-[#2c5f52]'
+                    lang === l ? 'bg-[#0e393d] text-[#f2ebdb]' : 'text-[#5a6e6f] hover:text-[#0e393d]'
                   }`}
                 >
                   {l.toUpperCase()}
@@ -175,7 +175,7 @@ export default function HomePage() {
             </div>
             <button
               onClick={() => scrollTo('waitlist')}
-              className="bg-[#2c5f52] text-[#f5efe4] text-[12px] font-medium px-5 py-2 rounded-full tracking-wide transition-colors hover:bg-[#3d7a6a] whitespace-nowrap"
+              className="bg-[#0e393d] text-[#f2ebdb] text-[12px] font-medium px-5 py-2 rounded-full tracking-wide transition-colors hover:bg-[#1a5055] whitespace-nowrap"
             >
               {t.navCta}
             </button>
@@ -186,43 +186,45 @@ export default function HomePage() {
       {/* ─── HERO ─── */}
       <section className="relative h-screen min-h-[620px] overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${IMGS.hero}')` }} />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#1e4a3d]/82 via-[#2c5f52]/42 to-[#2c5f52]/10" />
-        <div className="relative z-10 h-full flex flex-col justify-end px-8 md:px-12 pb-20 max-w-[680px]">
-          <h1 className="font-serif text-5xl md:text-6xl lg:text-[5.5rem] font-normal leading-[1.06] tracking-tight text-white mb-5">
-            {t.h1}<br />
-            <em className="italic font-normal text-white/70">{t.h1em}</em>
-          </h1>
-          <p className="text-[1rem] font-light text-white/70 leading-relaxed max-w-[460px] mb-10">{t.sub}</p>
-          <div className="flex gap-3 flex-wrap">
-            <button
-              onClick={() => scrollTo('waitlist')}
-              className="bg-[#ceab84] text-[#2c5f52] font-medium text-[13px] tracking-wide px-7 py-3.5 rounded-full transition-colors hover:bg-[#dfc4a4] whitespace-nowrap"
-            >
-              {t.cta1}
-            </button>
-            <button
-              onClick={() => scrollTo('how')}
-              className="text-white bg-white/10 backdrop-blur-sm border border-white/50 text-[13px] font-light px-7 py-3.5 rounded-full transition-all hover:bg-white/20 whitespace-nowrap"
-            >
-              {t.cta2}
-            </button>
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0e393d]/80 via-[#0e393d]/45 to-[#0e393d]/10" />
+        <div className="relative z-10 h-full flex flex-col justify-end pb-20">
+          <div className="w-full max-w-[1060px] mx-auto px-8 md:px-12">
+            <h1 className="font-serif text-5xl md:text-6xl lg:text-[5.5rem] font-normal leading-[1.06] tracking-tight text-white mb-5 max-w-[640px]">
+              {t.h1}<br />
+              <em className="italic font-normal text-white/70">{t.h1em}</em>
+            </h1>
+            <p className="text-[1rem] font-light text-white/70 leading-relaxed max-w-[460px] mb-10">{t.sub}</p>
+            <div className="flex gap-3 flex-wrap">
+              <button
+                onClick={() => scrollTo('waitlist')}
+                className="bg-[#ceab84] text-[#0e393d] font-medium text-[13px] tracking-wide px-7 py-3.5 rounded-full transition-colors hover:bg-[#dfc4a4] whitespace-nowrap"
+              >
+                {t.cta1}
+              </button>
+              <button
+                onClick={() => scrollTo('how')}
+                className="text-white bg-white/10 backdrop-blur-sm border border-white/50 text-[13px] font-light px-7 py-3.5 rounded-full transition-all hover:bg-white/20 whitespace-nowrap"
+              >
+                {t.cta2}
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
       {/* ─── SPLIT STATEMENT ─── */}
-      <div className="max-w-[1060px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-20 px-8 md:px-12 py-20 md:py-28 border-b border-[#2c5f52]/10">
+      <div className="max-w-[1060px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-20 px-8 md:px-12 py-20 md:py-28 border-b border-[#0e393d]/10">
         <div>
-          <h2 className="font-serif font-normal text-4xl md:text-5xl leading-[1.12] tracking-tight text-[#2c5f52]">
+          <h2 className="font-serif font-normal text-4xl md:text-5xl leading-[1.12] tracking-tight text-[#0e393d]">
             {t.splitH}<br />
-            <em className="italic font-normal text-[#5a9e8c]">{t.splitHem}</em>
+            <em className="italic font-normal text-[#0e393d]/60">{t.splitHem}</em>
           </h2>
         </div>
         <div className="flex flex-col justify-start pt-1">
-          <p className="text-[1rem] font-light text-[#5a7068] leading-relaxed mb-7">{t.splitD}</p>
+          <p className="text-[1rem] font-light text-[#5a6e6f] leading-relaxed mb-7">{t.splitD}</p>
           <button
             onClick={() => scrollTo('waitlist')}
-            className="self-start bg-[#2c5f52] text-[#f5efe4] font-medium text-[13px] tracking-wide px-7 py-3.5 rounded-full transition-colors hover:bg-[#3d7a6a] whitespace-nowrap"
+            className="self-start bg-[#0e393d] text-[#f2ebdb] font-medium text-[13px] tracking-wide px-7 py-3.5 rounded-full transition-colors hover:bg-[#1a5055] whitespace-nowrap"
           >
             {t.cta1}
           </button>
@@ -234,21 +236,21 @@ export default function HomePage() {
         {t.cards.map((card) => (
           <div
             key={card.t}
-            className="rounded-2xl overflow-hidden border border-[#2c5f52]/10 bg-white hover:-translate-y-1 transition-transform duration-200 cursor-pointer"
+            className="rounded-2xl overflow-hidden border border-[#0e393d]/10 bg-white hover:-translate-y-1 transition-transform duration-200 cursor-pointer"
           >
             <div className="h-40 bg-cover bg-center relative" style={{ backgroundImage: `url('${card.img}')` }}>
-              <div className="absolute inset-0 bg-gradient-to-t from-[#1e4a3d]/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0e393d]/30 to-transparent" />
             </div>
             <div className="p-5 pb-6">
-              <h3 className="font-serif font-normal text-[1.1rem] text-[#2c5f52] mb-1.5 leading-snug">{card.t}</h3>
-              <p className="text-[0.8rem] font-light text-[#5a7068] leading-relaxed">{card.d}</p>
+              <h3 className="font-serif font-normal text-[1.1rem] text-[#0e393d] mb-1.5 leading-snug">{card.t}</h3>
+              <p className="text-[0.8rem] font-light text-[#5a6e6f] leading-relaxed">{card.d}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* ─── STEPS ─── */}
-      <section id="how" className="bg-[#2c5f52] py-20 md:py-28 px-8 md:px-12">
+      <section id="how" className="bg-[#0e393d] py-20 md:py-28 px-8 md:px-12">
         <div className="max-w-[1060px] mx-auto">
           <div className="mb-14">
             <SectionTag label={t.howTag} />
@@ -259,7 +261,7 @@ export default function HomePage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-white/10 border border-white/10 rounded-2xl overflow-hidden">
             {t.steps.map((step) => (
-              <div key={step.n} className="bg-[#2c5f52] hover:bg-[#3d7a6a] transition-colors duration-200 p-10">
+              <div key={step.n} className="bg-[#0e393d] hover:bg-[#1a5055] transition-colors duration-200 p-10">
                 <div className="font-serif font-normal text-[4.5rem] text-white/8 leading-none mb-6">{step.n}</div>
                 <div className="w-full h-32 rounded-xl bg-cover bg-center mb-5 opacity-75" style={{ backgroundImage: `url('${step.img}')` }} />
                 <h3 className="font-serif font-normal text-[1.5rem] text-white mb-2.5">{step.t}</h3>
@@ -271,15 +273,15 @@ export default function HomePage() {
       </section>
 
       {/* ─── WAITLIST ─── */}
-      <section id="waitlist" className="max-w-[1060px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-24 px-8 md:px-12 py-20 md:py-28 border-t border-[#2c5f52]/10">
+      <section id="waitlist" className="max-w-[1060px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-24 px-8 md:px-12 py-20 md:py-28 border-t border-[#0e393d]/10">
         <div>
           <SectionTag label={t.wlTag} />
-          <h2 className="font-serif font-normal text-4xl md:text-5xl text-[#2c5f52] leading-[1.12] tracking-tight mb-4">
+          <h2 className="font-serif font-normal text-4xl md:text-5xl text-[#0e393d] leading-[1.12] tracking-tight mb-4">
             {t.wlH}<br />
-            <em className="italic font-normal text-[#5a9e8c]">{t.wlHem}</em>
+            <em className="italic font-normal text-[#0e393d]/60">{t.wlHem}</em>
           </h2>
-          <p className="text-[0.95rem] font-light text-[#5a7068] leading-relaxed mb-6">{t.wlD}</p>
-          <div className="w-full h-72 rounded-2xl bg-cover bg-center border border-[#2c5f52]/10" style={{ backgroundImage: `url('${IMGS.wl}')` }} />
+          <p className="text-[0.95rem] font-light text-[#5a6e6f] leading-relaxed mb-6">{t.wlD}</p>
+          <div className="w-full h-72 rounded-2xl bg-cover bg-center border border-[#0e393d]/10" style={{ backgroundImage: `url('${IMGS.wl}')` }} />
         </div>
         <div className="flex flex-col justify-center gap-4">
           {!submitted ? (
@@ -289,18 +291,18 @@ export default function HomePage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t.ph}
-                className="border border-[#2c5f52]/15 bg-white rounded-xl px-5 py-3.5 text-[14px] font-light text-[#2a3632] placeholder:text-[#b0bfbf] outline-none focus:border-[#2c5f52] transition-colors"
+                className="border border-[#0e393d]/15 bg-white rounded-xl px-5 py-3.5 text-[14px] font-light text-[#1c2a2b] placeholder:text-[#b0bfbf] outline-none focus:border-[#0e393d] transition-colors"
               />
               <button
                 onClick={handleSubmit}
-                className="bg-[#2c5f52] text-[#f5efe4] font-medium text-[13px] uppercase tracking-widest py-3.5 px-6 rounded-xl transition-colors hover:bg-[#3d7a6a]"
+                className="bg-[#0e393d] text-[#f2ebdb] font-medium text-[13px] uppercase tracking-widest py-3.5 px-6 rounded-xl transition-colors hover:bg-[#1a5055]"
               >
                 {t.ctaFull}
               </button>
               <p className="text-[11px] font-light text-[#b0bfbf] tracking-wide">{t.fn}</p>
             </>
           ) : (
-            <div className="bg-[#e8f4f0] border border-[#2c5f52]/15 rounded-xl px-5 py-4 text-[13.5px] text-[#2c5f52]">
+            <div className="bg-[#eaf3f0] border border-[#0e393d]/15 rounded-xl px-5 py-4 text-[13.5px] text-[#0e393d]">
               {t.ok}
             </div>
           )}
@@ -308,11 +310,11 @@ export default function HomePage() {
       </section>
 
       {/* ─── FOOTER ─── */}
-      <footer className="bg-[#2c5f52] border-t-[3px] border-[#ceab84] px-8 md:px-12 py-10">
+      <footer className="bg-[#0e393d] border-t-[3px] border-[#ceab84] px-8 md:px-12 py-10">
         <div className="max-w-[1060px] mx-auto flex flex-wrap justify-between items-center gap-4">
           <div className="flex items-center gap-3">
             <Image src="/evida-logo.png" alt="Evida Life" width={28} height={28} className="rounded-full opacity-80" />
-            <span className="text-[0.78rem] font-medium tracking-[0.2em] uppercase text-[#f5efe4]/55">{t.brand}</span>
+            <span className="text-[0.78rem] font-medium tracking-[0.2em] uppercase text-[#f2ebdb]/55">{t.brand}</span>
           </div>
           <div className="flex gap-8">
             {[t.fp1, t.fp2, t.fp3].map((label) => (
