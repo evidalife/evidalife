@@ -41,13 +41,13 @@ const T: Record<Lang, Translations> = {
   de: {
     brand: 'EVIDA LIFE',
     n1: 'Ernährung', n2: 'Laborwerte', n3: 'Daily Dozen', n4: 'Shop',
-    navCta: 'Früher Zugang',
+    navCta: 'Warteliste',
     h1: 'Gesund leben.',
     h1em: 'Wissenschaftlich fundiert.',
     sub: 'Evidenzgestützte, vollwertige, pflanzenbasierte Ernährung – kombiniert mit messbaren Gesundheitsmarkern. Gesundheit für jeden erschwinglich.',
-    cta1: 'Früher Zugang sichern',
+    cta1: 'Zur Warteliste',
     cta2: 'Wie es funktioniert',
-    ctaFull: 'Jetzt auf die Warteliste',
+    ctaFull: 'Jetzt eintragen',
     splitH: 'Mehr als nur',
     splitHem: 'Informationen.',
     splitD: 'Wir stellen nicht nur Wissen zur Verfügung – wir machen positive Veränderungen messbar. Mit Partnerlaboren, täglichem Tracking und deinem persönlichen Longevity Score siehst du, wie deine Ernährung deine Gesundheit wirklich beeinflusst.',
@@ -78,13 +78,13 @@ const T: Record<Lang, Translations> = {
   en: {
     brand: 'EVIDA LIFE',
     n1: 'Nutrition', n2: 'Lab Results', n3: 'Daily Dozen', n4: 'Shop',
-    navCta: 'Early access',
+    navCta: 'Waitlist',
     h1: 'Live well.',
     h1em: 'Scientifically grounded.',
     sub: 'Evidence-based, whole-food, plant-based nutrition – combined with measurable health markers. Quality health, made affordable for everyone.',
-    cta1: 'Secure early access',
+    cta1: 'Join the waitlist',
     cta2: 'How it works',
-    ctaFull: 'Join the waitlist now',
+    ctaFull: 'Sign up now',
     splitH: 'More than just',
     splitHem: 'information.',
     splitD: "We don't just provide knowledge – we make positive change measurable. With partner labs, daily tracking and your personal Longevity Score, you see exactly how your nutrition affects your health.",
@@ -129,6 +129,7 @@ export default function HomePage() {
   const [lang, setLang] = useState<Lang>('de');
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
   const t = T[lang];
 
   const scrollTo = (id: string) =>
@@ -144,7 +145,7 @@ export default function HomePage() {
     <div className="font-sans bg-[#fafaf8] text-[#1c2a2b] overflow-x-hidden">
 
       {/* ─── FLOATING NAV ─── */}
-      <div className="absolute top-5 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-[1060px] z-50">
+      <div className="fixed top-5 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-[1060px] z-50">
         <nav className="flex items-center justify-between px-5 py-3 bg-white/90 backdrop-blur-md rounded-full border border-white/70 shadow-[0_4px_24px_rgba(14,57,61,0.1)]">
           <div className="flex items-center gap-2.5">
             <Image src="/evida-logo.png" alt="Evida Life" width={34} height={34} className="rounded-full" />
@@ -160,18 +161,33 @@ export default function HomePage() {
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex gap-0.5 bg-[#0e393d]/8 rounded-full p-0.5">
-              {(['de', 'en'] as Lang[]).map((l) => (
-                <button
-                  key={l}
-                  onClick={() => setLang(l)}
-                  className={`px-3 py-1 rounded-full text-[11px] font-medium uppercase tracking-wider transition-all ${
-                    lang === l ? 'bg-[#0e393d] text-[#f2ebdb]' : 'text-[#5a6e6f] hover:text-[#0e393d]'
-                  }`}
-                >
-                  {l.toUpperCase()}
-                </button>
-              ))}
+            <div className="relative">
+              <button
+                onClick={() => setLangOpen(!langOpen)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[12px] font-medium text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors"
+              >
+                <span className="uppercase tracking-wider">{lang.toUpperCase()}</span>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`transition-transform duration-200 ${langOpen ? 'rotate-180' : ''}`}>
+                  <path d="M2 4l4 4 4-4" stroke="#0e393d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              {langOpen && (
+                <div className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.12)] border border-[#0e393d]/8 overflow-hidden min-w-[140px] py-1">
+                  {([['de', 'Deutsch'], ['en', 'English']] as [Lang, string][]).map(([l, label]) => (
+                    <button
+                      key={l}
+                      onClick={() => { setLang(l); setLangOpen(false); }}
+                      className={`w-full text-left px-5 py-3 text-[14px] transition-colors ${
+                        lang === l
+                          ? 'text-[#0e393d] font-medium'
+                          : 'text-[#1c2a2b] font-light hover:bg-[#f7f6f3]'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <button
               onClick={() => scrollTo('waitlist')}
