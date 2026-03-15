@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import Image from 'next/image';
 
 type Lang = 'de' | 'en';
@@ -136,6 +137,7 @@ export default function HomePage() {
   const [lang, setLang] = useState<Lang>(getInitialLang);
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const t = T[lang];
 
@@ -147,9 +149,23 @@ export default function HomePage() {
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!email || !email.includes('@')) return;
-    // TODO: await supabase.from('waitlist').insert({ email });
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('waitlist')
+        .insert({ email, lang });
+      if (error && error.code !== '23505') {
+        // 23505 = unique violation (email already registered) — treat as success
+        console.error(error);
+        setSubmitting(false);
+        return;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    setSubmitting(false);
     setSubmitted(true);
   };
 
@@ -323,9 +339,10 @@ export default function HomePage() {
               />
               <button
                 onClick={handleSubmit}
-                className="bg-[#0e393d] text-[#f2ebdb] font-medium text-[13px] uppercase tracking-widest py-3.5 px-6 rounded-xl transition-colors hover:bg-[#1a5055]"
+                disabled={submitting}
+                className="bg-[#0e393d] text-[#f2ebdb] font-medium text-[13px] uppercase tracking-widest py-3.5 px-6 rounded-xl transition-colors hover:bg-[#1a5055] disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {t.ctaFull}
+                {submitting ? '...' : t.ctaFull}
               </button>
               <p className="text-[11px] font-light text-[#b0bfbf] tracking-wide">{t.fn}</p>
             </>
