@@ -236,7 +236,7 @@ export default function HomePage() {
                   /* pt-2 transparent bridge prevents closing when mouse crosses the gap */
                   <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50">
                     <div
-                      className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.14)] border border-[#0e393d]/8 py-1.5 min-w-[210px]"
+                      className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.14)] border border-[#0e393d]/8 py-1.5 min-w-[210px] -mt-2"
                       style={{ animation: 'dropdownIn 0.15s ease-out' }}
                     >
                       {DROPDOWNS[lang][item].map((dropItem, i) =>
@@ -297,7 +297,7 @@ export default function HomePage() {
                   className="absolute right-0 top-full pt-2 z-50"
                 >
                   <div
-                    className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.12)] border border-[#0e393d]/8 min-w-[140px] py-1.5"
+                    className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.12)] border border-[#0e393d]/8 min-w-[140px] py-1.5 -mt-2"
                     style={{ animation: 'dropdownIn 0.15s ease-out' }}
                   >
                   {([['de', 'Deutsch'], ['en', 'English']] as [Lang, string][]).map(([l, label]) => (
