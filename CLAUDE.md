@@ -13,6 +13,10 @@ npm run lint     # Run ESLint
 
 No test framework is configured.
 
+## Local Path
+
+`~/Documents/company/evidalife/01-code/website/`
+
 ## Architecture
 
 Single-page landing site for Evida Life (health/nutrition platform). Built with Next.js App Router, TypeScript, Tailwind CSS 4, and Supabase.
