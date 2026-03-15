@@ -126,11 +126,23 @@ function SectionTag({ label }: { label: string }) {
 }
 
 export default function HomePage() {
-  const [lang, setLang] = useState<Lang>('de');
+  const getInitialLang = (): Lang => {
+    if (typeof window === 'undefined') return 'de';
+    const saved = localStorage.getItem('evida-lang') as Lang | null;
+    if (saved === 'de' || saved === 'en') return saved;
+    return navigator.language.toLowerCase().startsWith('en') ? 'en' : 'de';
+  };
+
+  const [lang, setLang] = useState<Lang>(getInitialLang);
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const t = T[lang];
+
+  const changeLang = (l: Lang) => {
+    setLang(l);
+    localStorage.setItem('evida-lang', l);
+  };
 
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -176,7 +188,7 @@ export default function HomePage() {
                   {([['de', 'Deutsch'], ['en', 'English']] as [Lang, string][]).map(([l, label]) => (
                     <button
                       key={l}
-                      onClick={() => { setLang(l); setLangOpen(false); }}
+                      onClick={() => { changeLang(l); setLangOpen(false); }}
                       className={`w-full text-left px-5 py-3 text-[14px] transition-colors ${
                         lang === l
                           ? 'text-[#0e393d] font-medium'
