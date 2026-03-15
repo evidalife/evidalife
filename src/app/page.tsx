@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Image from 'next/image';
 
@@ -172,16 +172,6 @@ export default function HomePage() {
 
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-
-  // Close all menus on outside click
-  useEffect(() => {
-    const handler = () => {
-      setLangOpen(false);
-      setOpenDropdown(null);
-    };
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
-  }, []);
 
   const handleSubmit = async () => {
     if (!email || !email.includes('@')) return;
