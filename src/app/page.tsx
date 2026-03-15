@@ -236,7 +236,7 @@ export default function HomePage() {
                   /* pt-2 transparent bridge prevents closing when mouse crosses the gap */
                   <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50">
                     <div
-                      className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.14)] border border-[#0e393d]/8 py-1.5 min-w-[210px]"
+                      className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.14)] border border-[#0e393d]/8 py-1.5 min-w-[210px]"
                       style={{ animation: 'dropdownIn 0.15s ease-out' }}
                     >
                       {DROPDOWNS[lang][item].map((dropItem, i) =>
@@ -278,9 +278,13 @@ export default function HomePage() {
             </button>
 
             {/* Lang toggle */}
-            <div className="relative">
+            <div
+              className="relative"
+              onMouseEnter={() => setLangOpen(true)}
+              onMouseLeave={() => setLangOpen(false)}
+            >
               <button
-                onClick={(e) => { e.stopPropagation(); setLangOpen(!langOpen); }}
+                onClick={() => setLangOpen(!langOpen)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[12px] font-medium text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors"
               >
                 <span className="uppercase tracking-wider">{lang.toUpperCase()}</span>
@@ -290,23 +294,26 @@ export default function HomePage() {
               </button>
               {langOpen && (
                 <div
-                  className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.12)] border border-[#0e393d]/8 overflow-hidden min-w-[140px] py-1"
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ animation: 'dropdownIn 0.15s ease-out' }}
+                  className="absolute right-0 top-full pt-2 z-50"
                 >
+                  <div
+                    className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.12)] border border-[#0e393d]/8 min-w-[140px] py-1.5"
+                    style={{ animation: 'dropdownIn 0.15s ease-out' }}
+                  >
                   {([['de', 'Deutsch'], ['en', 'English']] as [Lang, string][]).map(([l, label]) => (
                     <button
                       key={l}
                       onClick={() => { changeLang(l); setLangOpen(false); }}
-                      className={`w-full text-left px-5 py-3 text-[14px] transition-colors ${
+                      className={`w-full text-left px-5 py-2.5 text-[13px] transition-colors ${
                         lang === l
                           ? 'text-[#0e393d] font-medium'
-                          : 'text-[#1c2a2b] font-light hover:bg-[#f7f6f3]'
+                          : 'text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d]'
                       }`}
                     >
                       {label}
                     </button>
                   ))}
+                  </div>
                 </div>
               )}
             </div>
