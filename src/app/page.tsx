@@ -221,7 +221,7 @@ export default function HomePage() {
               >
                 <button
                   onClick={() => setOpenDropdown(openDropdown === item ? null : item)}
-                  className="flex items-center gap-1 text-[0.8rem] font-light text-[#5a6e6f] cursor-pointer hover:text-[#0e393d] transition-colors py-1"
+                  className="flex items-center gap-1 text-[0.8rem] font-light text-[#5a6e6f] cursor-pointer hover:text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors px-3 py-1.5 rounded-full"
                 >
                   {item}
                   <svg
@@ -236,7 +236,7 @@ export default function HomePage() {
                   /* pt-2 transparent bridge prevents closing when mouse crosses the gap */
                   <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50">
                     <div
-                      className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.14)] border border-[#0e393d]/8 py-1.5 min-w-[210px] -mt-2"
+                      className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.14)] border border-[#0e393d]/8 py-1.5 min-w-[210px]"
                       style={{ animation: 'dropdownIn 0.15s ease-out' }}
                     >
                       {DROPDOWNS[lang][item].map((dropItem, i) =>
@@ -297,7 +297,7 @@ export default function HomePage() {
                   className="absolute right-0 top-full pt-2 z-50"
                 >
                   <div
-                    className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.12)] border border-[#0e393d]/8 min-w-[140px] py-1.5 -mt-2"
+                    className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.12)] border border-[#0e393d]/8 min-w-[140px] py-1.5"
                     style={{ animation: 'dropdownIn 0.15s ease-out' }}
                   >
                   {([['de', 'Deutsch'], ['en', 'English']] as [Lang, string][]).map(([l, label]) => (
