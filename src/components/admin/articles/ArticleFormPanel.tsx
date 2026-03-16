@@ -1,0 +1,506 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const CATEGORIES = ['kitchen', 'health', 'fit', 'longevity', 'science', 'news'] as const;
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Lang = 'de' | 'en';
+
+type LangContent = { de: string; en: string };
+
+type ArticleForm = {
+  title:           LangContent;
+  excerpt:         LangContent;
+  content:         LangContent;
+  seo_title:       LangContent;
+  seo_description: LangContent;
+  author_name:     string;
+  category:        string;
+  reading_time_min: string;
+  published_at:    string;
+  is_published:    boolean;
+  is_featured:     boolean;
+  tags:            string[];
+};
+
+const EMPTY_FORM: ArticleForm = {
+  title:           { de: '', en: '' },
+  excerpt:         { de: '', en: '' },
+  content:         { de: '', en: '' },
+  seo_title:       { de: '', en: '' },
+  seo_description: { de: '', en: '' },
+  author_name:     '',
+  category:        'health',
+  reading_time_min: '',
+  published_at:    '',
+  is_published:    false,
+  is_featured:     false,
+  tags:            [],
+};
+
+// ─── Shared primitives ────────────────────────────────────────────────────────
+
+const inputCls = 'w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition';
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-[#0e393d]/70 mb-1">{label}</label>
+      {children}
+      {hint && <p className="mt-1 text-[11px] text-[#1c2a2b]/40">{hint}</p>}
+    </div>
+  );
+}
+
+function SectionHead({ children }: { children: React.ReactNode }) {
+  return <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84] mb-3">{children}</p>;
+}
+
+function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-[#0e393d]/10 px-4 py-3">
+      <div>
+        <p className="text-sm font-medium text-[#1c2a2b]">{label}</p>
+        {hint && <p className="text-xs text-[#1c2a2b]/40">{hint}</p>}
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${checked ? 'bg-[#0e393d]' : 'bg-gray-200'}`}
+      >
+        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+      </button>
+    </div>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
+interface Props {
+  articleId: string | null;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+export default function ArticleFormPanel({ articleId, onClose, onSaved }: Props) {
+  const supabase = createClient();
+  const fileRef  = useRef<HTMLInputElement>(null);
+
+  const [lang, setLang]                 = useState<Lang>('de');
+  const [form, setForm]                 = useState<ArticleForm>(EMPTY_FORM);
+  const [tagInput, setTagInput]         = useState('');
+  const [imageFile, setImageFile]       = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [loading, setLoading]           = useState(!!articleId);
+  const [saving, setSaving]             = useState(false);
+  const [error, setError]               = useState<string | null>(null);
+
+  // ── Load ──────────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!articleId) { setForm(EMPTY_FORM); setLoading(false); return; }
+    setLoading(true);
+
+    Promise.all([
+      supabase.from('articles').select('*').eq('id', articleId).single(),
+      supabase.from('article_tags').select('tag').eq('article_id', articleId),
+    ]).then(([{ data: a }, { data: tags }]) => {
+      if (!a) { setLoading(false); return; }
+      setCurrentImageUrl(a.featured_image_url ?? null);
+
+      // published_at → datetime-local value (YYYY-MM-DDTHH:mm)
+      const pa = a.published_at ? new Date(a.published_at).toISOString().slice(0, 16) : '';
+
+      setForm({
+        title:           { de: a.title?.de ?? '',           en: a.title?.en ?? '' },
+        excerpt:         { de: a.excerpt?.de ?? '',         en: a.excerpt?.en ?? '' },
+        content:         { de: a.content?.de ?? '',         en: a.content?.en ?? '' },
+        seo_title:       { de: a.seo_title?.de ?? '',       en: a.seo_title?.en ?? '' },
+        seo_description: { de: a.seo_description?.de ?? '', en: a.seo_description?.en ?? '' },
+        author_name:     a.author_name     ?? '',
+        category:        a.category        ?? 'health',
+        reading_time_min: a.reading_time_min != null ? String(a.reading_time_min) : '',
+        published_at:    pa,
+        is_published:    a.is_published  ?? false,
+        is_featured:     a.is_featured   ?? false,
+        tags:            (tags ?? []).map((t) => t.tag).filter(Boolean),
+      });
+      setLoading(false);
+    });
+  }, [articleId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Helpers ───────────────────────────────────────────────────────────────────
+
+  const setLF = (field: keyof Pick<ArticleForm, 'title' | 'excerpt' | 'content' | 'seo_title' | 'seo_description'>, l: Lang, v: string) =>
+    setForm((f) => ({ ...f, [field]: { ...f[field], [l]: v } }));
+
+  const setF = <K extends keyof ArticleForm>(k: K, v: ArticleForm[K]) =>
+    setForm((f) => ({ ...f, [k]: v }));
+
+  // ── Tags ──────────────────────────────────────────────────────────────────────
+
+  const addTag = (raw: string) => {
+    const tag = raw.trim().toLowerCase().replace(/\s+/g, '-');
+    if (!tag || form.tags.includes(tag)) return;
+    setForm((f) => ({ ...f, tags: [...f.tags, tag] }));
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag(tagInput);
+      setTagInput('');
+    }
+    if (e.key === 'Backspace' && !tagInput && form.tags.length > 0) {
+      setForm((f) => ({ ...f, tags: f.tags.slice(0, -1) }));
+    }
+  };
+
+  const removeTag = (tag: string) =>
+    setForm((f) => ({ ...f, tags: f.tags.filter((t) => t !== tag) }));
+
+  // ── Image ─────────────────────────────────────────────────────────────────────
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const uploadImage = async (id: string): Promise<string | null> => {
+    if (!imageFile) return currentImageUrl;
+    const ext  = imageFile.name.split('.').pop();
+    const path = `${id}/cover.${ext}`;
+    const { data, error } = await supabase.storage.from('article-images').upload(path, imageFile, { upsert: true });
+    if (error || !data) { console.error(error); return currentImageUrl; }
+    return supabase.storage.from('article-images').getPublicUrl(data.path).data.publicUrl;
+  };
+
+  // ── Save ──────────────────────────────────────────────────────────────────────
+
+  const handleSave = async () => {
+    if (!form.title.de.trim() && !form.title.en.trim()) {
+      setError('Title (DE or EN) is required.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+
+    try {
+      const payload = {
+        title:           { de: form.title.de,           en: form.title.en },
+        excerpt:         { de: form.excerpt.de,         en: form.excerpt.en },
+        content:         { de: form.content.de,         en: form.content.en },
+        seo_title:       { de: form.seo_title.de,       en: form.seo_title.en },
+        seo_description: { de: form.seo_description.de, en: form.seo_description.en },
+        author_name:      form.author_name.trim() || null,
+        category:         form.category || null,
+        reading_time_min: form.reading_time_min ? Number(form.reading_time_min) : null,
+        published_at:     form.published_at ? new Date(form.published_at).toISOString() : null,
+        is_published:     form.is_published,
+        is_featured:      form.is_featured,
+      };
+
+      // 1. Upsert article
+      let id = articleId;
+      if (id) {
+        const { error } = await supabase.from('articles').update(payload).eq('id', id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from('articles').insert(payload).select('id').single();
+        if (error) throw error;
+        id = data.id;
+      }
+
+      // 2. Image
+      const imageUrl = await uploadImage(id!);
+      if (imageUrl !== currentImageUrl) {
+        await supabase.from('articles').update({ featured_image_url: imageUrl }).eq('id', id!);
+      }
+
+      // 3. Replace tags
+      await supabase.from('article_tags').delete().eq('article_id', id!);
+      if (form.tags.length > 0) {
+        const { error } = await supabase
+          .from('article_tags')
+          .insert(form.tags.map((tag) => ({ article_id: id!, tag })));
+        if (error) throw error;
+      }
+
+      onSaved();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Save failed.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/20 z-40 backdrop-blur-[1px]" onClick={onClose} />
+
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col bg-white shadow-2xl">
+
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-[#0e393d]/10 px-6 py-4 shrink-0">
+          <h2 className="font-serif text-lg text-[#0e393d]">
+            {articleId ? 'Edit Article' : 'New Article'}
+          </h2>
+          <div className="flex items-center gap-3">
+            {/* Lang switcher */}
+            <div className="flex rounded-lg border border-[#0e393d]/15 overflow-hidden text-xs">
+              {(['de', 'en'] as Lang[]).map((l) => (
+                <button
+                  key={l}
+                  onClick={() => setLang(l)}
+                  className={`px-3 py-1.5 font-medium transition ${lang === l ? 'bg-[#0e393d] text-white' : 'text-[#1c2a2b]/60 hover:bg-[#0e393d]/5'}`}
+                >
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <button onClick={onClose} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center text-sm text-[#1c2a2b]/40">Loading…</div>
+        ) : (
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-7">
+
+            {/* ── Content (lang) ─────────────────────────────────────────── */}
+            <div className="space-y-4">
+              <SectionHead>Content — {lang.toUpperCase()}</SectionHead>
+
+              <Field label={`Title (${lang.toUpperCase()}) *`}>
+                <input
+                  className={inputCls}
+                  value={form.title[lang]}
+                  onChange={(e) => setLF('title', lang, e.target.value)}
+                  placeholder={lang === 'de' ? 'z.B. Warum Hülsenfrüchte leben verlängern' : 'e.g. Why legumes extend your life'}
+                />
+              </Field>
+
+              <Field label={`Excerpt (${lang.toUpperCase()})`} hint="Short summary shown in listings and cards">
+                <textarea
+                  className={inputCls + ' resize-none'}
+                  rows={2}
+                  value={form.excerpt[lang]}
+                  onChange={(e) => setLF('excerpt', lang, e.target.value)}
+                  placeholder={lang === 'de' ? 'Kurze Zusammenfassung…' : 'Short summary…'}
+                />
+              </Field>
+
+              <Field label={`Content (${lang.toUpperCase()})`} hint="Markdown supported — headings, bold, lists, links">
+                <textarea
+                  className={inputCls + ' resize-y font-mono text-xs leading-relaxed'}
+                  rows={14}
+                  value={form.content[lang]}
+                  onChange={(e) => setLF('content', lang, e.target.value)}
+                  placeholder={lang === 'de' ? '## Einleitung\n\nHülsenfrüchte sind…' : '## Introduction\n\nLegumes are…'}
+                />
+              </Field>
+            </div>
+
+            {/* ── SEO (lang) ─────────────────────────────────────────────── */}
+            <div className="space-y-4 border-t border-[#0e393d]/8 pt-6">
+              <SectionHead>SEO — {lang.toUpperCase()}</SectionHead>
+
+              <Field label={`SEO Title (${lang.toUpperCase()})`} hint="Defaults to article title if empty · recommended ≤60 chars">
+                <div className="relative">
+                  <input
+                    className={inputCls}
+                    value={form.seo_title[lang]}
+                    onChange={(e) => setLF('seo_title', lang, e.target.value)}
+                    placeholder={lang === 'de' ? 'SEO-Titel…' : 'SEO title…'}
+                    maxLength={80}
+                  />
+                  <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[10px] ${form.seo_title[lang].length > 60 ? 'text-amber-500' : 'text-[#1c2a2b]/30'}`}>
+                    {form.seo_title[lang].length}/60
+                  </span>
+                </div>
+              </Field>
+
+              <Field label={`SEO Description (${lang.toUpperCase()})`} hint="Recommended ≤160 chars">
+                <div className="relative">
+                  <textarea
+                    className={inputCls + ' resize-none pr-14'}
+                    rows={2}
+                    value={form.seo_description[lang]}
+                    onChange={(e) => setLF('seo_description', lang, e.target.value)}
+                    placeholder={lang === 'de' ? 'Meta-Beschreibung…' : 'Meta description…'}
+                    maxLength={200}
+                  />
+                  <span className={`absolute right-3 top-2 text-[10px] ${form.seo_description[lang].length > 160 ? 'text-amber-500' : 'text-[#1c2a2b]/30'}`}>
+                    {form.seo_description[lang].length}/160
+                  </span>
+                </div>
+              </Field>
+            </div>
+
+            {/* ── Metadata ───────────────────────────────────────────────── */}
+            <div className="space-y-4 border-t border-[#0e393d]/8 pt-6">
+              <SectionHead>Metadata</SectionHead>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Author name">
+                  <input
+                    className={inputCls}
+                    value={form.author_name}
+                    onChange={(e) => setF('author_name', e.target.value)}
+                    placeholder="Dr. Michael Greger"
+                  />
+                </Field>
+                <Field label="Category">
+                  <select
+                    className={inputCls + ' cursor-pointer capitalize'}
+                    value={form.category}
+                    onChange={(e) => setF('category', e.target.value)}
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c} value={c} className="capitalize">{c}</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Reading time (min)">
+                  <input
+                    type="number" min={1}
+                    className={inputCls}
+                    value={form.reading_time_min}
+                    onChange={(e) => setF('reading_time_min', e.target.value)}
+                    placeholder="5"
+                  />
+                </Field>
+                <Field label="Publish date / time" hint="Leave blank to publish without a date">
+                  <input
+                    type="datetime-local"
+                    className={inputCls}
+                    value={form.published_at}
+                    onChange={(e) => setF('published_at', e.target.value)}
+                  />
+                </Field>
+              </div>
+            </div>
+
+            {/* ── Tags ───────────────────────────────────────────────────── */}
+            <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
+              <SectionHead>Tags</SectionHead>
+
+              {/* Tag pills */}
+              <div className="flex flex-wrap gap-1.5 min-h-[28px]">
+                {form.tags.map((tag) => (
+                  <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-[#0e393d]/8 px-2.5 py-1 text-xs font-medium text-[#0e393d]">
+                    #{tag}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(tag)}
+                      className="text-[#0e393d]/50 hover:text-[#0e393d] transition leading-none"
+                      aria-label={`Remove ${tag}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+
+              {/* Tag input */}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleTagKeyDown}
+                  onBlur={() => { if (tagInput.trim()) { addTag(tagInput); setTagInput(''); } }}
+                  placeholder="Type a tag and press Enter or comma…"
+                  className={inputCls}
+                />
+              </div>
+              <p className="text-[11px] text-[#1c2a2b]/40">Tags are auto-lowercased and hyphenated. Backspace removes the last tag.</p>
+            </div>
+
+            {/* ── Featured image ─────────────────────────────────────────── */}
+            <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
+              <SectionHead>Featured Image</SectionHead>
+
+              {(imagePreview || currentImageUrl) && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={imagePreview ?? currentImageUrl!}
+                  alt="Preview"
+                  className="w-full h-44 object-cover rounded-xl border border-[#0e393d]/10"
+                />
+              )}
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="w-full rounded-lg border border-dashed border-[#0e393d]/20 py-4 text-sm text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d]/70 hover:bg-[#0e393d]/3 transition"
+              >
+                {imagePreview || currentImageUrl ? 'Replace image' : 'Upload featured image'}
+                <span className="block text-xs mt-0.5 text-[#1c2a2b]/30">PNG, JPG, WebP · max 5 MB</span>
+              </button>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+            </div>
+
+            {/* ── Settings ───────────────────────────────────────────────── */}
+            <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
+              <SectionHead>Settings</SectionHead>
+              <Toggle
+                checked={form.is_published}
+                onChange={(v) => setF('is_published', v)}
+                label="Published"
+                hint="Visible to readers on the platform"
+              />
+              <Toggle
+                checked={form.is_featured}
+                onChange={(v) => setF('is_featured', v)}
+                label="Featured"
+                hint="Highlighted on the homepage and article list"
+              />
+            </div>
+
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="border-t border-[#0e393d]/10 px-6 py-4 shrink-0">
+          {error && (
+            <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 rounded-lg border border-[#0e393d]/15 py-2.5 text-sm font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving || loading}
+              className="flex-1 rounded-lg bg-[#0e393d] py-2.5 text-sm font-medium text-white hover:bg-[#0e393d]/90 disabled:opacity-50 transition"
+            >
+              {saving ? 'Saving…' : articleId ? 'Save Changes' : 'Create Article'}
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </>
+  );
+}

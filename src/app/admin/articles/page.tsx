@@ -1,15 +1,13 @@
-import PageShell from '@/components/admin/PageShell';
+import { createClient } from '@/lib/supabase/server';
+import ArticlesManager from '@/components/admin/articles/ArticlesManager';
 
-export default function ArticlesPage() {
-  return (
-    <PageShell
-      title="Articles"
-      description="Write and publish evidence-based health articles."
-      action={
-        <button className="px-4 py-2 rounded-lg bg-[#0e393d] text-white text-sm hover:bg-[#0e393d]/90 transition">
-          + New Article
-        </button>
-      }
-    />
-  );
+export default async function ArticlesPage() {
+  const supabase = await createClient();
+
+  const { data: articles } = await supabase
+    .from('articles')
+    .select('id, title, category, author_name, reading_time_min, is_published, is_featured, featured_image_url, published_at, created_at')
+    .order('created_at', { ascending: false });
+
+  return <ArticlesManager initialArticles={articles ?? []} />;
 }
