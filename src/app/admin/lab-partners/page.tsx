@@ -1,15 +1,12 @@
-import PageShell from '@/components/admin/PageShell';
+import { createClient } from '@/lib/supabase/server';
+import LabPartnersManager from '@/components/admin/lab-partners/LabPartnersManager';
 
-export default function LabPartnersPage() {
-  return (
-    <PageShell
-      title="Lab Partners"
-      description="Manage partner laboratories and their configurations."
-      action={
-        <button className="px-4 py-2 rounded-lg bg-[#0e393d] text-white text-sm hover:bg-[#0e393d]/90 transition">
-          + New Partner
-        </button>
-      }
-    />
-  );
+export default async function LabPartnersPage() {
+  const supabase = await createClient();
+  const { data: labPartners } = await supabase
+    .from('lab_partners')
+    .select('*')
+    .order('name', { ascending: true });
+
+  return <LabPartnersManager initialLabPartners={labPartners ?? []} />;
 }

@@ -1,15 +1,12 @@
-import PageShell from '@/components/admin/PageShell';
+import { createClient } from '@/lib/supabase/server';
+import DiscountCodesManager from '@/components/admin/discount-codes/DiscountCodesManager';
 
-export default function DiscountCodesPage() {
-  return (
-    <PageShell
-      title="Discount Codes"
-      description="Create and manage promotional discount codes."
-      action={
-        <button className="px-4 py-2 rounded-lg bg-[#0e393d] text-white text-sm hover:bg-[#0e393d]/90 transition">
-          + New Code
-        </button>
-      }
-    />
-  );
+export default async function DiscountCodesPage() {
+  const supabase = await createClient();
+  const { data: discountCodes } = await supabase
+    .from('discount_codes')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  return <DiscountCodesManager initialDiscountCodes={discountCodes ?? []} />;
 }
