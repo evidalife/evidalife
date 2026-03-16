@@ -1,0 +1,12 @@
+-- Schema v3 — deployed manually via Supabase SQL Editor on 2026-03-16
+-- Project: evidalife (rwbmdxgcjgidalcoeppp), region: eu-central-2 (Zurich)
+-- 43 tables, 108 RLS policies, full seed data
+--
+-- To capture the live schema for version control, run from a machine with
+-- direct DB access (or once CLI DNS is resolved):
+--
+--   supabase link --project-ref rwbmdxgcjgidalcoeppp
+--   supabase db dump -f supabase/migrations/20260316000000_initial_schema.sql
+--
+-- Until then this file serves as a migration placeholder so the migrations
+-- directory is tracked in git and the deployment history is documented.

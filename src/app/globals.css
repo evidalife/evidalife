@@ -17,6 +17,55 @@ body {
   color: var(--foreground);
 }
 
+/* Legal page prose */
+.prose-legal h2 {
+  font-family: var(--font-playfair);
+  font-size: 1.25rem;
+  color: #0e393d;
+  margin-top: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+.prose-legal h3 {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #0e393d;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+.prose-legal p {
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  color: #1c2a2b;
+  margin-bottom: 1rem;
+}
+.prose-legal ul {
+  margin: 0.75rem 0 1rem 1.25rem;
+  list-style: disc;
+}
+.prose-legal li {
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  color: #1c2a2b;
+  margin-bottom: 0.25rem;
+}
+.prose-legal a {
+  color: #0e393d;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-legal a:hover {
+  color: #ceab84;
+}
+.prose-legal .placeholder {
+  background: #0e393d08;
+  border: 1px dashed #0e393d30;
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+  font-size: 0.875rem;
+  color: #0e393d60;
+  font-style: italic;
+}
+
 @keyframes dropdownIn {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }

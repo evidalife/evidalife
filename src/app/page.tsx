@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Image from 'next/image';
 
@@ -148,14 +148,18 @@ function SectionTag({ label }: { label: string }) {
 }
 
 export default function HomePage() {
-  const getInitialLang = (): Lang => {
-    if (typeof window === 'undefined') return 'de';
-    const saved = localStorage.getItem('evida-lang') as Lang | null;
-    if (saved === 'de' || saved === 'en') return saved;
-    return navigator.language.toLowerCase().startsWith('en') ? 'en' : 'de';
-  };
+  // Always start with 'de' so SSR and first client render match (no hydration mismatch).
+  // After mount, read localStorage / navigator.language and update if needed.
+  const [lang, setLang] = useState<Lang>('de');
 
-  const [lang, setLang] = useState<Lang>(getInitialLang);
+  useEffect(() => {
+    const saved = localStorage.getItem('evida-lang') as Lang | null;
+    if (saved === 'de' || saved === 'en') {
+      setLang(saved);
+    } else if (navigator.language.toLowerCase().startsWith('en')) {
+      setLang('en');
+    }
+  }, []);
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);

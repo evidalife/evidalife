@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
+import Script from "next/script";
+import { AuthProvider } from "@/context/AuthProvider";
+import CookieBanner from "@/components/CookieBanner";
 import "./globals.css";
 
 const inter = Inter({
@@ -28,10 +31,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de">
+      <head>
+        <Script
+          defer
+          data-domain="evidalife.com"
+          src="https://plausible.io/js/script.js"
+          strategy="afterInteractive"
+        />
+      </head>
       <body
         className={`${inter.variable} ${playfair.variable} font-sans antialiased`}
       >
-        {children}
+        <AuthProvider>{children}</AuthProvider>
+        <CookieBanner />
       </body>
     </html>
   );
