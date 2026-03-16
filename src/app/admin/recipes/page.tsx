@@ -1,15 +1,13 @@
-import PageShell from '@/components/admin/PageShell';
+import { createClient } from '@/lib/supabase/server';
+import RecipesManager from '@/components/admin/recipes/RecipesManager';
 
-export default function RecipesPage() {
-  return (
-    <PageShell
-      title="Recipes"
-      description="Manage plant-based recipes in the database."
-      action={
-        <button className="px-4 py-2 rounded-lg bg-[#0e393d] text-white text-sm hover:bg-[#0e393d]/90 transition">
-          + New Recipe
-        </button>
-      }
-    />
-  );
+export default async function RecipesPage() {
+  const supabase = await createClient();
+
+  const { data: recipes } = await supabase
+    .from('recipes')
+    .select('id, title, difficulty, prep_time_min, cook_time_min, servings, is_published, is_featured, image_url, created_at')
+    .order('created_at', { ascending: false });
+
+  return <RecipesManager initialRecipes={recipes ?? []} />;
 }
