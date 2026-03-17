@@ -22,7 +22,10 @@ i18n
     detection: {
       order: ['localStorage', 'navigator'],
       lookupLocalStorage: 'evida-lang',
-      caches: ['localStorage'],
+      // No caches — we never let the detector write to localStorage automatically.
+      // lng:'de' in init would otherwise trigger cacheUserLanguage('de') and overwrite
+      // the user's saved preference on every page load before the useEffect runs.
+      caches: [],
     },
     interpolation: {
       escapeValue: false,

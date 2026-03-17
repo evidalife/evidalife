@@ -6,14 +6,26 @@ import i18n from '@/lib/i18n';
 
 export default function I18nProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    // Run detection after hydration to avoid SSR mismatch.
-    // Mirrors the existing localStorage / navigator detection logic.
+    // Runs after hydration. Determines the correct language and applies it.
+    // i18n was initialised with lng:'de' for SSR consistency; this overrides it
+    // with the user's actual preference.
+    //
+    // Detection order:
+    //   1. localStorage key 'evida-lang'  — explicit user choice
+    //   2. navigator.language             — browser default
+    //   3. fallback: 'de'
     const saved = localStorage.getItem('evida-lang');
+    let resolved: 'de' | 'en';
+
     if (saved === 'de' || saved === 'en') {
-      if (saved !== i18n.language) i18n.changeLanguage(saved);
+      resolved = saved;
     } else if (navigator.language.toLowerCase().startsWith('en')) {
-      if (i18n.language !== 'en') i18n.changeLanguage('en');
+      resolved = 'en';
+    } else {
+      resolved = 'de';
     }
+
+    i18n.changeLanguage(resolved);
   }, []);
 
   return <>{children}</>;
