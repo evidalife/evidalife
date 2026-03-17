@@ -5,7 +5,7 @@
     "login": "Anmelden",
     "dropdowns": {
       "Kitchen": ["Wie starten", "Daily Dozen", "Rezepte", "Restaurant"],
-      "Health": ["Health Engine ⚡", "Blutwerte & Biomarker", "BioAge", "Interventionen"],
+      "Health": ["Health Engine", "Blutwerte & Biomarker", "BioAge", "Interventionen"],
       "Fit": ["Schlaf", "Bewegung", "Stress & Recovery", null, "Coaching"],
       "Shop": ["Test Pakete", "Lebensmittel", "Eat@Home Abo", null, "Warenkorb & Checkout", "Meine Bestellungen"]
     }
@@ -50,6 +50,9 @@
     "cta": "Jetzt eintragen"
   },
   "footer": {
+    "platform": {
+      "label": "Plattform"
+    },
     "co": {
       "label": "Unternehmen",
       "items": ["Über uns", "Team", "Partner Labs", "Kontakt"]

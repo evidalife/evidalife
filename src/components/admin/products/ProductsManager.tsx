@@ -252,7 +252,10 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       await refresh();
       closePanel();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Save failed.');
+      const msg = e instanceof Error ? e.message
+        : (e && typeof e === 'object' && 'message' in e) ? String((e as { message: unknown }).message)
+        : 'Save failed.';
+      setError(msg);
     } finally {
       setSaving(false);
     }

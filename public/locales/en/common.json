@@ -5,7 +5,7 @@
     "login": "Login",
     "dropdowns": {
       "Kitchen": ["How to start", "Daily Dozen", "Recipes", "Restaurant"],
-      "Health": ["Health Engine ⚡", "Blood Values & Biomarkers", "BioAge", "Interventions"],
+      "Health": ["Health Engine", "Blood Values & Biomarkers", "BioAge", "Interventions"],
       "Fit": ["Sleep", "Exercise", "Stress & Recovery", null, "Coaching"],
       "Shop": ["Test Packages", "Food", "Eat@Home Subscription", null, "Cart & Checkout", "My Orders"]
     }
@@ -50,6 +50,9 @@
     "cta": "Sign up now"
   },
   "footer": {
+    "platform": {
+      "label": "Platform"
+    },
     "co": {
       "label": "Company",
       "items": ["About us", "Team", "Partner Labs", "Contact"]

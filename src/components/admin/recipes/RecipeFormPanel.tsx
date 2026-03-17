@@ -361,7 +361,10 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved }: Props) {
 
       onSaved();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Save failed.');
+      const msg = e instanceof Error ? e.message
+        : (e && typeof e === 'object' && 'message' in e) ? String((e as { message: unknown }).message)
+        : 'Save failed.';
+      setError(msg);
     } finally {
       setSaving(false);
     }

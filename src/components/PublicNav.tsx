@@ -1,42 +1,105 @@
 'use client';
 
 import { useState } from 'react';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname, Link } from '@/i18n/navigation';
 import { useAuth } from '@/context/AuthProvider';
 import Image from 'next/image';
 
 type Locale = 'de' | 'en';
 
-interface PublicNavProps {
-  loginLabel?: string;
-}
+// URL slugs for each section's dropdown items, matching nav.dropdowns.* order in translations
+const NAV_SLUG_MAP: Record<string, (string | null)[]> = {
+  Kitchen: ['/how-to-start', '/daily-dozen', '/recipes', '/restaurant'],
+  Health:  ['/health-engine', '/biomarkers', '/bioage', '/interventions'],
+  Fit:     ['/sleep', '/exercise', '/stress-recovery', null, '/coaching'],
+  Shop:    ['/shop', '/food', '/eat-at-home', null, '/cart', '/orders'],
+};
 
-export default function PublicNav({ loginLabel }: PublicNavProps) {
+const NAV_SECTIONS = ['Kitchen', 'Health', 'Fit', 'Shop'] as const;
+
+export default function PublicNav() {
   const locale = useLocale() as Locale;
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useAuth();
+  const t = useTranslations('nav');
   const [langOpen, setLangOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
   const changeLang = (l: Locale) => {
     router.replace(pathname, { locale: l });
     setLangOpen(false);
   };
 
-  const login = loginLabel ?? (locale === 'de' ? 'Anmelden' : 'Login');
+  const login = locale === 'de' ? 'Anmelden' : 'Login';
+  const dropdowns = t.raw('dropdowns') as Record<string, (string | null)[]>;
 
   return (
     <div className="fixed top-5 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-[1060px] z-50">
       <nav className="flex items-center justify-between px-5 py-3 bg-white/90 backdrop-blur-md rounded-full border border-white/70 shadow-[0_4px_24px_rgba(14,57,61,0.1)]">
 
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+        <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity shrink-0">
           <Image src="/evida-logo.png" alt="Evida Life" width={34} height={34} className="rounded-full" />
           <span className="font-medium text-[0.8rem] tracking-[0.16em] uppercase text-[#0e393d]">
             EVIDA LIFE
           </span>
         </Link>
+
+        {/* Center nav items */}
+        <div className="hidden md:flex items-center gap-0.5">
+          {NAV_SECTIONS.map((section) => {
+            const items = dropdowns[section] ?? [];
+            const slugs = NAV_SLUG_MAP[section] ?? [];
+            const isOpen = activeDropdown === section;
+            return (
+              <div
+                key={section}
+                className="relative"
+                onMouseEnter={() => setActiveDropdown(section)}
+                onMouseLeave={() => setActiveDropdown(null)}
+              >
+                <button
+                  className={`flex items-center gap-1 px-3 py-2 rounded-full text-[12px] font-medium transition-colors ${
+                    isOpen
+                      ? 'text-[#0e393d] bg-[#0e393d]/6'
+                      : 'text-[#1c2a2b]/60 hover:text-[#0e393d] hover:bg-[#0e393d]/6'
+                  }`}
+                >
+                  {section}
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+                    <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                {isOpen && (
+                  <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 z-50">
+                    <div
+                      className="bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.12)] border border-[#0e393d]/8 min-w-[190px] py-1.5"
+                      style={{ animation: 'dropdownIn 0.15s ease-out' }}
+                    >
+                      {items.map((label, i) => {
+                        const href = slugs[i];
+                        if (label === null || href === null) {
+                          return <div key={i} className="mx-4 my-1 h-px bg-[#0e393d]/8" />;
+                        }
+                        return (
+                          <Link
+                            key={i}
+                            href={href}
+                            className="block px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
+                          >
+                            {label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
 
         {/* Right: lang toggle + login/user */}
         <div className="flex items-center gap-2">
