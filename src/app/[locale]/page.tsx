@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter, usePathname, Link } from '@/i18n/navigation';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthProvider';
 import Image from 'next/image';
 
 type Locale = 'de' | 'en';
@@ -42,6 +43,7 @@ export default function HomePage() {
   const locale = useLocale() as Locale;
   const router = useRouter();
   const pathname = usePathname();
+  const { user } = useAuth();
 
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -205,13 +207,22 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Waitlist CTA */}
-            <button
-              onClick={() => scrollTo('waitlist')}
-              className="bg-[#0e393d] text-[#f2ebdb] text-[12px] font-medium px-5 py-2 rounded-full tracking-wide transition-colors hover:bg-[#1a5055] whitespace-nowrap"
-            >
-              {t('nav.cta')}
-            </button>
+            {/* Login / User */}
+            {user ? (
+              <Link
+                href="/dashboard"
+                className="bg-[#0e393d] text-[#f2ebdb] text-[12px] font-medium px-5 py-2 rounded-full tracking-wide transition-colors hover:bg-[#1a5055] whitespace-nowrap"
+              >
+                {user.email?.split('@')[0] ?? t('nav.login')}
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="bg-[#0e393d] text-[#f2ebdb] text-[12px] font-medium px-5 py-2 rounded-full tracking-wide transition-colors hover:bg-[#1a5055] whitespace-nowrap"
+              >
+                {t('nav.login')}
+              </Link>
+            )}
           </div>
         </nav>
 

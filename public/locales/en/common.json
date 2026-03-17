@@ -2,6 +2,7 @@
   "nav": {
     "brand": "EVIDA LIFE",
     "cta": "Waitlist",
+    "login": "Login",
     "dropdowns": {
       "Kitchen": ["How to start", "Daily Dozen", "Recipes", "Restaurant"],
       "Health": ["Health Engine ⚡", "Blood Values & Biomarkers", "BioAge", "Interventions"],
@@ -76,6 +77,7 @@
   },
   "shop": {
     "back": "← Back",
+    "checkoutComingSoon": "Coming soon — join the waitlist to be notified when checkout is available.",
     "tag": "Longevity Testing",
     "h1": "Know where you stand.",
     "sub": "Professional blood tests via partner labs – including a free vitality check and personal Longevity Dashboard.",

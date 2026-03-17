@@ -8,6 +8,8 @@ export const metadata = {
 
 type LocalizedString = string | Record<string, string>;
 
+type LocalizedArray = string[] | Record<string, string[]> | null;
+
 type Product = {
   id: string;
   name: LocalizedString;
@@ -17,7 +19,7 @@ type Product = {
   product_type: string;
   is_featured: boolean | null;
   slug: string | null;
-  features: string[] | null;
+  features: LocalizedArray;
 };
 
 const FALLBACK_PACKAGES: Product[] = [
@@ -28,7 +30,10 @@ const FALLBACK_PACKAGES: Product[] = [
       en: 'The ideal entry point – the most important biomarkers for your health baseline.',
     },
     price: 149, marker_count: 11, product_type: 'test_package', is_featured: false,
-    features: ['Blutbild (CBC)', 'Lipidprofil', 'Blutzucker & HbA1c', 'Schilddrüse (TSH)', 'Vitamin D', 'Leber- & Nierenwerte'],
+    features: {
+      de: ['Blutbild (CBC)', 'Lipidprofil', 'Blutzucker & HbA1c', 'Schilddrüse (TSH)', 'Vitamin D', 'Leber- & Nierenwerte'],
+      en: ['Blood count (CBC)', 'Lipid profile', 'Blood sugar & HbA1c', 'Thyroid (TSH)', 'Vitamin D', 'Liver & kidney values'],
+    },
   },
   {
     id: 'pro', name: { de: 'Longevity Pro', en: 'Longevity Pro' }, slug: 'longevity-pro',
@@ -37,7 +42,10 @@ const FALLBACK_PACKAGES: Product[] = [
       en: 'Our most popular package – comprehensive analysis for serious longevity optimisation.',
     },
     price: 299, marker_count: 23, product_type: 'test_package', is_featured: true,
-    features: ['Alles aus Core', 'Entzündungsmarker (hsCRP, IL-6)', 'Homocystein', 'Insulin & HOMA-IR', 'Omega-3-Index', 'Ferritin & Eisen', 'Cortisol', 'Testosteron / Östrogen'],
+    features: {
+      de: ['Alles aus Core', 'Entzündungsmarker (hsCRP, IL-6)', 'Homocystein', 'Insulin & HOMA-IR', 'Omega-3-Index', 'Ferritin & Eisen', 'Cortisol', 'Testosteron / Östrogen'],
+      en: ['Everything from Core', 'Inflammation markers (hsCRP, IL-6)', 'Homocysteine', 'Insulin & HOMA-IR', 'Omega-3 index', 'Ferritin & iron', 'Cortisol', 'Testosterone / oestrogen'],
+    },
   },
   {
     id: 'complete', name: { de: 'Longevity Complete', en: 'Longevity Complete' }, slug: 'longevity-complete',
@@ -46,7 +54,10 @@ const FALLBACK_PACKAGES: Product[] = [
       en: 'The most comprehensive analysis – for maximum precision and deep insights into your health.',
     },
     price: 499, marker_count: 37, product_type: 'test_package', is_featured: false,
-    features: ['Alles aus Pro', 'Hormonstatus vollständig', 'Schwermetalle & Mineralien', 'Darmgesundheit', 'Genetische Risikomarker', 'Longevity Score Baseline'],
+    features: {
+      de: ['Alles aus Pro', 'Hormonstatus vollständig', 'Schwermetalle & Mineralien', 'Darmgesundheit', 'Genetische Risikomarker', 'Longevity Score Baseline'],
+      en: ['Everything from Pro', 'Full hormone status', 'Heavy metals & minerals', 'Gut health', 'Genetic risk markers', 'Longevity Score baseline'],
+    },
   },
 ];
 
@@ -58,7 +69,10 @@ const FALLBACK_ADDONS: Product[] = [
       en: 'Cardiopulmonary exercise test – measures your maximum oxygen uptake, the strongest predictor of longevity.',
     },
     price: 149, marker_count: null, product_type: 'addon_test', is_featured: false,
-    features: ['VO₂max-Messung', 'Anaerobe Schwelle', 'Herzfrequenzanalyse', 'Trainingsempfehlungen'],
+    features: {
+      de: ['VO₂max-Messung', 'Anaerobe Schwelle', 'Herzfrequenzanalyse', 'Trainingsempfehlungen'],
+      en: ['VO₂max measurement', 'Anaerobic threshold', 'Heart rate analysis', 'Training recommendations'],
+    },
   },
   {
     id: 'dexa', name: { de: 'DEXA Body Composition', en: 'DEXA Body Composition' }, slug: 'dexa-body-composition',
@@ -67,7 +81,10 @@ const FALLBACK_ADDONS: Product[] = [
       en: 'Precise body composition via DEXA scan – muscle mass, body fat percentage, and bone density.',
     },
     price: 129, marker_count: null, product_type: 'addon_test', is_featured: false,
-    features: ['Viszeralfettmessung', 'Segmentale Muskelanalyse', 'Knochendichte (T-Score)', 'Fortschritts-Tracking'],
+    features: {
+      de: ['Viszeralfettmessung', 'Segmentale Muskelanalyse', 'Knochendichte (T-Score)', 'Fortschritts-Tracking'],
+      en: ['Visceral fat measurement', 'Segmental muscle analysis', 'Bone density (T-score)', 'Progress tracking'],
+    },
   },
   {
     id: 'bioage', name: { de: 'Biological Age', en: 'Biological Age' }, slug: 'biological-age',
@@ -76,7 +93,10 @@ const FALLBACK_ADDONS: Product[] = [
       en: 'Your biological age based on epigenetic markers – how old is your body really?',
     },
     price: 349, marker_count: null, product_type: 'addon_test', is_featured: false,
-    features: ['Epigenetische Uhr (DNAm)', 'Biologisches vs. chronologisches Alter', 'Organ-Altersprofile', 'Interventionsempfehlungen'],
+    features: {
+      de: ['Epigenetische Uhr (DNAm)', 'Biologisches vs. chronologisches Alter', 'Organ-Altersprofile', 'Interventionsempfehlungen'],
+      en: ['Epigenetic clock (DNAm)', 'Biological vs. chronological age', 'Organ age profiles', 'Intervention recommendations'],
+    },
   },
 ];
 

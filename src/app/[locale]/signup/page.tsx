@@ -37,13 +37,13 @@ export default function SignupPage() {
 
   if (confirmed) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg)] px-4">
+      <div className="min-h-screen flex items-center justify-center bg-[#fafaf8] px-4">
         <div className="w-full max-w-sm text-center space-y-4">
-          <h1 className="font-playfair text-3xl">Evida Life</h1>
-          <p className="text-[var(--color-text-muted)] text-sm">
+          <h1 className="font-serif text-3xl">Evida Life</h1>
+          <p className="text-[#1c2a2b]/60 text-sm">
             Bestätigungslink gesendet an <strong>{email}</strong>. Bitte prüfe deine E-Mails.
           </p>
-          <Link href="/login" className="text-sm text-[var(--color-primary)] hover:underline">
+          <Link href="/login" className="text-sm text-[#0e393d] hover:underline">
             Zurück zum Login
           </Link>
         </div>
@@ -52,13 +52,13 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg)] px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#fafaf8] px-4">
       <div className="w-full max-w-sm">
-        <h1 className="font-playfair text-3xl text-center mb-8">Evida Life</h1>
+        <h1 className="font-serif text-3xl text-center mb-8 text-[#0e393d]">Evida Life</h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm text-[var(--color-text-muted)] mb-1">
+            <label className="block text-sm text-[#1c2a2b]/60 mb-1">
               E-Mail
             </label>
             <input
@@ -67,12 +67,12 @@ export default function SignupPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
-              className="w-full px-4 py-2.5 rounded-lg border border-[var(--color-border)] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              className="w-full px-4 py-2.5 rounded-lg border border-[#0e393d]/15 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/20"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-[var(--color-text-muted)] mb-1">
+            <label className="block text-sm text-[#1c2a2b]/60 mb-1">
               Passwort
             </label>
             <input
@@ -82,7 +82,7 @@ export default function SignupPage() {
               required
               minLength={8}
               autoComplete="new-password"
-              className="w-full px-4 py-2.5 rounded-lg border border-[var(--color-border)] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              className="w-full px-4 py-2.5 rounded-lg border border-[#0e393d]/15 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/20"
             />
           </div>
 
@@ -93,15 +93,15 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 rounded-lg bg-[var(--color-primary)] text-white text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
+            className="w-full py-2.5 rounded-lg bg-[#0e393d] text-[#f2ebdb] text-sm font-medium hover:bg-[#1a5055] transition disabled:opacity-50"
           >
             {loading ? 'Registrieren…' : 'Konto erstellen'}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-[var(--color-text-muted)]">
+        <p className="mt-6 text-center text-sm text-[#1c2a2b]/60">
           Bereits registriert?{' '}
-          <Link href="/login" className="text-[var(--color-primary)] hover:underline">
+          <Link href="/login" className="text-[#0e393d] hover:underline">
             Anmelden
           </Link>
         </p>

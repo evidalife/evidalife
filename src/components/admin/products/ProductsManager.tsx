@@ -23,7 +23,7 @@ export type Product = {
   is_active: boolean | null;
   is_featured: boolean | null;
   image_url: string | null;
-  marker_count: number | null;
+  metadata: { marker_count?: number } | null;
   deleted_at: string | null;
   created_at: string;
 };
@@ -165,7 +165,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       price_eur: p.price_eur != null ? String(p.price_eur) : '',
       tax_class: p.tax_class ?? 'standard',
       product_type: p.product_type ?? 'test_package',
-      marker_count: p.marker_count != null ? String(p.marker_count) : '',
+      marker_count: p.metadata?.marker_count != null ? String(p.metadata.marker_count) : '',
       is_active: p.is_active ?? true,
       is_featured: p.is_featured ?? false,
     });
@@ -226,7 +226,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       price_eur: form.price_eur ? Number(form.price_eur) : null,
       tax_class: form.tax_class || null,
       product_type: form.product_type || null,
-      marker_count: form.marker_count ? Number(form.marker_count) : null,
+      metadata: form.marker_count ? { marker_count: Number(form.marker_count) } : null,
       is_active: form.is_active,
       is_featured: form.is_featured,
     };

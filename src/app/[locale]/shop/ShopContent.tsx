@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { Link } from '@/i18n/navigation';
+import PublicNav from '@/components/PublicNav';
+import PublicFooter from '@/components/PublicFooter';
 
 async function startCheckout(productId: string): Promise<void> {
   const res = await fetch('/api/checkout', {
@@ -19,6 +20,7 @@ async function startCheckout(productId: string): Promise<void> {
 }
 
 type LocalizedString = string | Record<string, string>;
+type LocalizedArray = string[] | Record<string, string[]> | null;
 
 type Product = {
   id: string;
@@ -29,7 +31,7 @@ type Product = {
   product_type: string;
   is_featured: boolean | null;
   slug: string | null;
-  features: string[] | null;
+  features: LocalizedArray;
 };
 
 function chf(amount: number) {
@@ -40,6 +42,12 @@ function getLocalized(field: LocalizedString | null | undefined, lng: string): s
   if (!field) return '';
   if (typeof field === 'string') return field;
   return field[lng] ?? field['de'] ?? '';
+}
+
+function getLocalizedFeatures(features: LocalizedArray, lng: string): string[] {
+  if (!features) return [];
+  if (Array.isArray(features)) return features;
+  return features[lng] ?? features['de'] ?? [];
 }
 
 function VitalcheckBadge() {
@@ -55,11 +63,12 @@ function VitalcheckBadge() {
   );
 }
 
-function PackageCard({ product, index }: { product: Product; index: number }) {
+function PackageCard({ product, index, onCheckoutError }: { product: Product; index: number; onCheckoutError: () => void }) {
   const t = useTranslations('shop.packages');
   const lng = useLocale();
   const featured = product.is_featured;
   const [loading, setLoading] = useState(false);
+  const features = getLocalizedFeatures(product.features, lng);
 
   const handleCheckout = async () => {
     setLoading(true);
@@ -67,6 +76,7 @@ function PackageCard({ product, index }: { product: Product; index: number }) {
       await startCheckout(product.id);
     } catch {
       setLoading(false);
+      onCheckoutError();
     }
   };
 
@@ -113,9 +123,9 @@ function PackageCard({ product, index }: { product: Product; index: number }) {
         <VitalcheckBadge />
       </div>
 
-      {product.features && (
+      {features.length > 0 && (
         <ul className="mb-7 flex-1 space-y-2">
-          {product.features.map((f) => (
+          {features.map((f) => (
             <li key={f} className="flex items-start gap-2 text-sm">
               <svg className={`mt-0.5 shrink-0 ${featured ? 'text-[#ceab84]' : 'text-[#0e393d]'}`} width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M2.5 7l3 3L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -141,10 +151,11 @@ function PackageCard({ product, index }: { product: Product; index: number }) {
   );
 }
 
-function AddonCard({ product }: { product: Product }) {
+function AddonCard({ product, onCheckoutError }: { product: Product; onCheckoutError: () => void }) {
   const t = useTranslations('shop');
   const lng = useLocale();
   const [loading, setLoading] = useState(false);
+  const features = getLocalizedFeatures(product.features, lng);
 
   const handleCheckout = async () => {
     setLoading(true);
@@ -152,6 +163,7 @@ function AddonCard({ product }: { product: Product }) {
       await startCheckout(product.id);
     } catch {
       setLoading(false);
+      onCheckoutError();
     }
   };
 
@@ -165,9 +177,9 @@ function AddonCard({ product }: { product: Product }) {
       <div className="mb-5">
         <VitalcheckBadge />
       </div>
-      {product.features && (
+      {features.length > 0 && (
         <ul className="mb-6 space-y-1.5">
-          {product.features.map((f) => (
+          {features.map((f) => (
             <li key={f} className="flex items-start gap-2 text-sm text-[#1c2a2b]/60">
               <svg className="mt-0.5 shrink-0 text-[#ceab84]" width="13" height="13" viewBox="0 0 14 14" fill="none">
                 <path d="M2.5 7l3 3L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -197,23 +209,29 @@ export default function ShopContent({ packages, addons }: ShopContentProps) {
   const t = useTranslations('shop');
   const trust = t.raw('trust') as { title: string; body: string }[];
   const trustIcons = ['🔬', '📊', '🔒'];
+  const [checkoutError, setCheckoutError] = useState(false);
+
+  const handleCheckoutError = () => setCheckoutError(true);
 
   return (
-    <div className="min-h-screen bg-[#fafaf8]">
+    <div className="min-h-screen bg-[#fafaf8] flex flex-col">
+      <PublicNav />
 
-      {/* Nav bar */}
-      <header className="border-b border-[#0e393d]/10 bg-white/80 backdrop-blur-sm sticky top-0 z-30">
-        <div className="mx-auto max-w-[1060px] px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="font-serif text-xl text-[#0e393d] hover:text-[#ceab84] transition-colors">
-            Evida Life
-          </Link>
-          <Link href="/" className="text-sm text-[#0e393d]/50 hover:text-[#0e393d] transition-colors">
-            {t('back')}
-          </Link>
-        </div>
-      </header>
+      <main className="mx-auto w-full max-w-[1060px] px-6 pt-28 pb-16 flex-1">
 
-      <main className="mx-auto max-w-[1060px] px-6 py-16">
+        {/* Checkout error banner */}
+        {checkoutError && (
+          <div className="mb-8 rounded-xl bg-[#ceab84]/15 border border-[#ceab84]/30 px-5 py-4 text-sm text-[#8a6a3e] flex items-center justify-between gap-4">
+            <span>{t('checkoutComingSoon')}</span>
+            <button
+              onClick={() => setCheckoutError(false)}
+              className="shrink-0 text-[#ceab84] hover:text-[#8a6a3e] transition-colors"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Hero text */}
         <div className="mb-14 text-center">
@@ -236,7 +254,7 @@ export default function ShopContent({ packages, addons }: ShopContentProps) {
           </div>
           <div className="grid gap-6 sm:grid-cols-3">
             {packages.map((p, i) => (
-              <PackageCard key={p.id} product={p} index={i} />
+              <PackageCard key={p.id} product={p} index={i} onCheckoutError={handleCheckoutError} />
             ))}
           </div>
         </section>
@@ -250,7 +268,7 @@ export default function ShopContent({ packages, addons }: ShopContentProps) {
           </div>
           <div className="grid gap-6 sm:grid-cols-3">
             {addons.map((p) => (
-              <AddonCard key={p.id} product={p} />
+              <AddonCard key={p.id} product={p} onCheckoutError={handleCheckoutError} />
             ))}
           </div>
         </section>
@@ -270,13 +288,7 @@ export default function ShopContent({ packages, addons }: ShopContentProps) {
 
       </main>
 
-      {/* Footer */}
-      <footer className="mx-auto max-w-[1060px] px-6 py-8 border-t border-[#0e393d]/10 flex flex-wrap gap-6 text-sm text-[#0e393d]/40">
-        <Link href="/legal" className="hover:text-[#0e393d] transition-colors">{t('footer.imprint')}</Link>
-        <Link href="/privacy" className="hover:text-[#0e393d] transition-colors">{t('footer.privacy')}</Link>
-        <Link href="/terms" className="hover:text-[#0e393d] transition-colors">{t('footer.terms')}</Link>
-      </footer>
-
+      <PublicFooter />
     </div>
   );
 }

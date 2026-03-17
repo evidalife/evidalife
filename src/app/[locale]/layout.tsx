@@ -41,7 +41,7 @@ export default async function LocaleLayout({ children }: { children: React.React
         <Script
           defer
           data-domain="evidalife.com"
-          src="https://plausible.io/js/script.js"
+          src="https://plausible.io/js/pa-rd8Vg53lkvL2l8ft9io4h.js"
           strategy="afterInteractive"
         />
       </head>

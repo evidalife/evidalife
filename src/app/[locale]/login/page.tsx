@@ -1,14 +1,14 @@
 'use client';
 
 import { Suspense, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Link } from '@/i18n/navigation';
+import { useSearchParams } from 'next/navigation';
+import { useRouter, Link } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') ?? '/dashboard';
+  const redirectTo = searchParams.get('redirectTo') ?? '/';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,7 +36,7 @@ function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm text-[var(--color-text-muted)] mb-1">
+        <label className="block text-sm text-[#1c2a2b]/60 mb-1">
           E-Mail
         </label>
         <input
@@ -45,12 +45,12 @@ function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           required
           autoComplete="email"
-          className="w-full px-4 py-2.5 rounded-lg border border-[var(--color-border)] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+          className="w-full px-4 py-2.5 rounded-lg border border-[#0e393d]/15 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/20"
         />
       </div>
 
       <div>
-        <label className="block text-sm text-[var(--color-text-muted)] mb-1">
+        <label className="block text-sm text-[#1c2a2b]/60 mb-1">
           Passwort
         </label>
         <input
@@ -59,7 +59,7 @@ function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           required
           autoComplete="current-password"
-          className="w-full px-4 py-2.5 rounded-lg border border-[var(--color-border)] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+          className="w-full px-4 py-2.5 rounded-lg border border-[#0e393d]/15 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/20"
         />
       </div>
 
@@ -70,7 +70,7 @@ function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full py-2.5 rounded-lg bg-[var(--color-primary)] text-white text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
+        className="w-full py-2.5 rounded-lg bg-[#0e393d] text-[#f2ebdb] text-sm font-medium hover:bg-[#1a5055] transition disabled:opacity-50"
       >
         {loading ? 'Anmelden…' : 'Anmelden'}
       </button>
@@ -80,17 +80,17 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg)] px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#fafaf8] px-4">
       <div className="w-full max-w-sm">
-        <h1 className="font-playfair text-3xl text-center mb-8">Evida Life</h1>
+        <h1 className="font-serif text-3xl text-center mb-8 text-[#0e393d]">Evida Life</h1>
 
         <Suspense>
           <LoginForm />
         </Suspense>
 
-        <p className="mt-6 text-center text-sm text-[var(--color-text-muted)]">
+        <p className="mt-6 text-center text-sm text-[#1c2a2b]/60">
           Noch kein Konto?{' '}
-          <Link href="/signup" className="text-[var(--color-primary)] hover:underline">
+          <Link href="/signup" className="text-[#0e393d] hover:underline">
             Registrieren
           </Link>
         </p>
