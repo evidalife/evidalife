@@ -47,13 +47,13 @@ const EMPTY_FORM: FormState = {
   sku: '', slug: '',
   description: { de: '', en: '' },
   price_chf: '', price_eur: '',
-  tax_class: 'standard', product_type: 'package',
+  tax_class: 'standard', product_type: 'test_package',
   marker_count: '',
   is_active: true, is_featured: false,
 };
 
 const TAX_CLASSES = ['standard', 'reduced', 'zero'];
-const PRODUCT_TYPES = ['package', 'addon', 'food', 'subscription'];
+const PRODUCT_TYPES = ['test_package', 'addon_test', 'food', 'subscription'];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -164,7 +164,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       price_chf: p.price_chf != null ? String(p.price_chf) : '',
       price_eur: p.price_eur != null ? String(p.price_eur) : '',
       tax_class: p.tax_class ?? 'standard',
-      product_type: p.product_type ?? 'package',
+      product_type: p.product_type ?? 'test_package',
       marker_count: p.marker_count != null ? String(p.marker_count) : '',
       is_active: p.is_active ?? true,
       is_featured: p.is_featured ?? false,

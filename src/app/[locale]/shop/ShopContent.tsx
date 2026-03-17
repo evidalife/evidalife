@@ -1,10 +1,7 @@
 'use client';
 
-import Link from 'next/link';
-import { useTranslation } from 'react-i18next';
-import i18n from '@/lib/i18n';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { useTranslations, useLocale } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 
 type LocalizedString = string | Record<string, string>;
 
@@ -20,37 +17,32 @@ type Product = {
   features: string[] | null;
 };
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function chf(amount: number) {
   return `CHF ${amount.toLocaleString('de-CH')}`;
 }
 
-/** Access a potentially multilingual JSONB field using the current locale. */
 function getLocalized(field: LocalizedString | null | undefined, lng: string): string {
   if (!field) return '';
   if (typeof field === 'string') return field;
   return field[lng] ?? field['de'] ?? '';
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
-
 function VitalcheckBadge() {
-  const { t } = useTranslation('common');
+  const t = useTranslations('shop.packages');
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ceab84]/15 px-3 py-1 text-xs font-medium text-[#8a6a3e]">
       <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
         <circle cx="6" cy="6" r="5.5" stroke="#ceab84" />
         <path d="M3.5 6l1.8 1.8L8.5 4" stroke="#ceab84" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      {t('shop.packages.vitalcheck')}
+      {t('vitalcheck')}
     </span>
   );
 }
 
 function PackageCard({ product, index }: { product: Product; index: number }) {
-  const { t } = useTranslation('common');
-  const lng = i18n.language;
+  const t = useTranslations('shop.packages');
+  const lng = useLocale();
   const featured = product.is_featured;
 
   return (
@@ -65,7 +57,7 @@ function PackageCard({ product, index }: { product: Product; index: number }) {
       {featured && (
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
           <span className="inline-block rounded-full bg-[#ceab84] px-4 py-1 text-xs font-semibold text-[#0e393d] tracking-wide">
-            {t('shop.packages.featured')}
+            {t('featured')}
           </span>
         </div>
       )}
@@ -87,7 +79,7 @@ function PackageCard({ product, index }: { product: Product; index: number }) {
         </div>
         {product.marker_count && (
           <p className={`mt-1 text-xs ${featured ? 'text-white/50' : 'text-[#1c2a2b]/40'}`}>
-            {t('shop.packages.biomarkers', { count: product.marker_count })}
+            {t('biomarkers', { count: product.marker_count })}
           </p>
         )}
       </div>
@@ -117,15 +109,15 @@ function PackageCard({ product, index }: { product: Product; index: number }) {
             : 'bg-[#0e393d] text-white hover:bg-[#0e393d]/90'
         }`}
       >
-        {t('shop.packages.cta')}
+        {t('cta')}
       </Link>
     </div>
   );
 }
 
 function AddonCard({ product }: { product: Product }) {
-  const { t } = useTranslation('common');
-  const lng = i18n.language;
+  const t = useTranslations('shop');
+  const lng = useLocale();
 
   return (
     <div className="flex flex-col rounded-2xl bg-white p-6 shadow-sm ring-1 ring-[#0e393d]/8 hover:shadow-md transition-shadow">
@@ -153,13 +145,11 @@ function AddonCard({ product }: { product: Product }) {
         href={`/shop/${product.slug ?? product.id}`}
         className="block rounded-xl border border-[#0e393d]/20 py-2.5 text-center text-sm font-medium text-[#0e393d] hover:bg-[#0e393d] hover:text-white transition-colors"
       >
-        {t('shop.addons.cta')}
+        {t('addons.cta')}
       </Link>
     </div>
   );
 }
-
-// ─── Main component ───────────────────────────────────────────────────────────
 
 interface ShopContentProps {
   packages: Product[];
@@ -167,8 +157,8 @@ interface ShopContentProps {
 }
 
 export default function ShopContent({ packages, addons }: ShopContentProps) {
-  const { t } = useTranslation('common');
-  const trust = t('shop.trust', { returnObjects: true }) as { title: string; body: string }[];
+  const t = useTranslations('shop');
+  const trust = t.raw('trust') as { title: string; body: string }[];
   const trustIcons = ['🔬', '📊', '🔒'];
 
   return (
@@ -181,7 +171,7 @@ export default function ShopContent({ packages, addons }: ShopContentProps) {
             Evida Life
           </Link>
           <Link href="/" className="text-sm text-[#0e393d]/50 hover:text-[#0e393d] transition-colors">
-            {t('shop.back')}
+            {t('back')}
           </Link>
         </div>
       </header>
@@ -191,20 +181,20 @@ export default function ShopContent({ packages, addons }: ShopContentProps) {
         {/* Hero text */}
         <div className="mb-14 text-center">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">
-            {t('shop.tag')}
+            {t('tag')}
           </p>
           <h1 className="font-serif text-5xl text-[#0e393d] mb-4">
-            {t('shop.h1')}
+            {t('h1')}
           </h1>
           <p className="mx-auto max-w-xl text-base text-[#1c2a2b]/60 leading-relaxed">
-            {t('shop.sub')}
+            {t('sub')}
           </p>
         </div>
 
         {/* Packages */}
         <section className="mb-20">
           <div className="mb-8 flex items-center gap-4">
-            <h2 className="font-serif text-2xl text-[#0e393d]">{t('shop.packages.heading')}</h2>
+            <h2 className="font-serif text-2xl text-[#0e393d]">{t('packages.heading')}</h2>
             <div className="flex-1 h-px bg-[#0e393d]/10" />
           </div>
           <div className="grid gap-6 sm:grid-cols-3">
@@ -217,9 +207,9 @@ export default function ShopContent({ packages, addons }: ShopContentProps) {
         {/* Add-ons */}
         <section className="mb-20">
           <div className="mb-8 flex items-center gap-4">
-            <h2 className="font-serif text-2xl text-[#0e393d]">{t('shop.addons.heading')}</h2>
+            <h2 className="font-serif text-2xl text-[#0e393d]">{t('addons.heading')}</h2>
             <div className="flex-1 h-px bg-[#0e393d]/10" />
-            <p className="text-sm text-[#1c2a2b]/40">{t('shop.addons.combo')}</p>
+            <p className="text-sm text-[#1c2a2b]/40">{t('addons.combo')}</p>
           </div>
           <div className="grid gap-6 sm:grid-cols-3">
             {addons.map((p) => (
@@ -245,9 +235,9 @@ export default function ShopContent({ packages, addons }: ShopContentProps) {
 
       {/* Footer */}
       <footer className="mx-auto max-w-[1060px] px-6 py-8 border-t border-[#0e393d]/10 flex flex-wrap gap-6 text-sm text-[#0e393d]/40">
-        <Link href="/legal" className="hover:text-[#0e393d] transition-colors">{t('shop.footer.imprint')}</Link>
-        <Link href="/privacy" className="hover:text-[#0e393d] transition-colors">{t('shop.footer.privacy')}</Link>
-        <Link href="/terms" className="hover:text-[#0e393d] transition-colors">{t('shop.footer.terms')}</Link>
+        <Link href="/legal" className="hover:text-[#0e393d] transition-colors">{t('footer.imprint')}</Link>
+        <Link href="/privacy" className="hover:text-[#0e393d] transition-colors">{t('footer.privacy')}</Link>
+        <Link href="/terms" className="hover:text-[#0e393d] transition-colors">{t('footer.terms')}</Link>
       </footer>
 
     </div>

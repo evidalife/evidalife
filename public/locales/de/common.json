@@ -67,7 +67,7 @@
   },
   "layout": {
     "back": "← Zurück",
-    "lastUpdated": "Stand: {{date}}",
+    "lastUpdated": "Stand: {date}",
     "footer": {
       "imprint": "Impressum",
       "privacy": "Datenschutz",
@@ -82,7 +82,7 @@
     "packages": {
       "heading": "Test-Pakete",
       "featured": "EMPFOHLEN",
-      "biomarkers": "{{count}} Biomarker analysiert",
+      "biomarkers": "{count} Biomarker analysiert",
       "vitalcheck": "Gratis Vitalcheck inkl.",
       "cta": "Paket wählen"
     },

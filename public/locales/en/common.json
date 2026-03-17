@@ -67,7 +67,7 @@
   },
   "layout": {
     "back": "← Back",
-    "lastUpdated": "Last updated: {{date}}",
+    "lastUpdated": "Last updated: {date}",
     "footer": {
       "imprint": "Imprint",
       "privacy": "Privacy",
@@ -82,7 +82,7 @@
     "packages": {
       "heading": "Test Packages",
       "featured": "RECOMMENDED",
-      "biomarkers": "{{count}} biomarkers analysed",
+      "biomarkers": "{count} biomarkers analysed",
       "vitalcheck": "Free vitality check incl.",
       "cta": "Choose package"
     },

@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 
 interface LegalLayoutProps {
   title: string;
@@ -11,7 +11,7 @@ interface LegalLayoutProps {
 }
 
 export default function LegalLayout({ title, subtitle, lastUpdated, children }: LegalLayoutProps) {
-  const { t } = useTranslation('common');
+  const t = useTranslations('layout');
 
   return (
     <div className="min-h-screen bg-[#fafaf8]">
@@ -22,7 +22,7 @@ export default function LegalLayout({ title, subtitle, lastUpdated, children }: 
             Evida Life
           </Link>
           <Link href="/" className="text-sm text-[#0e393d]/50 hover:text-[#0e393d] transition-colors">
-            {t('layout.back')}
+            {t('back')}
           </Link>
         </div>
       </header>
@@ -34,7 +34,7 @@ export default function LegalLayout({ title, subtitle, lastUpdated, children }: 
           {subtitle && <p className="text-[#0e393d]/60 text-lg">{subtitle}</p>}
           {lastUpdated && (
             <p className="mt-3 text-sm text-[#0e393d]/40">
-              {t('layout.lastUpdated', { date: lastUpdated })}
+              {t('lastUpdated', { date: lastUpdated })}
             </p>
           )}
         </div>
@@ -46,9 +46,9 @@ export default function LegalLayout({ title, subtitle, lastUpdated, children }: 
 
       {/* Footer links */}
       <footer className="mx-auto max-w-3xl px-6 py-8 border-t border-[#0e393d]/10 flex gap-6 text-sm text-[#0e393d]/40">
-        <Link href="/legal" className="hover:text-[#0e393d] transition-colors">{t('layout.footer.imprint')}</Link>
-        <Link href="/privacy" className="hover:text-[#0e393d] transition-colors">{t('layout.footer.privacy')}</Link>
-        <Link href="/terms" className="hover:text-[#0e393d] transition-colors">{t('layout.footer.terms')}</Link>
+        <Link href="/legal" className="hover:text-[#0e393d] transition-colors">{t('footer.imprint')}</Link>
+        <Link href="/privacy" className="hover:text-[#0e393d] transition-colors">{t('footer.privacy')}</Link>
+        <Link href="/terms" className="hover:text-[#0e393d] transition-colors">{t('footer.terms')}</Link>
       </footer>
     </div>
   );

@@ -7,9 +7,17 @@ import { createClient } from '@/lib/supabase/client';
 
 type StatusFlag = 'optimal' | 'good' | 'moderate' | 'risk';
 
+type LocalizedString = string | Record<string, string>;
+
+function locName(field: LocalizedString | null | undefined): string {
+  if (!field) return '';
+  if (typeof field === 'string') return field;
+  return field.de || field.en || '';
+}
+
 type BiomarkerDef = {
   id: string;
-  name: string;
+  name: LocalizedString;
   unit: string | null;
   category: string | null;
 };
@@ -289,7 +297,7 @@ export default function LabResultsManager({
     if (flagFilter !== 'all' && r.status_flag !== flagFilter) return false;
     if (search) {
       const q = search.toLowerCase();
-      const bm = r.biomarker_definitions?.name?.toLowerCase() ?? '';
+      const bm = locName(r.biomarker_definitions?.name).toLowerCase();
       const em = r.profiles?.email?.toLowerCase() ?? '';
       const on = r.orders?.order_number?.toLowerCase() ?? '';
       if (!bm.includes(q) && !em.includes(q) && !on.includes(q)) return false;
@@ -410,7 +418,7 @@ export default function LabResultsManager({
                 {/* Biomarker */}
                 <td className="px-4 py-3">
                   <div className="text-xs font-medium text-[#1c2a2b]">
-                    {r.biomarker_definitions?.name ?? <span className="text-[#1c2a2b]/30">Unknown</span>}
+                    {locName(r.biomarker_definitions?.name) || <span className="text-[#1c2a2b]/30">Unknown</span>}
                   </div>
                   {r.biomarker_definitions?.category && (
                     <div className="text-[10px] text-[#1c2a2b]/40 mt-0.5">{r.biomarker_definitions.category}</div>
@@ -577,7 +585,7 @@ export default function LabResultsManager({
                           {biomarkerRows.map((row, idx) => (
                             <tr key={row.biomarker.id} className={row.existingResult ? 'bg-[#0e393d]/2' : 'bg-white'}>
                               <td className="px-4 py-2.5">
-                                <div className="text-xs font-medium text-[#1c2a2b]">{row.biomarker.name}</div>
+                                <div className="text-xs font-medium text-[#1c2a2b]">{locName(row.biomarker.name)}</div>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   {row.biomarker.unit && (
                                     <span className="text-[10px] font-mono text-[#1c2a2b]/40">{row.biomarker.unit}</span>
@@ -670,7 +678,7 @@ export default function LabResultsManager({
               <div>
                 <h2 className="font-serif text-lg text-[#0e393d]">Edit Result</h2>
                 <p className="text-xs text-[#1c2a2b]/40 mt-0.5">
-                  {editingResult.biomarker_definitions?.name}
+                  {locName(editingResult.biomarker_definitions?.name)}
                   {editingResult.orders?.order_number ? ` · ${editingResult.orders.order_number}` : ''}
                 </p>
               </div>
@@ -689,7 +697,7 @@ export default function LabResultsManager({
               <div>
                 <SectionHeading>Biomarker</SectionHeading>
                 <div className="rounded-lg border border-[#0e393d]/8 bg-[#fafaf8] px-4 py-3 space-y-1.5">
-                  <p className="text-sm font-medium text-[#1c2a2b]">{editingResult.biomarker_definitions?.name}</p>
+                  <p className="text-sm font-medium text-[#1c2a2b]">{locName(editingResult.biomarker_definitions?.name)}</p>
                   {editingResult.biomarker_definitions?.category && (
                     <p className="text-xs text-[#1c2a2b]/50">{editingResult.biomarker_definitions.category}</p>
                   )}

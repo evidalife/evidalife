@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import i18n from '@/lib/i18n';
+import { useTranslations, useLocale } from 'next-intl';
+import { useRouter, usePathname, Link } from '@/i18n/navigation';
 import { supabase } from '@/lib/supabase';
 import Image from 'next/image';
 
-type Lang = 'de' | 'en';
+type Locale = 'de' | 'en';
 
 const NAV_ITEMS = ['Kitchen', 'Health', 'Fit', 'Shop'] as const;
 type NavItem = typeof NAV_ITEMS[number];
@@ -23,7 +23,6 @@ const IMGS = {
   wl:     'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800&q=80',
 };
 
-// Card and step images are positional, not translatable
 const CARD_IMGS = [IMGS.lab, IMGS.dozen, IMGS.recipe, IMGS.shop];
 const STEP_IMGS = [IMGS.step1, IMGS.step2, IMGS.step3];
 
@@ -39,8 +38,10 @@ function SectionTag({ label }: { label: string }) {
 }
 
 export default function HomePage() {
-  const { t } = useTranslation('common');
-  const lang = (i18n.language === 'en' ? 'en' : 'de') as Lang;
+  const t = useTranslations('');
+  const locale = useLocale() as Locale;
+  const router = useRouter();
+  const pathname = usePathname();
 
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -50,14 +51,13 @@ export default function HomePage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileExpandedItem, setMobileExpandedItem] = useState<NavItem | null>(null);
 
-  const cards = t('cards', { returnObjects: true }) as { title: string; desc: string }[];
-  const steps = t('steps.items', { returnObjects: true }) as { n: string; title: string; desc: string }[];
-  const footerCoItems = t('footer.co.items', { returnObjects: true }) as string[];
-  const dropdowns = t('nav.dropdowns', { returnObjects: true }) as Record<NavItem, (string | null)[]>;
+  const cards = t.raw('cards') as { title: string; desc: string }[];
+  const steps = t.raw('steps.items') as { n: string; title: string; desc: string }[];
+  const footerCoItems = t.raw('footer.co.items') as string[];
+  const dropdowns = t.raw('nav.dropdowns') as Record<NavItem, (string | null)[]>;
 
-  const changeLang = (l: Lang) => {
-    i18n.changeLanguage(l);
-    localStorage.setItem('evida-lang', l);
+  const changeLang = (l: Locale) => {
+    router.replace(pathname, { locale: l });
     setLangOpen(false);
   };
 
@@ -70,7 +70,7 @@ export default function HomePage() {
     try {
       const { error } = await supabase
         .from('waitlist')
-        .insert({ email, lang: i18n.language });
+        .insert({ email, lang: locale });
       if (error && error.code !== '23505') {
         console.error(error);
         setSubmitting(false);
@@ -176,7 +176,7 @@ export default function HomePage() {
                 onClick={() => setLangOpen(!langOpen)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[12px] font-medium text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors"
               >
-                <span className="uppercase tracking-wider">{lang.toUpperCase()}</span>
+                <span className="uppercase tracking-wider">{locale.toUpperCase()}</span>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`transition-transform duration-200 ${langOpen ? 'rotate-180' : ''}`}>
                   <path d="M2 4l4 4 4-4" stroke="#0e393d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
@@ -187,12 +187,12 @@ export default function HomePage() {
                     className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.12)] border border-[#0e393d]/8 min-w-[140px] py-1.5"
                     style={{ animation: 'dropdownIn 0.15s ease-out' }}
                   >
-                    {([['de', 'Deutsch'], ['en', 'English']] as [Lang, string][]).map(([l, label]) => (
+                    {([['de', 'Deutsch'], ['en', 'English']] as [Locale, string][]).map(([l, label]) => (
                       <button
                         key={l}
                         onClick={() => changeLang(l)}
                         className={`w-full text-left px-5 py-2.5 text-[13px] transition-colors ${
-                          lang === l
+                          locale === l
                             ? 'text-[#0e393d] font-medium'
                             : 'text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d]'
                         }`}
@@ -431,12 +431,14 @@ export default function HomePage() {
                 <h4 className="text-[10.5px] font-medium tracking-[0.15em] uppercase text-[#ceab84] mb-4">Legal</h4>
                 <ul className="space-y-2.5">
                   {([
-                    t('footer.legal.privacy'),
-                    t('footer.legal.terms'),
-                    t('footer.legal.imprint'),
-                  ]).map((item) => (
-                    <li key={item}>
-                      <span className="text-[13px] font-light text-white/38 hover:text-white/65 cursor-default transition-colors">{item}</span>
+                    [t('footer.legal.privacy'), '/privacy'],
+                    [t('footer.legal.terms'), '/terms'],
+                    [t('footer.legal.imprint'), '/legal'],
+                  ] as [string, string][]).map(([label, href]) => (
+                    <li key={label}>
+                      <Link href={href} className="text-[13px] font-light text-white/38 hover:text-white/65 transition-colors">
+                        {label}
+                      </Link>
                     </li>
                   ))}
                 </ul>

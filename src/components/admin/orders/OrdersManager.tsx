@@ -19,12 +19,20 @@ type ShippingAddress = {
   country?: string;
 };
 
+type LocalizedString = string | Record<string, string>;
+
+function locName(field: LocalizedString | null | undefined): string {
+  if (!field) return '';
+  if (typeof field === 'string') return field;
+  return field.de || field.en || '';
+}
+
 type OrderItem = {
   id: string;
   quantity: number;
   unit_price: number;
   currency: string;
-  products: { name: string; sku: string | null; image_url: string | null } | null;
+  products: { name: LocalizedString; sku: string | null; image_url: string | null } | null;
 };
 
 type Order = {
@@ -458,7 +466,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                       {(selectedOrder.order_items ?? []).map((item) => (
                         <tr key={item.id} className="bg-white">
                           <td className="px-4 py-2.5">
-                            <div className="font-medium text-[#1c2a2b]">{item.products?.name ?? 'Unknown product'}</div>
+                            <div className="font-medium text-[#1c2a2b]">{locName(item.products?.name) || 'Unknown product'}</div>
                             {item.products?.sku && (
                               <div className="font-mono text-[#1c2a2b]/40 mt-0.5">{item.products.sku}</div>
                             )}
