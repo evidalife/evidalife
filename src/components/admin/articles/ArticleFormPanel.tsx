@@ -253,9 +253,8 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
 
       onSaved();
     } catch (e: unknown) {
-      const err = e as { message?: string; details?: string; hint?: string } | null;
-      const parts = [err?.message, err?.details, err?.hint].filter(Boolean);
-      setError(parts.length ? parts.join(' — ') : (JSON.stringify(e) || 'Save failed.'));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setError(typeof e === 'object' && e && 'message' in e ? (e as any).message : String(e));
     } finally {
       setSaving(false);
     }

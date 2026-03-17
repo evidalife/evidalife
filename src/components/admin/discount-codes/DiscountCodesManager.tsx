@@ -260,6 +260,14 @@ export default function DiscountCodesManager({
     await refresh();
   };
 
+  // ── Delete ────────────────────────────────────────────────────────────────────
+
+  const handleDelete = async (dc: DiscountCode) => {
+    if (!confirm(`Delete code "${dc.code}"? This cannot be undone.`)) return;
+    await supabase.from('discount_codes').delete().eq('id', dc.id);
+    await refresh();
+  };
+
   // ── Save ──────────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
@@ -303,9 +311,8 @@ export default function DiscountCodesManager({
       await refresh();
       closePanel();
     } catch (e: unknown) {
-      const err = e as { message?: string; details?: string; hint?: string } | null;
-      const parts = [err?.message, err?.details, err?.hint].filter(Boolean);
-      setError(parts.length ? parts.join(' — ') : (JSON.stringify(e) || 'Save failed.'));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setError(typeof e === 'object' && e && 'message' in e ? (e as any).message : String(e));
     } finally {
       setSaving(false);
     }
@@ -447,6 +454,12 @@ export default function DiscountCodesManager({
                       className="px-3 py-1 rounded-md text-xs font-medium text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition"
                     >
                       Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(dc)}
+                      className="px-3 py-1 rounded-md text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 transition"
+                    >
+                      Delete
                     </button>
                   </div>
                 </td>
