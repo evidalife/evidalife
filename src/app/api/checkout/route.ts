@@ -3,7 +3,9 @@ import Stripe from 'stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!);
+}
 
 const SWISS_TAX_RATE = 0.081; // 8.1 % MwSt
 
@@ -71,7 +73,7 @@ export async function POST(req: NextRequest) {
     process.env.NEXT_PUBLIC_SITE_URL ??
     'http://localhost:3000';
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await getStripe().checkout.sessions.create({
     mode: 'payment',
     line_items: lineItems,
     success_url: `${origin}/shop?success=1`,
