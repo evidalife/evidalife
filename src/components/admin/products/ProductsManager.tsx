@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type Lang = 'de' | 'en';
+type LangContent = { de: string; en: string };
 type I18n = { de?: string; en?: string } | null;
 
 export type Product = {
@@ -27,10 +29,10 @@ export type Product = {
 };
 
 type FormState = {
-  name: string;
+  name: LangContent;
   sku: string;
   slug: string;
-  description: string;
+  description: LangContent;
   price_chf: string;
   price_eur: string;
   tax_class: string;
@@ -41,7 +43,9 @@ type FormState = {
 };
 
 const EMPTY_FORM: FormState = {
-  name: '', sku: '', slug: '', description: '',
+  name: { de: '', en: '' },
+  sku: '', slug: '',
+  description: { de: '', en: '' },
   price_chf: '', price_eur: '',
   tax_class: 'standard', product_type: 'package',
   marker_count: '',
@@ -117,6 +121,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   const [search, setSearch] = useState('');
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [lang, setLang] = useState<Lang>('de');
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -139,6 +144,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
   const openCreate = () => {
     setEditingId(null);
+    setLang('de');
     setForm(EMPTY_FORM);
     setImageFile(null);
     setImagePreview(null);
@@ -149,11 +155,12 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
   const openEdit = (p: Product) => {
     setEditingId(p.id);
+    setLang('de');
     setForm({
-      name: p.name?.de ?? p.name?.en ?? '',
+      name: { de: p.name?.de ?? '', en: p.name?.en ?? '' },
       sku: p.sku ?? '',
       slug: p.slug ?? '',
-      description: p.description?.de ?? p.description?.en ?? '',
+      description: { de: p.description?.de ?? '', en: p.description?.en ?? '' },
       price_chf: p.price_chf != null ? String(p.price_chf) : '',
       price_eur: p.price_eur != null ? String(p.price_eur) : '',
       tax_class: p.tax_class ?? 'standard',
@@ -176,6 +183,9 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const setLangField = (field: 'name' | 'description', l: Lang, v: string) =>
+    setForm((prev) => ({ ...prev, [field]: { ...prev[field], [l]: v } }));
 
   // ── Image picker ─────────────────────────────────────────────────────────────
 
@@ -200,15 +210,18 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   // ── Save ─────────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setError('Name is required.'); return; }
+    if (!form.name.de.trim() && !form.name.en.trim()) {
+      setError('Name (DE or EN) is required.');
+      return;
+    }
     setSaving(true);
     setError(null);
 
     const payload = {
-      name: form.name.trim(),
+      name: { de: form.name.de, en: form.name.en },
       sku: form.sku.trim() || null,
       slug: form.slug.trim() || null,
-      description: form.description.trim() || null,
+      description: { de: form.description.de, en: form.description.en },
       price_chf: form.price_chf ? Number(form.price_chf) : null,
       price_eur: form.price_eur ? Number(form.price_eur) : null,
       tax_class: form.tax_class || null,
@@ -416,11 +429,25 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
               <h2 className="font-serif text-lg text-[#0e393d]">
                 {editingId ? 'Edit Product' : 'New Product'}
               </h2>
-              <button onClick={closePanel} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-                  <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-3">
+                {/* Lang tabs */}
+                <div className="flex rounded-lg border border-[#0e393d]/15 overflow-hidden text-xs">
+                  {(['de', 'en'] as Lang[]).map((l) => (
+                    <button
+                      key={l}
+                      onClick={() => setLang(l)}
+                      className={`px-3 py-1.5 font-medium transition ${lang === l ? 'bg-[#0e393d] text-white' : 'text-[#1c2a2b]/60 hover:bg-[#0e393d]/5'}`}
+                    >
+                      {l.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={closePanel} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                    <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {/* Panel body */}
@@ -428,16 +455,28 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
               {/* Basic info */}
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Details</p>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Content — {lang.toUpperCase()}</p>
 
-                <Field label="Name *">
+                <Field label={`Name (${lang.toUpperCase()}) *`}>
                   <input
                     className={inputCls}
-                    value={form.name}
-                    onChange={(e) => setField('name', e.target.value)}
-                    placeholder="Longevity Pro"
+                    value={form.name[lang]}
+                    onChange={(e) => setLangField('name', lang, e.target.value)}
+                    placeholder={lang === 'de' ? 'z.B. Longevity Pro' : 'e.g. Longevity Pro'}
                   />
                 </Field>
+
+                <Field label={`Description (${lang.toUpperCase()})`}>
+                  <textarea
+                    className={inputCls + ' resize-none'}
+                    rows={3}
+                    value={form.description[lang]}
+                    onChange={(e) => setLangField('description', lang, e.target.value)}
+                    placeholder={lang === 'de' ? 'Kurze Produktbeschreibung…' : 'Short product description…'}
+                  />
+                </Field>
+
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84] pt-2">Details</p>
 
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="SKU">
@@ -482,15 +521,6 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                   </Field>
                 </div>
 
-                <Field label="Description">
-                  <textarea
-                    className={inputCls + ' resize-none'}
-                    rows={3}
-                    value={form.description}
-                    onChange={(e) => setField('description', e.target.value)}
-                    placeholder="Short product description…"
-                  />
-                </Field>
               </div>
 
               {/* Pricing */}
