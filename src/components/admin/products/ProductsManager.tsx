@@ -5,12 +5,15 @@ import { createClient } from '@/lib/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type I18n = { de?: string; en?: string } | null;
+
 export type Product = {
   id: string;
-  name: string;
+  name: I18n;
   sku: string | null;
   slug: string | null;
-  description: string | null;
+  description: I18n;
+  short_description: I18n;
   price_chf: number | null;
   price_eur: number | null;
   tax_class: string | null;
@@ -147,10 +150,10 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   const openEdit = (p: Product) => {
     setEditingId(p.id);
     setForm({
-      name: p.name ?? '',
+      name: p.name?.de ?? p.name?.en ?? '',
       sku: p.sku ?? '',
       slug: p.slug ?? '',
-      description: p.description ?? '',
+      description: p.description?.de ?? p.description?.en ?? '',
       price_chf: p.price_chf != null ? String(p.price_chf) : '',
       price_eur: p.price_eur != null ? String(p.price_eur) : '',
       tax_class: p.tax_class ?? 'standard',
@@ -245,7 +248,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   // ── Delete / restore ─────────────────────────────────────────────────────────
 
   const handleDelete = async (p: Product) => {
-    if (!confirm(`Delete "${p.name}"? This is a soft-delete.`)) return;
+    if (!confirm(`Delete "${p.name?.de || p.name?.en || p.sku || 'this product'}"? This is a soft-delete.`)) return;
     await supabase.from('products').update({ deleted_at: new Date().toISOString() }).eq('id', p.id);
     await refresh();
   };
@@ -261,7 +264,8 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     if (!search) return true;
     const q = search.toLowerCase();
     return (
-      p.name?.toLowerCase().includes(q) ||
+      p.name?.de?.toLowerCase().includes(q) ||
+      p.name?.en?.toLowerCase().includes(q) ||
       p.sku?.toLowerCase().includes(q) ||
       p.product_type?.toLowerCase().includes(q)
     );
@@ -344,7 +348,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
                 {/* Name / SKU */}
                 <td className="px-4 py-3">
-                  <div className="font-medium text-[#0e393d]">{p.name}</div>
+                  <div className="font-medium text-[#0e393d]">{p.name?.de || p.name?.en || <span className="text-[#1c2a2b]/30">—</span>}</div>
                   {p.sku && <div className="text-xs text-[#1c2a2b]/40 font-mono mt-0.5">{p.sku}</div>}
                 </td>
 
