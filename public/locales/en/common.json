@@ -50,9 +50,6 @@
     "cta": "Sign up now"
   },
   "footer": {
-    "platform": {
-      "label": "Platform"
-    },
     "co": {
       "label": "Company",
       "items": ["About us", "Team", "Partner Labs", "Contact"]

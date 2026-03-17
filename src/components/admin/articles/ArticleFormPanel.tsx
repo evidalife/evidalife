@@ -7,6 +7,12 @@ import { createClient } from '@/lib/supabase/client';
 
 const CATEGORIES = ['kitchen', 'health', 'fit', 'longevity', 'science', 'news'] as const;
 
+function slugify(text: string): string {
+  return text.toLowerCase()
+    .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'article';
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Lang = 'de' | 'en';
@@ -15,6 +21,7 @@ type LangContent = { de: string; en: string };
 
 type ArticleForm = {
   title:           LangContent;
+  slug:            string;
   excerpt:         LangContent;
   content:         LangContent;
   seo_title:       LangContent;
@@ -30,6 +37,7 @@ type ArticleForm = {
 
 const EMPTY_FORM: ArticleForm = {
   title:           { de: '', en: '' },
+  slug:            '',
   excerpt:         { de: '', en: '' },
   content:         { de: '', en: '' },
   seo_title:       { de: '', en: '' },
@@ -119,6 +127,7 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved }: Props)
 
       setForm({
         title:           { de: a.title?.de ?? '',           en: a.title?.en ?? '' },
+        slug:            a.slug ?? '',
         excerpt:         { de: a.excerpt?.de ?? '',         en: a.excerpt?.en ?? '' },
         content:         { de: a.content?.de ?? '',         en: a.content?.en ?? '' },
         seo_title:       { de: a.seo_title?.de ?? '',       en: a.seo_title?.en ?? '' },
@@ -178,9 +187,14 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved }: Props)
     if (!imageFile) return currentImageUrl;
     const ext  = imageFile.name.split('.').pop();
     const path = `${id}/cover.${ext}`;
-    const { data, error } = await supabase.storage.from('article-images').upload(path, imageFile, { upsert: true });
-    if (error || !data) { console.error(error); return currentImageUrl; }
-    return supabase.storage.from('article-images').getPublicUrl(data.path).data.publicUrl;
+    const fd = new FormData();
+    fd.append('file', imageFile);
+    fd.append('bucket', 'article-images');
+    fd.append('path', path);
+    const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
+    const json = await res.json();
+    if (!res.ok || !json.url) { console.error(json.error); return currentImageUrl; }
+    return json.url as string;
   };
 
   // ── Save ──────────────────────────────────────────────────────────────────────
@@ -196,6 +210,7 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved }: Props)
     try {
       const payload = {
         title:           { de: form.title.de,           en: form.title.en },
+        slug:            form.slug.trim() || slugify(form.title.de || form.title.en),
         excerpt:         { de: form.excerpt.de,         en: form.excerpt.en },
         content:         { de: form.content.de,         en: form.content.en },
         seo_title:       { de: form.seo_title.de,       en: form.seo_title.en },

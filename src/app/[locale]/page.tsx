@@ -2,15 +2,11 @@
 
 import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useRouter, usePathname, Link } from '@/i18n/navigation';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/context/AuthProvider';
-import Image from 'next/image';
+import PublicNav from '@/components/PublicNav';
+import PublicFooter from '@/components/PublicFooter';
 
 type Locale = 'de' | 'en';
-
-const NAV_ITEMS = ['Kitchen', 'Health', 'Fit', 'Shop'] as const;
-type NavItem = typeof NAV_ITEMS[number];
 
 const IMGS = {
   hero:   'https://images.unsplash.com/photo-1476611338391-6f395a0ebc7b?w=1600&q=80',
@@ -41,27 +37,13 @@ function SectionTag({ label }: { label: string }) {
 export default function HomePage() {
   const t = useTranslations('');
   const locale = useLocale() as Locale;
-  const router = useRouter();
-  const pathname = usePathname();
-  const { user } = useAuth();
 
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [langOpen, setLangOpen] = useState(false);
-  const [openDropdown, setOpenDropdown] = useState<NavItem | null>(null);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [mobileExpandedItem, setMobileExpandedItem] = useState<NavItem | null>(null);
 
   const cards = t.raw('cards') as { title: string; desc: string }[];
   const steps = t.raw('steps.items') as { n: string; title: string; desc: string }[];
-  const footerCoItems = t.raw('footer.co.items') as string[];
-  const dropdowns = t.raw('nav.dropdowns') as Record<NavItem, (string | null)[]>;
-
-  const changeLang = (l: Locale) => {
-    router.replace(pathname, { locale: l });
-    setLangOpen(false);
-  };
 
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -88,195 +70,7 @@ export default function HomePage() {
   return (
     <div className="font-sans bg-[#fafaf8] text-[#1c2a2b] overflow-x-hidden">
 
-      {/* ─── FLOATING NAV ─── */}
-      <div className="fixed top-5 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-[1060px] z-50">
-        <nav
-          className="flex items-center justify-between px-5 py-3 bg-white/90 backdrop-blur-md rounded-full border border-white/70 shadow-[0_4px_24px_rgba(14,57,61,0.1)]"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <Image src="/evida-logo.png" alt="Evida Life" width={34} height={34} className="rounded-full" />
-            <span className="font-medium text-[0.8rem] tracking-[0.16em] uppercase text-[#0e393d]">
-              {t('nav.brand')}
-            </span>
-          </div>
-
-          {/* Desktop nav items with dropdowns */}
-          <div className="hidden md:flex gap-6 items-center">
-            {NAV_ITEMS.map((item) => (
-              <div
-                key={item}
-                className="relative"
-                onMouseEnter={() => setOpenDropdown(item)}
-                onMouseLeave={() => setOpenDropdown(null)}
-              >
-                <button
-                  onClick={() => setOpenDropdown(openDropdown === item ? null : item)}
-                  className="flex items-center gap-1 text-[0.8rem] font-light text-[#5a6e6f] cursor-pointer hover:text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors px-3 py-1.5 rounded-full"
-                >
-                  {item}
-                  <svg
-                    width="10" height="10" viewBox="0 0 10 10" fill="none"
-                    className={`transition-transform duration-200 ${openDropdown === item ? 'rotate-180' : ''}`}
-                  >
-                    <path d="M1.5 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-
-                {openDropdown === item && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50">
-                    <div
-                      className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.14)] border border-[#0e393d]/8 py-1.5 min-w-[210px]"
-                      style={{ animation: 'dropdownIn 0.15s ease-out' }}
-                    >
-                      {(dropdowns[item] ?? []).map((dropItem, i) =>
-                        dropItem === null ? (
-                          <div key={`div-${i}`} className="h-px bg-[#0e393d]/10 mx-4 my-1.5" />
-                        ) : (
-                          <button
-                            key={dropItem}
-                            className="w-full text-left px-5 py-2.5 text-[13px] font-light text-[#1c2a2b] hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
-                          >
-                            {dropItem}
-                          </button>
-                        )
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Right side: mobile hamburger + lang toggle + CTA */}
-          <div className="flex items-center gap-2">
-            {/* Mobile hamburger */}
-            <button
-              onClick={() => { setMobileOpen(!mobileOpen); setMobileExpandedItem(null); }}
-              className="md:hidden flex items-center justify-center w-8 h-8 rounded-full text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors"
-              aria-label="Menu"
-            >
-              {mobileOpen ? (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M2 2l12 12M14 2L2 14" stroke="#0e393d" strokeWidth="1.8" strokeLinecap="round"/>
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M2 4h12M2 8h12M2 12h12" stroke="#0e393d" strokeWidth="1.8" strokeLinecap="round"/>
-                </svg>
-              )}
-            </button>
-
-            {/* Lang toggle */}
-            <div
-              className="relative"
-              onMouseEnter={() => setLangOpen(true)}
-              onMouseLeave={() => setLangOpen(false)}
-            >
-              <button
-                onClick={() => setLangOpen(!langOpen)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[12px] font-medium text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors"
-              >
-                <span className="uppercase tracking-wider">{locale.toUpperCase()}</span>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`transition-transform duration-200 ${langOpen ? 'rotate-180' : ''}`}>
-                  <path d="M2 4l4 4 4-4" stroke="#0e393d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              {langOpen && (
-                <div className="absolute right-0 top-full pt-2 z-50">
-                  <div
-                    className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.12)] border border-[#0e393d]/8 min-w-[140px] py-1.5"
-                    style={{ animation: 'dropdownIn 0.15s ease-out' }}
-                  >
-                    {([['de', 'Deutsch'], ['en', 'English']] as [Locale, string][]).map(([l, label]) => (
-                      <button
-                        key={l}
-                        onClick={() => changeLang(l)}
-                        className={`w-full text-left px-5 py-2.5 text-[13px] transition-colors ${
-                          locale === l
-                            ? 'text-[#0e393d] font-medium'
-                            : 'text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d]'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Login / User */}
-            {user ? (
-              <Link
-                href="/dashboard"
-                className="bg-[#0e393d] text-[#f2ebdb] text-[12px] font-medium px-5 py-2 rounded-full tracking-wide transition-colors hover:bg-[#1a5055] whitespace-nowrap"
-              >
-                {user.email?.split('@')[0] ?? t('nav.login')}
-              </Link>
-            ) : (
-              <Link
-                href="/login"
-                className="bg-[#0e393d] text-[#f2ebdb] text-[12px] font-medium px-5 py-2 rounded-full tracking-wide transition-colors hover:bg-[#1a5055] whitespace-nowrap"
-              >
-                {t('nav.login')}
-              </Link>
-            )}
-          </div>
-        </nav>
-
-        {/* Mobile dropdown panel */}
-        {mobileOpen && (
-          <div
-            className="md:hidden mt-2 bg-white/96 backdrop-blur-md rounded-3xl border border-[#0e393d]/8 shadow-[0_8px_32px_rgba(14,57,61,0.14)] overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-            style={{ animation: 'dropdownIn 0.18s ease-out' }}
-          >
-            {NAV_ITEMS.map((item, i) => (
-              <div key={item} className={i !== 0 ? 'border-t border-[#0e393d]/6' : ''}>
-                <button
-                  onClick={() => setMobileExpandedItem(mobileExpandedItem === item ? null : item)}
-                  className="w-full flex items-center justify-between px-6 py-4 text-[14px] font-medium text-[#0e393d]"
-                >
-                  {item}
-                  <svg
-                    width="12" height="12" viewBox="0 0 12 12" fill="none"
-                    className={`transition-transform duration-200 ${mobileExpandedItem === item ? 'rotate-180' : ''}`}
-                  >
-                    <path d="M2 4l4 4 4-4" stroke="#0e393d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-                {mobileExpandedItem === item && (
-                  <div className="pb-2">
-                    {(dropdowns[item] ?? []).map((dropItem, j) =>
-                      dropItem === null ? (
-                        <div key={`div-${j}`} className="h-px bg-[#0e393d]/8 mx-6 my-1" />
-                      ) : (
-                        <button
-                          key={dropItem}
-                          onClick={() => setMobileOpen(false)}
-                          className="w-full text-left px-8 py-2.5 text-[13px] font-light text-[#5a6e6f]"
-                        >
-                          {dropItem}
-                        </button>
-                      )
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Transparent overlay */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => { setMobileOpen(false); setMobileExpandedItem(null); }}
-        />
-      )}
+      <PublicNav />
 
       {/* ─── HERO ─── */}
       <section className="relative h-screen min-h-[620px] overflow-hidden">
@@ -405,61 +199,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ─── FOOTER ─── */}
-      <footer className="bg-[#0e393d] border-t-[3px] border-[#ceab84] px-8 md:px-12 pt-14 pb-8">
-        <div className="max-w-[1060px] mx-auto">
-
-          <div className="flex flex-col md:flex-row md:justify-between gap-10 md:gap-8 pb-10 border-b border-white/10">
-            <div className="flex items-center gap-3 md:flex-shrink-0 md:self-start">
-              <Image src="/evida-logo.png" alt="Evida Life" width={30} height={30} className="rounded-full opacity-80" />
-              <span className="text-[0.78rem] font-medium tracking-[0.2em] uppercase text-[#f2ebdb]/55">{t('nav.brand')}</span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 md:gap-14">
-              <div>
-                <h4 className="text-[10.5px] font-medium tracking-[0.15em] uppercase text-[#ceab84] mb-4">Platform</h4>
-                <ul className="space-y-2.5">
-                  {['Kitchen', 'Health', 'Fit', 'Shop', 'Health Engine'].map((item) => (
-                    <li key={item}>
-                      <span className="text-[13px] font-light text-white/38 hover:text-white/65 cursor-default transition-colors">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="text-[10.5px] font-medium tracking-[0.15em] uppercase text-[#ceab84] mb-4">{t('footer.co.label')}</h4>
-                <ul className="space-y-2.5">
-                  {footerCoItems.map((item) => (
-                    <li key={item}>
-                      <span className="text-[13px] font-light text-white/38 hover:text-white/65 cursor-default transition-colors">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="text-[10.5px] font-medium tracking-[0.15em] uppercase text-[#ceab84] mb-4">Legal</h4>
-                <ul className="space-y-2.5">
-                  {([
-                    [t('footer.legal.privacy'), '/privacy'],
-                    [t('footer.legal.terms'), '/terms'],
-                    [t('footer.legal.imprint'), '/legal'],
-                  ] as [string, string][]).map(([label, href]) => (
-                    <li key={label}>
-                      <Link href={href} className="text-[13px] font-light text-white/38 hover:text-white/65 transition-colors">
-                        {label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-6 text-[11px] font-light text-white/20 tracking-wide">{t('footer.copy')}</div>
-        </div>
-      </footer>
+      <PublicFooter />
 
     </div>
   );

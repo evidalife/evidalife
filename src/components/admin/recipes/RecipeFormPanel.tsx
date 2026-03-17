@@ -62,6 +62,7 @@ type NutritionForm = {
 
 type RecipeForm = {
   title: LangContent;
+  slug: string;
   description: LangContent;
   instructions: LangContent;
   prep_time_min: string;
@@ -80,6 +81,7 @@ type RecipeForm = {
 
 const EMPTY_FORM: RecipeForm = {
   title:        { de: '', en: '' },
+  slug: '',
   description:  { de: '', en: '' },
   instructions: { de: '', en: '' },
   prep_time_min: '', cook_time_min: '', servings: '',
@@ -91,6 +93,12 @@ const EMPTY_FORM: RecipeForm = {
 
 let _keyCounter = 0;
 const newKey = () => `_k${++_keyCounter}`;
+
+function slugify(text: string): string {
+  return text.toLowerCase()
+    .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'recipe';
+}
 
 // ─── Shared UI primitives ─────────────────────────────────────────────────────
 
@@ -172,6 +180,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved }: Props) {
       setCurrentImageUrl(r.image_url ?? null);
       setForm({
         title:        { de: r.title?.de ?? '',        en: r.title?.en ?? '' },
+        slug: r.slug ?? '',
         description:  { de: r.description?.de ?? '',  en: r.description?.en ?? '' },
         instructions: { de: r.instructions?.de ?? '', en: r.instructions?.en ?? '' },
         prep_time_min: r.prep_time_min != null ? String(r.prep_time_min) : '',
@@ -270,9 +279,14 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved }: Props) {
     if (!imageFile) return currentImageUrl;
     const ext = imageFile.name.split('.').pop();
     const path = `${id}/cover.${ext}`;
-    const { data, error } = await supabase.storage.from('recipe-images').upload(path, imageFile, { upsert: true });
-    if (error || !data) { console.error(error); return currentImageUrl; }
-    return supabase.storage.from('recipe-images').getPublicUrl(data.path).data.publicUrl;
+    const fd = new FormData();
+    fd.append('file', imageFile);
+    fd.append('bucket', 'recipe-images');
+    fd.append('path', path);
+    const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
+    const json = await res.json();
+    if (!res.ok || !json.url) { console.error(json.error); return currentImageUrl; }
+    return json.url as string;
   };
 
   // ── Save ─────────────────────────────────────────────────────────────────────
@@ -288,6 +302,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved }: Props) {
     try {
       const payload = {
         title:        { de: form.title.de,        en: form.title.en },
+        slug: form.slug.trim() || slugify(form.title.de || form.title.en),
         description:  { de: form.description.de,  en: form.description.en },
         instructions: { de: form.instructions.de, en: form.instructions.en },
         prep_time_min: form.prep_time_min ? Number(form.prep_time_min) : null,

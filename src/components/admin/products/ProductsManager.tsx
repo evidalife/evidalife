@@ -200,11 +200,14 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     if (!imageFile) return currentImageUrl;
     const ext = imageFile.name.split('.').pop();
     const path = `${productId}/cover.${ext}`;
-    const { data, error } = await supabase.storage
-      .from('product-images')
-      .upload(path, imageFile, { upsert: true });
-    if (error || !data) { console.error(error); return currentImageUrl; }
-    return supabase.storage.from('product-images').getPublicUrl(data.path).data.publicUrl;
+    const fd = new FormData();
+    fd.append('file', imageFile);
+    fd.append('bucket', 'product-images');
+    fd.append('path', path);
+    const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
+    const json = await res.json();
+    if (!res.ok || !json.url) { console.error(json.error); return currentImageUrl; }
+    return json.url as string;
   };
 
   // ── Save ─────────────────────────────────────────────────────────────────────

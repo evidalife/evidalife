@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname, Link } from '@/i18n/navigation';
 import { useAuth } from '@/context/AuthProvider';
+import { createClient } from '@/lib/supabase/client';
 import Image from 'next/image';
 
 type Locale = 'de' | 'en';
@@ -26,10 +27,18 @@ export default function PublicNav() {
   const t = useTranslations('nav');
   const [langOpen, setLangOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [userOpen, setUserOpen] = useState(false);
 
   const changeLang = (l: Locale) => {
     router.replace(pathname, { locale: l });
     setLangOpen(false);
+  };
+
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/');
+    router.refresh();
   };
 
   const login = locale === 'de' ? 'Anmelden' : 'Login';
@@ -143,14 +152,42 @@ export default function PublicNav() {
             )}
           </div>
 
-          {/* Login / User */}
+          {/* Login / User with logout dropdown */}
           {user ? (
-            <Link
-              href="/dashboard"
-              className="bg-[#0e393d] text-[#f2ebdb] text-[12px] font-medium px-5 py-2 rounded-full tracking-wide transition-colors hover:bg-[#1a5055] whitespace-nowrap"
+            <div
+              className="relative"
+              onMouseEnter={() => setUserOpen(true)}
+              onMouseLeave={() => setUserOpen(false)}
             >
-              {user.email?.split('@')[0] ?? login}
-            </Link>
+              <button className="bg-[#0e393d] text-[#f2ebdb] text-[12px] font-medium px-5 py-2 rounded-full tracking-wide transition-colors hover:bg-[#1a5055] whitespace-nowrap flex items-center gap-1.5">
+                {user.email?.split('@')[0] ?? login}
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className={`transition-transform duration-200 ${userOpen ? 'rotate-180' : ''}`}>
+                  <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              {userOpen && (
+                <div className="absolute right-0 top-full pt-2 z-50">
+                  <div
+                    className="bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.12)] border border-[#0e393d]/8 min-w-[160px] py-1.5"
+                    style={{ animation: 'dropdownIn 0.15s ease-out' }}
+                  >
+                    <Link
+                      href="/dashboard"
+                      className="block px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
+                    >
+                      Dashboard
+                    </Link>
+                    <div className="mx-4 my-1 h-px bg-[#0e393d]/8" />
+                    <button
+                      onClick={handleSignOut}
+                      className="w-full text-left px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-red-600 transition-colors"
+                    >
+                      {locale === 'de' ? 'Abmelden' : 'Sign out'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <Link
               href="/login"

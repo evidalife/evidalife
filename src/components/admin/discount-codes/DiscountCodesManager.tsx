@@ -208,7 +208,7 @@ export default function DiscountCodesManager({
 
   const openCreate = () => {
     setEditingId(null);
-    setForm(EMPTY_FORM);
+    setForm({ ...EMPTY_FORM, valid_from: new Date().toISOString().slice(0, 16) });
     setError(null);
     setPanelOpen(true);
   };
@@ -282,7 +282,7 @@ export default function DiscountCodesManager({
       min_order_amount: form.min_order_amount ? Number(form.min_order_amount) : null,
       max_uses: form.max_uses ? Number(form.max_uses) : null,
       max_uses_per_user: form.max_uses_per_user ? Number(form.max_uses_per_user) : null,
-      valid_from: fromDatetimeLocal(form.valid_from),
+      valid_from: fromDatetimeLocal(form.valid_from) ?? new Date().toISOString(),
       valid_until: fromDatetimeLocal(form.valid_until),
       applicable_product_types:
         form.applicable_product_types.length > 0 ? form.applicable_product_types : null,

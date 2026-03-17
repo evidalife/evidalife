@@ -50,9 +50,6 @@
     "cta": "Jetzt eintragen"
   },
   "footer": {
-    "platform": {
-      "label": "Plattform"
-    },
     "co": {
       "label": "Unternehmen",
       "items": ["Über uns", "Team", "Partner Labs", "Kontakt"]
