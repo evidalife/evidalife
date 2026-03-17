@@ -198,7 +198,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved }: Props) {
         is_featured:  r.is_featured  ?? false,
         ingredients: (ings ?? []).map((i) => ({
           _key:   newKey(),
-          name:   i.name   ?? '',
+          name:   i.ingredient_name ?? '',
           amount: i.amount != null ? String(i.amount) : '',
           unit:   i.unit   ?? '',
           notes:  i.notes  ?? '',
@@ -341,13 +341,13 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved }: Props) {
       await supabase.from('recipe_ingredients').delete().eq('recipe_id', id!);
       if (form.ingredients.length > 0) {
         const rows = form.ingredients.map((ing, idx) => ({
-          recipe_id:  id!,
-          name:       ing.name.trim(),
-          amount:     ing.amount ? Number(ing.amount) : null,
-          unit:       ing.unit.trim() || null,
-          notes:      ing.notes.trim() || null,
-          sort_order: idx,
-        })).filter((r) => r.name);
+          recipe_id:       id!,
+          ingredient_name: ing.name.trim(),
+          amount:          ing.amount ? Number(ing.amount) : null,
+          unit:            ing.unit.trim() || null,
+          notes:           ing.notes.trim() || null,
+          sort_order:      idx,
+        })).filter((r) => r.ingredient_name);
         if (rows.length > 0) {
           const { error } = await supabase.from('recipe_ingredients').insert(rows);
           if (error) throw error;
@@ -376,10 +376,9 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved }: Props) {
 
       onSaved();
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message
-        : (e && typeof e === 'object' && 'message' in e) ? String((e as { message: unknown }).message)
-        : 'Save failed.';
-      setError(msg);
+      const err = e as { message?: string; details?: string; hint?: string } | null;
+      const parts = [err?.message, err?.details, err?.hint].filter(Boolean);
+      setError(parts.length ? parts.join(' — ') : (JSON.stringify(e) || 'Save failed.'));
     } finally {
       setSaving(false);
     }

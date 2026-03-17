@@ -11,13 +11,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing file, bucket, or path' }, { status: 400 });
   }
 
+  // Convert File → Buffer for reliable upload in Next.js server routes
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const contentType = file.type || 'application/octet-stream';
+
   const supabase = createAdminClient();
   const { data, error } = await supabase.storage
     .from(bucket)
-    .upload(path, file, { upsert: true, contentType: file.type });
+    .upload(path, buffer, { upsert: true, contentType });
 
   if (error || !data) {
-    return NextResponse.json({ error: error?.message ?? 'Upload failed' }, { status: 500 });
+    const detail = error
+      ? JSON.stringify({ message: error.message, name: error.name, cause: error.cause })
+      : 'Upload failed';
+    return NextResponse.json({ error: detail }, { status: 500 });
   }
 
   const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(data.path);

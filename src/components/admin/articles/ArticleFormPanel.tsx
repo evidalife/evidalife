@@ -93,11 +93,13 @@ interface Props {
   articleId: string | null;
   onClose: () => void;
   onSaved: () => void;
+  onDeleted?: () => void;
 }
 
-export default function ArticleFormPanel({ articleId, onClose, onSaved }: Props) {
+export default function ArticleFormPanel({ articleId, onClose, onSaved, onDeleted }: Props) {
   const supabase = createClient();
   const fileRef  = useRef<HTMLInputElement>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [lang, setLang]                 = useState<Lang>('de');
   const [form, setForm]                 = useState<ArticleForm>(EMPTY_FORM);
@@ -251,13 +253,28 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved }: Props)
 
       onSaved();
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message
-        : (e && typeof e === 'object' && 'message' in e) ? String((e as { message: unknown }).message)
-        : 'Save failed.';
-      setError(msg);
+      const err = e as { message?: string; details?: string; hint?: string } | null;
+      const parts = [err?.message, err?.details, err?.hint].filter(Boolean);
+      setError(parts.length ? parts.join(' — ') : (JSON.stringify(e) || 'Save failed.'));
     } finally {
       setSaving(false);
     }
+  };
+
+  // ── Delete ────────────────────────────────────────────────────────────────────
+
+  const handleDelete = async () => {
+    if (!articleId) return;
+    const title = form.title.de || form.title.en || 'this article';
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    setDeleting(true);
+    const { error } = await supabase.from('articles').delete().eq('id', articleId);
+    setDeleting(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    (onDeleted ?? onSaved)();
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -502,6 +519,15 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved }: Props)
             <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
           )}
           <div className="flex gap-3">
+            {articleId && (
+              <button
+                onClick={handleDelete}
+                disabled={deleting || saving}
+                className="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 transition"
+              >
+                {deleting ? '…' : 'Delete'}
+              </button>
+            )}
             <button
               onClick={onClose}
               className="flex-1 rounded-lg border border-[#0e393d]/15 py-2.5 text-sm font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition"

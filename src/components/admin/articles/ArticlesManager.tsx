@@ -216,6 +216,7 @@ export default function ArticlesManager({ initialArticles }: { initialArticles: 
           articleId={editingId === 'new' ? null : editingId}
           onClose={() => setEditingId(null)}
           onSaved={() => { refresh(); setEditingId(null); }}
+          onDeleted={() => { refresh(); setEditingId(null); }}
         />
       )}
     </div>

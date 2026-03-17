@@ -255,10 +255,9 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       await refresh();
       closePanel();
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message
-        : (e && typeof e === 'object' && 'message' in e) ? String((e as { message: unknown }).message)
-        : 'Save failed.';
-      setError(msg);
+      const err = e as { message?: string; details?: string; hint?: string } | null;
+      const parts = [err?.message, err?.details, err?.hint].filter(Boolean);
+      setError(parts.length ? parts.join(' — ') : (JSON.stringify(e) || 'Save failed.'));
     } finally {
       setSaving(false);
     }
