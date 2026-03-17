@@ -1,7 +1,22 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/navigation';
+
+async function startCheckout(productId: string): Promise<void> {
+  const res = await fetch('/api/checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ productIds: [productId] }),
+  });
+  const data = await res.json();
+  if (data.url) {
+    window.location.href = data.url;
+  } else {
+    throw new Error(data.error ?? 'Checkout failed');
+  }
+}
 
 type LocalizedString = string | Record<string, string>;
 
@@ -44,6 +59,16 @@ function PackageCard({ product, index }: { product: Product; index: number }) {
   const t = useTranslations('shop.packages');
   const lng = useLocale();
   const featured = product.is_featured;
+  const [loading, setLoading] = useState(false);
+
+  const handleCheckout = async () => {
+    setLoading(true);
+    try {
+      await startCheckout(product.id);
+    } catch {
+      setLoading(false);
+    }
+  };
 
   return (
     <div
@@ -101,16 +126,17 @@ function PackageCard({ product, index }: { product: Product; index: number }) {
         </ul>
       )}
 
-      <Link
-        href={`/shop/${product.slug ?? product.id}`}
-        className={`block rounded-xl py-3 text-center text-sm font-medium transition-colors ${
+      <button
+        onClick={handleCheckout}
+        disabled={loading}
+        className={`block w-full rounded-xl py-3 text-center text-sm font-medium transition-colors disabled:opacity-60 ${
           featured
             ? 'bg-[#ceab84] text-[#0e393d] hover:bg-[#ceab84]/90'
             : 'bg-[#0e393d] text-white hover:bg-[#0e393d]/90'
         }`}
       >
-        {t('cta')}
-      </Link>
+        {loading ? '…' : t('cta')}
+      </button>
     </div>
   );
 }
@@ -118,6 +144,16 @@ function PackageCard({ product, index }: { product: Product; index: number }) {
 function AddonCard({ product }: { product: Product }) {
   const t = useTranslations('shop');
   const lng = useLocale();
+  const [loading, setLoading] = useState(false);
+
+  const handleCheckout = async () => {
+    setLoading(true);
+    try {
+      await startCheckout(product.id);
+    } catch {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col rounded-2xl bg-white p-6 shadow-sm ring-1 ring-[#0e393d]/8 hover:shadow-md transition-shadow">
@@ -141,12 +177,13 @@ function AddonCard({ product }: { product: Product }) {
           ))}
         </ul>
       )}
-      <Link
-        href={`/shop/${product.slug ?? product.id}`}
-        className="block rounded-xl border border-[#0e393d]/20 py-2.5 text-center text-sm font-medium text-[#0e393d] hover:bg-[#0e393d] hover:text-white transition-colors"
+      <button
+        onClick={handleCheckout}
+        disabled={loading}
+        className="block w-full rounded-xl border border-[#0e393d]/20 py-2.5 text-center text-sm font-medium text-[#0e393d] hover:bg-[#0e393d] hover:text-white transition-colors disabled:opacity-60"
       >
-        {t('addons.cta')}
-      </Link>
+        {loading ? '…' : t('addons.cta')}
+      </button>
     </div>
   );
 }
