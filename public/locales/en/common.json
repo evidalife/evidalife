@@ -1,0 +1,278 @@
+{
+  "nav": {
+    "brand": "EVIDA LIFE",
+    "cta": "Waitlist",
+    "dropdowns": {
+      "Kitchen": ["How to start", "Daily Dozen", "Recipes", "Restaurant"],
+      "Health": ["Health Engine ⚡", "Blood Values & Biomarkers", "BioAge", "Interventions"],
+      "Fit": ["Sleep", "Exercise", "Stress & Recovery", null, "Coaching"],
+      "Shop": ["Test Packages", "Food", "Eat@Home Subscription", null, "Cart & Checkout", "My Orders"]
+    }
+  },
+  "hero": {
+    "h1": "Live well.",
+    "h1em": "Scientifically grounded.",
+    "sub": "Evidence-based, whole-food, plant-based nutrition – combined with measurable health markers. Quality health, made affordable for everyone.",
+    "cta1": "Join the waitlist",
+    "cta2": "How it works",
+    "ctaFull": "Sign up now"
+  },
+  "split": {
+    "heading": "More than just",
+    "headingEm": "information.",
+    "desc": "We don't just provide knowledge – we make positive change measurable. With partner labs, daily tracking and your personal Longevity Score, you see exactly how your nutrition affects your health."
+  },
+  "cards": [
+    { "title": "Lab results & score", "desc": "All biomarkers in one dashboard. Your Longevity Score tracks your progress in real time." },
+    { "title": "Daily Dozen tracker", "desc": "Dr. Michael Greger's 12 food groups – track daily, simple to implement." },
+    { "title": "Recipe database", "desc": "Delicious whole-food dishes matched to your health goals and the Daily Dozen." },
+    { "title": "Shop & packages", "desc": "Lab test packages and more – quality health made affordable. Easy to book." }
+  ],
+  "steps": {
+    "tag": "How it works",
+    "heading": "Three steps to",
+    "headingEm": "measurable health",
+    "items": [
+      { "n": "01", "title": "Measure", "desc": "Partner labs analyse your most important health and longevity markers. All results clearly visible in your personal dashboard." },
+      { "n": "02", "title": "Nourish", "desc": "Whole-food, plant-based nutrition following Dr. Greger's Daily Dozen. With recipes, tips, and daily tracking built into the app." },
+      { "n": "03", "title": "Improve", "desc": "Your Longevity Score shows measurably how your nutrition affects your biomarkers. Clear. Understandable. Motivating." }
+    ]
+  },
+  "waitlist": {
+    "tag": "Early access",
+    "heading": "Be there",
+    "headingEm": "from the beginning.",
+    "desc": "Sign up and be among the first to access the platform – including an exclusive early access discount.",
+    "placeholder": "your@email.com",
+    "footnote": "No spam. Unsubscribe anytime.",
+    "success": "You're on the waitlist – thank you! We'll be in touch soon.",
+    "cta": "Sign up now"
+  },
+  "footer": {
+    "co": {
+      "label": "Company",
+      "items": ["About us", "Team", "Partner Labs", "Contact"]
+    },
+    "legal": {
+      "privacy": "Privacy policy",
+      "terms": "Terms",
+      "imprint": "Imprint"
+    },
+    "copy": "© 2026 Evida Life AG · Switzerland · All rights reserved"
+  },
+  "cookie": {
+    "text": "This site uses Plausible Analytics — privacy-friendly, cookieless, no personal data collected.",
+    "link": "Privacy Policy",
+    "button": "Got it"
+  },
+  "layout": {
+    "back": "← Back",
+    "lastUpdated": "Last updated: {{date}}",
+    "footer": {
+      "imprint": "Imprint",
+      "privacy": "Privacy",
+      "terms": "Terms"
+    }
+  },
+  "shop": {
+    "back": "← Back",
+    "tag": "Longevity Testing",
+    "h1": "Know where you stand.",
+    "sub": "Professional blood tests via partner labs – including a free vitality check and personal Longevity Dashboard.",
+    "packages": {
+      "heading": "Test Packages",
+      "featured": "RECOMMENDED",
+      "biomarkers": "{{count}} biomarkers analysed",
+      "vitalcheck": "Free vitality check incl.",
+      "cta": "Choose package"
+    },
+    "addons": {
+      "heading": "Add-ons",
+      "combo": "Combinable with any package",
+      "cta": "Choose add-on"
+    },
+    "trust": [
+      { "title": "Certified partner labs", "body": "ISO-accredited laboratories in Switzerland and Germany." },
+      { "title": "Automatic dashboard", "body": "All results directly in your Evida Life profile." },
+      { "title": "Privacy first", "body": "Swiss data storage, fully GDPR- & nDSG-compliant." }
+    ],
+    "footer": {
+      "imprint": "Imprint",
+      "privacy": "Privacy",
+      "terms": "Terms"
+    }
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "subtitle": "How we handle your data",
+    "lastUpdated": "March 2026",
+    "s1": {
+      "heading": "1. Controller",
+      "intro": "The controller within the meaning of the GDPR and the Swiss Data Protection Act (nDSG) is:",
+      "company": "Evida Life AG",
+      "address": "[Address], Zurich, Switzerland",
+      "emailLabel": "Email:"
+    },
+    "s2": {
+      "heading": "2. Data we collect",
+      "waitlist": {
+        "heading": "Waitlist",
+        "body": "When you sign up for our waitlist, we store your email address to inform you about the platform launch. The storage is based on your consent (Art. 6(1)(a) GDPR / Art. 31 nDSG)."
+      },
+      "account": {
+        "heading": "User account",
+        "body": "During registration we collect your email address and a password. Additional profile details (e.g. name, date of birth) can be added voluntarily. The legal basis is contract performance (Art. 6(1)(b) GDPR)."
+      },
+      "health": {
+        "heading": "Health data",
+        "placeholder": "[Placeholder: Description of lab values, biomarkers and Daily Dozen data that users can upload or enter. Legal basis: explicit consent pursuant to Art. 9(2)(a) GDPR.]"
+      },
+      "auto": {
+        "heading": "Automatically collected data",
+        "body": "When you visit our website, technically necessary data (IP address, browser, referrer) are stored in server logs for a very short time. This data is not linked to other data."
+      }
+    },
+    "s3": {
+      "heading": "3. Analytics (Plausible)",
+      "body": "We use Plausible Analytics, a privacy-friendly, cookieless analytics solution based in the EU. Plausible sets no cookies, stores no personal data, and is fully GDPR-compliant. No data is shared with third parties."
+    },
+    "s4": {
+      "heading": "4. Data storage (Supabase)",
+      "body": "Your data is stored in Supabase infrastructure. Our database server is located in the EU (Zurich) region. Supabase processes data according to its privacy policy and acts as a data processor."
+    },
+    "s5": {
+      "heading": "5. Cookies",
+      "body": "This website uses no marketing or tracking cookies. We use only technically necessary cookies for authentication (session cookies), which are deleted after sign-out."
+    },
+    "s6": {
+      "heading": "6. Your rights",
+      "intro": "You have the right to:",
+      "rights": [
+        "Access your stored data (Art. 15 GDPR / Art. 25 nDSG)",
+        "Correction of inaccurate data (Art. 16 GDPR)",
+        "Deletion of your data (Art. 17 GDPR / Art. 32 nDSG)",
+        "Restriction of processing (Art. 18 GDPR)",
+        "Data portability (Art. 20 GDPR)",
+        "Withdrawal of consent at any time without giving reasons",
+        "Lodge a complaint with a supervisory authority (FDPIC, Switzerland)"
+      ],
+      "contact": "Send requests to:"
+    },
+    "s7": {
+      "heading": "7. Third parties and data sharing",
+      "placeholder": "[Placeholder: Partner labs, payment providers, and other processors will be listed here once partnerships are established.]"
+    },
+    "s8": {
+      "heading": "8. Changes to this policy",
+      "body": "We reserve the right to update this privacy policy as needed. The current version is always available on this page. For material changes, registered users will be notified by email."
+    },
+    "s9": {
+      "heading": "9. Contact",
+      "body": "For privacy-related questions, reach us at"
+    }
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "subtitle": "General Terms and Conditions",
+    "lastUpdated": "March 2026",
+    "s1": {
+      "heading": "1. Scope",
+      "body": "These Terms of Service apply to the use of the Evida Life platform, operated by Evida Life AG, Zurich, Switzerland ('Evida Life', 'we', 'us'). By registering or using the platform, you accept these terms."
+    },
+    "s2": {
+      "heading": "2. Service description",
+      "intro": "Evida Life is a digital health platform offering the following features:",
+      "items": [
+        "Recording and analysis of lab values and biomarkers",
+        "Daily Dozen tracker for plant-based nutrition",
+        "Recipe database with evidence-based nutritional recommendations",
+        "Evidence-based health articles"
+      ],
+      "placeholder": "[Placeholder: Full service description will be added at app launch.]"
+    },
+    "s3": {
+      "heading": "3. User accounts",
+      "body": "Use of the platform requires registration with a valid email address. You are responsible for the security of your account and the confidentiality of your password. Please notify us immediately of any signs of unauthorised use.",
+      "age": {
+        "heading": "Minimum age",
+        "body": "The platform is restricted to persons aged 18 and over. By registering, you confirm that you have reached the minimum age."
+      }
+    },
+    "s4": {
+      "heading": "4. Health disclaimer",
+      "body": "The information, lab evaluations, and nutritional recommendations provided on Evida Life are for informational purposes only and do not replace medical or nutritional advice. Please always consult a specialist for health questions or complaints."
+    },
+    "s5": {
+      "heading": "5. Content and intellectual property",
+      "body1": "All content created by Evida Life (texts, graphics, recipes, articles) is protected by copyright. Reproduction or distribution without express permission is prohibited.",
+      "body2": "Content you upload yourself (e.g. lab reports) remains your property. You grant us the right to process it solely to provide our services."
+    },
+    "s6": {
+      "heading": "6. Prohibited use",
+      "intro": "It is prohibited to use the platform to:",
+      "items": [
+        "distribute illegal content",
+        "harass or harm other users",
+        "compromise the security or integrity of the platform",
+        "conduct automated queries without written permission"
+      ]
+    },
+    "s7": {
+      "heading": "7. Availability and liability",
+      "body": "We strive to keep the platform available at all times but provide no guarantee of uninterrupted availability. Liability for data loss or damage due to outages is excluded to the extent permitted by law.",
+      "placeholder": "[Placeholder: Full liability provisions under Swiss law will be added after legal review.]"
+    },
+    "s8": {
+      "heading": "8. Pricing and subscriptions",
+      "placeholder": "[Placeholder: Pricing model, subscription periods, cancellation terms, and refund rules will be added before launch.]"
+    },
+    "s9": {
+      "heading": "9. Termination",
+      "body": "You may delete your account at any time without giving reasons. We reserve the right to suspend or delete accounts in cases of serious violations of these terms."
+    },
+    "s10": {
+      "heading": "10. Changes to terms",
+      "body": "We reserve the right to update these Terms of Service. We will notify registered users of material changes by email at least 30 days in advance."
+    },
+    "s11": {
+      "heading": "11. Governing law and jurisdiction",
+      "body": "Swiss law applies, excluding the UN Convention on Contracts for the International Sale of Goods. Jurisdiction is Zurich, Switzerland."
+    },
+    "s12": {
+      "heading": "12. Contact",
+      "body": "For questions about these Terms of Service, reach us at"
+    }
+  },
+  "imprint": {
+    "title": "Imprint",
+    "s1": {
+      "heading": "Information pursuant to Art. 3 UCA (Switzerland)",
+      "company": "Evida Life AG",
+      "addressLine1": "[Street and number]",
+      "addressLine2": "[Postcode] Zurich",
+      "country": "Switzerland",
+      "emailLabel": "Email:",
+      "registryLabel": "Commercial register:",
+      "registryValue": "Commercial Register of the Canton of Zurich",
+      "uidLabel": "UID:",
+      "uidValue": "CHE-[xxx.xxx.xxx]"
+    },
+    "s2": {
+      "heading": "Responsible for content",
+      "name": "[First Last]",
+      "company": "Evida Life AG, Zurich"
+    },
+    "s3": {
+      "heading": "Disclaimer",
+      "body": "The contents of this website have been compiled with the utmost care. However, we cannot guarantee the accuracy, completeness, or timeliness of the content. The information provided on this website does not replace medical or nutritional advice."
+    },
+    "s4": {
+      "heading": "Copyright",
+      "body": "The content and works created by the site operators on these pages are subject to Swiss copyright law. Contributions from third parties are identified as such. Reproduction, processing, distribution, and any form of use beyond the limits of copyright law require the written consent of Evida Life AG."
+    },
+    "s5": {
+      "heading": "External links",
+      "body": "This website contains links to external third-party websites over whose content we have no influence. The respective provider is always responsible for the content of linked pages. No legal violations were apparent at the time of linking."
+    }
+  }
+}

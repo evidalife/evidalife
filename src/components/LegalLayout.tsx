@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 
 interface LegalLayoutProps {
   title: string;
@@ -8,6 +11,8 @@ interface LegalLayoutProps {
 }
 
 export default function LegalLayout({ title, subtitle, lastUpdated, children }: LegalLayoutProps) {
+  const { t } = useTranslation('common');
+
   return (
     <div className="min-h-screen bg-[#fafaf8]">
       {/* Header */}
@@ -17,7 +22,7 @@ export default function LegalLayout({ title, subtitle, lastUpdated, children }: 
             Evida Life
           </Link>
           <Link href="/" className="text-sm text-[#0e393d]/50 hover:text-[#0e393d] transition-colors">
-            ← Zurück
+            {t('layout.back')}
           </Link>
         </div>
       </header>
@@ -28,7 +33,9 @@ export default function LegalLayout({ title, subtitle, lastUpdated, children }: 
           <h1 className="font-serif text-4xl text-[#0e393d] mb-2">{title}</h1>
           {subtitle && <p className="text-[#0e393d]/60 text-lg">{subtitle}</p>}
           {lastUpdated && (
-            <p className="mt-3 text-sm text-[#0e393d]/40">Stand: {lastUpdated}</p>
+            <p className="mt-3 text-sm text-[#0e393d]/40">
+              {t('layout.lastUpdated', { date: lastUpdated })}
+            </p>
           )}
         </div>
 
@@ -39,9 +46,9 @@ export default function LegalLayout({ title, subtitle, lastUpdated, children }: 
 
       {/* Footer links */}
       <footer className="mx-auto max-w-3xl px-6 py-8 border-t border-[#0e393d]/10 flex gap-6 text-sm text-[#0e393d]/40">
-        <Link href="/legal" className="hover:text-[#0e393d] transition-colors">Impressum</Link>
-        <Link href="/privacy" className="hover:text-[#0e393d] transition-colors">Datenschutz</Link>
-        <Link href="/terms" className="hover:text-[#0e393d] transition-colors">AGB</Link>
+        <Link href="/legal" className="hover:text-[#0e393d] transition-colors">{t('layout.footer.imprint')}</Link>
+        <Link href="/privacy" className="hover:text-[#0e393d] transition-colors">{t('layout.footer.privacy')}</Link>
+        <Link href="/terms" className="hover:text-[#0e393d] transition-colors">{t('layout.footer.terms')}</Link>
       </footer>
     </div>
   );

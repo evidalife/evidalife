@@ -1,0 +1,278 @@
+{
+  "nav": {
+    "brand": "EVIDA LIFE",
+    "cta": "Warteliste",
+    "dropdowns": {
+      "Kitchen": ["Wie starten", "Daily Dozen", "Rezepte", "Restaurant"],
+      "Health": ["Health Engine ⚡", "Blutwerte & Biomarker", "BioAge", "Interventionen"],
+      "Fit": ["Schlaf", "Bewegung", "Stress & Recovery", null, "Coaching"],
+      "Shop": ["Test Pakete", "Lebensmittel", "Eat@Home Abo", null, "Warenkorb & Checkout", "Meine Bestellungen"]
+    }
+  },
+  "hero": {
+    "h1": "Gesund leben.",
+    "h1em": "Wissenschaftlich fundiert.",
+    "sub": "Evidenzgestützte, vollwertige, pflanzenbasierte Ernährung – kombiniert mit messbaren Gesundheitsmarkern. Gesundheit für jeden erschwinglich.",
+    "cta1": "Zur Warteliste",
+    "cta2": "Wie es funktioniert",
+    "ctaFull": "Jetzt eintragen"
+  },
+  "split": {
+    "heading": "Mehr als nur",
+    "headingEm": "Informationen.",
+    "desc": "Wir stellen nicht nur Wissen zur Verfügung – wir machen positive Veränderungen messbar. Mit Partnerlaboren, täglichem Tracking und deinem persönlichen Longevity Score siehst du, wie deine Ernährung deine Gesundheit wirklich beeinflusst."
+  },
+  "cards": [
+    { "title": "Laborwerte & Score", "desc": "Alle Biomarker in einem Dashboard. Dein Longevity Score zeigt deinen Fortschritt in Echtzeit." },
+    { "title": "Daily Dozen Tracker", "desc": "Die 12 Lebensmittelgruppen nach Dr. Michael Greger – täglich tracken, einfach umsetzen." },
+    { "title": "Rezeptdatenbank", "desc": "Leckere, vollwertige Gerichte passend zu deinen Gesundheitszielen und dem Daily Dozen." },
+    { "title": "Shop & Pakete", "desc": "Labortest-Pakete und mehr – Gesundheit für jeden erschwinglich. Einfach buchen." }
+  ],
+  "steps": {
+    "tag": "So funktioniert es",
+    "heading": "Drei Schritte zu",
+    "headingEm": "messbarer Gesundheit",
+    "items": [
+      { "n": "01", "title": "Messen", "desc": "Partnerlabore analysieren deine wichtigsten Gesundheits- und Longevity-Marker. Alle Werte übersichtlich in deinem persönlichen Dashboard." },
+      { "n": "02", "title": "Ernähren", "desc": "Vollwertige, pflanzenbasierte Ernährung nach Dr. Gregers Daily Dozen. Mit Rezepten, Tipps und täglichem Tracking in der App." },
+      { "n": "03", "title": "Verbessern", "desc": "Dein Longevity Score zeigt messbar, wie deine Ernährung deine Biomarker beeinflusst. Klar. Verständlich. Motivierend." }
+    ]
+  },
+  "waitlist": {
+    "tag": "Früher Zugang",
+    "heading": "Sei dabei,",
+    "headingEm": "von Anfang an.",
+    "desc": "Trag dich ein und erhalte als Erster Zugang zur Plattform – inklusive exklusivem Frühzugang-Rabatt.",
+    "placeholder": "deine@email.ch",
+    "footnote": "Kein Spam. Abmeldung jederzeit möglich.",
+    "success": "Danke – du bist auf der Warteliste! Wir melden uns bald.",
+    "cta": "Jetzt eintragen"
+  },
+  "footer": {
+    "co": {
+      "label": "Unternehmen",
+      "items": ["Über uns", "Team", "Partner Labs", "Kontakt"]
+    },
+    "legal": {
+      "privacy": "Datenschutz",
+      "terms": "AGB",
+      "imprint": "Impressum"
+    },
+    "copy": "© 2026 Evida Life AG · Schweiz · Alle Rechte vorbehalten"
+  },
+  "cookie": {
+    "text": "Diese Website verwendet Plausible Analytics – eine datenschutzfreundliche, cookielose Analyse-Lösung ohne personenbezogene Daten.",
+    "link": "Datenschutz",
+    "button": "Verstanden"
+  },
+  "layout": {
+    "back": "← Zurück",
+    "lastUpdated": "Stand: {{date}}",
+    "footer": {
+      "imprint": "Impressum",
+      "privacy": "Datenschutz",
+      "terms": "AGB"
+    }
+  },
+  "shop": {
+    "back": "← Zurück",
+    "tag": "Longevity Testing",
+    "h1": "Wisse, wo du stehst.",
+    "sub": "Professionelle Bluttests über Partnerlabore – inklusive gratis Vitalcheck und persönlichem Longevity Dashboard.",
+    "packages": {
+      "heading": "Test-Pakete",
+      "featured": "EMPFOHLEN",
+      "biomarkers": "{{count}} Biomarker analysiert",
+      "vitalcheck": "Gratis Vitalcheck inkl.",
+      "cta": "Paket wählen"
+    },
+    "addons": {
+      "heading": "Add-ons",
+      "combo": "Kombinierbar mit jedem Paket",
+      "cta": "Add-on wählen"
+    },
+    "trust": [
+      { "title": "Zertifizierte Partnerlabore", "body": "ISO-akkreditierte Labore in der Schweiz und Deutschland." },
+      { "title": "Automatisches Dashboard", "body": "Alle Ergebnisse direkt in deinem Evida Life Profil." },
+      { "title": "Datenschutz first", "body": "Schweizer Datenhaltung, vollständig DSGVO- & nDSG-konform." }
+    ],
+    "footer": {
+      "imprint": "Impressum",
+      "privacy": "Datenschutz",
+      "terms": "AGB"
+    }
+  },
+  "privacy": {
+    "title": "Datenschutzerklärung",
+    "subtitle": "Wie wir mit deinen Daten umgehen",
+    "lastUpdated": "März 2026",
+    "s1": {
+      "heading": "1. Verantwortlicher",
+      "intro": "Verantwortlicher im Sinne der DSGVO und des schweizerischen Datenschutzgesetzes (nDSG) ist:",
+      "company": "Evida Life AG",
+      "address": "[Adresse], Zürich, Schweiz",
+      "emailLabel": "E-Mail:"
+    },
+    "s2": {
+      "heading": "2. Welche Daten wir erheben",
+      "waitlist": {
+        "heading": "Warteschliste (Waitlist)",
+        "body": "Wenn du dich auf unserer Warteliste einträgst, speichern wir deine E-Mail-Adresse, um dich über den Launch der Plattform zu informieren. Die Speicherung erfolgt auf Basis deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO / Art. 31 nDSG)."
+      },
+      "account": {
+        "heading": "Nutzerkonto",
+        "body": "Bei der Registrierung erheben wir deine E-Mail-Adresse und ein Passwort. Weitere Profilangaben (z. B. Name, Geburtsdatum) kannst du freiwillig ergänzen. Rechtsgrundlage ist die Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO)."
+      },
+      "health": {
+        "heading": "Gesundheitsdaten",
+        "placeholder": "[Platzhalter: Beschreibung der Laborwerte, Biomarker und Daily-Dozen-Daten, die Nutzer hochladen oder eingeben können. Rechtsgrundlage: ausdrückliche Einwilligung gemäss Art. 9 Abs. 2 lit. a DSGVO.]"
+      },
+      "auto": {
+        "heading": "Automatisch erhobene Daten",
+        "body": "Beim Besuch unserer Website werden technisch notwendige Daten (IP-Adresse, Browser, Referrer) für einen sehr kurzen Zeitraum in Server-Logs gespeichert. Diese Daten werden nicht mit anderen Daten zusammengeführt."
+      }
+    },
+    "s3": {
+      "heading": "3. Analytics (Plausible)",
+      "body": "Wir verwenden Plausible Analytics, eine datenschutzfreundliche, cookielose Analyse-Lösung mit Sitz in der EU. Plausible setzt keine Cookies, speichert keine personenbezogenen Daten und ist vollständig DSGVO-konform. Es werden keine Daten an Dritte weitergegeben."
+    },
+    "s4": {
+      "heading": "4. Datenspeicherung (Supabase)",
+      "body": "Deine Daten werden in der Infrastruktur von Supabase gespeichert. Unser Datenbankserver befindet sich in der Region EU (Zürich). Supabase verarbeitet Daten gemäss seinen Datenschutzbestimmungen und agiert als Auftragsverarbeiter."
+    },
+    "s5": {
+      "heading": "5. Cookies",
+      "body": "Diese Website verwendet keine Marketing- oder Tracking-Cookies. Wir setzen ausschliesslich technisch notwendige Cookies für die Authentifizierung (Session-Cookies), die nach dem Abmelden gelöscht werden."
+    },
+    "s6": {
+      "heading": "6. Deine Rechte",
+      "intro": "Du hast das Recht auf:",
+      "rights": [
+        "Auskunft über deine gespeicherten Daten (Art. 15 DSGVO / Art. 25 nDSG)",
+        "Berichtigung unrichtiger Daten (Art. 16 DSGVO)",
+        "Löschung deiner Daten (Art. 17 DSGVO / Art. 32 nDSG)",
+        "Einschränkung der Verarbeitung (Art. 18 DSGVO)",
+        "Datenübertragbarkeit (Art. 20 DSGVO)",
+        "Widerruf einer Einwilligung jederzeit ohne Angabe von Gründen",
+        "Beschwerde bei einer Aufsichtsbehörde (EDÖB, Schweiz)"
+      ],
+      "contact": "Anfragen richtest du an:"
+    },
+    "s7": {
+      "heading": "7. Drittanbieter und Weitergabe",
+      "placeholder": "[Platzhalter: Partnerlabore, Zahlungsanbieter und weitere Auftragsverarbeiter werden hier aufgeführt, sobald entsprechende Partnerschaften bestehen.]"
+    },
+    "s8": {
+      "heading": "8. Änderungen dieser Erklärung",
+      "body": "Wir behalten uns vor, diese Datenschutzerklärung bei Bedarf anzupassen. Die aktuelle Version ist stets auf dieser Seite abrufbar. Bei wesentlichen Änderungen werden registrierte Nutzer per E-Mail informiert."
+    },
+    "s9": {
+      "heading": "9. Kontakt",
+      "body": "Bei Fragen zum Datenschutz erreichst du uns unter"
+    }
+  },
+  "terms": {
+    "title": "Nutzungsbedingungen",
+    "subtitle": "Allgemeine Geschäftsbedingungen",
+    "lastUpdated": "März 2026",
+    "s1": {
+      "heading": "1. Geltungsbereich",
+      "body": "Diese Nutzungsbedingungen gelten für die Nutzung der Evida Life Plattform, betrieben von der Evida Life AG, Zürich, Schweiz («Evida Life», «wir», «uns»). Mit der Registrierung oder Nutzung der Plattform akzeptierst du diese Bedingungen."
+    },
+    "s2": {
+      "heading": "2. Leistungsbeschreibung",
+      "intro": "Evida Life ist eine digitale Gesundheitsplattform, die folgende Funktionen anbietet:",
+      "items": [
+        "Erfassung und Auswertung von Laborwerten und Biomarkern",
+        "Daily Dozen Tracker für pflanzenbasierte Ernährung",
+        "Rezeptdatenbank mit evidenzbasierten Ernährungsempfehlungen",
+        "Evidenzbasierte Gesundheitsartikel"
+      ],
+      "placeholder": "[Platzhalter: Vollständige Leistungsbeschreibung wird mit Launch der App ergänzt.]"
+    },
+    "s3": {
+      "heading": "3. Nutzerkonten",
+      "body": "Für die Nutzung der Plattform ist eine Registrierung mit einer gültigen E-Mail-Adresse erforderlich. Du bist für die Sicherheit deines Kontos und die Vertraulichkeit deines Passworts verantwortlich. Bitte informiere uns unverzüglich bei Anzeichen einer unbefugten Nutzung.",
+      "age": {
+        "heading": "Mindestalter",
+        "body": "Die Nutzung der Plattform ist Personen ab 18 Jahren vorbehalten. Mit der Registrierung bestätigst du, das Mindestalter erreicht zu haben."
+      }
+    },
+    "s4": {
+      "heading": "4. Gesundheitliche Hinweise",
+      "body": "Die auf Evida Life bereitgestellten Informationen, Laborauswertungen und Ernährungsempfehlungen dienen ausschliesslich zu Informationszwecken und ersetzen keine ärztliche oder ernährungsmedizinische Beratung. Bitte konsultiere bei gesundheitlichen Fragen oder Beschwerden stets eine Fachperson."
+    },
+    "s5": {
+      "heading": "5. Inhalte und geistiges Eigentum",
+      "body1": "Alle von Evida Life erstellten Inhalte (Texte, Grafiken, Rezepte, Artikel) sind urheberrechtlich geschützt. Eine Vervielfältigung oder Weitergabe ohne ausdrückliche Genehmigung ist untersagt.",
+      "body2": "Inhalte, die du selbst hochlädst (z. B. Laborberichte), bleiben dein Eigentum. Du räumst uns das Recht ein, diese ausschliesslich zur Erbringung unserer Dienste zu verarbeiten."
+    },
+    "s6": {
+      "heading": "6. Verbotene Nutzung",
+      "intro": "Es ist untersagt, die Plattform zu nutzen, um:",
+      "items": [
+        "rechtswidrige Inhalte zu verbreiten",
+        "andere Nutzer zu belästigen oder zu schädigen",
+        "die Sicherheit oder Integrität der Plattform zu gefährden",
+        "automatisierte Abfragen ohne schriftliche Genehmigung durchzuführen"
+      ]
+    },
+    "s7": {
+      "heading": "7. Verfügbarkeit und Haftung",
+      "body": "Wir sind bestrebt, die Plattform stets verfügbar zu halten, übernehmen jedoch keine Garantie für eine ununterbrochene Verfügbarkeit. Eine Haftung für Datenverluste oder Schäden durch Ausfälle ist ausgeschlossen, soweit gesetzlich zulässig.",
+      "placeholder": "[Platzhalter: Vollständige Haftungsregelung gemäss schweizerischem Recht wird durch rechtliche Beratung ergänzt.]"
+    },
+    "s8": {
+      "heading": "8. Preise und Abonnements",
+      "placeholder": "[Platzhalter: Preismodell, Aboperioden, Kündigungsfristen und Rückerstattungsregeln werden vor dem Launch ergänzt.]"
+    },
+    "s9": {
+      "heading": "9. Kündigung",
+      "body": "Du kannst dein Konto jederzeit ohne Angabe von Gründen löschen. Wir behalten uns vor, Konten bei schwerwiegenden Verstössen gegen diese Nutzungsbedingungen zu sperren oder zu löschen."
+    },
+    "s10": {
+      "heading": "10. Änderungen der Bedingungen",
+      "body": "Wir behalten uns vor, diese Nutzungsbedingungen anzupassen. Über wesentliche Änderungen informieren wir registrierte Nutzer per E-Mail mindestens 30 Tage im Voraus."
+    },
+    "s11": {
+      "heading": "11. Anwendbares Recht und Gerichtsstand",
+      "body": "Es gilt schweizerisches Recht unter Ausschluss des UN-Kaufrechts. Gerichtsstand ist Zürich, Schweiz."
+    },
+    "s12": {
+      "heading": "12. Kontakt",
+      "body": "Bei Fragen zu diesen Nutzungsbedingungen erreichst du uns unter"
+    }
+  },
+  "imprint": {
+    "title": "Impressum",
+    "s1": {
+      "heading": "Angaben gemäss Art. 3 UWG (Schweiz)",
+      "company": "Evida Life AG",
+      "addressLine1": "[Strasse und Hausnummer]",
+      "addressLine2": "[PLZ] Zürich",
+      "country": "Schweiz",
+      "emailLabel": "E-Mail:",
+      "registryLabel": "Handelsregister:",
+      "registryValue": "Handelsregister des Kantons Zürich",
+      "uidLabel": "UID:",
+      "uidValue": "CHE-[xxx.xxx.xxx]"
+    },
+    "s2": {
+      "heading": "Verantwortlich für den Inhalt",
+      "name": "[Vorname Nachname]",
+      "company": "Evida Life AG, Zürich"
+    },
+    "s3": {
+      "heading": "Haftungsausschluss",
+      "body": "Die Inhalte dieser Website wurden mit grösster Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte übernehmen wir jedoch keine Gewähr. Die auf dieser Website bereitgestellten Informationen ersetzen keine ärztliche oder ernährungsmedizinische Beratung."
+    },
+    "s4": {
+      "heading": "Urheberrecht",
+      "body": "Die durch die Seitenbetreiber erstellten Inhalte und Werke auf diesen Seiten unterliegen dem schweizerischen Urheberrecht. Beiträge Dritter sind als solche gekennzeichnet. Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art der Verwertung ausserhalb der Grenzen des Urheberrechts bedürfen der schriftlichen Zustimmung der Evida Life AG."
+    },
+    "s5": {
+      "heading": "Externe Links",
+      "body": "Diese Website enthält Links zu externen Webseiten Dritter, auf deren Inhalte wir keinen Einfluss haben. Für die Inhalte der verlinkten Seiten ist stets der jeweilige Anbieter verantwortlich. Zum Zeitpunkt der Verlinkung waren keine Rechtsverstösse erkennbar."
+    }
+  }
+}

@@ -3,6 +3,7 @@ import { Playfair_Display, Inter } from "next/font/google";
 import Script from "next/script";
 import { AuthProvider } from "@/context/AuthProvider";
 import CookieBanner from "@/components/CookieBanner";
+import I18nProvider from "@/components/I18nProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -30,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="de">
+    <html lang="de" suppressHydrationWarning>
       <head>
         <Script
           defer
@@ -42,8 +43,10 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${playfair.variable} font-sans antialiased`}
       >
-        <AuthProvider>{children}</AuthProvider>
-        <CookieBanner />
+        <I18nProvider>
+          <AuthProvider>{children}</AuthProvider>
+          <CookieBanner />
+        </I18nProvider>
       </body>
     </html>
   );
