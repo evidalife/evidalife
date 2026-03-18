@@ -701,7 +701,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       <div className="fixed inset-0 bg-black/20 z-40 backdrop-blur-[1px]" onClick={onClose} />
 
       {/* Panel — wider than products/orders to fit the multilingual editor */}
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col bg-white shadow-2xl">
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-3xl flex-col bg-white shadow-2xl">
 
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#0e393d]/10 px-6 py-4 shrink-0">
@@ -853,27 +853,6 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                     </div>
                     {/* Index */}
                     <span className="w-5 text-center text-[11px] text-[#1c2a2b]/30 shrink-0">{idx + 1}</span>
-                    {/* Amount */}
-                    <input
-                      type="number" min={0} step={0.1}
-                      placeholder="Qty"
-                      value={ing.amount}
-                      onChange={(e) => updateIngredient(ing._key, { amount: e.target.value })}
-                      className="w-16 shrink-0 rounded-md border border-[#0e393d]/12 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
-                    />
-                    {/* Unit picker */}
-                    <select
-                      value={ing.unit_id ?? ''}
-                      onChange={(e) => updateIngredient(ing._key, { unit_id: e.target.value || null })}
-                      className="w-20 shrink-0 rounded-md border border-[#0e393d]/12 bg-white px-1 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20 cursor-pointer"
-                    >
-                      <option value="">Unit</option>
-                      {unitOptions.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.abbreviation?.de ?? u.code}
-                        </option>
-                      ))}
-                    </select>
                     {/* Ingredient combobox */}
                     <IngredientCombobox
                       value={ing.ingredient_id}
@@ -885,10 +864,39 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                         setQuickAddOpen(true);
                       }}
                     />
+                    {/* Notes */}
+                    <input
+                      type="text"
+                      placeholder="e.g. crushed, unsweetened…"
+                      value={ing.notes}
+                      onChange={(e) => updateIngredient(ing._key, { notes: e.target.value })}
+                      className="w-36 shrink-0 rounded-md border border-[#0e393d]/12 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
+                    />
+                    {/* Amount */}
+                    <input
+                      type="number" min={0} step={0.1}
+                      placeholder="Qty"
+                      value={ing.amount}
+                      onChange={(e) => updateIngredient(ing._key, { amount: e.target.value })}
+                      className="w-20 shrink-0 rounded-md border border-[#0e393d]/12 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
+                    />
+                    {/* Unit picker */}
+                    <select
+                      value={ing.unit_id ?? ''}
+                      onChange={(e) => updateIngredient(ing._key, { unit_id: e.target.value || null })}
+                      className="w-28 shrink-0 rounded-md border border-[#0e393d]/12 bg-white px-1 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20 cursor-pointer"
+                    >
+                      <option value="">Unit</option>
+                      {unitOptions.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.abbreviation?.de ?? u.code}
+                        </option>
+                      ))}
+                    </select>
                     {/* Optional toggle */}
                     <button
                       type="button"
-                      title="Toggle optional"
+                      title="Mark as optional ingredient"
                       onClick={() => updateIngredient(ing._key, { is_optional: !ing.is_optional })}
                       className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded border transition ${
                         ing.is_optional
@@ -896,7 +904,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                           : 'border-[#0e393d]/10 text-[#1c2a2b]/30 hover:border-[#0e393d]/20'
                       }`}
                     >
-                      opt
+                      Optional
                     </button>
                     {/* Remove */}
                     <IconBtn onClick={() => removeIngredient(ing._key)} title="Remove">
