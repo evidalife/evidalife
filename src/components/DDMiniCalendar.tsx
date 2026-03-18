@@ -172,17 +172,23 @@ export default function DDMiniCalendar({
       </div>
 
       {/* Jump to today */}
-      {(selectedDate !== today || viewMonth !== today.substring(0, 7)) && (
-        <button
-          onClick={() => {
-            onSelectDate(today);
-            setViewMonth(today.substring(0, 7));
-          }}
-          className="mt-1 w-full py-1 rounded-lg border border-[#0e393d]/15 text-[11px] font-medium text-[#0e393d] hover:bg-[#0e393d]/6 transition"
-        >
-          {lang === 'de' ? 'Heute' : 'Today'}
-        </button>
-      )}
+      <div className="flex justify-center mt-2">
+        <div className="flex rounded-full bg-[#0e393d]/6 p-0.5">
+          <button
+            onClick={() => {
+              onSelectDate(today);
+              setViewMonth(today.substring(0, 7));
+            }}
+            className={`px-3 py-0.5 rounded-full text-[10px] font-medium transition-all ${
+              selectedDate === today && viewMonth === today.substring(0, 7)
+                ? 'bg-white text-[#0e393d] shadow-sm'
+                : 'text-[#1c2a2b]/50 hover:text-[#0e393d]'
+            }`}
+          >
+            {lang === 'de' ? 'Heute' : 'Today'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

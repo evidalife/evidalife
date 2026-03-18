@@ -131,20 +131,15 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
         months[key].days++;
       }
       return Object.entries(months).map(([key, { sumPct, days, count }]) => {
-        const [yr, mo] = key.split('-').map(Number);
-        const label = new Date(yr, mo - 1, 1).toLocaleDateString(
-          lang === 'de' ? 'de-DE' : 'en-US', { month: 'short' }
-        );
+        const mo  = Number(key.split('-')[1]);
         const pct = days > 0 ? Math.round(sumPct / days) : 0;
-        return { label, date: key, pct, count: Math.round(count / days), total: totalTarget };
+        return { label: String(mo), date: key, pct, count: Math.round(count / days), total: totalTarget };
       });
     }
 
     if (period === 'month') {
-      // Label every 5th day
       return completionByDate.map(({ date, count, pct }) => {
-        const dayNum = new Date(date + 'T12:00:00').getDate();
-        const label  = dayNum % 5 === 0 || dayNum === 1 ? String(dayNum) : '';
+        const label = String(new Date(date + 'T12:00:00').getDate());
         return { label, date, pct, count, total: totalTarget };
       });
     }
