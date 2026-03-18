@@ -182,7 +182,7 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
   );
 
   return (
-    <div className={compact ? 'flex flex-col' : 'rounded-2xl border border-[#0e393d]/10 bg-white px-5 py-4'}>
+    <div className={compact ? 'flex flex-col flex-1' : 'rounded-2xl border border-[#0e393d]/10 bg-white px-5 py-4'}>
 
       {/* Header — toggle at top in non-compact mode */}
       {!compact && (
@@ -226,8 +226,8 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
           <p className="text-sm text-[#1c2a2b]/30">{t.empty}</p>
         </div>
       ) : (
-        <div>
-          <ResponsiveContainer width="100%" height={chartH}>
+        <div className="flex-1">
+          <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={chartData}
               margin={{ top: 4, right: 0, left: 0, bottom: 0 }}
