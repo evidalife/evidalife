@@ -468,7 +468,7 @@ export default function DailyDozenTracker({
     setStreak(updated);
 
     await supabase.from('daily_dozen_streaks').upsert(
-      { user_id: userId, ...updated, updated_at: new Date().toISOString() },
+      { user_id: userId, ...updated },
       { onConflict: 'user_id' }
     );
   }, [categories, streak, supabase, today, userId]);
@@ -479,13 +479,12 @@ export default function DailyDozenTracker({
     setPending((p) => ({ ...p, [categoryId]: true }));
     await supabase.from('daily_dozen_entries').upsert(
       {
-        user_id:           userId,
-        category_id:       categoryId,
-        entry_date:        date,
+        user_id:            userId,
+        category_id:        categoryId,
+        entry_date:         date,
         servings_completed: newServings,
-        updated_at:        new Date().toISOString(),
       },
-      { onConflict: 'user_id,category_id,entry_date' }
+      { onConflict: 'user_id,entry_date,category_id' }
     );
     setPending((p) => ({ ...p, [categoryId]: false }));
   }, [supabase, userId]);
