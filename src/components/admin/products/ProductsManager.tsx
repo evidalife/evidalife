@@ -336,7 +336,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider w-12"></th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider w-16"></th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Name / SKU</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Type</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">CHF</th>
@@ -362,7 +362,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                 <td className="px-4 py-3">
                   {p.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.image_url} alt="" className="w-9 h-9 rounded-lg object-cover border border-[#0e393d]/10" />
+                    <img src={p.image_url} alt="" className="w-9 h-9 min-w-[36px] rounded-lg object-cover border border-[#0e393d]/10" />
                   ) : (
                     <div className="w-9 h-9 rounded-lg bg-[#0e393d]/6 flex items-center justify-center text-[#0e393d]/30">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
