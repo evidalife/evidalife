@@ -44,7 +44,7 @@ export default async function DailyDozenPage() {
   ] = await Promise.all([
     supabase
       .from('daily_dozen_categories')
-      .select('id, key, name, target_servings, icon, sort_order')
+      .select('id, slug, name, target_servings, icon, sort_order')
       .order('sort_order'),
 
     supabase
@@ -62,7 +62,7 @@ export default async function DailyDozenPage() {
 
   const categories: DDCategory[] = (categoryRows ?? []).map((r) => ({
     id:              r.id,
-    key:             r.key,
+    slug:            r.slug,
     name:            (r.name as { de?: string; en?: string }) ?? {},
     target_servings: r.target_servings,
     icon:            r.icon ?? null,

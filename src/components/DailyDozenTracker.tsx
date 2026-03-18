@@ -9,7 +9,7 @@ type Lang = 'de' | 'en';
 
 export type DDCategory = {
   id: string;
-  key: string;
+  slug: string;
   name: { de?: string; en?: string };
   target_servings: number;
   icon: string | null;
@@ -122,7 +122,7 @@ function CategoryCard({
   const target  = category.target_servings;
   const done    = servings >= target;
   const progress = target > 0 ? servings / target : 0;
-  const name    = category.name[lang] || category.name.de || category.key;
+  const name    = category.name[lang] || category.name.de || category.slug;
 
   return (
     <div
