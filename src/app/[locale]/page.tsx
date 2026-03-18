@@ -60,6 +60,14 @@ export default function HomePage() {
         setSubmitting(false);
         return;
       }
+      // Send confirmation email (fire-and-forget — don't block on failure)
+      if (!error) {
+        fetch('/api/send-waitlist-confirmation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, lang: locale }),
+        }).catch(() => {/* non-critical */});
+      }
     } catch (e) {
       console.error(e);
     }
