@@ -109,10 +109,14 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
       byDate[e.entry_date][e.category_id] = e.servings_completed;
     }
 
+    // Total target servings across all categories
+    const totalTarget = categories.reduce((s, c) => s + c.target_servings, 0);
+
     const completionByDate = dateRange.map((date) => {
       const day = byDate[date] ?? {};
-      const count = categories.filter((c) => (day[c.id] ?? 0) >= c.target_servings).length;
-      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+      // Sum actual servings completed across all categories
+      const count = categories.reduce((s, c) => s + Math.min(day[c.id] ?? 0, c.target_servings), 0);
+      const pct = totalTarget > 0 ? Math.round((count / totalTarget) * 100) : 0;
       return { date, count, pct };
     });
 
@@ -132,7 +136,7 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
           lang === 'de' ? 'de-DE' : 'en-US', { month: 'short' }
         );
         const pct = days > 0 ? Math.round(sumPct / days) : 0;
-        return { label, date: key, pct, count: Math.round(count / days), total };
+        return { label, date: key, pct, count: Math.round(count / days), total: totalTarget };
       });
     }
 
@@ -141,7 +145,7 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
       return completionByDate.map(({ date, count, pct }) => {
         const dayNum = new Date(date + 'T12:00:00').getDate();
         const label  = dayNum % 5 === 0 || dayNum === 1 ? String(dayNum) : '';
-        return { label, date, pct, count, total };
+        return { label, date, pct, count, total: totalTarget };
       });
     }
 
@@ -150,7 +154,7 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
       const label = new Date(date + 'T12:00:00').toLocaleDateString(
         lang === 'de' ? 'de-DE' : 'en-US', { weekday: 'short' }
       );
-      return { label, date, pct, count, total };
+      return { label, date, pct, count, total: totalTarget };
     });
   }, [entries, categories, period, today, lang]);
 
@@ -160,33 +164,45 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
   };
   const t = T[lang];
 
-  const chartH  = compact ? 80 : 112;
-  const emptyH  = compact ? 'h-20' : 'h-28';
+  const chartH  = compact ? 120 : 112;
+  const emptyH  = compact ? 'h-28' : 'h-28';
+
+  // Period toggle — shared between top (non-compact) and bottom (compact)
+  const periodToggle = (
+    <div className="flex rounded-full bg-[#0e393d]/6 p-0.5 gap-0.5">
+      {(['week', 'month', 'year'] as Period[]).map((p) => (
+        <button
+          key={p}
+          onClick={() => setPeriod(p)}
+          className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium transition-all ${
+            period === p
+              ? 'bg-white text-[#0e393d] shadow-sm'
+              : 'text-[#1c2a2b]/50 hover:text-[#0e393d]'
+          }`}
+        >
+          {t[p]}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div className={compact ? '' : 'rounded-2xl border border-[#0e393d]/10 bg-white px-5 py-4'}>
 
-      {/* Header */}
-      <div className={`flex items-center justify-between ${compact ? 'mb-2' : 'mb-4'}`}>
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84]">{t.heading}</p>
-        <div className="flex rounded-full bg-[#0e393d]/6 p-0.5 gap-0.5">
-          {(['week', 'month', 'year'] as Period[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium transition-all ${
-                period === p
-                  ? 'bg-white text-[#0e393d] shadow-sm'
-                  : 'text-[#1c2a2b]/50 hover:text-[#0e393d]'
-              }`}
-            >
-              {t[p]}
-            </button>
-          ))}
+      {/* Header — toggle at top in non-compact mode */}
+      {!compact && (
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84]">{t.heading}</p>
+          {periodToggle}
         </div>
-      </div>
+      )}
 
-      {/* Legend — hidden in compact mode */}
+      {/* Compact: heading only at top */}
+      {compact && (
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-2">{t.heading}</p>
+      )}
+
+      {/* Legend — non-compact only */}
       {!compact && (
         <div className="flex items-center gap-4 mb-3">
           {[
@@ -236,6 +252,13 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+      )}
+
+      {/* Toggle at bottom in compact mode */}
+      {compact && (
+        <div className="flex justify-center mt-2">
+          {periodToggle}
+        </div>
       )}
     </div>
   );

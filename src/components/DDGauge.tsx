@@ -14,9 +14,9 @@ interface Props {
 // ── Gauge geometry ─────────────────────────────────────────────────────────────
 // 240° arc, gap at bottom (start bottom-left, sweep clockwise to bottom-right).
 // Rotation=150° on the SVG circle aligns the dasharray start to the bottom-left.
-const R             = 56;
-const CX            = 80;
-const CY            = 70;
+const R             = 64;
+const CX            = 90;
+const CY            = 80;
 const CIRCUMFERENCE = 2 * Math.PI * R;
 const GAUGE_ARC     = (240 / 360) * CIRCUMFERENCE;
 const ROTATION      = 150;
@@ -61,8 +61,13 @@ export default function DDGauge({ current, total, lang, streak, isToday, formatt
   return (
     <div className="flex flex-col items-center gap-1">
 
+      {/* Title */}
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84]">
+        {lang === 'de' ? 'Tagesportionen' : 'Daily Dozen Score'}
+      </p>
+
       {/* Arc gauge */}
-      <svg width="160" height="115" viewBox="0 0 160 115">
+      <svg width="180" height="130" viewBox="0 0 180 130">
         {/* Track */}
         <circle
           cx={CX} cy={CY} r={R}
@@ -86,17 +91,17 @@ export default function DDGauge({ current, total, lang, streak, isToday, formatt
         />
         {/* Current value */}
         <text
-          x={CX} y={CY - 8}
+          x={CX} y={CY - 9}
           textAnchor="middle" dominantBaseline="middle"
-          fontSize="26" fontWeight="700" fill="#0e393d"
+          fontSize="30" fontWeight="700" fill="#0e393d"
         >
           {current}
         </text>
         {/* Slash + total */}
         <text
-          x={CX} y={CY + 13}
+          x={CX} y={CY + 15}
           textAnchor="middle" dominantBaseline="middle"
-          fontSize="12" fill="#0e393d55"
+          fontSize="14" fill="#0e393d55"
         >
           / {total}
         </text>

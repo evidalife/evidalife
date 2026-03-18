@@ -475,11 +475,6 @@ export default function DailyDozenTracker({
 
           {/* Col 1 — Gauge */}
           <div className="flex flex-col items-center justify-center px-6 py-6 border-b md:border-b-0 md:border-r border-[#0e393d]/8">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-1">
-              {isToday
-                ? (lang === 'de' ? 'Heute' : 'Today')
-                : formattedDate.split(',')[0]}
-            </p>
             <DDGauge
               current={totalServings}
               total={totalTarget}
