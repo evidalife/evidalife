@@ -98,6 +98,22 @@
     <priority>0.7</priority>
   </url>
 
+  <!-- Partner Labs -->
+  <url>
+    <loc>https://evidalife.com/de/partner-labs</loc>
+    <xhtml:link rel="alternate" hreflang="de" href="https://evidalife.com/de/partner-labs"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://evidalife.com/en/partner-labs"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://evidalife.com/en/partner-labs</loc>
+    <xhtml:link rel="alternate" hreflang="de" href="https://evidalife.com/de/partner-labs"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://evidalife.com/en/partner-labs"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
   <!-- About -->
   <url>
     <loc>https://evidalife.com/de/about</loc>

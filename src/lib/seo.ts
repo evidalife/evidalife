@@ -112,4 +112,8 @@ export const PAGE_META = {
     de: { title: 'Impressum', description: 'Rechtliche Angaben und Impressum von Evida Life AG, Zürich.' },
     en: { title: 'Legal Notice', description: 'Legal information and imprint of Evida Life AG, Zurich.' },
   },
+  partnerLabs: {
+    de: { title: 'Partnerlabore', description: 'Unsere ISO-akkreditierten Partnerlabore in der Schweiz und Deutschland. Präzise Biomarker-Analysen für deine Gesundheit.' },
+    en: { title: 'Partner Labs', description: 'Our ISO-accredited partner labs in Switzerland and Germany. Precise biomarker analyses for your health.' },
+  },
 } as const;
