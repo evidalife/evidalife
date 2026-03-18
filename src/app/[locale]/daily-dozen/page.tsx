@@ -91,7 +91,7 @@ export default async function DailyDozenPage() {
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-6 py-12">
+      <main className="flex-1 w-full max-w-5xl mx-auto px-6 pt-28 pb-12">
         {/* Hero */}
         <div className="mb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-2">{t.eyebrow}</p>

@@ -10,7 +10,7 @@ export default async function BioAgePage() {
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
-      <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+      <main className="flex-1 flex flex-col items-center justify-center px-6 pt-28 text-center">
         <div className="max-w-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">
             {locale === 'de' ? 'Demnächst' : 'Coming soon'}

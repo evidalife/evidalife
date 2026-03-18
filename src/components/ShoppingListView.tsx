@@ -209,7 +209,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
 
   if (!userId) {
     return (
-      <div className="flex-1 flex items-center justify-center px-6 py-20">
+      <div className="flex-1 flex items-center justify-center px-6 pt-28 py-20">
         <div className="text-center max-w-xs">
           <div className="w-14 h-14 rounded-full bg-[#0e393d]/8 flex items-center justify-center mx-auto mb-5">
             <CartIcon className="w-6 h-6 text-[#0e393d]/50" />
@@ -231,7 +231,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center text-sm text-[#1c2a2b]/40">
+      <div className="flex-1 flex items-center justify-center pt-28 text-sm text-[#1c2a2b]/40">
         {t.loading}
       </div>
     );
@@ -240,7 +240,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
   // ── Main UI ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex-1 w-full max-w-xl mx-auto px-4 py-8">
+    <div className="flex-1 w-full max-w-xl mx-auto px-4 pt-28 py-8">
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">

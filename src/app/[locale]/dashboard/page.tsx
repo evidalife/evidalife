@@ -364,7 +364,7 @@ export default async function DashboardPage() {
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-6 py-12 space-y-8">
+      <main className="flex-1 w-full max-w-5xl mx-auto px-6 pt-28 pb-12 space-y-8">
 
         {/* ── Hero ───────────────────────────────────────────────────────── */}
         <div>

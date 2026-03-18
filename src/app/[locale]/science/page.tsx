@@ -166,7 +166,7 @@ export default async function SciencePage() {
       <main className="flex-1">
 
         {/* Hero */}
-        <section className="w-full bg-[#0e393d] px-6 py-20">
+        <section className="w-full bg-[#0e393d] px-6 pt-28 pb-20">
           <div className="max-w-3xl mx-auto">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.eyebrow}</p>
             <h1 className="font-serif text-4xl sm:text-5xl text-white leading-tight mb-5">{t.heading}</h1>
