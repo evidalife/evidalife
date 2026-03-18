@@ -59,11 +59,11 @@ export default async function DailyDozenPage() {
 
     supabase
       .from('daily_dozen_entries')
-      .select('category_id, date, servings')
+      .select('category_id, entry_date, servings_completed')
       .eq('user_id', user.id)
-      .gte('date', historyStartStr)
-      .lte('date', today)
-      .order('date'),
+      .gte('entry_date', historyStartStr)
+      .lte('entry_date', today)
+      .order('entry_date'),
 
     supabase
       .from('daily_dozen_streaks')
@@ -84,13 +84,13 @@ export default async function DailyDozenPage() {
 
   // Derive today's entries from the historical set
   const entries: DDEntry[] = (histEntryRows ?? [])
-    .filter((r) => r.date === today)
-    .map((r) => ({ category_id: r.category_id, servings: r.servings }));
+    .filter((r) => r.entry_date === today)
+    .map((r) => ({ category_id: r.category_id, servings: r.servings_completed }));
 
   const historicalEntries: HistoricalEntry[] = (histEntryRows ?? []).map((r) => ({
     category_id: r.category_id,
-    date:        r.date,
-    servings:    r.servings,
+    date:        r.entry_date,
+    servings:    r.servings_completed,
   }));
 
   const streak: DDStreak | null = streakRow

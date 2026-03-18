@@ -17,7 +17,7 @@ import {
 type Period = 'week' | 'month' | 'year';
 type Lang = 'de' | 'en';
 
-type RawEntry = { category_id: string; date: string; servings: number };
+type RawEntry = { category_id: string; entry_date: string; servings_completed: number };
 type ChartBar = { label: string; date: string; pct: number; count: number; total: number };
 
 interface Props {
@@ -76,11 +76,11 @@ export default function DDProgressChart({ userId, categories, today, lang }: Pro
 
     const { data } = await supabase
       .from('daily_dozen_entries')
-      .select('category_id, date, servings')
+      .select('category_id, entry_date, servings_completed')
       .eq('user_id', userId)
-      .gte('date', fromStr)
-      .lte('date', today)
-      .order('date');
+      .gte('entry_date', fromStr)
+      .lte('entry_date', today)
+      .order('entry_date');
 
     setEntries(data ?? []);
     setLoading(false);
@@ -100,11 +100,11 @@ export default function DDProgressChart({ userId, categories, today, lang }: Pro
       dateRange.push(d.toISOString().split('T')[0]);
     }
 
-    // Index entries by date → category_id → servings
+    // Index entries by entry_date → category_id → servings_completed
     const byDate: Record<string, Record<string, number>> = {};
     for (const e of entries) {
-      if (!byDate[e.date]) byDate[e.date] = {};
-      byDate[e.date][e.category_id] = e.servings;
+      if (!byDate[e.entry_date]) byDate[e.entry_date] = {};
+      byDate[e.entry_date][e.category_id] = e.servings_completed;
     }
 
     const completionByDate = dateRange.map((date) => {

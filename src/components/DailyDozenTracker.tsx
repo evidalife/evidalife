@@ -350,13 +350,13 @@ export default function DailyDozenTracker({
     setLoadingDate(true);
     const { data } = await supabase
       .from('daily_dozen_entries')
-      .select('category_id, servings')
+      .select('category_id, servings_completed')
       .eq('user_id', userId)
-      .eq('date', date);
+      .eq('entry_date', date);
 
     const newMap: Record<string, number> = {};
     for (const cat of categories) newMap[cat.id] = 0;
-    for (const e of (data ?? [])) newMap[e.category_id] = e.servings;
+    for (const e of (data ?? [])) newMap[e.category_id] = e.servings_completed;
     setServingsMap(newMap);
     setLoadingDate(false);
   }, [supabase, userId, categories]);
@@ -479,13 +479,13 @@ export default function DailyDozenTracker({
     setPending((p) => ({ ...p, [categoryId]: true }));
     await supabase.from('daily_dozen_entries').upsert(
       {
-        user_id:     userId,
-        category_id: categoryId,
-        date,
-        servings:    newServings,
-        updated_at:  new Date().toISOString(),
+        user_id:           userId,
+        category_id:       categoryId,
+        entry_date:        date,
+        servings_completed: newServings,
+        updated_at:        new Date().toISOString(),
       },
-      { onConflict: 'user_id,category_id,date' }
+      { onConflict: 'user_id,category_id,entry_date' }
     );
     setPending((p) => ({ ...p, [categoryId]: false }));
   }, [supabase, userId]);
