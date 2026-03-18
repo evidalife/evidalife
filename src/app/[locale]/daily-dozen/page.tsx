@@ -2,7 +2,7 @@ import { getLocale } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
-import DailyDozenTracker, { type DDCategory, type DDEntry, type DDStreak } from '@/components/DailyDozenTracker';
+import DailyDozenTracker, { type DDCategory, type DDEntry, type DDStreak, type HistoricalEntry } from '@/components/DailyDozenTracker';
 import { createClient } from '@/lib/supabase/server';
 import { buildMeta, PAGE_META } from '@/lib/seo';
 
@@ -41,22 +41,29 @@ export default async function DailyDozenPage() {
   // Today's date in YYYY-MM-DD (UTC)
   const today = new Date().toISOString().split('T')[0];
 
-  // Fetch categories, today's entries, and streak in parallel
+  // 90 days back for per-category streak calculation
+  const historyStart = new Date(today + 'T12:00:00');
+  historyStart.setDate(historyStart.getDate() - 89);
+  const historyStartStr = historyStart.toISOString().split('T')[0];
+
+  // Fetch categories, entries (last 90 days), and streak in parallel
   const [
     { data: categoryRows },
-    { data: entryRows },
+    { data: histEntryRows },
     { data: streakRow },
   ] = await Promise.all([
     supabase
       .from('daily_dozen_categories')
-      .select('id, slug, name, target_servings, icon, sort_order')
+      .select('id, slug, name, target_servings, icon, sort_order, details')
       .order('sort_order'),
 
     supabase
       .from('daily_dozen_entries')
-      .select('category_id, servings')
+      .select('category_id, date, servings')
       .eq('user_id', user.id)
-      .eq('date', today),
+      .gte('date', historyStartStr)
+      .lte('date', today)
+      .order('date'),
 
     supabase
       .from('daily_dozen_streaks')
@@ -72,10 +79,17 @@ export default async function DailyDozenPage() {
     target_servings: r.target_servings,
     icon:            r.icon ?? null,
     sort_order:      r.sort_order,
+    details:         (r.details as DDCategory['details']) ?? null,
   }));
 
-  const entries: DDEntry[] = (entryRows ?? []).map((r) => ({
+  // Derive today's entries from the historical set
+  const entries: DDEntry[] = (histEntryRows ?? [])
+    .filter((r) => r.date === today)
+    .map((r) => ({ category_id: r.category_id, servings: r.servings }));
+
+  const historicalEntries: HistoricalEntry[] = (histEntryRows ?? []).map((r) => ({
     category_id: r.category_id,
+    date:        r.date,
     servings:    r.servings,
   }));
 
@@ -121,6 +135,7 @@ export default async function DailyDozenPage() {
             streak={streak}
             lang={locale}
             today={today}
+            historicalEntries={historicalEntries}
           />
         )}
       </main>
