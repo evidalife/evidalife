@@ -336,13 +336,14 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Name</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Default Unit</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Daily Dozen Category</th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Common</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#0e393d]/6">
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
+                <td colSpan={5} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
                   No ingredients found.
                 </td>
               </tr>
@@ -360,9 +361,6 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                         <span className="text-[#1c2a2b]/40"> / {ing.name.en}</span>
                       )}
                     </div>
-                    {ing.is_common && (
-                      <div className="mt-0.5"><Badge color="gold">common</Badge></div>
-                    )}
                   </td>
 
                   {/* Default Unit */}
@@ -383,6 +381,15 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                       </Badge>
                     ) : (
                       <span className="text-[#1c2a2b]/30">—</span>
+                    )}
+                  </td>
+
+                  {/* Common */}
+                  <td className="px-4 py-3 text-center">
+                    {ing.is_common ? (
+                      <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
+                    ) : (
+                      <span className="text-[#1c2a2b]/20">—</span>
                     )}
                   </td>
 
