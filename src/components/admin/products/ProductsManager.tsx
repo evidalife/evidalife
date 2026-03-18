@@ -55,6 +55,12 @@ const EMPTY_FORM: FormState = {
 const TAX_CLASSES = ['standard', 'reduced', 'zero'];
 const PRODUCT_TYPES = ['test_package', 'addon_test', 'food', 'subscription'];
 
+function slugify(text: string): string {
+  return text.toLowerCase()
+    .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'product';
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function chf(n: number | null) {
@@ -223,7 +229,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     const payload = {
       name: { de: form.name.de, en: form.name.en },
       sku: form.sku.trim() || null,
-      slug: form.slug.trim() || null,
+      slug: form.slug.trim() || slugify(form.name.de || form.name.en),
       description: { de: form.description.de, en: form.description.en },
       price_chf: form.price_chf ? Number(form.price_chf) : null,
       price_eur: form.price_eur ? Number(form.price_eur) : null,

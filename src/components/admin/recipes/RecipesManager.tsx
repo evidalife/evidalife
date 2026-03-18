@@ -192,6 +192,7 @@ export default function RecipesManager({ initialRecipes }: { initialRecipes: Rec
           recipeId={editingId === 'new' ? null : editingId}
           onClose={() => setEditingId(null)}
           onSaved={() => { refresh(); setEditingId(null); }}
+          onDeleted={() => { refresh(); setEditingId(null); }}
         />
       )}
     </div>
