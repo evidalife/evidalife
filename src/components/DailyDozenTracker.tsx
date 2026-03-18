@@ -303,7 +303,16 @@ export default function DailyDozenTracker({
 
   // ── State ──────────────────────────────────────────────────────────────────
 
-  const [servingsMap,  setServingsMap]  = useState<Record<string, number>>(() => {
+  const [servingsMap,   setServingsMap]  = useState<Record<string, number>>(() => {
+    const m: Record<string, number> = {};
+    for (const cat of categories) m[cat.id] = 0;
+    for (const e of entries) m[e.category_id] = e.servings;
+    return m;
+  });
+
+  // todayServings always tracks TODAY's data, even when the user browses a past date.
+  // Used exclusively for streak calculations so they stay live.
+  const [todayServings, setTodayServings] = useState<Record<string, number>>(() => {
     const m: Record<string, number> = {};
     for (const cat of categories) m[cat.id] = 0;
     for (const e of entries) m[e.category_id] = e.servings;
@@ -354,15 +363,10 @@ export default function DailyDozenTracker({
       if (cat && e.servings >= cat.target_servings) pastCompleted[e.category_id].add(e.date);
     }
 
-    // Use live servingsMap for today; SSR historical for other dates
+    // Always use todayServings (live state) for today's done-check — never SSR historical
     const todayDoneMap: Record<string, boolean> = {};
     for (const cat of categories) {
-      if (selectedDate === today) {
-        todayDoneMap[cat.id] = (servingsMap[cat.id] ?? 0) >= cat.target_servings;
-      } else {
-        const hist = historicalEntries.find((e) => e.date === today && e.category_id === cat.id);
-        todayDoneMap[cat.id] = hist ? hist.servings >= cat.target_servings : false;
-      }
+      todayDoneMap[cat.id] = (todayServings[cat.id] ?? 0) >= cat.target_servings;
     }
 
     const result: Record<string, CategoryStreakInfo> = {};
@@ -391,7 +395,7 @@ export default function DailyDozenTracker({
       }
     }
     return result;
-  }, [categories, historicalEntries, servingsMap, today, selectedDate]);
+  }, [categories, historicalEntries, todayServings, today]);
 
   // ── Totals for gauge ───────────────────────────────────────────────────────
 
@@ -436,12 +440,16 @@ export default function DailyDozenTracker({
   // ── Change handler ─────────────────────────────────────────────────────────
 
   const changeServings = useCallback((categoryId: string, delta: number) => {
-    const date = selectedDate;
-    const cat  = categories.find((c) => c.id === categoryId);
-    const max  = cat?.target_servings ?? Infinity;
+    const date    = selectedDate;
+    const isToday = date === today;
+    const cat     = categories.find((c) => c.id === categoryId);
+    const max     = cat?.target_servings ?? Infinity;
     setServingsMap((prev) => {
       const next   = Math.min(max, Math.max(0, (prev[categoryId] ?? 0) + delta));
       const newMap = { ...prev, [categoryId]: next };
+
+      // Keep todayServings in sync for immediate streak updates
+      if (isToday) setTodayServings(newMap);
 
       clearTimeout(debounceRef.current[categoryId]);
       debounceRef.current[categoryId] = setTimeout(async () => {
@@ -452,7 +460,7 @@ export default function DailyDozenTracker({
 
       return newMap;
     });
-  }, [upsertEntry, updateStreak, selectedDate]);
+  }, [upsertEntry, updateStreak, selectedDate, today]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
