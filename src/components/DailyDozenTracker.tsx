@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import DDProgressChart from './DDProgressChart';
+import DDGauge         from './DDGauge';
+import DDMiniCalendar  from './DDMiniCalendar';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,41 +48,21 @@ type CategoryStreakInfo = { streak: number; atRisk: boolean };
 
 const T = {
   de: {
-    today:           'Heute',
-    past:            'Vergangen',
-    selectDate:      'Datum auswählen',
-    streak:          (n: number) => `${n} Tag${n !== 1 ? 'e' : ''} Streak`,
-    longest:         (n: number) => `Längste Serie: ${n} Tag${n !== 1 ? 'e' : ''}`,
-    overall:         (done: number) => `${done} von 12 Kategorien erfüllt`,
-    servings:        (cur: number, tgt: number) => `${cur} / ${tgt}`,
     complete:        'Vollständig!',
-    dayDone:         '🎉 Alle 12 Kategorien heute abgehakt!',
-    noStreak:        'Noch kein Streak – leg los!',
+    servings:        (cur: number, tgt: number) => `${cur} / ${tgt}`,
     servingSizes:    'Portionsgrössen (eine Portion)',
     qualifyingFoods: 'Geeignete Lebensmittel',
     streakAtRisk:    'Streak gefährdet',
     streakActive:    'Aktueller Streak',
-    prevDay:         'Vorheriger Tag',
-    nextDay:         'Nächster Tag',
     loading:         'Lade…',
   },
   en: {
-    today:           'Today',
-    past:            'Past',
-    selectDate:      'Select date',
-    streak:          (n: number) => `${n}-day streak`,
-    longest:         (n: number) => `Longest: ${n} day${n !== 1 ? 's' : ''}`,
-    overall:         (done: number) => `${done} of 12 categories complete`,
-    servings:        (cur: number, tgt: number) => `${cur} / ${tgt}`,
     complete:        'Done!',
-    dayDone:         '🎉 All 12 categories checked off today!',
-    noStreak:        'No streak yet — start today!',
+    servings:        (cur: number, tgt: number) => `${cur} / ${tgt}`,
     servingSizes:    'Serving Sizes (one serving)',
     qualifyingFoods: 'Qualifying Foods',
     streakAtRisk:    'Streak at risk',
     streakActive:    'Current streak',
-    prevDay:         'Previous day',
-    nextDay:         'Next day',
     loading:         'Loading…',
   },
 };
@@ -129,7 +111,6 @@ function InfoModal({ category, lang, onClose }: { category: DDCategory; lang: La
     <>
       <div className="fixed inset-0 bg-black/40 z-40 backdrop-blur-[2px]" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-sm flex-col bg-white shadow-2xl">
-
         <div className="flex items-center gap-3 border-b border-[#0e393d]/10 px-5 py-4">
           {category.icon && <span className="text-3xl leading-none">{category.icon}</span>}
           <div className="flex-1 min-w-0">
@@ -146,7 +127,6 @@ function InfoModal({ category, lang, onClose }: { category: DDCategory; lang: La
             </svg>
           </button>
         </div>
-
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
           {details && details.servings[lang].length > 0 && (
             <div>
@@ -244,17 +224,14 @@ function CategoryCard({
         </svg>
       </button>
 
-      {/* Progress ring — mt-5 clears both absolute buttons (top-2 + h-5 = 28px; p-4 + mt-5 = 36px) */}
+      {/* Progress ring — mt-5 clears both absolute buttons */}
       <div className="mt-5">
         <ProgressRing progress={progress} done={done} icon={category.icon} />
       </div>
 
-      {/* Name */}
       <p className={`mt-2 text-center text-xs font-semibold leading-tight ${done ? 'text-emerald-700' : 'text-[#0e393d]'}`}>
         {name}
       </p>
-
-      {/* Serving count */}
       <p className={`mt-0.5 text-[11px] ${done ? 'text-emerald-600' : 'text-[#1c2a2b]/45'}`}>
         {done ? t.complete : t.servings(servings, target)}
       </p>
@@ -272,11 +249,9 @@ function CategoryCard({
             <line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
         </button>
-
         <span className={`w-5 text-center text-sm font-bold tabular-nums ${done ? 'text-emerald-600' : 'text-[#0e393d]'}`}>
           {servings}
         </span>
-
         <button
           type="button"
           onClick={onIncrement}
@@ -340,11 +315,12 @@ export default function DailyDozenTracker({
   const [modalCatId,   setModalCatId]   = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(today);
   const [loadingDate,  setLoadingDate]  = useState(false);
+  const [refreshKey,   setRefreshKey]   = useState(0);
 
-  const debounceRef      = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const isInitialMount   = useRef(true);
+  const debounceRef    = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const isInitialMount = useRef(true);
 
-  // ── Fetch entries when selected date changes (skip initial mount — use SSR data) ──
+  // ── Fetch entries on date change (skip mount — use SSR data for today) ──────
 
   const fetchEntriesForDate = useCallback(async (date: string) => {
     setLoadingDate(true);
@@ -362,90 +338,71 @@ export default function DailyDozenTracker({
   }, [supabase, userId, categories]);
 
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
+    if (isInitialMount.current) { isInitialMount.current = false; return; }
     fetchEntriesForDate(selectedDate);
-  }, [selectedDate]); // intentionally omit fetchEntriesForDate — runs only on date change
+  }, [selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Per-category streak (always based on real today, not selectedDate) ─────
+  // ── Per-category streak (always relative to real today) ───────────────────
 
   const categoryStreaks = useMemo((): Record<string, CategoryStreakInfo> => {
-    // Build set of past completed days per category (excluding today)
     const pastCompleted: Record<string, Set<string>> = {};
     for (const cat of categories) pastCompleted[cat.id] = new Set();
 
     for (const e of historicalEntries) {
       if (e.date === today) continue;
       const cat = categories.find((c) => c.id === e.category_id);
-      if (cat && e.servings >= cat.target_servings) {
-        pastCompleted[e.category_id].add(e.date);
-      }
+      if (cat && e.servings >= cat.target_servings) pastCompleted[e.category_id].add(e.date);
     }
 
-    // Today's completion — use live servingsMap when viewing today
+    // Use live servingsMap for today; SSR historical for other dates
     const todayDoneMap: Record<string, boolean> = {};
     for (const cat of categories) {
       if (selectedDate === today) {
         todayDoneMap[cat.id] = (servingsMap[cat.id] ?? 0) >= cat.target_servings;
       } else {
-        // derive from SSR historical entries
         const hist = historicalEntries.find((e) => e.date === today && e.category_id === cat.id);
         todayDoneMap[cat.id] = hist ? hist.servings >= cat.target_servings : false;
       }
     }
 
     const result: Record<string, CategoryStreakInfo> = {};
-
     for (const cat of categories) {
       const past      = pastCompleted[cat.id];
       const todayDone = todayDoneMap[cat.id];
 
       if (todayDone) {
-        let streak = 1;
+        let s = 1;
         const cursor = new Date(today + 'T12:00:00');
         cursor.setDate(cursor.getDate() - 1);
-        while (past.has(cursor.toISOString().split('T')[0])) {
-          streak++;
-          cursor.setDate(cursor.getDate() - 1);
-        }
-        result[cat.id] = { streak, atRisk: false };
+        while (past.has(cursor.toISOString().split('T')[0])) { s++; cursor.setDate(cursor.getDate() - 1); }
+        result[cat.id] = { streak: s, atRisk: false };
       } else {
         const yesterday = new Date(today + 'T12:00:00');
         yesterday.setDate(yesterday.getDate() - 1);
         const yStr = yesterday.toISOString().split('T')[0];
-
         if (past.has(yStr)) {
-          let streak = 1;
+          let s = 1;
           yesterday.setDate(yesterday.getDate() - 1);
-          while (past.has(yesterday.toISOString().split('T')[0])) {
-            streak++;
-            yesterday.setDate(yesterday.getDate() - 1);
-          }
-          result[cat.id] = { streak, atRisk: true };
+          while (past.has(yesterday.toISOString().split('T')[0])) { s++; yesterday.setDate(yesterday.getDate() - 1); }
+          result[cat.id] = { streak: s, atRisk: true };
         } else {
           result[cat.id] = { streak: 0, atRisk: false };
         }
       }
     }
-
     return result;
   }, [categories, historicalEntries, servingsMap, today, selectedDate]);
 
-  // ── Overall stats ──────────────────────────────────────────────────────────
+  // ── Totals for gauge ───────────────────────────────────────────────────────
 
-  const completedCount  = categories.filter((c) => (servingsMap[c.id] ?? 0) >= c.target_servings).length;
-  const totalCategories = categories.length;
-  const allDone         = completedCount === totalCategories && totalCategories > 0;
-  const overallPct      = totalCategories > 0 ? Math.round((completedCount / totalCategories) * 100) : 0;
+  const totalServings = categories.reduce((sum, c) => sum + (servingsMap[c.id] ?? 0), 0);
+  const totalTarget   = categories.reduce((sum, c) => sum + c.target_servings, 0);
 
-  // ── Streak update (only when editing today) ────────────────────────────────
+  // ── Streak update ──────────────────────────────────────────────────────────
 
-  const updateStreak = useCallback(async (newServingsMap: Record<string, number>, date: string) => {
+  const updateStreak = useCallback(async (newMap: Record<string, number>, date: string) => {
     if (date !== today) return;
-
-    const nowComplete = categories.every((c) => (newServingsMap[c.id] ?? 0) >= c.target_servings);
+    const nowComplete = categories.every((c) => (newMap[c.id] ?? 0) >= c.target_servings);
     if (!nowComplete) return;
 
     const yesterday = new Date(today);
@@ -460,39 +417,26 @@ export default function DailyDozenTracker({
     }
 
     const newLongest = Math.max(newCurrent, streak?.longest_streak ?? 0);
-    const updated: DDStreak = {
-      current_streak:      newCurrent,
-      longest_streak:      newLongest,
-      last_completed_date: today,
-    };
+    const updated: DDStreak = { current_streak: newCurrent, longest_streak: newLongest, last_completed_date: today };
     setStreak(updated);
-
-    await supabase.from('daily_dozen_streaks').upsert(
-      { user_id: userId, ...updated },
-      { onConflict: 'user_id' }
-    );
+    await supabase.from('daily_dozen_streaks').upsert({ user_id: userId, ...updated }, { onConflict: 'user_id' });
   }, [categories, streak, supabase, today, userId]);
 
-  // ── Upsert entry — always uses the date captured at call time ──────────────
+  // ── Upsert entry ───────────────────────────────────────────────────────────
 
   const upsertEntry = useCallback(async (categoryId: string, newServings: number, date: string) => {
     setPending((p) => ({ ...p, [categoryId]: true }));
     await supabase.from('daily_dozen_entries').upsert(
-      {
-        user_id:            userId,
-        category_id:        categoryId,
-        entry_date:         date,
-        servings_completed: newServings,
-      },
+      { user_id: userId, category_id: categoryId, entry_date: date, servings_completed: newServings },
       { onConflict: 'user_id,entry_date,category_id' }
     );
     setPending((p) => ({ ...p, [categoryId]: false }));
   }, [supabase, userId]);
 
-  // ── Change handler — captures selectedDate at call time ───────────────────
+  // ── Change handler ─────────────────────────────────────────────────────────
 
   const changeServings = useCallback((categoryId: string, delta: number) => {
-    const date = selectedDate; // capture now, before any async gap
+    const date = selectedDate;
     setServingsMap((prev) => {
       const next   = Math.max(0, (prev[categoryId] ?? 0) + delta);
       const newMap = { ...prev, [categoryId]: next };
@@ -501,145 +445,78 @@ export default function DailyDozenTracker({
       debounceRef.current[categoryId] = setTimeout(async () => {
         await upsertEntry(categoryId, next, date);
         await updateStreak(newMap, date);
+        setRefreshKey((k) => k + 1); // refresh chart + calendar
       }, 400);
 
       return newMap;
     });
   }, [upsertEntry, updateStreak, selectedDate]);
 
-  // ── Date navigation ────────────────────────────────────────────────────────
-
-  const goToPrevDay = useCallback(() => {
-    const d = new Date(selectedDate + 'T12:00:00');
-    d.setDate(d.getDate() - 1);
-    setSelectedDate(d.toISOString().split('T')[0]);
-  }, [selectedDate]);
-
-  const goToNextDay = useCallback(() => {
-    const d = new Date(selectedDate + 'T12:00:00');
-    d.setDate(d.getDate() + 1);
-    const next = d.toISOString().split('T')[0];
-    if (next <= today) setSelectedDate(next);
-  }, [selectedDate, today]);
-
   // ── Derived ────────────────────────────────────────────────────────────────
 
   const modalCat  = modalCatId ? categories.find((c) => c.id === modalCatId) ?? null : null;
   const isToday   = selectedDate === today;
 
-  // European date format: "Mittwoch, 18. März 2026" / "Wednesday, 18 March 2026"
   const formattedDate = new Date(selectedDate + 'T12:00:00').toLocaleDateString(
     lang === 'de' ? 'de-CH' : 'en-GB',
     { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
   );
 
-  const currentStreak = streak?.current_streak ?? 0;
-  const longestStreak = streak?.longest_streak ?? 0;
+  const catSlim = categories.map((c) => ({ id: c.id, target_servings: c.target_servings }));
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-4">
 
-      {/* ── Date nav + streak header ──────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#0e393d]/10 bg-white px-5 py-4">
+      {/* ── 3-column dashboard header ─────────────────────────────────────── */}
+      <div className="rounded-2xl border border-[#0e393d]/10 bg-white overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-3">
 
-        {/* Left: date navigation */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={goToPrevDay}
-            className="w-7 h-7 rounded-full border border-[#0e393d]/15 bg-white flex items-center justify-center text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d] transition"
-            aria-label={t.prevDay}
-          >
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
-          </button>
-
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84] mb-0.5">
-              {isToday ? t.today : t.past}
+          {/* Col 1 — Gauge */}
+          <div className="flex flex-col items-center justify-center px-6 py-6 border-b md:border-b-0 md:border-r border-[#0e393d]/8">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-1">
+              {isToday
+                ? (lang === 'de' ? 'Heute' : 'Today')
+                : formattedDate.split(',')[0]}
             </p>
-            {/* Formatted date with hidden date-picker trigger */}
-            <label className="flex items-center gap-1.5 cursor-pointer group">
-              <span className="text-sm font-medium text-[#1c2a2b]">{formattedDate}</span>
-              <svg
-                width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                strokeWidth="2" className="text-[#1c2a2b]/30 group-hover:text-[#0e393d]/60 transition"
-              >
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-              <input
-                type="date"
-                value={selectedDate}
-                max={today}
-                onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
-                aria-label={t.selectDate}
-                className="sr-only"
-              />
-            </label>
+            <DDGauge
+              current={totalServings}
+              total={totalTarget}
+              lang={lang}
+              streak={streak}
+              isToday={isToday}
+              formattedDate={formattedDate}
+            />
           </div>
 
-          <button
-            type="button"
-            onClick={goToNextDay}
-            disabled={isToday}
-            className="w-7 h-7 rounded-full border border-[#0e393d]/15 bg-white flex items-center justify-center text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d] transition disabled:opacity-30 disabled:cursor-not-allowed"
-            aria-label={t.nextDay}
-          >
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
-          </button>
-        </div>
+          {/* Col 2 — Chart */}
+          <div className="px-5 py-5 border-b md:border-b-0 md:border-r border-[#0e393d]/8">
+            <DDProgressChart
+              userId={userId}
+              categories={catSlim}
+              today={today}
+              lang={lang}
+              compact
+              refreshKey={refreshKey}
+            />
+          </div>
 
-        {/* Right: overall streak */}
-        <div className="text-right">
-          {currentStreak > 0 ? (
-            <>
-              <p className="text-lg font-bold text-[#0e393d]">🔥 {t.streak(currentStreak)}</p>
-              {longestStreak > currentStreak && (
-                <p className="text-[11px] text-[#1c2a2b]/40">{t.longest(longestStreak)}</p>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-[#1c2a2b]/40">{t.noStreak}</p>
-          )}
+          {/* Col 3 — Calendar */}
+          <div className="px-5 py-5">
+            <DDMiniCalendar
+              userId={userId}
+              categories={catSlim}
+              today={today}
+              lang={lang}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              refreshKey={refreshKey}
+            />
+          </div>
+
         </div>
       </div>
-
-      {/* ── Overall progress bar ───────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-[#0e393d]/10 bg-white px-5 py-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-[#1c2a2b]">
-            {loadingDate ? t.loading : t.overall(completedCount)}
-          </span>
-          <span className={`text-sm font-bold ${allDone ? 'text-emerald-600' : 'text-[#0e393d]'}`}>
-            {overallPct}%
-          </span>
-        </div>
-        <div className="h-2.5 w-full rounded-full bg-[#0e393d]/8 overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${allDone ? 'bg-emerald-500' : 'bg-[#ceab84]'}`}
-            style={{ width: `${overallPct}%` }}
-          />
-        </div>
-        {allDone && isToday && (
-          <p className="mt-2 text-xs font-medium text-emerald-600">{t.dayDone}</p>
-        )}
-      </div>
-
-      {/* ── Progress chart ─────────────────────────────────────────────────── */}
-      <DDProgressChart
-        userId={userId}
-        categories={categories.map((c) => ({ id: c.id, target_servings: c.target_servings }))}
-        today={today}
-        lang={lang}
-      />
 
       {/* ── Category grid ──────────────────────────────────────────────────── */}
       <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 transition-opacity duration-200 ${

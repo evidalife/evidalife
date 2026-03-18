@@ -21,10 +21,12 @@ type RawEntry = { category_id: string; entry_date: string; servings_completed: n
 type ChartBar = { label: string; date: string; pct: number; count: number; total: number };
 
 interface Props {
-  userId: string;
-  categories: Array<{ id: string; target_servings: number }>;
-  today: string;
-  lang: Lang;
+  userId:      string;
+  categories:  Array<{ id: string; target_servings: number }>;
+  today:       string;
+  lang:        Lang;
+  compact?:    boolean;
+  refreshKey?: number;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -62,7 +64,7 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function DDProgressChart({ userId, categories, today, lang }: Props) {
+export default function DDProgressChart({ userId, categories, today, lang, compact = false, refreshKey = 0 }: Props) {
   const [period, setPeriod]   = useState<Period>('week');
   const [entries, setEntries] = useState<RawEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,7 +88,7 @@ export default function DDProgressChart({ userId, categories, today, lang }: Pro
     setLoading(false);
   }, [supabase, userId, today]);
 
-  useEffect(() => { fetchData(period); }, [fetchData, period]);
+  useEffect(() => { fetchData(period); }, [fetchData, period, refreshKey]);
 
   const chartData = useMemo((): ChartBar[] => {
     const total = categories.length;
@@ -158,18 +160,21 @@ export default function DDProgressChart({ userId, categories, today, lang }: Pro
   };
   const t = T[lang];
 
+  const chartH  = compact ? 80 : 112;
+  const emptyH  = compact ? 'h-20' : 'h-28';
+
   return (
-    <div className="rounded-2xl border border-[#0e393d]/10 bg-white px-5 py-4">
+    <div className={compact ? '' : 'rounded-2xl border border-[#0e393d]/10 bg-white px-5 py-4'}>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84]">{t.heading}</p>
+      <div className={`flex items-center justify-between ${compact ? 'mb-2' : 'mb-4'}`}>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84]">{t.heading}</p>
         <div className="flex rounded-full bg-[#0e393d]/6 p-0.5 gap-0.5">
           {(['week', 'month', 'year'] as Period[]).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium transition-all ${
                 period === p
                   ? 'bg-white text-[#0e393d] shadow-sm'
                   : 'text-[#1c2a2b]/50 hover:text-[#0e393d]'
@@ -181,34 +186,36 @@ export default function DDProgressChart({ userId, categories, today, lang }: Pro
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 mb-3">
-        {[
-          { color: '#10b981', label: lang === 'de' ? 'Vollständig' : 'Complete' },
-          { color: '#ceab84', label: lang === 'de' ? 'Teilweise' : 'Partial' },
-          { color: '#e5e7eb', label: lang === 'de' ? 'Kein Eintrag' : 'No entry' },
-        ].map(({ color, label }) => (
-          <div key={label} className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: color }} />
-            <span className="text-[10px] text-[#1c2a2b]/45">{label}</span>
-          </div>
-        ))}
-      </div>
+      {/* Legend — hidden in compact mode */}
+      {!compact && (
+        <div className="flex items-center gap-4 mb-3">
+          {[
+            { color: '#10b981', label: lang === 'de' ? 'Vollständig' : 'Complete' },
+            { color: '#ceab84', label: lang === 'de' ? 'Teilweise' : 'Partial' },
+            { color: '#e5e7eb', label: lang === 'de' ? 'Kein Eintrag' : 'No entry' },
+          ].map(({ color, label }) => (
+            <div key={label} className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: color }} />
+              <span className="text-[10px] text-[#1c2a2b]/45">{label}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Chart area */}
       {loading ? (
-        <div className="h-28 flex items-center justify-center">
+        <div className={`${emptyH} flex items-center justify-center`}>
           <svg className="w-5 h-5 text-[#0e393d]/25 animate-spin" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
           </svg>
         </div>
       ) : chartData.every((d) => d.pct === 0) ? (
-        <div className="h-28 flex items-center justify-center">
+        <div className={`${emptyH} flex items-center justify-center`}>
           <p className="text-sm text-[#1c2a2b]/30">{t.empty}</p>
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={112}>
+        <ResponsiveContainer width="100%" height={chartH}>
           <BarChart
             data={chartData}
             margin={{ top: 4, right: 0, left: -28, bottom: 0 }}
