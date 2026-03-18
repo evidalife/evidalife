@@ -437,8 +437,10 @@ export default function DailyDozenTracker({
 
   const changeServings = useCallback((categoryId: string, delta: number) => {
     const date = selectedDate;
+    const cat  = categories.find((c) => c.id === categoryId);
+    const max  = cat?.target_servings ?? Infinity;
     setServingsMap((prev) => {
-      const next   = Math.max(0, (prev[categoryId] ?? 0) + delta);
+      const next   = Math.min(max, Math.max(0, (prev[categoryId] ?? 0) + delta));
       const newMap = { ...prev, [categoryId]: next };
 
       clearTimeout(debounceRef.current[categoryId]);
@@ -474,19 +476,24 @@ export default function DailyDozenTracker({
         <div className="grid grid-cols-1 md:grid-cols-3">
 
           {/* Col 1 — Gauge */}
-          <div className="flex flex-col items-center justify-center px-6 py-6 border-b md:border-b-0 md:border-r border-[#0e393d]/8">
-            <DDGauge
-              current={totalServings}
-              total={totalTarget}
-              lang={lang}
-              streak={streak}
-              isToday={isToday}
-              formattedDate={formattedDate}
-            />
+          <div className="flex flex-col px-6 py-5 border-b md:border-b-0 md:border-r border-[#0e393d]/8">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-1">
+              {lang === 'de' ? 'Tagesportionen' : 'Daily Dozen Score'}
+            </p>
+            <div className="flex-1 flex items-center justify-center">
+              <DDGauge
+                current={totalServings}
+                total={totalTarget}
+                lang={lang}
+                streak={streak}
+                isToday={isToday}
+                formattedDate={formattedDate}
+              />
+            </div>
           </div>
 
           {/* Col 2 — Chart */}
-          <div className="px-5 py-5 border-b md:border-b-0 md:border-r border-[#0e393d]/8">
+          <div className="flex flex-col px-5 py-5 border-b md:border-b-0 md:border-r border-[#0e393d]/8">
             <DDProgressChart
               userId={userId}
               categories={catSlim}

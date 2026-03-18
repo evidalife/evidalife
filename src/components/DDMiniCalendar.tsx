@@ -172,7 +172,7 @@ export default function DDMiniCalendar({
       </div>
 
       {/* Jump to today */}
-      {selectedDate !== today && (
+      {(selectedDate !== today || viewMonth !== today.substring(0, 7)) && (
         <button
           onClick={() => {
             onSelectDate(today);

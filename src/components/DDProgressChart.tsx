@@ -187,7 +187,7 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
   );
 
   return (
-    <div className={compact ? '' : 'rounded-2xl border border-[#0e393d]/10 bg-white px-5 py-4'}>
+    <div className={compact ? 'flex flex-col h-full' : 'rounded-2xl border border-[#0e393d]/10 bg-white px-5 py-4'}>
 
       {/* Header — toggle at top in non-compact mode */}
       {!compact && (
@@ -220,38 +220,40 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
 
       {/* Chart area */}
       {loading ? (
-        <div className={`${emptyH} flex items-center justify-center`}>
+        <div className={`${compact ? 'flex-1' : emptyH} flex items-center justify-center`}>
           <svg className="w-5 h-5 text-[#0e393d]/25 animate-spin" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
           </svg>
         </div>
       ) : chartData.every((d) => d.pct === 0) ? (
-        <div className={`${emptyH} flex items-center justify-center`}>
+        <div className={`${compact ? 'flex-1' : emptyH} flex items-center justify-center`}>
           <p className="text-sm text-[#1c2a2b]/30">{t.empty}</p>
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={chartH}>
-          <BarChart
-            data={chartData}
-            margin={{ top: 4, right: 0, left: -28, bottom: 0 }}
-            barCategoryGap={period === 'week' ? '30%' : '12%'}
-          >
-            <XAxis
-              dataKey="label"
-              tick={{ fontSize: 9, fill: '#1c2a2b55' }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis domain={[0, 100]} hide />
-            <Tooltip content={<ChartTooltip />} cursor={{ fill: '#0e393d08' }} />
-            <Bar dataKey="pct" radius={[3, 3, 0, 0]} maxBarSize={period === 'week' ? 40 : 20}>
-              {chartData.map((d, i) => (
-                <Cell key={i} fill={barFill(d.pct)} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <div className={compact ? 'flex-1 min-h-0' : ''}>
+          <ResponsiveContainer width="100%" height={compact ? '100%' : chartH}>
+            <BarChart
+              data={chartData}
+              margin={{ top: 4, right: 0, left: 0, bottom: 0 }}
+              barCategoryGap={period === 'week' ? '30%' : '12%'}
+            >
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 9, fill: '#1c2a2b55' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis domain={[0, 100]} hide width={0} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: '#0e393d08' }} />
+              <Bar dataKey="pct" radius={[3, 3, 0, 0]} maxBarSize={period === 'week' ? 40 : 20}>
+                {chartData.map((d, i) => (
+                  <Cell key={i} fill={barFill(d.pct)} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       )}
 
       {/* Toggle at bottom in compact mode */}

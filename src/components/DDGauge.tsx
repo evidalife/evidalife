@@ -59,15 +59,10 @@ export default function DDGauge({ current, total, lang, streak, isToday, formatt
   const dayName = formattedDate.split(',')[0];
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-1 w-full">
 
-      {/* Title */}
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84]">
-        {lang === 'de' ? 'Tagesportionen' : 'Daily Dozen Score'}
-      </p>
-
-      {/* Arc gauge */}
-      <svg width="180" height="130" viewBox="0 0 180 130">
+      {/* Arc gauge — fills column width */}
+      <svg width="100%" viewBox="0 0 180 130" style={{ maxWidth: 220 }}>
         {/* Track */}
         <circle
           cx={CX} cy={CY} r={R}
