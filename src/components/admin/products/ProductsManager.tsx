@@ -204,9 +204,13 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
   const uploadImage = async (_productId: string): Promise<string | null> => {
     if (!imageFile) return currentImageUrl;
-    // Use base64 JSON to avoid Next.js FormData/multipart serialization issues
-    const arrayBuffer = await imageFile.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString('base64');
+    // Use FileReader (browser-native) to get base64 — Buffer.from is Node-only and breaks in Safari
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(imageFile);
+    });
     const res = await fetch('/api/upload-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

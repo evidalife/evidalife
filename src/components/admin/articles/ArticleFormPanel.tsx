@@ -187,8 +187,12 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
 
   const uploadImage = async (_id: string): Promise<string | null> => {
     if (!imageFile) return currentImageUrl;
-    const arrayBuffer = await imageFile.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString('base64');
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(imageFile);
+    });
     const res = await fetch('/api/upload-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
