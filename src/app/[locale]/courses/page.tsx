@@ -3,8 +3,13 @@ import { Link } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import { createClient } from '@/lib/supabase/server';
+import { buildMeta, PAGE_META } from '@/lib/seo';
 
-export const metadata = { title: 'Kurse – Evida Life' };
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const lang = locale === 'en' ? 'en' : 'de';
+  return buildMeta({ ...PAGE_META.courses[lang], path: '/courses', locale: lang });
+}
 
 type Lang = 'de' | 'en';
 

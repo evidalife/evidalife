@@ -2,8 +2,13 @@ import { getLocale } from 'next-intl/server';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import ContactForm from '@/components/ContactForm';
+import { buildMeta, PAGE_META } from '@/lib/seo';
 
-export const metadata = { title: 'Kontakt – Evida Life' };
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const lang = locale === 'en' ? 'en' : 'de';
+  return buildMeta({ ...PAGE_META.contact[lang], path: '/contact', locale: lang });
+}
 
 type Lang = 'de' | 'en';
 

@@ -3,8 +3,13 @@ import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import ShoppingListView, { type ShoppingList, type ShoppingListItem } from '@/components/ShoppingListView';
 import { createClient } from '@/lib/supabase/server';
+import { buildMeta, PAGE_META } from '@/lib/seo';
 
-export const metadata = { title: 'Einkaufsliste – Evida Life' };
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const lang = locale === 'en' ? 'en' : 'de';
+  return buildMeta({ ...PAGE_META.shoppingList[lang], path: '/shopping-list', locale: lang });
+}
 
 export default async function ShoppingListPage() {
   const locale = await getLocale() as 'de' | 'en';

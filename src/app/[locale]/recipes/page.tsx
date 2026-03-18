@@ -3,8 +3,13 @@ import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import RecipesGrid, { type RecipeCard } from '@/components/RecipesGrid';
 import { createClient } from '@/lib/supabase/server';
+import { buildMeta, PAGE_META } from '@/lib/seo';
 
-export const metadata = { title: 'Rezepte – Evida Life' };
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const lang = locale === 'en' ? 'en' : 'de';
+  return buildMeta({ ...PAGE_META.recipes[lang], path: '/recipes', locale: lang });
+}
 
 type Lang = 'de' | 'en';
 

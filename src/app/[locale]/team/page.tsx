@@ -1,8 +1,13 @@
 import { getLocale } from 'next-intl/server';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import { buildMeta, PAGE_META } from '@/lib/seo';
 
-export const metadata = { title: 'Team – Evida Life' };
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const lang = locale === 'en' ? 'en' : 'de';
+  return buildMeta({ ...PAGE_META.team[lang], path: '/team', locale: lang });
+}
 
 type Lang = 'de' | 'en';
 

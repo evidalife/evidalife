@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+
+Disallow: /de/admin/
+Disallow: /en/admin/
+Disallow: /de/dashboard
+Disallow: /en/dashboard
+Disallow: /de/profile
+Disallow: /en/profile
+Disallow: /de/shopping-list
+Disallow: /en/shopping-list
+Disallow: /de/orders
+Disallow: /en/orders
+Disallow: /de/test-upload
+Disallow: /en/test-upload
+Disallow: /api/
+
+Sitemap: https://evidalife.com/sitemap.xml

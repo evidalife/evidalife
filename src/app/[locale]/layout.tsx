@@ -22,9 +22,22 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: 'Evida Life – Gesund leben. Wissenschaftlich fundiert.',
+  title: {
+    default: 'Evida Life – Gesund leben. Wissenschaftlich fundiert.',
+    template: '%s – Evida Life',
+  },
   description:
     'Evidenzgestützte, vollwertige, pflanzenbasierte Ernährung kombiniert mit messbaren Gesundheitsmarkern. Laborwerte, Daily Dozen Tracker und Rezeptdatenbank – alles in einer Plattform.',
+  metadataBase: new URL('https://evidalife.com'),
+  openGraph: {
+    siteName: 'Evida Life',
+    type: 'website',
+    images: [{ url: '/evida-logo.png', width: 1200, height: 630, alt: 'Evida Life' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: ['/evida-logo.png'],
+  },
 };
 
 export function generateStaticParams() {

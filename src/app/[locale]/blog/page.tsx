@@ -3,8 +3,13 @@ import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import BlogGrid, { type ArticleCard } from '@/components/BlogGrid';
 import { createClient } from '@/lib/supabase/server';
+import { buildMeta, PAGE_META } from '@/lib/seo';
 
-export const metadata = { title: 'Blog – Evida Life' };
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const lang = locale === 'en' ? 'en' : 'de';
+  return buildMeta({ ...PAGE_META.blog[lang], path: '/blog', locale: lang });
+}
 
 type Lang = 'de' | 'en';
 

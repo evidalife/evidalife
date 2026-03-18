@@ -4,8 +4,13 @@ import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import DailyDozenTracker, { type DDCategory, type DDEntry, type DDStreak } from '@/components/DailyDozenTracker';
 import { createClient } from '@/lib/supabase/server';
+import { buildMeta, PAGE_META } from '@/lib/seo';
 
-export const metadata = { title: 'Daily Dozen – Evida Life' };
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const lang = locale === 'en' ? 'en' : 'de';
+  return buildMeta({ ...PAGE_META.dailyDozen[lang], path: '/daily-dozen', locale: lang });
+}
 
 type Lang = 'de' | 'en';
 

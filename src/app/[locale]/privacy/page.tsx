@@ -1,9 +1,10 @@
-import { getTranslations } from 'next-intl/server';
 import PrivacyContent from './PrivacyContent';
+import { buildMeta, PAGE_META } from '@/lib/seo';
 
-export async function generateMetadata() {
-  const t = await getTranslations('privacy');
-  return { title: `${t('title')} – Evida Life` };
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const lang = locale === 'en' ? 'en' : 'de';
+  return buildMeta({ ...PAGE_META.privacy[lang], path: '/privacy', locale: lang });
 }
 
 export default function PrivacyPage() {

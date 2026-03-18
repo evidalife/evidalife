@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase/server';
 import ShopContent from './ShopContent';
+import { buildMeta, PAGE_META } from '@/lib/seo';
 
-export const metadata = {
-  title: 'Shop – Evida Life',
-  description: 'Longevity Bluttest-Pakete und Add-ons. Wisse, wo du stehst.',
-};
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const lang = locale === 'en' ? 'en' : 'de';
+  return buildMeta({ ...PAGE_META.shop[lang], path: '/shop', locale: lang });
+}
 
 type LocalizedString = string | Record<string, string>;
 
