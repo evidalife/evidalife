@@ -69,28 +69,22 @@ const T = {
 
 // ─── SVG progress ring ────────────────────────────────────────────────────────
 
-const R             = 40;
-const CX            = 50;
+const R             = 28;
+const CX            = 36;
 const CIRCUMFERENCE = 2 * Math.PI * R;
 
-function ProgressRing({
-  progress, done, icon, servings, target,
-}: {
-  progress: number; done: boolean; icon: string | null; servings: number; target: number;
-}) {
+function ProgressRing({ progress, done, icon }: { progress: number; done: boolean; icon: string | null }) {
   const offset = CIRCUMFERENCE * (1 - Math.min(progress, 1));
   const color  = done ? '#10b981' : progress > 0 ? '#ceab84' : '#0e393d1a';
 
   return (
-    <svg width="100" height="100" viewBox="0 0 100 100" className="shrink-0">
-      {/* Track */}
-      <circle cx={CX} cy={CX} r={R} fill="none" stroke="#0e393d0f" strokeWidth="6" />
-      {/* Fill */}
+    <svg width="72" height="72" viewBox="0 0 72 72" className="shrink-0">
+      <circle cx={CX} cy={CX} r={R} fill="none" stroke="#0e393d12" strokeWidth="5" />
       <circle
         cx={CX} cy={CX} r={R}
         fill="none"
         stroke={color}
-        strokeWidth="6"
+        strokeWidth="5"
         strokeLinecap="round"
         strokeDasharray={CIRCUMFERENCE}
         strokeDashoffset={offset}
@@ -98,32 +92,10 @@ function ProgressRing({
         style={{ transition: 'stroke-dashoffset 0.35s ease, stroke 0.3s ease' }}
       />
       {done ? (
-        /* Checkmark only */
-        <text x={CX} y={CX + 2} textAnchor="middle" dominantBaseline="middle" fontSize="28">✓</text>
-      ) : (
-        <>
-          {/* Icon above fraction */}
-          {icon && (
-            <text x={CX} y={CX - 8} textAnchor="middle" dominantBaseline="middle" fontSize="20">{icon}</text>
-          )}
-          {/* Fraction: current / target */}
-          <text
-            x={CX - 4} y={icon ? CX + 10 : CX + 2}
-            textAnchor="end" dominantBaseline="middle"
-            fontSize="15" fontWeight="700" fill="#0e393d"
-            fontFamily="serif"
-          >
-            {servings}
-          </text>
-          <text
-            x={CX + 4} y={icon ? CX + 10 : CX + 2}
-            textAnchor="start" dominantBaseline="middle"
-            fontSize="12" fill="#0e393d55"
-          >
-            /{target}
-          </text>
-        </>
-      )}
+        <text x={CX} y={CX + 1} textAnchor="middle" dominantBaseline="middle" fontSize="18">✓</text>
+      ) : icon ? (
+        <text x={CX} y={CX + 1} textAnchor="middle" dominantBaseline="middle" fontSize="20">{icon}</text>
+      ) : null}
     </svg>
   );
 }
@@ -220,16 +192,16 @@ function CategoryCard({
 
   return (
     <div
-      className={`relative flex flex-col items-center rounded-2xl border p-5 transition-all duration-200 ${
+      className={`relative flex flex-col items-center rounded-2xl border p-4 transition-all duration-200 ${
         done
-          ? 'border-emerald-200 bg-emerald-50/30'
+          ? 'border-emerald-200 bg-emerald-50/60'
           : 'border-[#0e393d]/10 bg-white hover:border-[#0e393d]/20'
       }`}
     >
       {/* Streak badge — absolute top-left, today only */}
       {isToday && streakInfo.streak > 0 && (
         <div
-          className={`absolute top-2 left-2 flex items-center gap-0.5 rounded-full px-2 py-1 text-xs font-semibold leading-none ${
+          className={`absolute top-2 left-2 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none ${
             streakInfo.atRisk ? 'bg-amber-50 text-amber-500' : 'bg-emerald-50 text-emerald-600'
           }`}
           title={streakInfo.atRisk ? t.streakAtRisk : t.streakActive}
@@ -242,67 +214,56 @@ function CategoryCard({
       <button
         type="button"
         onClick={onInfoClick}
-        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#0e393d]/6 flex items-center justify-center text-[#0e393d]/35 hover:bg-[#0e393d]/12 hover:text-[#0e393d]/65 transition"
+        className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#0e393d]/6 flex items-center justify-center text-[#0e393d]/35 hover:bg-[#0e393d]/12 hover:text-[#0e393d]/65 transition"
         aria-label={lang === 'de' ? 'Details anzeigen' : 'Show details'}
       >
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
           <circle cx="12" cy="12" r="10"/>
           <line x1="12" y1="8" x2="12" y2="8" strokeLinecap="round" strokeWidth="3"/>
           <line x1="12" y1="11" x2="12" y2="16"/>
         </svg>
       </button>
 
-      {/* Progress ring — mt-6 clears the absolute buttons (top-2 + h-6 = 32px; p-5 + mt-6 = 44px) */}
-      <div className="mt-6">
-        <ProgressRing
-          progress={progress}
-          done={done}
-          icon={category.icon}
-          servings={servings}
-          target={target}
-        />
+      {/* Progress ring — mt-5 clears both absolute buttons */}
+      <div className="mt-5">
+        <ProgressRing progress={progress} done={done} icon={category.icon} />
       </div>
 
-      {/* Category name */}
-      <p className={`mt-3 text-center text-sm font-semibold leading-tight ${done ? 'text-emerald-700' : 'text-[#0e393d]'}`}>
+      <p className={`mt-2 text-center text-xs font-semibold leading-tight ${done ? 'text-emerald-700' : 'text-[#0e393d]'}`}>
         {name}
       </p>
+      <p className={`mt-0.5 text-[11px] ${done ? 'text-emerald-600' : 'text-[#1c2a2b]/45'}`}>
+        {done ? t.complete : t.servings(servings, target)}
+      </p>
 
-      {/* Done label */}
-      {done && (
-        <p className="mt-0.5 text-xs font-medium text-emerald-600">{t.complete}</p>
-      )}
-
-      {/* +/- controls — bigger buttons at the bottom */}
-      <div className="mt-4 flex items-center justify-center gap-3 w-full">
+      {/* +/- controls */}
+      <div className="mt-3 flex items-center gap-2">
         <button
           type="button"
           onClick={onDecrement}
           disabled={servings === 0 || pending}
           aria-label="Remove serving"
-          className="w-10 h-10 rounded-full border border-[#0e393d]/15 bg-white flex items-center justify-center text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d] transition disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-7 h-7 rounded-full border border-[#0e393d]/15 bg-white flex items-center justify-center text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d] transition disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
         </button>
-
-        <span className={`w-8 text-center text-xl font-bold tabular-nums ${done ? 'text-emerald-600' : 'text-[#0e393d]'}`}>
+        <span className={`w-5 text-center text-sm font-bold tabular-nums ${done ? 'text-emerald-600' : 'text-[#0e393d]'}`}>
           {servings}
         </span>
-
         <button
           type="button"
           onClick={onIncrement}
           disabled={pending}
           aria-label="Add serving"
-          className={`w-10 h-10 rounded-full flex items-center justify-center transition ${
+          className={`w-7 h-7 rounded-full flex items-center justify-center transition ${
             done
-              ? 'bg-emerald-50 border border-emerald-200 text-emerald-600 hover:bg-emerald-100'
-              : 'bg-[#0e393d] text-white hover:bg-[#0e393d]/85'
+              ? 'border border-emerald-300 bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+              : 'border border-[#0e393d]/20 bg-[#0e393d] text-white hover:bg-[#0e393d]/85'
           } disabled:opacity-50 disabled:cursor-not-allowed`}
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="12" y1="5" x2="12" y2="19"/>
             <line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
@@ -311,8 +272,8 @@ function CategoryCard({
 
       {/* Pending spinner */}
       {pending && (
-        <div className="absolute inset-0 rounded-2xl flex items-center justify-center bg-white/60">
-          <svg className="w-5 h-5 text-[#0e393d]/40 animate-spin" viewBox="0 0 24 24" fill="none">
+        <div className="absolute inset-0 rounded-2xl flex items-center justify-center bg-white/50">
+          <svg className="w-4 h-4 text-[#0e393d]/40 animate-spin" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
           </svg>
