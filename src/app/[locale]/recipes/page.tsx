@@ -1,33 +1,66 @@
-import { Link } from '@/i18n/navigation';
 import { getLocale } from 'next-intl/server';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import RecipesGrid, { type RecipeCard } from '@/components/RecipesGrid';
+import { createClient } from '@/lib/supabase/server';
 
 export const metadata = { title: 'Rezepte – Evida Life' };
 
+type Lang = 'de' | 'en';
+
+const T = {
+  de: { eyebrow: 'Küche', heading: 'Gesund kochen', sub: 'Vollwertige Rezepte passend zu deinen Gesundheitszielen.' },
+  en: { eyebrow: 'Kitchen', heading: 'Eat well', sub: 'Whole-food recipes matched to your health goals.' },
+};
+
 export default async function RecipesPage() {
-  const locale = await getLocale();
+  const locale = (await getLocale()) as Lang;
+  const t = T[locale];
+  const supabase = await createClient();
+
+  const { data: rows } = await supabase
+    .from('recipes')
+    .select(`
+      id, slug, title, description, image_url,
+      prep_time_min, cook_time_min, servings, difficulty, is_featured,
+      recipe_daily_dozen_tags(daily_dozen_category)
+    `)
+    .eq('is_published', true)
+    .is('deleted_at', null)
+    .order('is_featured', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  const recipes: RecipeCard[] = (rows ?? []).map((r) => ({
+    id: r.id,
+    slug: r.slug ?? null,
+    title: r.title ?? null,
+    description: r.description ?? null,
+    image_url: r.image_url ?? null,
+    prep_time_min: r.prep_time_min ?? null,
+    cook_time_min: r.cook_time_min ?? null,
+    servings: r.servings ?? null,
+    difficulty: r.difficulty ?? null,
+    is_featured: r.is_featured ?? null,
+    daily_dozen_categories: Array.isArray(r.recipe_daily_dozen_tags)
+      ? (r.recipe_daily_dozen_tags as { daily_dozen_category: string }[]).map((d) => d.daily_dozen_category)
+      : [],
+  }));
+
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
-      <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-        <div className="max-w-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">
-            {locale === 'de' ? 'Demnächst' : 'Coming soon'}
-          </p>
-          <h1 className="font-serif text-4xl text-[#0e393d] mb-4">
-            {locale === 'de' ? 'Rezepte' : 'Recipes'}
-          </h1>
-          <p className="text-[#1c2a2b]/60 text-base leading-relaxed mb-8">
-            {locale === 'de'
-              ? 'Leckere, vollwertige Gerichte passend zu deinen Gesundheitszielen – bald verfügbar.'
-              : 'Delicious whole-food dishes matched to your health goals — coming soon.'}
-          </p>
-          <Link href="/" className="inline-block bg-[#0e393d] text-[#f2ebdb] text-sm font-medium px-6 py-3 rounded-full hover:bg-[#1a5055] transition-colors">
-            {locale === 'de' ? '← Zur Startseite' : '← Back to home'}
-          </Link>
+
+      <main className="flex-1 w-full max-w-6xl mx-auto px-6 py-12">
+        {/* Hero */}
+        <div className="mb-10">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-2">{t.eyebrow}</p>
+          <h1 className="font-serif text-4xl text-[#0e393d] mb-3">{t.heading}</h1>
+          <p className="text-[#1c2a2b]/60 text-base max-w-xl">{t.sub}</p>
         </div>
+
+        <RecipesGrid recipes={recipes} lang={locale} />
       </main>
+
       <PublicFooter />
     </div>
   );
