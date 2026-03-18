@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import DDProgressChart from './DDProgressChart';
 
@@ -46,34 +46,40 @@ type CategoryStreakInfo = { streak: number; atRisk: boolean };
 
 const T = {
   de: {
-    today:         'Heute',
-    streak:        (n: number) => `${n} Tag${n !== 1 ? 'e' : ''} Streak`,
-    longest:       (n: number) => `Längste Serie: ${n} Tag${n !== 1 ? 'e' : ''}`,
-    overall:       (done: number) => `${done} von 12 Kategorien erfüllt`,
-    servings:      (cur: number, tgt: number) => `${cur} / ${tgt}`,
-    complete:      'Vollständig!',
-    dayDone:       '🎉 Alle 12 Kategorien heute abgehakt!',
-    noStreak:      'Noch kein Streak – leg los!',
-    infoTitle:     'Portionen & Lebensmittel',
-    servingSizes:  'Portionsgrössen (eine Portion)',
+    today:           'Heute',
+    past:            'Vergangen',
+    streak:          (n: number) => `${n} Tag${n !== 1 ? 'e' : ''} Streak`,
+    longest:         (n: number) => `Längste Serie: ${n} Tag${n !== 1 ? 'e' : ''}`,
+    overall:         (done: number) => `${done} von 12 Kategorien erfüllt`,
+    servings:        (cur: number, tgt: number) => `${cur} / ${tgt}`,
+    complete:        'Vollständig!',
+    dayDone:         '🎉 Alle 12 Kategorien heute abgehakt!',
+    noStreak:        'Noch kein Streak – leg los!',
+    infoTitle:       'Portionen & Lebensmittel',
+    servingSizes:    'Portionsgrössen (eine Portion)',
     qualifyingFoods: 'Geeignete Lebensmittel',
-    streakAtRisk:  'Streak gefährdet',
-    streakActive:  'Aktueller Streak',
+    streakAtRisk:    'Streak gefährdet',
+    streakActive:    'Aktueller Streak',
+    prevDay:         'Vorheriger Tag',
+    nextDay:         'Nächster Tag',
   },
   en: {
-    today:         'Today',
-    streak:        (n: number) => `${n}-day streak`,
-    longest:       (n: number) => `Longest: ${n} day${n !== 1 ? 's' : ''}`,
-    overall:       (done: number) => `${done} of 12 categories complete`,
-    servings:      (cur: number, tgt: number) => `${cur} / ${tgt}`,
-    complete:      'Done!',
-    dayDone:       '🎉 All 12 categories checked off today!',
-    noStreak:      'No streak yet — start today!',
-    infoTitle:     'Servings & Foods',
-    servingSizes:  'Serving Sizes (one serving)',
+    today:           'Today',
+    past:            'Past',
+    streak:          (n: number) => `${n}-day streak`,
+    longest:         (n: number) => `Longest: ${n} day${n !== 1 ? 's' : ''}`,
+    overall:         (done: number) => `${done} of 12 categories complete`,
+    servings:        (cur: number, tgt: number) => `${cur} / ${tgt}`,
+    complete:        'Done!',
+    dayDone:         '🎉 All 12 categories checked off today!',
+    noStreak:        'No streak yet — start today!',
+    infoTitle:       'Servings & Foods',
+    servingSizes:    'Serving Sizes (one serving)',
     qualifyingFoods: 'Qualifying Foods',
-    streakAtRisk:  'Streak at risk',
-    streakActive:  'Current streak',
+    streakAtRisk:    'Streak at risk',
+    streakActive:    'Current streak',
+    prevDay:         'Previous day',
+    nextDay:         'Next day',
   },
 };
 
@@ -244,7 +250,7 @@ function CategoryCard({
           : 'border-[#0e393d]/10 bg-white hover:border-[#0e393d]/20'
       }`}
     >
-      {/* Info button */}
+      {/* Info button — absolute top-right, clears the ring */}
       <button
         type="button"
         onClick={onInfoClick}
@@ -258,8 +264,10 @@ function CategoryCard({
         </svg>
       </button>
 
-      {/* Progress ring */}
-      <ProgressRing progress={progress} done={done} icon={category.icon} />
+      {/* Progress ring — mt-3 ensures it clears the info button */}
+      <div className="mt-3">
+        <ProgressRing progress={progress} done={done} icon={category.icon} />
+      </div>
 
       {/* Name */}
       <p className={`mt-2 text-center text-xs font-semibold leading-tight ${done ? 'text-emerald-700' : 'text-[#0e393d]'}`}>
@@ -307,10 +315,10 @@ function CategoryCard({
         </button>
       </div>
 
-      {/* Per-category streak badge */}
+      {/* Per-category streak badge — absolute bottom-left */}
       {streakInfo.streak > 0 && (
         <div
-          className={`mt-2 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+          className={`absolute bottom-2 left-2 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
             streakInfo.atRisk
               ? 'bg-amber-50 text-amber-500'
               : 'bg-emerald-50 text-emerald-600'
@@ -361,11 +369,34 @@ export default function DailyDozenTracker({
     return m;
   });
 
-  const [streak,      setStreak]     = useState<DDStreak | null>(initialStreak);
-  const [pending,     setPending]    = useState<Record<string, boolean>>({});
-  const [modalCatId,  setModalCatId] = useState<string | null>(null);
+  const [streak,       setStreak]      = useState<DDStreak | null>(initialStreak);
+  const [pending,      setPending]     = useState<Record<string, boolean>>({});
+  const [modalCatId,   setModalCatId]  = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(today);
+  const [loadingDate,  setLoadingDate]  = useState(false);
 
   const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // ── Fetch entries when selected date changes ────────────────────────────────
+
+  const fetchEntriesForDate = useCallback(async (date: string) => {
+    setLoadingDate(true);
+    const { data } = await supabase
+      .from('daily_dozen_entries')
+      .select('category_id, servings')
+      .eq('user_id', userId)
+      .eq('date', date);
+    const newMap: Record<string, number> = {};
+    for (const cat of categories) newMap[cat.id] = 0;
+    for (const e of (data ?? [])) newMap[e.category_id] = e.servings;
+    setServingsMap(newMap);
+    setLoadingDate(false);
+  }, [supabase, userId, categories]);
+
+  useEffect(() => {
+    fetchEntriesForDate(selectedDate);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]);
 
   // ── Per-category streak ────────────────────────────────────────────────────
 
@@ -382,11 +413,25 @@ export default function DailyDozenTracker({
       }
     }
 
+    // Derive today's actual completion from historicalEntries (SSR data)
+    // so the streak badge always reflects the real current streak,
+    // not the selected-date servings.
+    const todayEntries: Record<string, number> = {};
+    for (const e of historicalEntries) {
+      if (e.date === today) todayEntries[e.category_id] = e.servings;
+    }
+    // If viewing today, override with live servingsMap
+    if (selectedDate === today) {
+      for (const cat of categories) {
+        todayEntries[cat.id] = servingsMap[cat.id] ?? 0;
+      }
+    }
+
     const result: Record<string, CategoryStreakInfo> = {};
 
     for (const cat of categories) {
-      const past        = pastCompleted[cat.id];
-      const todayDone   = (servingsMap[cat.id] ?? 0) >= cat.target_servings;
+      const past      = pastCompleted[cat.id];
+      const todayDone = (todayEntries[cat.id] ?? 0) >= cat.target_servings;
 
       if (todayDone) {
         // Count consecutive days back from today (inclusive)
@@ -419,7 +464,7 @@ export default function DailyDozenTracker({
     }
 
     return result;
-  }, [categories, historicalEntries, servingsMap, today]);
+  }, [categories, historicalEntries, servingsMap, today, selectedDate]);
 
   // ── Overall stats ──────────────────────────────────────────────────────────
 
@@ -428,9 +473,11 @@ export default function DailyDozenTracker({
   const allDone         = completedCount === totalCategories && totalCategories > 0;
   const overallPct      = totalCategories > 0 ? Math.round((completedCount / totalCategories) * 100) : 0;
 
-  // ── Streak update ──────────────────────────────────────────────────────────
+  // ── Streak update (only when editing today) ────────────────────────────────
 
-  const updateStreak = useCallback(async (newServingsMap: Record<string, number>) => {
+  const updateStreak = useCallback(async (newServingsMap: Record<string, number>, date: string) => {
+    if (date !== today) return;
+
     const nowComplete = categories.every((c) => (newServingsMap[c.id] ?? 0) >= c.target_servings);
     if (!nowComplete) return;
 
@@ -461,31 +508,47 @@ export default function DailyDozenTracker({
 
   // ── Upsert entry ───────────────────────────────────────────────────────────
 
-  const upsertEntry = useCallback(async (categoryId: string, newServings: number) => {
+  const upsertEntry = useCallback(async (categoryId: string, newServings: number, date: string) => {
     setPending((p) => ({ ...p, [categoryId]: true }));
     await supabase.from('daily_dozen_entries').upsert(
-      { user_id: userId, category_id: categoryId, date: today, servings: newServings, updated_at: new Date().toISOString() },
+      { user_id: userId, category_id: categoryId, date, servings: newServings, updated_at: new Date().toISOString() },
       { onConflict: 'user_id,category_id,date' }
     );
     setPending((p) => ({ ...p, [categoryId]: false }));
-  }, [supabase, today, userId]);
+  }, [supabase, userId]);
 
   // ── Change handler ─────────────────────────────────────────────────────────
 
   const changeServings = useCallback((categoryId: string, delta: number) => {
+    const date = selectedDate;
     setServingsMap((prev) => {
       const next   = Math.max(0, (prev[categoryId] ?? 0) + delta);
       const newMap = { ...prev, [categoryId]: next };
 
       clearTimeout(debounceRef.current[categoryId]);
       debounceRef.current[categoryId] = setTimeout(async () => {
-        await upsertEntry(categoryId, next);
-        updateStreak(newMap);
+        await upsertEntry(categoryId, next, date);
+        updateStreak(newMap, date);
       }, 400);
 
       return newMap;
     });
-  }, [upsertEntry, updateStreak]);
+  }, [upsertEntry, updateStreak, selectedDate]);
+
+  // ── Date navigation helpers ────────────────────────────────────────────────
+
+  const goToPrevDay = useCallback(() => {
+    const d = new Date(selectedDate + 'T12:00:00');
+    d.setDate(d.getDate() - 1);
+    setSelectedDate(d.toISOString().split('T')[0]);
+  }, [selectedDate]);
+
+  const goToNextDay = useCallback(() => {
+    const d = new Date(selectedDate + 'T12:00:00');
+    d.setDate(d.getDate() + 1);
+    const next = d.toISOString().split('T')[0];
+    if (next <= today) setSelectedDate(next);
+  }, [selectedDate, today]);
 
   // ── Modal category ─────────────────────────────────────────────────────────
 
@@ -495,21 +558,63 @@ export default function DailyDozenTracker({
 
   const currentStreak = streak?.current_streak ?? 0;
   const longestStreak = streak?.longest_streak ?? 0;
+  const isToday       = selectedDate === today;
+
+  const formattedDate = new Date(selectedDate + 'T12:00:00').toLocaleDateString(
+    lang === 'de' ? 'de-DE' : 'en-US',
+    { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
+  );
 
   return (
     <div className="space-y-4">
 
-      {/* ── Streak + date header ───────────────────────────────────────────── */}
+      {/* ── Date nav + streak header ────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#0e393d]/10 bg-white px-5 py-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84] mb-0.5">{t.today}</p>
-          <p className="text-sm font-medium text-[#1c2a2b]">
-            {new Date(today + 'T12:00:00').toLocaleDateString(
-              lang === 'de' ? 'de-DE' : 'en-US',
-              { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
-            )}
-          </p>
+
+        {/* Left: date navigation */}
+        <div className="flex items-center gap-2">
+          {/* Prev day */}
+          <button
+            type="button"
+            onClick={goToPrevDay}
+            className="w-7 h-7 rounded-full border border-[#0e393d]/15 bg-white flex items-center justify-center text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d] transition"
+            aria-label={t.prevDay}
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84] mb-0.5">
+              {isToday ? t.today : t.past}
+            </p>
+            <label className="block">
+              <input
+                type="date"
+                value={selectedDate}
+                max={today}
+                onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+                className="text-sm font-medium text-[#1c2a2b] bg-transparent border-none outline-none cursor-pointer"
+              />
+            </label>
+          </div>
+
+          {/* Next day */}
+          <button
+            type="button"
+            onClick={goToNextDay}
+            disabled={isToday}
+            className="w-7 h-7 rounded-full border border-[#0e393d]/15 bg-white flex items-center justify-center text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d] transition disabled:opacity-30 disabled:cursor-not-allowed"
+            aria-label={t.nextDay}
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
         </div>
+
+        {/* Right: overall streak */}
         <div className="text-right">
           {currentStreak > 0 ? (
             <>
@@ -527,7 +632,11 @@ export default function DailyDozenTracker({
       {/* ── Overall progress bar ───────────────────────────────────────────── */}
       <div className="rounded-2xl border border-[#0e393d]/10 bg-white px-5 py-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-[#1c2a2b]">{t.overall(completedCount)}</span>
+          <span className="text-sm font-medium text-[#1c2a2b]">
+            {loadingDate
+              ? (lang === 'de' ? 'Lade…' : 'Loading…')
+              : t.overall(completedCount)}
+          </span>
           <span className={`text-sm font-bold ${allDone ? 'text-emerald-600' : 'text-[#0e393d]'}`}>
             {overallPct}%
           </span>
@@ -538,7 +647,7 @@ export default function DailyDozenTracker({
             style={{ width: `${overallPct}%` }}
           />
         </div>
-        {allDone && (
+        {allDone && isToday && (
           <p className="mt-2 text-xs font-medium text-emerald-600">{t.dayDone}</p>
         )}
       </div>
@@ -552,7 +661,7 @@ export default function DailyDozenTracker({
       />
 
       {/* ── Category grid ──────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+      <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 transition-opacity ${loadingDate ? 'opacity-50 pointer-events-none' : ''}`}>
         {categories.map((cat) => (
           <CategoryCard
             key={cat.id}
