@@ -194,7 +194,7 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
 
       {/* Compact: heading only at top */}
       {compact && (
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-2">{t.heading}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-4">{t.heading}</p>
       )}
 
       {/* Legend — non-compact only */}

@@ -62,19 +62,19 @@ export default function DDMiniCalendar({
 
   const cells: (number | null)[] = Array(startOffset).fill(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-  while (cells.length % 7 !== 0) cells.push(null);
+  while (cells.length < 42) cells.push(null); // always 6 rows → fixed height
 
   const todayYM      = today.substring(0, 7);
   const canGoNext    = viewMonth < todayYM;
 
   const prevMonth = () => {
-    const d = new Date(y, m - 2, 1);
-    setViewMonth(d.toISOString().substring(0, 7));
+    const d = new Date(y, m - 2, 1); // m is 1-based, so m-2 = previous month (0-based)
+    setViewMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   };
   const nextMonth = () => {
     if (!canGoNext) return;
-    const d = new Date(y, m, 1);
-    setViewMonth(d.toISOString().substring(0, 7));
+    const d = new Date(y, m, 1); // m is 1-based, so m = next month (0-based)
+    setViewMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   };
 
   const monthLabel = new Date(y, m - 1, 1).toLocaleDateString(
