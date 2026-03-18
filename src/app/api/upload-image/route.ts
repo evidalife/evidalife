@@ -1,39 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-export async function POST(req: NextRequest) {
-  const formData = await req.formData();
-  const file = formData.get('file') as File | null;
-  const bucket = formData.get('bucket') as string | null;
-  const path = formData.get('path') as string | null;
+// Accepts JSON body: { base64: string, filename: string, bucket: string, contentType: string }
+// Using base64 JSON instead of FormData avoids Next.js multipart serialization issues.
 
-  if (!file || !bucket) {
-    return NextResponse.json({ error: 'Missing file or bucket' }, { status: 400 });
+export async function POST(req: NextRequest) {
+  let body: { base64?: string; filename?: string; bucket?: string; contentType?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  // Log for debugging
-  console.log('[upload-image] typeof file:', typeof file, '| constructor:', file.constructor?.name);
-  console.log('[upload-image] file.type:', file.type, '| file.size:', file instanceof Blob ? file.size : 'n/a');
+  const { base64, filename, bucket, contentType } = body;
 
-  // Convert File/Blob → Buffer for reliable upload in Next.js server routes
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  const contentType = file.type || 'application/octet-stream';
+  if (!base64 || !bucket || !filename) {
+    return NextResponse.json({ error: 'Missing base64, bucket, or filename' }, { status: 400 });
+  }
 
-  // Use a flat UUID-based path (no nested folders — avoids Supabase path pattern errors)
-  const ext = (file instanceof File ? file.name : path ?? 'file').split('.').pop() ?? 'bin';
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(base64, 'base64');
+  } catch (e) {
+    return NextResponse.json({ error: `Failed to decode base64: ${e}` }, { status: 400 });
+  }
+
+  const ext = filename.split('.').pop() ?? 'bin';
   const uploadPath = `${crypto.randomUUID()}.${ext}`;
+  const mimeType = contentType || 'application/octet-stream';
 
-  console.log('[upload-image] bucket:', bucket, '| path:', uploadPath, '| contentType:', contentType, '| bufferLen:', buffer.length);
+  console.log('[upload-image] bucket:', bucket, '| path:', uploadPath, '| contentType:', mimeType, '| bufferLen:', buffer.length);
 
   const supabase = createAdminClient();
   const { data, error } = await supabase.storage
     .from(bucket)
-    .upload(uploadPath, buffer, { upsert: true, contentType });
+    .upload(uploadPath, buffer, { upsert: true, contentType: mimeType });
 
   if (error || !data) {
     const detail = error
-      ? JSON.stringify({ message: error.message, name: (error as NodeJS.ErrnoException).name, statusCode: (error as {statusCode?: string}).statusCode, error: (error as {error?: string}).error })
+      ? JSON.stringify({
+          message: error.message,
+          statusCode: (error as { statusCode?: string }).statusCode,
+          error: (error as { error?: string }).error,
+        })
       : 'Upload failed';
     console.error('[upload-image] Supabase error:', detail);
     return NextResponse.json({ error: detail }, { status: 500 });

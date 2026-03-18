@@ -71,7 +71,7 @@ function formatValidRange(dc: DiscountCode): string {
 
 function formatUses(dc: DiscountCode): string {
   const used = dc.used_count ?? 0;
-  if (dc.max_uses == null) return `${used} / ∞`;
+  if (dc.max_uses == null || dc.max_uses === 0) return `${used} / ∞`;
   return `${used} / ${dc.max_uses}`;
 }
 
@@ -287,9 +287,9 @@ export default function DiscountCodesManager({
       discount_type: form.discount_type,
       discount_value: Number(form.discount_value),
       currency: form.discount_type === 'fixed_amount' ? form.currency : null,
-      min_order_amount: form.min_order_amount ? Number(form.min_order_amount) : null,
-      max_uses: form.max_uses ? Number(form.max_uses) : null,
-      max_uses_per_user: form.max_uses_per_user ? Number(form.max_uses_per_user) : null,
+      min_order_amount: form.min_order_amount ? Number(form.min_order_amount) : 0,
+      max_uses: form.max_uses ? Number(form.max_uses) : 0,
+      max_uses_per_user: form.max_uses_per_user ? Number(form.max_uses_per_user) : 0,
       valid_from: fromDatetimeLocal(form.valid_from) ?? new Date().toISOString(),
       valid_until: fromDatetimeLocal(form.valid_until),
       applicable_product_types:
@@ -582,23 +582,23 @@ export default function DiscountCodesManager({
                 <SectionHead>Usage Limits</SectionHead>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Max Total Uses">
+                  <Field label="Max Total Uses" hint="0 = unlimited">
                     <input
                       type="number"
                       className={inputCls}
                       value={form.max_uses}
                       onChange={(e) => setField('max_uses', e.target.value)}
-                      placeholder="Unlimited"
+                      placeholder="0"
                       min={0}
                     />
                   </Field>
-                  <Field label="Max Uses per User">
+                  <Field label="Max Uses per User" hint="0 = unlimited">
                     <input
                       type="number"
                       className={inputCls}
                       value={form.max_uses_per_user}
                       onChange={(e) => setField('max_uses_per_user', e.target.value)}
-                      placeholder="Unlimited"
+                      placeholder="0"
                       min={0}
                     />
                   </Field>

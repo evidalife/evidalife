@@ -185,17 +185,17 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
     setImagePreview(URL.createObjectURL(file));
   };
 
-  const uploadImage = async (id: string): Promise<string | null> => {
+  const uploadImage = async (_id: string): Promise<string | null> => {
     if (!imageFile) return currentImageUrl;
-    const ext  = imageFile.name.split('.').pop();
-    const path = `${id}/cover.${ext}`;
-    const fd = new FormData();
-    fd.append('file', imageFile);
-    fd.append('bucket', 'article-images');
-    fd.append('path', path);
-    const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
+    const arrayBuffer = await imageFile.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+    const res = await fetch('/api/upload-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base64, filename: imageFile.name, bucket: 'article-images', contentType: imageFile.type }),
+    });
     const json = await res.json();
-    if (!res.ok || !json.url) { console.error(json.error); return currentImageUrl; }
+    if (!res.ok || !json.url) { console.error('[uploadImage]', json.error); return currentImageUrl; }
     return json.url as string;
   };
 
