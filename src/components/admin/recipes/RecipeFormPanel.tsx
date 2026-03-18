@@ -5,21 +5,6 @@ import { createClient } from '@/lib/supabase/client';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DAILY_DOZEN_CATEGORIES = [
-  { key: 'beans',                  label: 'Beans / Hülsenfrüchte' },
-  { key: 'berries',                label: 'Berries / Beeren' },
-  { key: 'other_fruits',           label: 'Other Fruits / Andere Früchte' },
-  { key: 'cruciferous_vegetables', label: 'Cruciferous / Kreuzblütler' },
-  { key: 'greens',                 label: 'Greens / Blattgemüse' },
-  { key: 'other_vegetables',       label: 'Other Veg / Andere Gemüse' },
-  { key: 'flaxseeds',              label: 'Flaxseeds / Leinsamen' },
-  { key: 'nuts_and_seeds',         label: 'Nuts & Seeds / Nüsse & Samen' },
-  { key: 'herbs_and_spices',       label: 'Herbs & Spices / Kräuter' },
-  { key: 'whole_grains',           label: 'Whole Grains / Vollkorn' },
-  { key: 'beverages',              label: 'Beverages / Getränke' },
-  { key: 'exercise',               label: 'Exercise / Bewegung' },
-];
-
 const GOAL_TAGS = [
   { key: 'weight_loss',          label: 'Weight Loss' },
   { key: 'heart_health',         label: 'Heart Health' },
@@ -39,17 +24,37 @@ type Lang = 'de' | 'en';
 
 type LangContent = { de: string; en: string };
 
-type IngredientRow = {
-  _key: string;
-  name: string;
-  amount: string;
-  unit: string;
-  notes: string;
+type IngredientOption = {
+  id: string;
+  name: { de?: string; en?: string };
+  slug: string;
+  default_unit_id: string | null;
 };
 
-type DailyDozenRow = {
-  category: string;
-  servings: string;
+type UnitOption = {
+  id: string;
+  code: string;
+  name: { de?: string; en?: string };
+  abbreviation: { de?: string; en?: string };
+  sort_order: number;
+};
+
+type DailyDozenCategoryOption = {
+  id: string;
+  slug: string;
+  name: { de?: string; en?: string };
+  icon: string | null;
+};
+
+type IngredientRow = {
+  _key: string;
+  ingredient_id: string | null;
+  ingredient_name: { de: string; en: string };
+  amount: string;
+  unit_id: string | null;
+  unit: string;
+  notes: string;
+  is_optional: boolean;
 };
 
 type NutritionForm = {
@@ -73,7 +78,6 @@ type RecipeForm = {
   is_published: boolean;
   is_featured: boolean;
   ingredients: IngredientRow[];
-  daily_dozen: DailyDozenRow[];
   goals: string[];
 };
 
@@ -88,7 +92,7 @@ const EMPTY_FORM: RecipeForm = {
   difficulty: 'easy',
   nutrition: { calories: '', protein_g: '', fat_g: '', carbs_g: '', fiber_g: '' },
   is_published: false, is_featured: false,
-  ingredients: [], daily_dozen: [], goals: [],
+  ingredients: [], goals: [],
 };
 
 let _keyCounter = 0;
@@ -98,6 +102,12 @@ function slugify(text: string): string {
   return text.toLowerCase()
     .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'recipe';
+}
+
+function ingredientSlugify(text: string): string {
+  return text.toLowerCase()
+    .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'ingredient';
 }
 
 // ─── Shared UI primitives ─────────────────────────────────────────────────────
@@ -144,6 +154,240 @@ function IconBtn({ onClick, title, children }: { onClick: () => void; title: str
   );
 }
 
+// ─── Ingredient Combobox ──────────────────────────────────────────────────────
+
+interface ComboboxProps {
+  value: string | null;
+  displayValue: string;
+  ingredientOptions: IngredientOption[];
+  onSelect: (ing: IngredientOption) => void;
+  onOpenQuickAdd: () => void;
+}
+
+function IngredientCombobox({ value, displayValue, ingredientOptions, onSelect, onOpenQuickAdd }: ComboboxProps) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const [inputVal, setInputVal] = useState(displayValue);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Sync display value when external value changes
+  useEffect(() => {
+    setInputVal(displayValue);
+  }, [displayValue]);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        // Reset input to current display value if nothing selected
+        setInputVal(displayValue);
+        setQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [displayValue]);
+
+  const filtered = query.length > 0
+    ? ingredientOptions.filter((ing) => {
+        const q = query.toLowerCase();
+        return ing.name?.de?.toLowerCase().includes(q) || ing.name?.en?.toLowerCase().includes(q);
+      }).slice(0, 30)
+    : ingredientOptions.slice(0, 30);
+
+  const handleFocus = () => {
+    setQuery('');
+    setOpen(true);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+    setInputVal(e.target.value);
+    setOpen(true);
+  };
+
+  const handleSelect = (ing: IngredientOption) => {
+    onSelect(ing);
+    const label = [ing.name?.de, ing.name?.en].filter(Boolean).join(' / ');
+    setInputVal(label);
+    setQuery('');
+    setOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className="relative flex-1">
+      <input
+        value={inputVal}
+        onFocus={handleFocus}
+        onChange={handleChange}
+        placeholder="Search ingredient…"
+        className="w-full rounded-md border border-[#0e393d]/12 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
+      />
+      {open && (
+        <div className="absolute z-50 top-full left-0 mt-1 w-64 bg-white rounded-lg border border-[#0e393d]/15 shadow-lg overflow-hidden">
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.length === 0 && (
+              <div className="px-3 py-2 text-xs text-[#1c2a2b]/40">No results</div>
+            )}
+            {filtered.map((ing) => (
+              <button
+                key={ing.id}
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); handleSelect(ing); }}
+                className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#0e393d]/5 transition ${value === ing.id ? 'bg-[#0e393d]/8 font-medium' : ''}`}
+              >
+                <span className="text-[#0e393d]">{ing.name?.de}</span>
+                {ing.name?.en && <span className="text-[#1c2a2b]/40"> / {ing.name.en}</span>}
+              </button>
+            ))}
+          </div>
+          <div className="border-t border-[#0e393d]/8 px-3 py-1.5">
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); setOpen(false); onOpenQuickAdd(); }}
+              className="text-xs text-[#ceab84] hover:text-[#8a6a3e] font-medium transition"
+            >
+              + New ingredient
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Quick-Add Ingredient Modal ───────────────────────────────────────────────
+
+interface QuickAddModalProps {
+  units: UnitOption[];
+  categories: DailyDozenCategoryOption[];
+  onSaved: (ing: IngredientOption) => void;
+  onClose: () => void;
+}
+
+function QuickAddIngredientModal({ units, categories, onSaved, onClose }: QuickAddModalProps) {
+  const supabase = createClient();
+  const [nameDe, setNameDe] = useState('');
+  const [nameEn, setNameEn] = useState('');
+  const [defaultUnitId, setDefaultUnitId] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    if (!nameDe.trim()) { setError('Name (DE) is required.'); return; }
+    if (!nameEn.trim()) { setError('Name (EN) is required.'); return; }
+    setSaving(true);
+    setError(null);
+    const payload = {
+      name: { de: nameDe.trim(), en: nameEn.trim() },
+      slug: ingredientSlugify(nameDe),
+      default_unit_id: defaultUnitId || null,
+      daily_dozen_category_id: categoryId || null,
+      is_common: false,
+    };
+    const { data, error: err } = await supabase
+      .from('ingredients')
+      .insert(payload)
+      .select('id, name, slug, default_unit_id')
+      .single();
+    setSaving(false);
+    if (err) { setError(err.message); return; }
+    onSaved({
+      id: data.id,
+      name: data.name,
+      slug: data.slug,
+      default_unit_id: data.default_unit_id,
+    });
+  };
+
+  return (
+    <>
+      {/* Modal backdrop */}
+      <div className="fixed inset-0 bg-black/40 z-[60]" onClick={onClose} />
+      {/* Modal */}
+      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl border border-[#0e393d]/10 shadow-2xl w-full max-w-sm">
+          <div className="flex items-center justify-between border-b border-[#0e393d]/10 px-5 py-4">
+            <h3 className="font-serif text-base text-[#0e393d]">Quick-Add Ingredient</h3>
+            <button onClick={onClose} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+          <div className="px-5 py-4 space-y-3">
+            <Field label="Name DE *">
+              <input
+                className={inputCls}
+                value={nameDe}
+                onChange={(e) => setNameDe(e.target.value)}
+                placeholder="z.B. Spinat"
+                autoFocus
+              />
+            </Field>
+            <Field label="Name EN *">
+              <input
+                className={inputCls}
+                value={nameEn}
+                onChange={(e) => setNameEn(e.target.value)}
+                placeholder="e.g. Spinach"
+              />
+            </Field>
+            <Field label="Default Unit">
+              <select
+                className={inputCls + ' cursor-pointer'}
+                value={defaultUnitId}
+                onChange={(e) => setDefaultUnitId(e.target.value)}
+              >
+                <option value="">— No default unit</option>
+                {units.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.abbreviation?.de ?? u.code} — {u.name?.de ?? u.code}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Daily Dozen Category">
+              <select
+                className={inputCls + ' cursor-pointer'}
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+              >
+                <option value="">— None</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.icon ? `${cat.icon} ` : ''}{cat.name?.de ?? cat.slug}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {error && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
+            )}
+          </div>
+          <div className="flex gap-3 border-t border-[#0e393d]/10 px-5 py-4">
+            <button
+              onClick={onClose}
+              className="flex-1 rounded-lg border border-[#0e393d]/15 py-2 text-sm font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 rounded-lg bg-[#0e393d] py-2 text-sm font-medium text-white hover:bg-[#0e393d]/90 disabled:opacity-50 transition"
+            >
+              {saving ? 'Saving…' : 'Create & Select'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface Props {
@@ -167,6 +411,29 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Ingredient/unit data
+  const [ingredientOptions, setIngredientOptions] = useState<IngredientOption[]>([]);
+  const [unitOptions, setUnitOptions] = useState<UnitOption[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<DailyDozenCategoryOption[]>([]);
+
+  // Quick-add modal
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddTargetKey, setQuickAddTargetKey] = useState<string | null>(null);
+
+  // ── Load reference data ───────────────────────────────────────────────────────
+
+  useEffect(() => {
+    Promise.all([
+      supabase.from('ingredients').select('id, name, slug, default_unit_id').order('name->de'),
+      supabase.from('measurement_units').select('id, code, name, abbreviation, sort_order').order('sort_order'),
+      supabase.from('daily_dozen_categories').select('id, slug, name, icon').order('sort_order'),
+    ]).then(([{ data: ings }, { data: units }, { data: cats }]) => {
+      if (ings) setIngredientOptions(ings as IngredientOption[]);
+      if (units) setUnitOptions(units as UnitOption[]);
+      if (cats) setCategoryOptions(cats as DailyDozenCategoryOption[]);
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Load existing recipe ─────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -175,9 +442,8 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
     Promise.all([
       supabase.from('recipes').select('*').eq('id', recipeId).single(),
       supabase.from('recipe_ingredients').select('*').eq('recipe_id', recipeId).order('sort_order'),
-      supabase.from('recipe_daily_dozen_tags').select('*').eq('recipe_id', recipeId),
       supabase.from('recipe_goal_tags').select('*').eq('recipe_id', recipeId),
-    ]).then(([{ data: r }, { data: ings }, { data: dds }, { data: goals }]) => {
+    ]).then(([{ data: r }, { data: ings }, { data: goals }]) => {
       if (!r) { setLoading(false); return; }
       setCurrentImageUrl(r.image_url ?? null);
       setForm({
@@ -199,15 +465,17 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         is_published: r.is_published ?? false,
         is_featured:  r.is_featured  ?? false,
         ingredients: (ings ?? []).map((i) => ({
-          _key:   newKey(),
-          name:   i.ingredient_name ?? '',
-          amount: i.amount != null ? String(i.amount) : '',
-          unit:   i.unit   ?? '',
-          notes:  i.notes  ?? '',
-        })),
-        daily_dozen: (dds ?? []).map((d) => ({
-          category: d.daily_dozen_category,
-          servings: d.servings_per_portion != null ? String(d.servings_per_portion) : '1',
+          _key:            newKey(),
+          ingredient_id:   i.ingredient_id ?? null,
+          ingredient_name: {
+            de: (i.ingredient_name as { de?: string; en?: string } | null)?.de ?? (typeof i.ingredient_name === 'string' ? i.ingredient_name : '') ?? '',
+            en: (i.ingredient_name as { de?: string; en?: string } | null)?.en ?? '',
+          },
+          amount:     i.amount != null ? String(i.amount) : '',
+          unit_id:    i.unit_id ?? null,
+          unit:       i.unit ?? '',
+          notes:      i.notes  ?? '',
+          is_optional: i.is_optional ?? false,
         })),
         goals: (goals ?? []).map((g) => g.goal),
       });
@@ -226,13 +494,27 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   // ── Ingredients ──────────────────────────────────────────────────────────────
 
   const addIngredient = () =>
-    setForm((f) => ({ ...f, ingredients: [...f.ingredients, { _key: newKey(), name: '', amount: '', unit: '', notes: '' }] }));
+    setForm((f) => ({
+      ...f,
+      ingredients: [
+        ...f.ingredients,
+        { _key: newKey(), ingredient_id: null, ingredient_name: { de: '', en: '' }, amount: '', unit_id: null, unit: '', notes: '', is_optional: false },
+      ],
+    }));
 
   const removeIngredient = (key: string) =>
     setForm((f) => ({ ...f, ingredients: f.ingredients.filter((i) => i._key !== key) }));
 
-  const updateIngredient = (key: string, field: keyof Omit<IngredientRow, '_key'>, v: string) =>
-    setForm((f) => ({ ...f, ingredients: f.ingredients.map((i) => i._key === key ? { ...i, [field]: v } : i) }));
+  const updateIngredient = (key: string, patch: Partial<Omit<IngredientRow, '_key'>>) =>
+    setForm((f) => ({ ...f, ingredients: f.ingredients.map((i) => i._key === key ? { ...i, ...patch } : i) }));
+
+  const selectIngredient = (key: string, ing: IngredientOption) => {
+    updateIngredient(key, {
+      ingredient_id: ing.id,
+      ingredient_name: { de: ing.name?.de ?? '', en: ing.name?.en ?? '' },
+      unit_id: ing.default_unit_id ?? null,
+    });
+  };
 
   const moveIngredient = (key: string, dir: -1 | 1) =>
     setForm((f) => {
@@ -244,21 +526,12 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       return { ...f, ingredients: arr };
     });
 
-  // ── Daily Dozen ──────────────────────────────────────────────────────────────
-
-  const toggleDailyDozen = (cat: string) =>
-    setForm((f) => {
-      const has = f.daily_dozen.some((d) => d.category === cat);
-      return {
-        ...f,
-        daily_dozen: has
-          ? f.daily_dozen.filter((d) => d.category !== cat)
-          : [...f.daily_dozen, { category: cat, servings: '1' }],
-      };
-    });
-
-  const setDdServings = (cat: string, v: string) =>
-    setForm((f) => ({ ...f, daily_dozen: f.daily_dozen.map((d) => d.category === cat ? { ...d, servings: v } : d) }));
+  const getIngredientDisplay = (row: IngredientRow): string => {
+    const de = row.ingredient_name.de;
+    const en = row.ingredient_name.en;
+    if (de && en) return `${de} / ${en}`;
+    return de || en || '';
+  };
 
   // ── Goal tags ────────────────────────────────────────────────────────────────
 
@@ -346,33 +619,35 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       // 3. Replace ingredients
       await supabase.from('recipe_ingredients').delete().eq('recipe_id', id!);
       if (form.ingredients.length > 0) {
-        const rows = form.ingredients.map((ing, idx) => ({
-          recipe_id:       id!,
-          ingredient_name: ing.name.trim(),
-          amount:          ing.amount ? Number(ing.amount) : null,
-          unit:            ing.unit.trim() || null,
-          notes:           ing.notes.trim() || null,
-          sort_order:      idx,
-        })).filter((r) => r.ingredient_name);
+        const rows = form.ingredients
+          .map((ing, idx) => {
+            const hasName = ing.ingredient_name.de.trim() || ing.ingredient_name.en.trim();
+            if (!hasName && !ing.ingredient_id) return null;
+            // Build backward-compat unit string from unit option
+            const unitOpt = unitOptions.find((u) => u.id === ing.unit_id);
+            const unitStr = unitOpt
+              ? (unitOpt.abbreviation?.de ?? unitOpt.abbreviation?.en ?? unitOpt.code)
+              : ing.unit.trim() || null;
+            return {
+              recipe_id:        id!,
+              ingredient_id:    ing.ingredient_id ?? null,
+              ingredient_name:  { de: ing.ingredient_name.de, en: ing.ingredient_name.en },
+              amount:           ing.amount ? Number(ing.amount) : null,
+              unit_id:          ing.unit_id ?? null,
+              unit:             unitStr,
+              notes:            ing.notes.trim() || null,
+              sort_order:       idx,
+              is_optional:      ing.is_optional,
+            };
+          })
+          .filter(Boolean);
         if (rows.length > 0) {
           const { error } = await supabase.from('recipe_ingredients').insert(rows);
           if (error) throw error;
         }
       }
 
-      // 4. Replace Daily Dozen tags
-      await supabase.from('recipe_daily_dozen_tags').delete().eq('recipe_id', id!);
-      if (form.daily_dozen.length > 0) {
-        const rows = form.daily_dozen.map((d) => ({
-          recipe_id:            id!,
-          daily_dozen_category: d.category,
-          servings_per_portion: d.servings ? Number(d.servings) : 1,
-        }));
-        const { error } = await supabase.from('recipe_daily_dozen_tags').insert(rows);
-        if (error) throw error;
-      }
-
-      // 5. Replace goal tags
+      // 4. Replace goal tags
       await supabase.from('recipe_goal_tags').delete().eq('recipe_id', id!);
       if (form.goals.length > 0) {
         const rows = form.goals.map((goal) => ({ recipe_id: id!, goal }));
@@ -403,6 +678,19 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       return;
     }
     (onDeleted ?? onSaved)();
+  };
+
+  // ── Quick-add ingredient callback ─────────────────────────────────────────────
+
+  const handleQuickAddSaved = (newIng: IngredientOption) => {
+    // Add to options list
+    setIngredientOptions((prev) => [...prev, newIng]);
+    // Auto-select in the row that triggered it
+    if (quickAddTargetKey) {
+      selectIngredient(quickAddTargetKey, newIng);
+    }
+    setQuickAddOpen(false);
+    setQuickAddTargetKey(null);
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -555,7 +843,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                 {form.ingredients.map((ing, idx) => (
                   <div key={ing._key} className="flex items-center gap-2 rounded-lg border border-[#0e393d]/10 bg-[#fafaf8] px-3 py-2">
                     {/* Reorder */}
-                    <div className="flex flex-col gap-0.5">
+                    <div className="flex flex-col gap-0.5 shrink-0">
                       <IconBtn onClick={() => moveIngredient(ing._key, -1)} title="Move up">
                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 7l3-4 3 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </IconBtn>
@@ -570,80 +858,52 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                       type="number" min={0} step={0.1}
                       placeholder="Qty"
                       value={ing.amount}
-                      onChange={(e) => updateIngredient(ing._key, 'amount', e.target.value)}
-                      className="w-16 rounded-md border border-[#0e393d]/12 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
+                      onChange={(e) => updateIngredient(ing._key, { amount: e.target.value })}
+                      className="w-16 shrink-0 rounded-md border border-[#0e393d]/12 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
                     />
-                    {/* Unit */}
-                    <input
-                      placeholder="Unit"
-                      value={ing.unit}
-                      onChange={(e) => updateIngredient(ing._key, 'unit', e.target.value)}
-                      className="w-16 rounded-md border border-[#0e393d]/12 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
+                    {/* Unit picker */}
+                    <select
+                      value={ing.unit_id ?? ''}
+                      onChange={(e) => updateIngredient(ing._key, { unit_id: e.target.value || null })}
+                      className="w-20 shrink-0 rounded-md border border-[#0e393d]/12 bg-white px-1 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20 cursor-pointer"
+                    >
+                      <option value="">Unit</option>
+                      {unitOptions.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.abbreviation?.de ?? u.code}
+                        </option>
+                      ))}
+                    </select>
+                    {/* Ingredient combobox */}
+                    <IngredientCombobox
+                      value={ing.ingredient_id}
+                      displayValue={getIngredientDisplay(ing)}
+                      ingredientOptions={ingredientOptions}
+                      onSelect={(opt) => selectIngredient(ing._key, opt)}
+                      onOpenQuickAdd={() => {
+                        setQuickAddTargetKey(ing._key);
+                        setQuickAddOpen(true);
+                      }}
                     />
-                    {/* Name */}
-                    <input
-                      placeholder="Ingredient name"
-                      value={ing.name}
-                      onChange={(e) => updateIngredient(ing._key, 'name', e.target.value)}
-                      className="flex-1 rounded-md border border-[#0e393d]/12 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
-                    />
-                    {/* Notes */}
-                    <input
-                      placeholder="Note"
-                      value={ing.notes}
-                      onChange={(e) => updateIngredient(ing._key, 'notes', e.target.value)}
-                      className="w-24 rounded-md border border-[#0e393d]/12 bg-white px-2 py-1 text-xs text-[#1c2a2b]/60 focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
-                    />
+                    {/* Optional toggle */}
+                    <button
+                      type="button"
+                      title="Toggle optional"
+                      onClick={() => updateIngredient(ing._key, { is_optional: !ing.is_optional })}
+                      className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded border transition ${
+                        ing.is_optional
+                          ? 'border-[#ceab84]/50 text-[#8a6a3e] bg-[#ceab84]/10'
+                          : 'border-[#0e393d]/10 text-[#1c2a2b]/30 hover:border-[#0e393d]/20'
+                      }`}
+                    >
+                      opt
+                    </button>
                     {/* Remove */}
                     <IconBtn onClick={() => removeIngredient(ing._key)} title="Remove">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/></svg>
                     </IconBtn>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            {/* ── Daily Dozen tags ─────────────────────────────────────────── */}
-            <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
-              <SectionHead>Daily Dozen Tags</SectionHead>
-              <div className="grid grid-cols-2 gap-2">
-                {DAILY_DOZEN_CATEGORIES.map(({ key, label }) => {
-                  const active = form.daily_dozen.find((d) => d.category === key);
-                  return (
-                    <div
-                      key={key}
-                      className={`flex items-center justify-between rounded-lg border px-3 py-2 transition cursor-pointer ${
-                        active
-                          ? 'border-[#0e393d]/30 bg-[#0e393d]/5'
-                          : 'border-[#0e393d]/10 hover:border-[#0e393d]/20 hover:bg-[#fafaf8]'
-                      }`}
-                      onClick={() => toggleDailyDozen(key)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3.5 h-3.5 rounded border transition ${active ? 'bg-[#0e393d] border-[#0e393d]' : 'border-[#0e393d]/30'}`}>
-                          {active && (
-                            <svg viewBox="0 0 12 12" fill="none" className="text-white">
-                              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          )}
-                        </div>
-                        <span className="text-xs text-[#1c2a2b]">{label}</span>
-                      </div>
-                      {active && (
-                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                          <span className="text-[10px] text-[#1c2a2b]/40">×</span>
-                          <input
-                            type="number" min={0.5} max={3} step={0.5}
-                            value={active.servings}
-                            onChange={(e) => setDdServings(key, e.target.value)}
-                            className="w-12 rounded border border-[#0e393d]/20 bg-white px-1.5 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
-                          />
-                          <span className="text-[10px] text-[#1c2a2b]/40">srv</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
               </div>
             </div>
 
@@ -745,6 +1005,16 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         </div>
 
       </div>
+
+      {/* Quick-Add Ingredient Modal */}
+      {quickAddOpen && (
+        <QuickAddIngredientModal
+          units={unitOptions}
+          categories={categoryOptions}
+          onSaved={handleQuickAddSaved}
+          onClose={() => { setQuickAddOpen(false); setQuickAddTargetKey(null); }}
+        />
+      )}
     </>
   );
 }

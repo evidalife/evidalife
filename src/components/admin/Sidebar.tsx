@@ -92,6 +92,16 @@ const NAV = [
     ),
   },
   {
+    label: 'Ingredients',
+    href: '/admin/ingredients',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z" />
+        <circle cx="12" cy="9" r="2.5" />
+      </svg>
+    ),
+  },
+  {
     label: 'Lab Partners',
     href: '/admin/lab-partners',
     icon: (
