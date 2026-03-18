@@ -67,7 +67,7 @@ export default async function DailyDozenPage() {
 
     supabase
       .from('daily_dozen_streaks')
-      .select('current_streak, longest_streak, last_completed_date')
+      .select('current_streak_days, longest_streak_days, last_completed_date')
       .eq('user_id', user.id)
       .single(),
   ]);
@@ -95,8 +95,8 @@ export default async function DailyDozenPage() {
 
   const streak: DDStreak | null = streakRow
     ? {
-        current_streak:      streakRow.current_streak,
-        longest_streak:      streakRow.longest_streak,
+        current_streak:      streakRow.current_streak_days,
+        longest_streak:      streakRow.longest_streak_days,
         last_completed_date: streakRow.last_completed_date ?? null,
       }
     : null;

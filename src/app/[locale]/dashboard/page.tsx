@@ -303,7 +303,7 @@ export default async function DashboardPage() {
 
     supabase
       .from('daily_dozen_streaks')
-      .select('current_streak')
+      .select('current_streak_days')
       .eq('user_id', user.id)
       .maybeSingle(),
   ]);
@@ -405,8 +405,8 @@ export default async function DashboardPage() {
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84]">{t.dailyDozen}</p>
                 <div className="flex items-center gap-3">
-                  {ddStreak?.current_streak ? (
-                    <span className="text-xs font-medium text-[#0e393d]">{t.streak(ddStreak.current_streak)}</span>
+                  {ddStreak?.current_streak_days ? (
+                    <span className="text-xs font-medium text-[#0e393d]">{t.streak(ddStreak.current_streak_days)}</span>
                   ) : null}
                   <Link href="/daily-dozen" className="text-xs font-medium text-[#0e393d] hover:underline">
                     {locale === 'de' ? 'Details →' : 'Details →'}

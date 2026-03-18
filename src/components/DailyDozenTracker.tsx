@@ -423,7 +423,10 @@ export default function DailyDozenTracker({
     const newLongest = Math.max(newCurrent, streak?.longest_streak ?? 0);
     const updated: DDStreak = { current_streak: newCurrent, longest_streak: newLongest, last_completed_date: today };
     setStreak(updated);
-    await supabase.from('daily_dozen_streaks').upsert({ user_id: userId, ...updated }, { onConflict: 'user_id' });
+    await supabase.from('daily_dozen_streaks').upsert(
+      { user_id: userId, current_streak_days: newCurrent, longest_streak_days: newLongest, last_completed_date: today },
+      { onConflict: 'user_id' }
+    );
   }, [categories, streak, supabase, today, userId]);
 
   // ── Upsert entry ───────────────────────────────────────────────────────────
