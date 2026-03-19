@@ -20,7 +20,24 @@ export type RecipeListItem = {
   course_type_id: string | null;
   course_type: { name: { de?: string; en?: string } } | null;
   meal_type_ids: string[];
+  dd_slugs: string[];
+  goals: string[];
 };
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const GOAL_TAGS = [
+  { key: 'weight_loss',         label: 'Weight Loss' },
+  { key: 'heart_health',        label: 'Heart Health' },
+  { key: 'anti_inflammation',   label: 'Anti-Inflammation' },
+  { key: 'longevity',           label: 'Longevity' },
+  { key: 'gut_health',          label: 'Gut Health' },
+  { key: 'energy',              label: 'Energy' },
+  { key: 'immune',              label: 'Immune' },
+  { key: 'bone_health',         label: 'Bone Health' },
+  { key: 'brain_health',        label: 'Brain Health' },
+  { key: 'diabetes_prevention', label: 'Diabetes Prev.' },
+];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -29,6 +46,7 @@ interface Props {
   initialDdIcons: Record<string, string[]>;
   courseTypes: { id: string; name: { en?: string; de?: string } }[];
   mealTypes: { id: string; name: { en?: string; de?: string } }[];
+  ddCategories: { slug: string; name: { en?: string; de?: string }; icon: string }[];
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -87,6 +105,7 @@ export default function RecipesManager({
   initialDdIcons,
   courseTypes,
   mealTypes,
+  ddCategories,
 }: Props) {
   const supabase = createClient();
   const [recipes, setRecipes] = useState<RecipeListItem[]>(initialRecipes);
@@ -99,6 +118,8 @@ export default function RecipesManager({
   const [filterDiffs, setFilterDiffs] = useState<string[]>([]);
   const [filterCourseIds, setFilterCourseIds] = useState<string[]>([]);
   const [filterMealTypeIds, setFilterMealTypeIds] = useState<string[]>([]);
+  const [filterDdSlugs, setFilterDdSlugs] = useState<string[]>([]);
+  const [filterGoalKeys, setFilterGoalKeys] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -125,34 +146,48 @@ export default function RecipesManager({
       }
     }
 
+    let ddSlugMap: Record<string, string[]> = {};
+    let goalMap: Record<string, string[]> = {};
+    const iconMap: Record<string, string[]> = {};
+
+    if (ids.length > 0) {
+      const [{ data: ddRows }, { data: goalRows }] = await Promise.all([
+        supabase.from('v_recipe_daily_dozen_coverage').select('recipe_id, category_slug, category_icon').in('recipe_id', ids),
+        supabase.from('recipe_goal_tags').select('recipe_id, goal').in('recipe_id', ids),
+      ]);
+      for (const row of ddRows ?? []) {
+        if (!ddSlugMap[row.recipe_id]) ddSlugMap[row.recipe_id] = [];
+        ddSlugMap[row.recipe_id].push(row.category_slug);
+        if (!iconMap[row.recipe_id]) iconMap[row.recipe_id] = [];
+        iconMap[row.recipe_id].push(row.category_icon);
+      }
+      for (const row of goalRows ?? []) {
+        if (!goalMap[row.recipe_id]) goalMap[row.recipe_id] = [];
+        goalMap[row.recipe_id].push(row.goal);
+      }
+      setDdIcons(iconMap);
+    }
+
     const merged = data.map((r) => ({
       ...r,
       meal_type_ids: mealTagMap[r.id] ?? [],
+      dd_slugs: ddSlugMap[r.id] ?? [],
+      goals: goalMap[r.id] ?? [],
     }));
     setRecipes(merged as unknown as RecipeListItem[]);
-
-    if (ids.length > 0) {
-      const { data: ddRows } = await supabase
-        .from('v_recipe_daily_dozen_coverage')
-        .select('recipe_id, category_icon')
-        .in('recipe_id', ids);
-      const map: Record<string, string[]> = {};
-      for (const row of ddRows ?? []) {
-        if (!map[row.recipe_id]) map[row.recipe_id] = [];
-        map[row.recipe_id].push(row.category_icon);
-      }
-      setDdIcons(map);
-    }
   }, [supabase]);
 
   const activeFilterCount =
-    filterStatus.length + filterDiffs.length + filterCourseIds.length + filterMealTypeIds.length;
+    filterStatus.length + filterDiffs.length + filterCourseIds.length +
+    filterMealTypeIds.length + filterDdSlugs.length + filterGoalKeys.length;
 
   const clearFilters = () => {
     setFilterStatus([]);
     setFilterDiffs([]);
     setFilterCourseIds([]);
     setFilterMealTypeIds([]);
+    setFilterDdSlugs([]);
+    setFilterGoalKeys([]);
   };
 
   const filtered = recipes.filter((r) => {
@@ -167,8 +202,12 @@ export default function RecipesManager({
     if (filterDiffs.length && !filterDiffs.includes(r.difficulty ?? '')) return false;
     // Course
     if (filterCourseIds.length && !filterCourseIds.includes(r.course_type_id ?? '')) return false;
-    // Meal type
+    // Meal type (OR)
     if (filterMealTypeIds.length && !filterMealTypeIds.some((id) => r.meal_type_ids.includes(id))) return false;
+    // Daily Dozen (AND — recipe must cover ALL selected slugs)
+    if (filterDdSlugs.length && !filterDdSlugs.every((s) => r.dd_slugs.includes(s))) return false;
+    // Health Goals (OR)
+    if (filterGoalKeys.length && !filterGoalKeys.some((g) => r.goals.includes(g))) return false;
     // Search
     if (search) {
       const q  = search.toLowerCase();
@@ -305,6 +344,34 @@ export default function RecipesManager({
               ))}
             </FilterChipRow>
           )}
+
+          {/* Daily Dozen (AND) */}
+          {ddCategories.length > 0 && (
+            <FilterChipRow label="Daily Dozen">
+              {ddCategories.map((dd) => (
+                <AdminPill
+                  key={dd.slug}
+                  active={filterDdSlugs.includes(dd.slug)}
+                  onClick={() => setFilterDdSlugs(toggle(filterDdSlugs, dd.slug))}
+                >
+                  {dd.icon} {dd.name?.en || dd.name?.de || dd.slug}
+                </AdminPill>
+              ))}
+            </FilterChipRow>
+          )}
+
+          {/* Health Goals (OR) */}
+          <FilterChipRow label="Goals">
+            {GOAL_TAGS.map(({ key, label }) => (
+              <AdminPill
+                key={key}
+                active={filterGoalKeys.includes(key)}
+                onClick={() => setFilterGoalKeys(toggle(filterGoalKeys, key))}
+              >
+                {label}
+              </AdminPill>
+            ))}
+          </FilterChipRow>
         </div>
       )}
 

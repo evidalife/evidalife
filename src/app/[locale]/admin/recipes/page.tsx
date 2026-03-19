@@ -20,36 +20,42 @@ export default async function RecipesPage() {
   const [
     { data: ddRows },
     { data: mealTagRows },
+    { data: goalTagRows },
     { data: courseTypesRaw },
     { data: mealTypesRaw },
+    { data: ddCategoriesRaw },
   ] = await Promise.all([
     recipeIds.length > 0
       ? supabase
           .from('v_recipe_daily_dozen_coverage')
-          .select('recipe_id, category_icon')
+          .select('recipe_id, category_slug, category_icon')
           .in('recipe_id', recipeIds)
-      : Promise.resolve({ data: [] as { recipe_id: string; category_icon: string }[] }),
+      : Promise.resolve({ data: [] as { recipe_id: string; category_slug: string; category_icon: string }[] }),
     recipeIds.length > 0
       ? supabase
           .from('recipe_meal_type_tags')
           .select('recipe_id, meal_type_id')
           .in('recipe_id', recipeIds)
       : Promise.resolve({ data: [] as { recipe_id: string; meal_type_id: string }[] }),
-    supabase
-      .from('recipe_course_types')
-      .select('id, name, sort_order')
-      .order('sort_order'),
-    supabase
-      .from('recipe_meal_types')
-      .select('id, name, sort_order')
-      .order('sort_order'),
+    recipeIds.length > 0
+      ? supabase
+          .from('recipe_goal_tags')
+          .select('recipe_id, goal')
+          .in('recipe_id', recipeIds)
+      : Promise.resolve({ data: [] as { recipe_id: string; goal: string }[] }),
+    supabase.from('recipe_course_types').select('id, name, sort_order').order('sort_order'),
+    supabase.from('recipe_meal_types').select('id, name, sort_order').order('sort_order'),
+    supabase.from('daily_dozen_categories').select('id, slug, name, icon').order('sort_order'),
   ]);
 
   // 3. Build maps
   const ddIconsByRecipe: Record<string, string[]> = {};
+  const ddSlugsByRecipe: Record<string, string[]> = {};
   for (const row of ddRows ?? []) {
     if (!ddIconsByRecipe[row.recipe_id]) ddIconsByRecipe[row.recipe_id] = [];
     ddIconsByRecipe[row.recipe_id].push(row.category_icon);
+    if (!ddSlugsByRecipe[row.recipe_id]) ddSlugsByRecipe[row.recipe_id] = [];
+    ddSlugsByRecipe[row.recipe_id].push(row.category_slug);
   }
 
   const mealTagsByRecipe: Record<string, string[]> = {};
@@ -58,14 +64,23 @@ export default async function RecipesPage() {
     mealTagsByRecipe[row.recipe_id].push(row.meal_type_id);
   }
 
-  // 4. Merge meal_type_ids into recipe objects
+  const goalsByRecipe: Record<string, string[]> = {};
+  for (const row of goalTagRows ?? []) {
+    if (!goalsByRecipe[row.recipe_id]) goalsByRecipe[row.recipe_id] = [];
+    goalsByRecipe[row.recipe_id].push(row.goal);
+  }
+
+  // 4. Merge all per-recipe data
   const mergedRecipes = (recipes ?? []).map((r) => ({
     ...r,
     meal_type_ids: mealTagsByRecipe[r.id] ?? [],
+    dd_slugs: ddSlugsByRecipe[r.id] ?? [],
+    goals: goalsByRecipe[r.id] ?? [],
   }));
 
-  const courseTypes = (courseTypesRaw ?? []) as { id: string; name: { en?: string; de?: string } }[];
-  const mealTypes   = (mealTypesRaw ?? []) as { id: string; name: { en?: string; de?: string } }[];
+  const courseTypes  = (courseTypesRaw ?? []) as { id: string; name: { en?: string; de?: string } }[];
+  const mealTypes    = (mealTypesRaw ?? []) as { id: string; name: { en?: string; de?: string } }[];
+  const ddCategories = (ddCategoriesRaw ?? []) as { slug: string; name: { en?: string; de?: string }; icon: string }[];
 
   return (
     <RecipesManager
@@ -73,6 +88,7 @@ export default async function RecipesPage() {
       initialDdIcons={ddIconsByRecipe}
       courseTypes={courseTypes}
       mealTypes={mealTypes}
+      ddCategories={ddCategories}
     />
   );
 }
