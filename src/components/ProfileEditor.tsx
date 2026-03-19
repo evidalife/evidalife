@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/context/AuthProvider';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -176,15 +177,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function ProfileEditor({ profile, lang }: { profile: ProfileData; lang: Lang }) {
   const t = T[lang];
   const supabase = createClient();
+  const { refreshProfile } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
-  const pendingDeleteRef = useRef<string | null>(null);
 
   // Avatar state
-  const [avatarUrl,     setAvatarUrl]     = useState(profile.avatar_url ?? '');
-  const [avatarFile,    setAvatarFile]    = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [avatarBroken,  setAvatarBroken]  = useState(false);
-  const [uploading,     setUploading]     = useState(false);
+  const [avatarUrl,    setAvatarUrl]    = useState(profile.avatar_url ?? '');
+  const [avatarBroken, setAvatarBroken] = useState(false);
+  const [uploading,    setUploading]    = useState(false);
 
   // Personal info state
   const [displayName, setDisplayName] = useState(profile.display_name ?? '');
@@ -210,45 +209,55 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
     if (stored === 'de' || stored === 'en') setLangPref(stored);
   }, []);
 
-  // ── Avatar ──────────────────────────────────────────────────────────────────
+  // ── Avatar (immediate — no deferred delete) ─────────────────────────────────
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const deleteAvatarFromStorage = async (url: string) => {
+    await fetch('/api/delete-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, bucket: 'user-avatars' }),
+    });
+  };
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAvatarFile(file);
     setAvatarBroken(false);
-    const reader = new FileReader();
-    reader.onload = () => setAvatarPreview(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const handleRemoveAvatar = () => {
-    pendingDeleteRef.current = avatarUrl || null;
-    setAvatarUrl('');
-    setAvatarFile(null);
-    setAvatarPreview(null);
-    setAvatarBroken(false);
-  };
-
-  const uploadAvatar = async (): Promise<string | null> => {
-    if (!avatarFile) return avatarUrl || null;
     setUploading(true);
-    if (avatarUrl) pendingDeleteRef.current = avatarUrl;
+
+    const oldUrl = avatarUrl || null;
+
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload  = () => resolve((reader.result as string).split(',')[1]);
       reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(avatarFile);
+      reader.readAsDataURL(file);
     });
+
     const res = await fetch('/api/upload-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ base64, filename: avatarFile.name, bucket: 'user-avatars', contentType: avatarFile.type }),
+      body: JSON.stringify({ base64, filename: file.name, bucket: 'user-avatars', contentType: file.type }),
     });
+
+    if (!res.ok) { setUploading(false); return; }
+    const { url: newUrl } = await res.json();
+
+    await supabase.from('profiles').update({ avatar_url: newUrl }).eq('id', profile.id);
+    if (oldUrl) await deleteAvatarFromStorage(oldUrl);
+
+    setAvatarUrl(newUrl);
     setUploading(false);
-    if (!res.ok) return avatarUrl || null;
-    const json = await res.json();
-    return (json.url as string) ?? (avatarUrl || null);
+    await refreshProfile();
+  };
+
+  const handleRemoveAvatar = async () => {
+    const oldUrl = avatarUrl || null;
+    setAvatarUrl('');
+    setAvatarBroken(false);
+    if (oldUrl) await deleteAvatarFromStorage(oldUrl);
+    await supabase.from('profiles').update({ avatar_url: null }).eq('id', profile.id);
+    await refreshProfile();
   };
 
   // ── Save ────────────────────────────────────────────────────────────────────
@@ -257,24 +266,20 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
     e.preventDefault();
     setSaveState('saving');
 
-    const newAvatarUrl = await uploadAvatar();
-    if (newAvatarUrl) setAvatarUrl(newAvatarUrl);
-
     const { error } = await supabase
       .from('profiles')
       .update({
-        display_name:  displayName.trim()   || null,
-        first_name:    firstName.trim()     || null,
-        last_name:     lastName.trim()      || null,
-        date_of_birth: dateOfBirth          || null,
-        sex:           sex                  || null,
-        height_cm:     heightCm ? Number(heightCm) : null,
-        phone:         phone.trim()         || null,
-        country:       country              || null,
-        street_address: streetAddress.trim() || null,
-        city:          city.trim()          || null,
-        postal_code:   postalCode.trim()    || null,
-        avatar_url:    newAvatarUrl,
+        display_name:   displayName.trim()    || null,
+        first_name:     firstName.trim()      || null,
+        last_name:      lastName.trim()       || null,
+        date_of_birth:  dateOfBirth           || null,
+        sex:            sex                   || null,
+        height_cm:      heightCm ? Number(heightCm) : null,
+        phone:          phone.trim()          || null,
+        country:        country               || null,
+        street_address: streetAddress.trim()  || null,
+        city:           city.trim()           || null,
+        postal_code:    postalCode.trim()     || null,
       })
       .eq('id', profile.id);
 
@@ -284,32 +289,19 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
       return;
     }
 
-    // DB committed — now safe to delete old avatar from storage
-    if (pendingDeleteRef.current) {
-      await fetch('/api/delete-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: pendingDeleteRef.current, bucket: 'user-avatars' }),
-      });
-      pendingDeleteRef.current = null;
-    }
-
     localStorage.setItem('evida-lang', langPref);
     if (langPref !== lang) {
       window.location.href = `/${langPref}/profile`;
       return;
     }
 
-    setAvatarFile(null);
-    setAvatarPreview(null);
     setSaveState('saved');
     setTimeout(() => setSaveState('idle'), 2500);
   };
 
   // ── Derived ─────────────────────────────────────────────────────────────────
 
-  const displayAvatarSrc = avatarPreview ?? avatarUrl;
-  const showAvatar = !!displayAvatarSrc && !avatarBroken;
+  const showAvatar = !!avatarUrl && !avatarBroken;
   const initials = (
     firstName && lastName ? `${firstName[0]}${lastName[0]}` :
     firstName             ? firstName[0] :
@@ -335,7 +327,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
               {showAvatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={displayAvatarSrc}
+                  src={avatarUrl}
                   alt={firstName || 'Avatar'}
                   className="w-full h-full object-cover"
                   onError={() => setAvatarBroken(true)}
@@ -383,7 +375,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                 </button>
               )}
             </div>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarFileChange} />
             <p className="text-[11px] text-[#1c2a2b]/35">JPG, PNG, GIF — max 5 MB</p>
           </div>
         </div>
