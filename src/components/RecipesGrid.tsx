@@ -19,26 +19,25 @@ export type RecipeCard = {
   difficulty: 'easy' | 'medium' | 'hard' | null;
   is_featured: boolean | null;
   daily_dozen_categories: { slug: string; icon: string }[];
+  course_type_id: string | null;
+  meal_type_ids: string[];
+  goals: string[];
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DD_LABELS: Record<string, { de: string; en: string }> = {
-  beans:                  { de: 'Hülsenfrüchte', en: 'Beans' },
-  berries:                { de: 'Beeren',         en: 'Berries' },
-  other_fruits:           { de: 'Früchte',        en: 'Fruits' },
-  cruciferous_vegetables: { de: 'Kreuzblütler',   en: 'Cruciferous' },
-  greens:                 { de: 'Blattgemüse',    en: 'Greens' },
-  other_vegetables:       { de: 'Gemüse',         en: 'Vegetables' },
-  flaxseeds:              { de: 'Leinsamen',      en: 'Flaxseeds' },
-  nuts_and_seeds:         { de: 'Nüsse & Samen',  en: 'Nuts & Seeds' },
-  herbs_and_spices:       { de: 'Kräuter',        en: 'Herbs' },
-  whole_grains:           { de: 'Vollkorn',       en: 'Whole Grains' },
-  beverages:              { de: 'Getränke',       en: 'Beverages' },
-  exercise:               { de: 'Bewegung',       en: 'Exercise' },
-};
-
-const DD_KEYS = Object.keys(DD_LABELS);
+const GOAL_TAGS = [
+  { key: 'weight_loss',         label: { de: 'Gewicht',         en: 'Weight Loss' } },
+  { key: 'heart_health',        label: { de: 'Herz',            en: 'Heart Health' } },
+  { key: 'anti_inflammation',   label: { de: 'Anti-Entzündung', en: 'Anti-Inflammation' } },
+  { key: 'longevity',           label: { de: 'Langlebigkeit',   en: 'Longevity' } },
+  { key: 'gut_health',          label: { de: 'Darm',            en: 'Gut Health' } },
+  { key: 'energy',              label: { de: 'Energie',         en: 'Energy' } },
+  { key: 'immune',              label: { de: 'Immunsystem',     en: 'Immune' } },
+  { key: 'bone_health',         label: { de: 'Knochen',         en: 'Bone Health' } },
+  { key: 'brain_health',        label: { de: 'Gehirn',          en: 'Brain Health' } },
+  { key: 'diabetes_prevention', label: { de: 'Diabetes',        en: 'Diabetes Prev.' } },
+];
 
 const DIFF_CFG = {
   easy:   { label: { de: 'Einfach', en: 'Easy' },   cls: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' },
@@ -49,8 +48,6 @@ const DIFF_CFG = {
 const T = {
   de: {
     searchPlaceholder: 'Rezepte suchen…',
-    allDifficulties: 'Alle Schwierigkeiten',
-    allCategories: 'Alle Kategorien',
     minutes: 'Min.',
     servings: (n: number) => `${n} ${n === 1 ? 'Portion' : 'Portionen'}`,
     viewRecipe: 'Rezept ansehen',
@@ -58,11 +55,15 @@ const T = {
     noResultsHint: 'Versuche eine andere Suche oder Filter.',
     featured: 'Empfohlen',
     total: (n: number) => `${n} Rezept${n !== 1 ? 'e' : ''}`,
+    clearAll: 'Filter zurücksetzen',
+    difficulty: 'Schwierigkeit',
+    dailyDozen: 'Daily Dozen',
+    course: 'Mahlzeit-Typ',
+    mealType: 'Tageszeit',
+    goals: 'Gesundheitsziele',
   },
   en: {
     searchPlaceholder: 'Search recipes…',
-    allDifficulties: 'All difficulties',
-    allCategories: 'All categories',
     minutes: 'min',
     servings: (n: number) => `${n} serving${n !== 1 ? 's' : ''}`,
     viewRecipe: 'View recipe',
@@ -70,30 +71,97 @@ const T = {
     noResultsHint: 'Try a different search or filter.',
     featured: 'Featured',
     total: (n: number) => `${n} recipe${n !== 1 ? 's' : ''}`,
+    clearAll: 'Clear all',
+    difficulty: 'Difficulty',
+    dailyDozen: 'Daily Dozen',
+    course: 'Course',
+    mealType: 'Meal',
+    goals: 'Health Goals',
   },
 };
 
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+interface Props {
+  recipes: RecipeCard[];
+  lang: Lang;
+  courseTypes: { id: string; name: { en?: string; de?: string } }[];
+  mealTypes: { id: string; name: { en?: string; de?: string } }[];
+  ddCategories: { slug: string; name: { en?: string; de?: string }; icon: string }[];
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function toggle<T>(arr: T[], val: T): T[] {
+  return arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val];
+}
 
 function totalTime(prep: number | null, cook: number | null): number | null {
   if (prep == null && cook == null) return null;
   return (prep ?? 0) + (cook ?? 0);
 }
 
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full px-3 py-1 text-xs font-medium transition whitespace-nowrap ${
+        active
+          ? 'bg-[#0e393d] text-white'
+          : 'bg-white text-[#1c2a2b]/65 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30 hover:text-[#1c2a2b]'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-4 py-2.5 border-b border-[#0e393d]/6 last:border-0">
+      <span className="shrink-0 w-24 text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/40 pt-1">
+        {label}
+      </span>
+      <div className="flex flex-wrap gap-1.5">{children}</div>
+    </div>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function RecipesGrid({ recipes, lang }: { recipes: RecipeCard[]; lang: Lang }) {
+export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddCategories }: Props) {
   const t = T[lang];
 
-  const [search, setSearch]   = useState('');
-  const [diff, setDiff]       = useState<string>('all');
-  const [ddCat, setDdCat]     = useState<string>('all');
+  const [search, setSearch] = useState('');
+  const [difficulties, setDifficulties] = useState<string[]>([]);
+  const [ddSlugs, setDdSlugs] = useState<string[]>([]);
+  const [courseIds, setCourseIds] = useState<string[]>([]);
+  const [mealTypeIds, setMealTypeIds] = useState<string[]>([]);
+  const [goalKeys, setGoalKeys] = useState<string[]>([]);
+
+  const activeCount =
+    difficulties.length + ddSlugs.length + courseIds.length + mealTypeIds.length + goalKeys.length;
+
+  const clearAll = () => {
+    setDifficulties([]);
+    setDdSlugs([]);
+    setCourseIds([]);
+    setMealTypeIds([]);
+    setGoalKeys([]);
+    setSearch('');
+  };
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return recipes.filter((r) => {
-      if (diff !== 'all' && r.difficulty !== diff) return false;
-      if (ddCat !== 'all' && !r.daily_dozen_categories.some((c) => c.slug === ddCat)) return false;
+      if (difficulties.length && !difficulties.includes(r.difficulty ?? '')) return false;
+      if (ddSlugs.length && !ddSlugs.some((s) => r.daily_dozen_categories.some((c) => c.slug === s))) return false;
+      if (courseIds.length && !courseIds.includes(r.course_type_id ?? '')) return false;
+      if (mealTypeIds.length && !mealTypeIds.some((id) => r.meal_type_ids.includes(id))) return false;
+      if (goalKeys.length && !goalKeys.some((g) => r.goals.includes(g))) return false;
       if (q) {
         const de = r.title?.de?.toLowerCase() ?? '';
         const en = r.title?.en?.toLowerCase() ?? '';
@@ -101,63 +169,124 @@ export default function RecipesGrid({ recipes, lang }: { recipes: RecipeCard[]; 
       }
       return true;
     });
-  }, [recipes, search, diff, ddCat]);
+  }, [recipes, search, difficulties, ddSlugs, courseIds, mealTypeIds, goalKeys]);
 
   return (
     <div>
-      {/* ── Filters ─────────────────────────────────────────────────────────── */}
-      <div className="mb-8 space-y-3">
-        {/* Search */}
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t.searchPlaceholder}
-          className="w-full max-w-md rounded-xl border border-[#0e393d]/15 bg-white px-4 py-2.5 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/35 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
-        />
-
-        {/* Difficulty pills */}
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setDiff('all')}
-            className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition ${diff === 'all' ? 'bg-[#0e393d] text-white' : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'}`}
-          >
-            {t.allDifficulties}
-          </button>
-          {(['easy', 'medium', 'hard'] as const).map((d) => (
-            <button
-              key={d}
-              onClick={() => setDiff(d)}
-              className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition ${diff === d ? 'bg-[#0e393d] text-white' : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'}`}
+      {/* ── Filter panel ─────────────────────────────────────────────────────── */}
+      <div className="mb-8 rounded-2xl border border-[#0e393d]/10 bg-white">
+        {/* Top row: search + count + clear */}
+        <div className="flex items-center gap-4 px-5 pt-4 pb-3 border-b border-[#0e393d]/8">
+          <div className="relative flex-1">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1c2a2b]/35 pointer-events-none"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              {DIFF_CFG[d].label[lang]}
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t.searchPlaceholder}
+              className="w-full rounded-lg border border-[#0e393d]/12 bg-[#fafaf8] pl-9 pr-4 py-2 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/35 focus:border-[#0e393d]/35 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/8 transition"
+            />
+          </div>
+          <span className="shrink-0 text-xs text-[#1c2a2b]/40 font-medium">{t.total(filtered.length)}</span>
+          {(activeCount > 0 || search) && (
+            <button
+              onClick={clearAll}
+              className="shrink-0 text-xs font-medium text-[#0e393d] underline underline-offset-2 hover:text-[#0e393d]/70 transition"
+            >
+              {t.clearAll}
             </button>
-          ))}
+          )}
         </div>
 
-        {/* Daily Dozen category pills */}
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setDdCat('all')}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${ddCat === 'all' ? 'bg-[#ceab84] text-white' : 'bg-[#ceab84]/10 text-[#8a6a3e] hover:bg-[#ceab84]/20'}`}
-          >
-            {t.allCategories}
-          </button>
-          {DD_KEYS.map((key) => (
-            <button
-              key={key}
-              onClick={() => setDdCat(key)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition ${ddCat === key ? 'bg-[#ceab84] text-white' : 'bg-[#ceab84]/10 text-[#8a6a3e] hover:bg-[#ceab84]/20'}`}
-            >
-              {DD_LABELS[key][lang]}
-            </button>
-          ))}
-        </div>
+        {/* Filter rows */}
+        <div className="px-5 py-1">
+          {/* Difficulty */}
+          <FilterRow label={t.difficulty}>
+            {(['easy', 'medium', 'hard'] as const).map((d) => (
+              <Pill
+                key={d}
+                active={difficulties.includes(d)}
+                onClick={() => setDifficulties(toggle(difficulties, d))}
+              >
+                {DIFF_CFG[d].label[lang]}
+              </Pill>
+            ))}
+          </FilterRow>
 
-        <p className="text-xs text-[#1c2a2b]/40">{t.total(filtered.length)}</p>
+          {/* Daily Dozen */}
+          {ddCategories.length > 0 && (
+            <FilterRow label={t.dailyDozen}>
+              {ddCategories.map((dd) => (
+                <Pill
+                  key={dd.slug}
+                  active={ddSlugs.includes(dd.slug)}
+                  onClick={() => setDdSlugs(toggle(ddSlugs, dd.slug))}
+                >
+                  {dd.icon} {dd.name?.[lang] || dd.name?.en}
+                </Pill>
+              ))}
+            </FilterRow>
+          )}
+
+          {/* Course */}
+          {courseTypes.length > 0 && (
+            <FilterRow label={t.course}>
+              {courseTypes.map((ct) => (
+                <Pill
+                  key={ct.id}
+                  active={courseIds.includes(ct.id)}
+                  onClick={() => setCourseIds(toggle(courseIds, ct.id))}
+                >
+                  {ct.name?.[lang] || ct.name?.en || ct.id}
+                </Pill>
+              ))}
+            </FilterRow>
+          )}
+
+          {/* Meal type */}
+          {mealTypes.length > 0 && (
+            <FilterRow label={t.mealType}>
+              {mealTypes.map((mt) => (
+                <Pill
+                  key={mt.id}
+                  active={mealTypeIds.includes(mt.id)}
+                  onClick={() => setMealTypeIds(toggle(mealTypeIds, mt.id))}
+                >
+                  {mt.name?.[lang] || mt.name?.en || mt.id}
+                </Pill>
+              ))}
+            </FilterRow>
+          )}
+
+          {/* Health Goals */}
+          <FilterRow label={t.goals}>
+            {GOAL_TAGS.map((g) => (
+              <Pill
+                key={g.key}
+                active={goalKeys.includes(g.key)}
+                onClick={() => setGoalKeys(toggle(goalKeys, g.key))}
+              >
+                {g.label[lang]}
+              </Pill>
+            ))}
+          </FilterRow>
+        </div>
       </div>
 
-      {/* ── Grid ────────────────────────────────────────────────────────────── */}
+      {/* ── Grid ─────────────────────────────────────────────────────────────── */}
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-[#0e393d]/10 bg-white py-20 text-center">
           <p className="text-sm text-[#1c2a2b]/50">{t.noResults}</p>
@@ -166,11 +295,11 @@ export default function RecipesGrid({ recipes, lang }: { recipes: RecipeCard[]; 
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((recipe) => {
-            const title   = recipe.title?.[lang] || recipe.title?.de || recipe.title?.en || '';
-            const desc    = recipe.description?.[lang] || recipe.description?.de || '';
-            const time    = totalTime(recipe.prep_time_min, recipe.cook_time_min);
-            const href    = `/recipes/${recipe.slug ?? recipe.id}`;
-            const diff    = recipe.difficulty ? DIFF_CFG[recipe.difficulty] : null;
+            const title    = recipe.title?.[lang] || recipe.title?.de || recipe.title?.en || '';
+            const desc     = recipe.description?.[lang] || recipe.description?.de || '';
+            const time     = totalTime(recipe.prep_time_min, recipe.cook_time_min);
+            const href     = `/recipes/${recipe.slug ?? recipe.id}`;
+            const diffCfg  = recipe.difficulty ? DIFF_CFG[recipe.difficulty] : null;
 
             return (
               <article
@@ -188,8 +317,17 @@ export default function RecipesGrid({ recipes, lang }: { recipes: RecipeCard[]; 
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="text-[#0e393d]/20">
-                        <circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/>
+                      <svg
+                        width="40"
+                        height="40"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1"
+                        className="text-[#0e393d]/20"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M8 12h8M12 8v8" />
                       </svg>
                     </div>
                   )}
@@ -218,32 +356,39 @@ export default function RecipesGrid({ recipes, lang }: { recipes: RecipeCard[]; 
                   <div className="flex items-center gap-3 mt-auto mb-3 text-xs text-[#1c2a2b]/50">
                     {time != null && (
                       <span className="flex items-center gap-1">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12 6 12 12 16 14" />
+                        </svg>
                         {time} {t.minutes}
                       </span>
                     )}
                     {recipe.servings != null && (
                       <span>{t.servings(recipe.servings)}</span>
                     )}
-                    {diff && (
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${diff.cls}`}>
-                        {diff.label[lang]}
+                    {diffCfg && (
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${diffCfg.cls}`}>
+                        {diffCfg.label[lang]}
                       </span>
                     )}
                   </div>
 
-                  {/* Daily Dozen tags — emoji only */}
+                  {/* Daily Dozen tags — emoji only, up to 6 */}
                   {recipe.daily_dozen_categories.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-4">
-                      {recipe.daily_dozen_categories.slice(0, 6).map((cat) => (
-                        <span
-                          key={cat.slug}
-                          title={DD_LABELS[cat.slug]?.[lang] ?? cat.slug}
-                          className="rounded-full bg-[#ceab84]/12 px-1.5 py-0.5 text-sm leading-none"
-                        >
-                          {cat.icon}
-                        </span>
-                      ))}
+                      {recipe.daily_dozen_categories.slice(0, 6).map((cat) => {
+                        const ddEntry = ddCategories.find((d) => d.slug === cat.slug);
+                        const ddName  = ddEntry?.name?.[lang] || ddEntry?.name?.en || cat.slug;
+                        return (
+                          <span
+                            key={cat.slug}
+                            title={ddName}
+                            className="rounded-full bg-[#ceab84]/12 px-1.5 py-0.5 text-sm leading-none"
+                          >
+                            {cat.icon}
+                          </span>
+                        );
+                      })}
                       {recipe.daily_dozen_categories.length > 6 && (
                         <span className="rounded-full bg-[#0e393d]/6 px-2 py-0.5 text-[10px] font-medium text-[#0e393d]/50">
                           +{recipe.daily_dozen_categories.length - 6}
@@ -258,7 +403,9 @@ export default function RecipesGrid({ recipes, lang }: { recipes: RecipeCard[]; 
                     className="mt-auto flex items-center gap-1.5 text-xs font-semibold text-[#0e393d] hover:text-[#0e393d]/70 transition"
                   >
                     {t.viewRecipe}
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                   </Link>
                 </div>
               </article>
