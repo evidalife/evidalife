@@ -134,13 +134,8 @@ function renderMarkdown(md: string, gallery: GalleryPhoto[] = []): React.ReactNo
       const p = gallery[n - 1]; // 1-indexed
       if (p) {
         nodes.push(
-          <figure key={key++} className="my-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={p.url} alt={p.caption ?? ''} className="w-full rounded-xl object-cover" />
-            {p.caption && (
-              <figcaption className="mt-1.5 text-xs text-[#1c2a2b]/50 text-center italic">{p.caption}</figcaption>
-            )}
-          </figure>
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={key++} src={p.url} alt="" className="w-full rounded-xl object-cover my-4" />
         );
       }
     } else if (trimmed.startsWith('## ')) {
@@ -228,8 +223,7 @@ export default async function RecipeDetailPage({
     calories?: number; protein_g?: number; fat_g?: number; carbs_g?: number; fiber_g?: number;
   } | null;
 
-  const gallery = ((recipe.image_gallery ?? []) as GalleryPhoto[])
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const gallery = ((recipe.image_gallery ?? []) as GalleryPhoto[]).sort((a, b) => a.order - b.order);
 
   const totalTime =
     (recipe.prep_time_min ?? 0) + (recipe.cook_time_min ?? 0) || null;

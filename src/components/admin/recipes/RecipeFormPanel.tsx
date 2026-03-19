@@ -710,12 +710,11 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         goals: (goals ?? []).map((g) => g.goal),
       });
       // Load gallery
-      const raw = r.image_gallery as { url: string; caption?: string; order: number }[] | null;
+      const raw = r.image_gallery as { url: string; order: number }[] | null;
       setGalleryItems(
         (raw ?? []).map((p, i) => ({
           _key: `_g${i}`,
           url: p.url,
-          caption: p.caption ?? '',
           order: p.order ?? i,
         }))
       );
@@ -800,6 +799,20 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
     });
   };
 
+  // ── Storage helpers ───────────────────────────────────────────────────────────
+
+  const storagePathFromUrl = (url: string): string | null => {
+    const marker = '/recipe-images/';
+    const idx = url.indexOf(marker);
+    return idx === -1 ? null : url.slice(idx + marker.length);
+  };
+
+  const deleteStorageUrl = async (url: string | null) => {
+    if (!url) return;
+    const path = storagePathFromUrl(url);
+    if (path) await supabase.storage.from('recipe-images').remove([path]);
+  };
+
   // ── Image ────────────────────────────────────────────────────────────────────
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -811,6 +824,8 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
   const uploadImage = async (_id: string): Promise<string | null> => {
     if (!imageFile) return currentImageUrl;
+    // Delete old cover image from storage before uploading replacement
+    if (currentImageUrl) await deleteStorageUrl(currentImageUrl);
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve((reader.result as string).split(',')[1]);
@@ -963,7 +978,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       }
 
       // 6. Upload pending gallery photos and save image_gallery
-      const galleryPayload: { url: string; caption?: string; order: number }[] = [];
+      const galleryPayload: { url: string; order: number }[] = [];
       for (const item of galleryItems) {
         if (item._file) {
           const base64 = await new Promise<string>((resolve, reject) => {
@@ -979,9 +994,9 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
           });
           const json = await res.json();
           if (!res.ok || !json.url) throw new Error(`Gallery upload failed: ${json.error ?? 'unknown error'}`);
-          galleryPayload.push({ url: json.url as string, caption: item.caption || undefined, order: item.order });
+          galleryPayload.push({ url: json.url as string, order: item.order });
         } else if (item.url) {
-          galleryPayload.push({ url: item.url, caption: item.caption || undefined, order: item.order });
+          galleryPayload.push({ url: item.url, order: item.order });
         }
       }
       const { error: galErr } = await supabase.from('recipes').update({ image_gallery: galleryPayload }).eq('id', id!);
@@ -1003,6 +1018,11 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
     const title = form.title.de || form.title.en || 'this recipe';
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
     setDeleting(true);
+    // Delete cover image and all gallery images from storage
+    await deleteStorageUrl(currentImageUrl);
+    for (const item of galleryItems) {
+      if (item.url) await deleteStorageUrl(item.url);
+    }
     const { error: err } = await supabase.from('recipes').delete().eq('id', recipeId);
     setDeleting(false);
     if (err) { setError(err.message); return; }

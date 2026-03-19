@@ -83,8 +83,8 @@ body {
   body {
     background: white !important;
     color: #1a1a1a !important;
-    font-size: 11pt !important;
-    line-height: 1.5 !important;
+    font-size: 9pt !important;
+    line-height: 1.4 !important;
   }
 
   /* Full width, no padding waste */
@@ -141,6 +141,9 @@ body {
     break-after: avoid;
     color: #0e393d !important;
   }
+  h1 { font-size: 18pt !important; }
+  h2 { font-size: 14pt !important; }
+  h3 { font-size: 12pt !important; }
 
   /* Links — don't show underline */
   a {

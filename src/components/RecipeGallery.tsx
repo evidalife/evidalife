@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-export type GalleryPhoto = { url: string; caption?: string; order: number };
+export type GalleryPhoto = { url: string; order: number };
 
 interface Props {
   photos: GalleryPhoto[];
@@ -45,7 +45,7 @@ export default function RecipeGallery({ photos }: Props) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={photo.url}
-          alt={photo.caption ?? ''}
+          alt=""
           className="w-full h-64 object-cover"
         />
 
@@ -83,11 +83,6 @@ export default function RecipeGallery({ photos }: Props) {
         )}
       </div>
 
-      {/* Caption */}
-      {photo.caption && (
-        <p className="mt-2 text-xs text-[#1c2a2b]/50 text-center italic">{photo.caption}</p>
-      )}
-
       {/* Dot indicators */}
       {photos.length > 1 && (
         <div className="flex justify-center gap-1.5 mt-3">
@@ -111,7 +106,6 @@ export default function RecipeGallery({ photos }: Props) {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
           onClick={() => setLightbox(false)}
         >
-          {/* Close */}
           <button
             type="button"
             aria-label="Close"
@@ -155,13 +149,9 @@ export default function RecipeGallery({ photos }: Props) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={photo.url}
-              alt={photo.caption ?? ''}
+              alt=""
               className="max-w-full max-h-[85vh] object-contain rounded-lg"
             />
-            {photo.caption && (
-              <p className="mt-2 text-sm text-white/70 text-center">{photo.caption}</p>
-            )}
-            {/* Photo counter */}
             {photos.length > 1 && (
               <p className="mt-1 text-xs text-white/40 text-center">
                 {current + 1} / {photos.length}

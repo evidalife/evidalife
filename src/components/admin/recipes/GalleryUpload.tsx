@@ -1,14 +1,14 @@
 'use client';
 
 import { useRef } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 export type GalleryItem = {
   _key: string;
-  url: string | null;       // null = not yet uploaded
-  caption: string;
+  url: string | null;   // null = not yet uploaded
   order: number;
-  _file?: File;             // pending upload
-  _preview?: string;        // blob URL for preview
+  _file?: File;         // pending upload
+  _preview?: string;    // blob URL for preview
 };
 
 interface Props {
@@ -17,8 +17,15 @@ interface Props {
   maxPhotos?: number;
 }
 
+function storagePathFromUrl(url: string): string | null {
+  const marker = '/recipe-images/';
+  const idx = url.indexOf(marker);
+  return idx === -1 ? null : url.slice(idx + marker.length);
+}
+
 export default function GalleryUpload({ items, onChange, maxPhotos = 10 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const supabase = createClient();
 
   const addFiles = (files: FileList | null) => {
     if (!files) return;
@@ -27,7 +34,6 @@ export default function GalleryUpload({ items, onChange, maxPhotos = 10 }: Props
     const newItems: GalleryItem[] = toAdd.map((file, i) => ({
       _key: `_g${Date.now()}_${i}`,
       url: null,
-      caption: '',
       order: items.length + i,
       _file: file,
       _preview: URL.createObjectURL(file),
@@ -35,16 +41,20 @@ export default function GalleryUpload({ items, onChange, maxPhotos = 10 }: Props
     onChange([...items, ...newItems]);
   };
 
-  const remove = (key: string) => {
+  const remove = async (key: string) => {
+    const item = items.find((it) => it._key === key);
+    // Delete from storage if it has an uploaded URL
+    if (item?.url) {
+      const path = storagePathFromUrl(item.url);
+      if (path) {
+        await supabase.storage.from('recipe-images').remove([path]);
+      }
+    }
     onChange(
       items
         .filter((it) => it._key !== key)
         .map((it, i) => ({ ...it, order: i }))
     );
-  };
-
-  const setCaption = (key: string, caption: string) => {
-    onChange(items.map((it) => (it._key === key ? { ...it, caption } : it)));
   };
 
   const move = (key: string, dir: -1 | 1) => {
@@ -88,8 +98,8 @@ export default function GalleryUpload({ items, onChange, maxPhotos = 10 }: Props
               {idx + 1}
             </span>
 
-            {/* Action buttons */}
-            <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+            {/* Move buttons — visible on hover */}
+            <div className="absolute top-1.5 right-7 flex gap-1 opacity-0 group-hover:opacity-100 transition">
               {idx > 0 && (
                 <button
                   type="button"
@@ -114,26 +124,19 @@ export default function GalleryUpload({ items, onChange, maxPhotos = 10 }: Props
                   </svg>
                 </button>
               )}
-              <button
-                type="button"
-                title="Remove"
-                onClick={() => remove(item._key)}
-                className="w-5 h-5 rounded bg-red-500/70 text-white hover:bg-red-600 flex items-center justify-center transition"
-              >
-                <svg width="8" height="8" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10">
-                  <path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round" />
-                </svg>
-              </button>
             </div>
 
-            {/* Caption input */}
-            <input
-              type="text"
-              value={item.caption}
-              onChange={(e) => setCaption(item._key, e.target.value)}
-              placeholder="Caption…"
-              className="w-full px-2 py-1.5 text-[11px] bg-white border-t border-[#0e393d]/10 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-[#0e393d]/20 placeholder:text-[#1c2a2b]/30"
-            />
+            {/* Delete button — always visible */}
+            <button
+              type="button"
+              title="Remove photo"
+              onClick={() => remove(item._key)}
+              className="absolute top-1.5 right-1.5 w-5 h-5 rounded bg-red-500/80 text-white hover:bg-red-600 flex items-center justify-center transition"
+            >
+              <svg width="8" height="8" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10">
+                <path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round" />
+              </svg>
+            </button>
           </div>
         ))}
 
@@ -142,7 +145,7 @@ export default function GalleryUpload({ items, onChange, maxPhotos = 10 }: Props
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="min-h-[7rem] rounded-lg border-2 border-dashed border-[#0e393d]/15 hover:border-[#0e393d]/30 hover:bg-[#0e393d]/3 flex flex-col items-center justify-center gap-1.5 transition text-[#1c2a2b]/30 hover:text-[#0e393d]/50"
+            className="min-h-[6rem] rounded-lg border-2 border-dashed border-[#0e393d]/15 hover:border-[#0e393d]/30 hover:bg-[#0e393d]/3 flex flex-col items-center justify-center gap-1.5 transition text-[#1c2a2b]/30 hover:text-[#0e393d]/50"
           >
             <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
               <path d="M12 5v14M5 12h14" strokeLinecap="round" />
