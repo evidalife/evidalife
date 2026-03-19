@@ -168,7 +168,7 @@ export default async function RecipeDetailPage({
       recipe_ingredients(id, ingredient_name, amount, unit, notes, is_optional, sort_order, section_header),
       recipe_goal_tags(goal)
     `)
-    .or(`slug.eq.${slug},id.eq.${slug}`)
+    .eq('slug', slug)
     .eq('is_published', true)
     .is('deleted_at', null)
     .single();

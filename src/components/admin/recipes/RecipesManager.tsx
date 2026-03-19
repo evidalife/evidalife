@@ -178,10 +178,10 @@ export default function RecipesManager({
                 {/* Title + DD icons */}
                 <td className="px-4 py-3">
                   <div className="font-medium text-[#0e393d] leading-snug">
-                    {r.title?.de || r.title?.en || <span className="text-[#1c2a2b]/30 italic">Untitled</span>}
+                    {r.title?.en || r.title?.de || <span className="text-[#1c2a2b]/30 italic">Untitled</span>}
                   </div>
                   {r.title?.de && r.title?.en && (
-                    <div className="text-xs text-[#1c2a2b]/40 mt-0.5">{r.title.en}</div>
+                    <div className="text-xs text-[#1c2a2b]/40 mt-0.5">{r.title.de}</div>
                   )}
                   <div className="flex items-center gap-1 mt-1 flex-wrap">
                     {r.is_featured && (
@@ -197,7 +197,7 @@ export default function RecipesManager({
                 <td className="px-4 py-3">
                   {r.course_type?.name ? (
                     <span className="inline-flex items-center rounded-full bg-[#0e393d]/6 px-2 py-0.5 text-[11px] font-medium text-[#0e393d]/70">
-                      {r.course_type.name.de || r.course_type.name.en}
+                      {r.course_type.name.en || r.course_type.name.de}
                     </span>
                   ) : (
                     <span className="text-[#1c2a2b]/25 text-xs">—</span>

@@ -614,6 +614,9 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   // Goal validation
   const [goalLimitWarning, setGoalLimitWarning] = useState(false);
 
+  // Save validation
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
   // ── Load reference data ───────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -698,8 +701,10 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
   // ── Form helpers ─────────────────────────────────────────────────────────────
 
-  const setLangField = (field: 'title' | 'description' | 'instructions', l: Lang, v: string) =>
+  const setLangField = (field: 'title' | 'description' | 'instructions', l: Lang, v: string) => {
+    if (validationErrors.length > 0) setValidationErrors([]);
     setForm((f) => ({ ...f, [field]: { ...f[field], [l]: v } }));
+  };
 
   const setNutrition = (key: keyof NutritionForm, v: string) =>
     setForm((f) => ({ ...f, nutrition: { ...f.nutrition, [key]: v } }));
@@ -800,11 +805,32 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
   // ── Save ─────────────────────────────────────────────────────────────────────
 
+  const validate = (): string[] => {
+    const errs: string[] = [];
+    if (!form.title.de.trim())          errs.push('Title (DE) is required.');
+    if (!form.title.en.trim())          errs.push('Title (EN) is required.');
+    if (!form.description.de.trim())    errs.push('Description (DE) is required.');
+    if (!form.description.en.trim())    errs.push('Description (EN) is required.');
+    if (!form.instructions.de.trim())   errs.push('Instructions (DE) are required.');
+    if (!form.instructions.en.trim())   errs.push('Instructions (EN) are required.');
+    if (!form.prep_time_min.trim())     errs.push('Prep time is required.');
+    if (!form.cook_time_min.trim())     errs.push('Cook time is required.');
+    if (!form.servings.trim())          errs.push('Servings is required.');
+    if (!form.difficulty)               errs.push('Difficulty is required.');
+    const hasIngredient = form.ingredients.some(
+      (i) => i.section_header === null && (i.ingredient_id || i.ingredient_name.de.trim() || i.ingredient_name.en.trim())
+    );
+    if (!hasIngredient) errs.push('At least 1 ingredient is required.');
+    return errs;
+  };
+
   const handleSave = async () => {
-    if (!form.title.de.trim() && !form.title.en.trim()) {
-      setError('Title (DE or EN) is required.');
+    const errs = validate();
+    if (errs.length > 0) {
+      setValidationErrors(errs);
       return;
     }
+    setValidationErrors([]);
     setSaving(true);
     setError(null);
 
@@ -1059,7 +1085,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                     <option value="">— Any</option>
                     {courseTypeOptions.map((ct) => (
                       <option key={ct.id} value={ct.id}>
-                        {ct.name?.de || ct.name?.en || ct.slug}
+                        {ct.name?.en || ct.name?.de || ct.slug}
                       </option>
                     ))}
                   </select>
@@ -1073,7 +1099,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                     <option value="">— Any</option>
                     {mealTypeOptions.map((mt) => (
                       <option key={mt.id} value={mt.id}>
-                        {mt.name?.de || mt.name?.en || mt.slug}
+                        {mt.name?.en || mt.name?.de || mt.slug}
                       </option>
                     ))}
                   </select>
@@ -1323,6 +1349,16 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
         {/* Footer */}
         <div className="border-t border-[#0e393d]/10 px-6 py-4 shrink-0">
+          {validationErrors.length > 0 && (
+            <div className="mb-3 rounded-lg bg-amber-50 px-3 py-2 ring-1 ring-inset ring-amber-600/20">
+              <p className="text-xs font-medium text-amber-800 mb-1">Please fix the following before saving:</p>
+              <ul className="list-disc list-inside space-y-0.5">
+                {validationErrors.map((e, i) => (
+                  <li key={i} className="text-xs text-amber-700">{e}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           {error && (
             <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
           )}
