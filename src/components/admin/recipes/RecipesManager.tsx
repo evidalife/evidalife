@@ -129,10 +129,10 @@ export default function RecipesManager({ initialRecipes }: { initialRecipes: Rec
             {filtered.map((r) => (
               <tr key={r.id} className="hover:bg-[#fafaf8] transition-colors">
                 {/* Thumb */}
-                <td className="px-4 py-3 w-12">
+                <td className="px-4 py-3 w-16">
                   {r.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={r.image_url} alt="" className="w-10 h-10 rounded-lg object-cover border border-[#0e393d]/10" />
+                    <img src={r.image_url} alt="" className="w-10 h-10 min-w-[36px] rounded-lg object-cover border border-[#0e393d]/10" />
                   ) : (
                     <div className="w-10 h-10 rounded-lg bg-[#0e393d]/6 flex items-center justify-center text-[#0e393d]/25">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

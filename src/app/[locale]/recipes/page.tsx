@@ -25,15 +25,25 @@ export default async function RecipesPage() {
 
   const { data: rows } = await supabase
     .from('recipes')
-    .select(`
-      id, slug, title, description, image_url,
-      prep_time_min, cook_time_min, servings, difficulty, is_featured,
-      recipe_daily_dozen_tags(daily_dozen_category)
-    `)
+    .select('id, slug, title, description, image_url, prep_time_min, cook_time_min, servings, difficulty, is_featured')
     .eq('is_published', true)
     .is('deleted_at', null)
     .order('is_featured', { ascending: false })
     .order('created_at', { ascending: false });
+
+  const recipeIds = (rows ?? []).map((r) => r.id);
+  const { data: ddRows } = recipeIds.length > 0
+    ? await supabase
+        .from('v_recipe_daily_dozen_coverage')
+        .select('recipe_id, category_slug')
+        .in('recipe_id', recipeIds)
+    : { data: [] as { recipe_id: string; category_slug: string }[] };
+
+  const ddByRecipe: Record<string, string[]> = {};
+  for (const dd of ddRows ?? []) {
+    if (!ddByRecipe[dd.recipe_id]) ddByRecipe[dd.recipe_id] = [];
+    ddByRecipe[dd.recipe_id].push(dd.category_slug);
+  }
 
   const recipes: RecipeCard[] = (rows ?? []).map((r) => ({
     id: r.id,
@@ -46,9 +56,7 @@ export default async function RecipesPage() {
     servings: r.servings ?? null,
     difficulty: r.difficulty ?? null,
     is_featured: r.is_featured ?? null,
-    daily_dozen_categories: Array.isArray(r.recipe_daily_dozen_tags)
-      ? (r.recipe_daily_dozen_tags as { daily_dozen_category: string }[]).map((d) => d.daily_dozen_category)
-      : [],
+    daily_dozen_categories: ddByRecipe[r.id] ?? [],
   }));
 
   return (

@@ -535,11 +535,22 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
   // ── Goal tags ────────────────────────────────────────────────────────────────
 
-  const toggleGoal = (goal: string) =>
-    setForm((f) => ({
-      ...f,
-      goals: f.goals.includes(goal) ? f.goals.filter((g) => g !== goal) : [...f.goals, goal],
-    }));
+  const [goalLimitWarning, setGoalLimitWarning] = useState(false);
+
+  const toggleGoal = (goal: string) => {
+    setForm((f) => {
+      if (f.goals.includes(goal)) {
+        setGoalLimitWarning(false);
+        return { ...f, goals: f.goals.filter((g) => g !== goal) };
+      }
+      if (f.goals.length >= 5) {
+        setGoalLimitWarning(true);
+        return f;
+      }
+      setGoalLimitWarning(false);
+      return { ...f, goals: [...f.goals, goal] };
+    });
+  };
 
   // ── Image ────────────────────────────────────────────────────────────────────
 
@@ -917,7 +928,15 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
             {/* ── Goal tags ────────────────────────────────────────────────── */}
             <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
-              <SectionHead>Health Goals</SectionHead>
+              <div className="flex items-center justify-between">
+                <SectionHead>Health Goals</SectionHead>
+                <span className="text-[11px] text-[#1c2a2b]/40">{form.goals.length}/5</span>
+              </div>
+              {goalLimitWarning && (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
+                  Maximum 5 health goals allowed.
+                </p>
+              )}
               <div className="flex flex-wrap gap-2">
                 {GOAL_TAGS.map(({ key, label }) => {
                   const active = form.goals.includes(key);
