@@ -323,11 +323,13 @@ export default async function RecipeDetailPage({
               <section className="mb-10">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-serif text-xl text-[#0e393d]">{t.ingredients}</h2>
-                  <AddAllToShoppingListButton
-                    ingredients={ingredients.filter((i) => !i.section_header)}
-                    recipeId={recipe.id}
-                    lang={locale}
-                  />
+                  <span data-print-hide>
+                    <AddAllToShoppingListButton
+                      ingredients={ingredients.filter((i) => !i.section_header)}
+                      recipeId={recipe.id}
+                      lang={locale}
+                    />
+                  </span>
                 </div>
                 <ul className="space-y-2">
                   {ingredients.map((ing) => {
@@ -366,14 +368,16 @@ export default async function RecipeDetailPage({
                             {displayAmount != null ? displayAmount : ''}{ing.unit ? ` ${ing.unit}` : ''}
                           </span>
                         )}
-                        <AddToShoppingListButton
-                          ingredientName={ingName}
-                          amount={displayAmount}
-                          unit={typeof ing.unit === 'string' ? ing.unit : null}
-                          recipeId={recipe.id}
-                          lang={locale}
-                          compact
-                        />
+                        <span data-print-hide>
+                          <AddToShoppingListButton
+                            ingredientName={ingName}
+                            amount={displayAmount}
+                            unit={typeof ing.unit === 'string' ? ing.unit : null}
+                            recipeId={recipe.id}
+                            lang={locale}
+                            compact
+                          />
+                        </span>
                       </li>
                     );
                   })}
@@ -388,6 +392,52 @@ export default async function RecipeDetailPage({
                 <div>{renderMarkdown(instructions, gallery)}</div>
               </section>
             )}
+
+            {/* ── Print-only sidebar content ───────────────────────────────── */}
+            <div className="hidden print:block mt-8 pt-6 border-t border-[#0e393d]/15 space-y-6">
+
+              {/* Nutrition */}
+              {nutrition && Object.values(nutrition).some((v) => v != null) && (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-2">{t.nutrition}{recipe.servings != null ? ` · ${t.per_serving}` : ''}</p>
+                  <div className="flex flex-wrap gap-x-6 gap-y-1">
+                    {nutrition.calories  != null && <span className="text-sm text-[#1c2a2b]">{t.calories}: <strong>{nutrition.calories}</strong></span>}
+                    {nutrition.protein_g != null && <span className="text-sm text-[#1c2a2b]">{t.protein}: <strong>{nutrition.protein_g} g</strong></span>}
+                    {nutrition.fat_g     != null && <span className="text-sm text-[#1c2a2b]">{t.fat}: <strong>{nutrition.fat_g} g</strong></span>}
+                    {nutrition.carbs_g   != null && <span className="text-sm text-[#1c2a2b]">{t.carbs}: <strong>{nutrition.carbs_g} g</strong></span>}
+                    {nutrition.fiber_g   != null && <span className="text-sm text-[#1c2a2b]">{t.fiber}: <strong>{nutrition.fiber_g} g</strong></span>}
+                  </div>
+                </div>
+              )}
+
+              {/* Daily Dozen */}
+              {ddTags.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-2">{t.daily_dozen}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ddTags.map((tag) => (
+                      <span key={tag.category_slug} className="text-sm text-[#1c2a2b]">
+                        {tag.category_icon} {DD_LABELS[tag.category_slug]?.[locale] ?? tag.category_slug}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Health Goals */}
+              {goals.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-2">{t.goals}</p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    {goals.map((g) => (
+                      <span key={g.goal} className="text-sm text-[#1c2a2b]">
+                        {GOAL_LABELS[g.goal]?.[locale] ?? g.goal}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right sidebar */}

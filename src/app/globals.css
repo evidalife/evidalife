@@ -73,27 +73,79 @@ body {
 
 /* ── Print styles ────────────────────────────────────────────────────────── */
 @media print {
-  /* Hide chrome */
-  nav, footer, aside,
-  [data-print-hide] {
+  /* Hide non-content elements */
+  nav, footer, [data-print-hide],
+  button, .print\:hidden {
     display: none !important;
   }
 
-  /* Full-width main content */
-  main {
-    max-width: 100% !important;
-    padding: 0 1rem !important;
+  /* Reset backgrounds and colors */
+  body {
+    background: white !important;
+    color: #1a1a1a !important;
+    font-size: 11pt !important;
+    line-height: 1.5 !important;
   }
 
-  /* Remove background tints */
-  body {
+  /* Full width, no padding waste */
+  main, main > div, main > div > div {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Scale down for A4 */
+  @page {
+    size: A4;
+    margin: 1.5cm 2cm;
+  }
+
+  /* Hide the aside/sidebar (ratings, nutrition, DD, goals — they clutter print) */
+  aside {
+    display: none !important;
+  }
+
+  /* Make content single column full width */
+  .grid, [class*="grid-cols"] {
+    display: block !important;
+  }
+
+  /* Cover image — reasonable size */
+  img[alt="cover"], .rounded-2xl > img:first-child {
+    max-height: 250px !important;
+    object-fit: cover !important;
+    width: 100% !important;
+    border-radius: 8px !important;
+  }
+
+  /* Recipe gallery — hide slideshow controls, show first photo only */
+  [class*="RecipeGallery"] button,
+  [class*="gallery"] button {
+    display: none !important;
+  }
+
+  /* Clean up cards */
+  .rounded-xl, .rounded-2xl, .rounded-lg {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
     background: white !important;
   }
 
-  /* Keep ingredient cards readable */
-  .rounded-xl, .rounded-2xl {
-    border: 1px solid #ccc !important;
-    box-shadow: none !important;
+  /* Ingredient list compact */
+  ul li {
+    break-inside: avoid;
+  }
+
+  /* Section headings */
+  h1, h2, h3 {
+    break-after: avoid;
+    color: #0e393d !important;
+  }
+
+  /* Links — don't show underline */
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
   }
 
   /* Page breaks */
