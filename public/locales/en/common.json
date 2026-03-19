@@ -4,8 +4,8 @@
     "cta": "Waitlist",
     "login": "Login",
     "dropdowns": {
-      "Kitchen": ["How to start", "Daily Dozen", "Recipes", "Restaurant"],
-      "Health": ["Health Engine", "Blood Values & Biomarkers", "BioAge", "Interventions"],
+      "Kitchen": ["How to start", "Daily Dozen", "Recipes", "Restaurant", null, "Blog", "Shopping List", "Courses"],
+      "Health": ["Health Engine", "Blood Values & Biomarkers", "BioAge", "Interventions", null, "Dashboard", "Science"],
       "Fit": ["Sleep", "Exercise", "Stress & Recovery", null, "Coaching"],
       "Shop": ["Test Packages", "Food", "Eat@Home Subscription", null, "Cart & Checkout", "My Orders"]
     }

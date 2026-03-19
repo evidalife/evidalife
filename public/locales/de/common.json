@@ -4,8 +4,8 @@
     "cta": "Warteliste",
     "login": "Anmelden",
     "dropdowns": {
-      "Kitchen": ["Wie starten", "Daily Dozen", "Rezepte", "Restaurant"],
-      "Health": ["Health Engine", "Blutwerte & Biomarker", "BioAge", "Interventionen"],
+      "Kitchen": ["Wie starten", "Daily Dozen", "Rezepte", "Restaurant", null, "Blog", "Einkaufsliste", "Kurse"],
+      "Health": ["Health Engine", "Blutwerte & Biomarker", "BioAge", "Interventionen", null, "Dashboard", "Wissenschaft"],
       "Fit": ["Schlaf", "Bewegung", "Stress & Recovery", null, "Coaching"],
       "Shop": ["Test Pakete", "Lebensmittel", "Eat@Home Abo", null, "Warenkorb & Checkout", "Meine Bestellungen"]
     }

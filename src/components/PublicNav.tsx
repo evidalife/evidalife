@@ -11,8 +11,8 @@ type Locale = 'de' | 'en';
 
 // URL slugs for each section's dropdown items, matching nav.dropdowns.* order in translations
 const NAV_SLUG_MAP: Record<string, (string | null)[]> = {
-  Kitchen: ['/how-to-start', '/daily-dozen', '/recipes', '/restaurant'],
-  Health:  ['/health-engine', '/biomarkers', '/bioage', '/interventions'],
+  Kitchen: ['/how-to-start', '/daily-dozen', '/recipes', '/restaurant', null, '/blog', '/shopping-list', '/courses'],
+  Health:  ['/health-engine', '/biomarkers', '/bioage', '/interventions', null, '/dashboard', '/science'],
   Fit:     ['/sleep', '/exercise', '/stress-recovery', null, '/coaching'],
   Shop:    ['/shop', '/food', '/eat-at-home', null, '/cart', '/orders'],
 };
