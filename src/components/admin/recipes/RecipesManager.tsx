@@ -207,7 +207,7 @@ export default function RecipesManager({
     // Daily Dozen (AND — recipe must cover ALL selected slugs)
     if (filterDdSlugs.length && !filterDdSlugs.every((s) => r.dd_slugs.includes(s))) return false;
     // Health Goals (OR)
-    if (filterGoalKeys.length && !filterGoalKeys.some((g) => r.goals.includes(g))) return false;
+    if (filterGoalKeys.length && !filterGoalKeys.every((g) => r.goals.includes(g))) return false;
     // Search
     if (search) {
       const q  = search.toLowerCase();

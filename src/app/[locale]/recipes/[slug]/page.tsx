@@ -7,6 +7,7 @@ import AddToShoppingListButton from '@/components/AddToShoppingListButton';
 import AddAllToShoppingListButton from '@/components/AddAllToShoppingListButton';
 import RecipeRating from '@/components/RecipeRating';
 import PrintButton from '@/components/PrintButton';
+import RecipeGallery, { type GalleryPhoto } from '@/components/RecipeGallery';
 import { createClient } from '@/lib/supabase/server';
 
 type Lang = 'de' | 'en';
@@ -96,7 +97,7 @@ const DIFF_CLS = {
 
 // ─── Inline markdown renderer ─────────────────────────────────────────────────
 
-function renderMarkdown(md: string): React.ReactNode[] {
+function renderMarkdown(md: string, gallery: GalleryPhoto[] = []): React.ReactNode[] {
   const lines = md.split('\n');
   const nodes: React.ReactNode[] = [];
   let listBuffer: string[] = [];
@@ -125,7 +126,24 @@ function renderMarkdown(md: string): React.ReactNode[] {
   for (const line of lines) {
     const trimmed = line.trim();
 
-    if (trimmed.startsWith('## ')) {
+    // Inline gallery photo reference: ![photo:N]
+    const photoMatch = trimmed.match(/^!\[photo:(\d+)\]$/);
+    if (photoMatch) {
+      flushList();
+      const n = parseInt(photoMatch[1], 10);
+      const p = gallery[n - 1]; // 1-indexed
+      if (p) {
+        nodes.push(
+          <figure key={key++} className="my-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={p.url} alt={p.caption ?? ''} className="w-full rounded-xl object-cover" />
+            {p.caption && (
+              <figcaption className="mt-1.5 text-xs text-[#1c2a2b]/50 text-center italic">{p.caption}</figcaption>
+            )}
+          </figure>
+        );
+      }
+    } else if (trimmed.startsWith('## ')) {
       flushList();
       nodes.push(
         <h3 key={key++} className="font-serif text-lg text-[#0e393d] mt-6 mb-2">{trimmed.slice(3)}</h3>
@@ -167,7 +185,7 @@ export default async function RecipeDetailPage({
   const { data: recipe } = await supabase
     .from('recipes')
     .select(`
-      id, slug, title, description, instructions, image_url,
+      id, slug, title, description, instructions, image_url, image_gallery,
       prep_time_min, cook_time_min, servings, difficulty, is_featured,
       nutrition_info,
       recipe_ingredients(id, ingredient_name, amount, unit, notes, is_optional, sort_order, section_header),
@@ -209,6 +227,9 @@ export default async function RecipeDetailPage({
   const nutrition = recipe.nutrition_info as {
     calories?: number; protein_g?: number; fat_g?: number; carbs_g?: number; fiber_g?: number;
   } | null;
+
+  const gallery = ((recipe.image_gallery ?? []) as GalleryPhoto[])
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   const totalTime =
     (recipe.prep_time_min ?? 0) + (recipe.cook_time_min ?? 0) || null;
@@ -294,6 +315,9 @@ export default async function RecipeDetailPage({
 
           {/* Left: Instructions */}
           <div>
+            {/* Gallery */}
+            {gallery.length > 0 && <RecipeGallery photos={gallery} />}
+
             {/* Ingredients */}
             {ingredients.length > 0 && (
               <section className="mb-10">
@@ -361,7 +385,7 @@ export default async function RecipeDetailPage({
             {instructions && (
               <section>
                 <h2 className="font-serif text-xl text-[#0e393d] mb-4">{t.instructions}</h2>
-                <div>{renderMarkdown(instructions)}</div>
+                <div>{renderMarkdown(instructions, gallery)}</div>
               </section>
             )}
           </div>

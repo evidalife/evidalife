@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import GalleryUpload, { type GalleryItem } from './GalleryUpload';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -403,6 +404,15 @@ function MarkdownToolbar({ taRef, value, onChange }: {
     { label: '1. Num',  title: 'Numbered list',  fn: () => insert('\n1. ', '', 'Item') },
     { label: '> Quote', title: 'Blockquote',     fn: () => insert('\n> ', '', 'Quote') },
     { label: '---',     title: 'Divider',        fn: () => insert('\n\n---\n\n') },
+    {
+      label: '📷 Photo',
+      title: 'Insert photo reference',
+      fn: () => {
+        const matches = value.match(/!\[photo:\d+\]/g);
+        const n = (matches ? matches.length : 0) + 1;
+        insert(`![photo:${n}]`);
+      },
+    },
   ];
 
   return (
@@ -611,6 +621,9 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   const [quickAddNoteOpen, setQuickAddNoteOpen] = useState(false);
   const [quickAddNoteTargetKey, setQuickAddNoteTargetKey] = useState<string | null>(null);
 
+  // Gallery
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+
   // Goal validation
   const [goalLimitWarning, setGoalLimitWarning] = useState(false);
 
@@ -640,7 +653,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   // ── Load existing recipe ─────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!recipeId) { setForm(EMPTY_FORM); setLoading(false); return; }
+    if (!recipeId) { setForm(EMPTY_FORM); setGalleryItems([]); setLoading(false); return; }
     setLoading(true);
     Promise.all([
       supabase.from('recipes').select('*').eq('id', recipeId).single(),
@@ -696,6 +709,16 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         }),
         goals: (goals ?? []).map((g) => g.goal),
       });
+      // Load gallery
+      const raw = r.image_gallery as { url: string; caption?: string; order: number }[] | null;
+      setGalleryItems(
+        (raw ?? []).map((p, i) => ({
+          _key: `_g${i}`,
+          url: p.url,
+          caption: p.caption ?? '',
+          order: p.order ?? i,
+        }))
+      );
       setLoading(false);
     });
   }, [recipeId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -938,6 +961,31 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         const { error } = await supabase.from('recipe_meal_type_tags').insert(rows);
         if (error) throw error;
       }
+
+      // 6. Upload pending gallery photos and save image_gallery
+      const galleryPayload: { url: string; caption?: string; order: number }[] = [];
+      for (const item of galleryItems) {
+        if (item._file) {
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve((reader.result as string).split(',')[1]);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(item._file!);
+          });
+          const res = await fetch('/api/upload-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ base64, filename: item._file.name, bucket: 'recipe-images', contentType: item._file.type }),
+          });
+          const json = await res.json();
+          if (!res.ok || !json.url) throw new Error(`Gallery upload failed: ${json.error ?? 'unknown error'}`);
+          galleryPayload.push({ url: json.url as string, caption: item.caption || undefined, order: item.order });
+        } else if (item.url) {
+          galleryPayload.push({ url: item.url, caption: item.caption || undefined, order: item.order });
+        }
+      }
+      const { error: galErr } = await supabase.from('recipes').update({ image_gallery: galleryPayload }).eq('id', id!);
+      if (galErr) throw galErr;
 
       onSaved();
     } catch (e: unknown) {
@@ -1348,6 +1396,18 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                 <span className="block text-xs mt-0.5 text-[#1c2a2b]/30">PNG, JPG, WebP · max 5 MB</span>
               </button>
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+            </div>
+
+            {/* ── Gallery Photos ───────────────────────────────────────────── */}
+            <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
+              <div className="flex items-center justify-between">
+                <SectionHead>Gallery Photos</SectionHead>
+                <span className="text-[11px] text-[#1c2a2b]/40">{galleryItems.length}/10</span>
+              </div>
+              <p className="text-[11px] text-[#1c2a2b]/40">
+                Use <code className="bg-[#0e393d]/6 px-1 rounded text-[10px]">![photo:N]</code> in instructions to embed photo N inline.
+              </p>
+              <GalleryUpload items={galleryItems} onChange={setGalleryItems} />
             </div>
 
             {/* ── Publish settings ─────────────────────────────────────────── */}

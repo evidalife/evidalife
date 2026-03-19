@@ -161,7 +161,7 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
       if (ddSlugs.length && !ddSlugs.every((s) => r.daily_dozen_categories.some((c) => c.slug === s))) return false;
       if (courseIds.length && !courseIds.includes(r.course_type_id ?? '')) return false;
       if (mealTypeIds.length && !mealTypeIds.some((id) => r.meal_type_ids.includes(id))) return false;
-      if (goalKeys.length && !goalKeys.some((g) => r.goals.includes(g))) return false;
+      if (goalKeys.length && !goalKeys.every((g) => r.goals.includes(g))) return false;
       if (q) {
         const de = r.title?.de?.toLowerCase() ?? '';
         const en = r.title?.en?.toLowerCase() ?? '';
