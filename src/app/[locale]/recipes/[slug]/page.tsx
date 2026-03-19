@@ -297,7 +297,7 @@ export default async function RecipeDetailPage({
             {/* Ingredients */}
             {ingredients.length > 0 && (
               <section className="mb-10">
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center justify-between mb-4">
                   <h2 className="font-serif text-xl text-[#0e393d]">{t.ingredients}</h2>
                   <AddAllToShoppingListButton
                     ingredients={ingredients.filter((i) => !i.section_header)}
@@ -329,7 +329,7 @@ export default async function RecipeDetailPage({
                     return (
                       <li
                         key={ing.id}
-                        className="flex items-center gap-3 rounded-xl border border-[#0e393d]/10 bg-white px-4 py-3"
+                        className="flex items-center gap-3 rounded-xl border border-[#0e393d]/10 bg-white px-4 py-2"
                       >
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-medium text-[#1c2a2b]">{ingName}</span>

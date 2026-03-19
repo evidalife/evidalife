@@ -18,7 +18,7 @@ export type RecipeCard = {
   servings: number | null;
   difficulty: 'easy' | 'medium' | 'hard' | null;
   is_featured: boolean | null;
-  daily_dozen_categories: string[];
+  daily_dozen_categories: { slug: string; icon: string }[];
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ export default function RecipesGrid({ recipes, lang }: { recipes: RecipeCard[]; 
     const q = search.toLowerCase().trim();
     return recipes.filter((r) => {
       if (diff !== 'all' && r.difficulty !== diff) return false;
-      if (ddCat !== 'all' && !r.daily_dozen_categories.includes(ddCat)) return false;
+      if (ddCat !== 'all' && !r.daily_dozen_categories.some((c) => c.slug === ddCat)) return false;
       if (q) {
         const de = r.title?.de?.toLowerCase() ?? '';
         const en = r.title?.en?.toLowerCase() ?? '';
@@ -232,20 +232,21 @@ export default function RecipesGrid({ recipes, lang }: { recipes: RecipeCard[]; 
                     )}
                   </div>
 
-                  {/* Daily Dozen tags */}
+                  {/* Daily Dozen tags — emoji only */}
                   {recipe.daily_dozen_categories.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-4">
-                      {recipe.daily_dozen_categories.slice(0, 4).map((cat) => (
+                      {recipe.daily_dozen_categories.slice(0, 6).map((cat) => (
                         <span
-                          key={cat}
-                          className="rounded-full bg-[#ceab84]/12 px-2 py-0.5 text-[10px] font-medium text-[#8a6a3e]"
+                          key={cat.slug}
+                          title={DD_LABELS[cat.slug]?.[lang] ?? cat.slug}
+                          className="rounded-full bg-[#ceab84]/12 px-1.5 py-0.5 text-sm leading-none"
                         >
-                          {DD_LABELS[cat]?.[lang] ?? cat}
+                          {cat.icon}
                         </span>
                       ))}
-                      {recipe.daily_dozen_categories.length > 4 && (
+                      {recipe.daily_dozen_categories.length > 6 && (
                         <span className="rounded-full bg-[#0e393d]/6 px-2 py-0.5 text-[10px] font-medium text-[#0e393d]/50">
-                          +{recipe.daily_dozen_categories.length - 4}
+                          +{recipe.daily_dozen_categories.length - 6}
                         </span>
                       )}
                     </div>

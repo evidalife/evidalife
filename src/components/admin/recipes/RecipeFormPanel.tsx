@@ -98,7 +98,7 @@ type RecipeForm = {
   servings: string;
   difficulty: string;
   course_type_id: string;
-  meal_type_id: string;
+  meal_type_ids: string[];
   nutrition: NutritionForm;
   is_published: boolean;
   is_featured: boolean;
@@ -129,7 +129,7 @@ const EMPTY_FORM: RecipeForm = {
   prep_time_min: '', cook_time_min: '', servings: '',
   difficulty: 'easy',
   course_type_id: '',
-  meal_type_id: '',
+  meal_type_ids: [],
   nutrition: { calories: '', protein_g: '', fat_g: '', carbs_g: '', fiber_g: '' },
   is_published: false, is_featured: false,
   ingredients: [], goals: [],
@@ -646,7 +646,8 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       supabase.from('recipes').select('*').eq('id', recipeId).single(),
       supabase.from('recipe_ingredients').select('*').eq('recipe_id', recipeId).order('sort_order'),
       supabase.from('recipe_goal_tags').select('*').eq('recipe_id', recipeId),
-    ]).then(([{ data: r }, { data: ings }, { data: goals }]) => {
+      supabase.from('recipe_meal_type_tags').select('meal_type_id').eq('recipe_id', recipeId),
+    ]).then(([{ data: r }, { data: ings }, { data: goals }, { data: mealTags }]) => {
       if (!r) { setLoading(false); return; }
       setCurrentImageUrl(r.image_url ?? null);
       setForm({
@@ -659,7 +660,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         servings:      r.servings     != null ? String(r.servings)      : '',
         difficulty:    r.difficulty   ?? 'easy',
         course_type_id: r.course_type_id ?? '',
-        meal_type_id:   r.meal_type_id   ?? '',
+        meal_type_ids: (mealTags ?? []).map((t) => t.meal_type_id),
         nutrition: {
           calories:  r.nutrition_info?.calories  != null ? String(r.nutrition_info.calories)  : '',
           protein_g: r.nutrition_info?.protein_g != null ? String(r.nutrition_info.protein_g) : '',
@@ -845,7 +846,6 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         servings:      form.servings      ? Number(form.servings)      : null,
         difficulty:    form.difficulty || null,
         course_type_id: form.course_type_id || null,
-        meal_type_id:   form.meal_type_id   || null,
         nutrition_info: {
           calories:  form.nutrition.calories  ? Number(form.nutrition.calories)  : null,
           protein_g: form.nutrition.protein_g ? Number(form.nutrition.protein_g) : null,
@@ -928,6 +928,14 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       if (form.goals.length > 0) {
         const rows = form.goals.map((goal) => ({ recipe_id: id!, goal }));
         const { error } = await supabase.from('recipe_goal_tags').insert(rows);
+        if (error) throw error;
+      }
+
+      // 5. Replace meal type tags
+      await supabase.from('recipe_meal_type_tags').delete().eq('recipe_id', id!);
+      if (form.meal_type_ids.length > 0) {
+        const rows = form.meal_type_ids.map((meal_type_id) => ({ recipe_id: id!, meal_type_id }));
+        const { error } = await supabase.from('recipe_meal_type_tags').insert(rows);
         if (error) throw error;
       }
 
@@ -1090,20 +1098,35 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                     ))}
                   </select>
                 </Field>
-                <Field label="Meal Type">
-                  <select
-                    className={inputCls + ' cursor-pointer'}
-                    value={form.meal_type_id}
-                    onChange={(e) => setForm((f) => ({ ...f, meal_type_id: e.target.value }))}
-                  >
-                    <option value="">— Any</option>
-                    {mealTypeOptions.map((mt) => (
-                      <option key={mt.id} value={mt.id}>
-                        {mt.name?.en || mt.name?.de || mt.slug}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+                <div>
+                  <label className="block text-xs font-medium text-[#0e393d]/60 mb-1.5">Meal Type</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {mealTypeOptions.map((mt) => {
+                      const active = form.meal_type_ids.includes(mt.id);
+                      return (
+                        <button
+                          key={mt.id}
+                          type="button"
+                          onClick={() =>
+                            setForm((f) => ({
+                              ...f,
+                              meal_type_ids: active
+                                ? f.meal_type_ids.filter((id) => id !== mt.id)
+                                : [...f.meal_type_ids, mt.id],
+                            }))
+                          }
+                          className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                            active
+                              ? 'bg-[#0e393d] text-white'
+                              : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'
+                          }`}
+                        >
+                          {mt.name?.en || mt.name?.de || mt.slug}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
 

@@ -35,14 +35,14 @@ export default async function RecipesPage() {
   const { data: ddRows } = recipeIds.length > 0
     ? await supabase
         .from('v_recipe_daily_dozen_coverage')
-        .select('recipe_id, category_slug')
+        .select('recipe_id, category_slug, category_icon')
         .in('recipe_id', recipeIds)
-    : { data: [] as { recipe_id: string; category_slug: string }[] };
+    : { data: [] as { recipe_id: string; category_slug: string; category_icon: string }[] };
 
-  const ddByRecipe: Record<string, string[]> = {};
+  const ddByRecipe: Record<string, { slug: string; icon: string }[]> = {};
   for (const dd of ddRows ?? []) {
     if (!ddByRecipe[dd.recipe_id]) ddByRecipe[dd.recipe_id] = [];
-    ddByRecipe[dd.recipe_id].push(dd.category_slug);
+    ddByRecipe[dd.recipe_id].push({ slug: dd.category_slug, icon: dd.category_icon });
   }
 
   const recipes: RecipeCard[] = (rows ?? []).map((r) => ({
