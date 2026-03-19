@@ -23,7 +23,7 @@ export default function PublicNav() {
   const locale = useLocale() as Locale;
   const router = useRouter();
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const t = useTranslations('nav');
   const [langOpen, setLangOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -166,7 +166,15 @@ export default function PublicNav() {
               onMouseEnter={() => setUserOpen(true)}
               onMouseLeave={() => setUserOpen(false)}
             >
-              <button className="bg-[#0e393d] text-[#f2ebdb] text-[12px] font-medium px-5 py-2 rounded-full tracking-wide transition-colors hover:bg-[#1a5055] whitespace-nowrap flex items-center gap-1.5">
+              <button className="bg-[#0e393d] text-[#f2ebdb] text-[12px] font-medium pl-1.5 pr-4 py-1.5 rounded-full tracking-wide transition-colors hover:bg-[#1a5055] whitespace-nowrap flex items-center gap-2">
+                {profile?.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={profile.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
+                ) : (
+                  <span className="w-6 h-6 rounded-full bg-[#f2ebdb]/20 flex items-center justify-center text-[10px] font-semibold">
+                    {(profile?.full_name ?? user.email ?? '?')[0]?.toUpperCase()}
+                  </span>
+                )}
                 {user.email?.split('@')[0] ?? login}
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className={`transition-transform duration-200 ${userOpen ? 'rotate-180' : ''}`}>
                   <path d="M1.5 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>

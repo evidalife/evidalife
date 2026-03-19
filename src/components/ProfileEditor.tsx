@@ -23,6 +23,7 @@ const T = {
   de: {
     avatar:              'Profilbild',
     changeAvatar:        'Bild ändern',
+    removeAvatar:        'Bild entfernen',
     uploading:           'Wird hochgeladen…',
     personalInfo:        'Persönliche Informationen',
     fullName:            'Vollständiger Name',
@@ -50,6 +51,7 @@ const T = {
   en: {
     avatar:              'Profile picture',
     changeAvatar:        'Change photo',
+    removeAvatar:        'Remove photo',
     uploading:           'Uploading…',
     personalInfo:        'Personal information',
     fullName:            'Full name',
@@ -119,11 +121,35 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
     reader.readAsDataURL(file);
   };
 
+  // ── Remove avatar ──────────────────────────────────────────────────────────
+
+  const handleRemoveAvatar = async () => {
+    if (avatarUrl) {
+      await fetch('/api/delete-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: avatarUrl, bucket: 'user-avatars' }),
+      });
+    }
+    setAvatarUrl('');
+    setAvatarFile(null);
+    setAvatarPreview(null);
+  };
+
   // ── Upload avatar via /api/upload-image ────────────────────────────────────
 
   const uploadAvatar = async (): Promise<string | null> => {
     if (!avatarFile) return avatarUrl || null;
     setUploading(true);
+
+    // Delete old avatar before uploading replacement
+    if (avatarUrl) {
+      await fetch('/api/delete-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: avatarUrl, bucket: 'user-avatars' }),
+      });
+    }
 
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -226,20 +252,33 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
             )}
           </div>
 
-          <div>
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              className="inline-flex items-center gap-2 rounded-xl border border-[#0e393d]/20 bg-white px-4 py-2 text-sm font-medium text-[#0e393d] hover:bg-[#0e393d]/5 hover:border-[#0e393d]/35 transition disabled:opacity-50"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                <polyline points="17 8 12 3 7 8"/>
-                <line x1="12" y1="3" x2="12" y2="15"/>
-              </svg>
-              {uploading ? t.uploading : t.changeAvatar}
-            </button>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#0e393d]/20 bg-white px-4 py-2 text-sm font-medium text-[#0e393d] hover:bg-[#0e393d]/5 hover:border-[#0e393d]/35 transition disabled:opacity-50"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                {uploading ? t.uploading : t.changeAvatar}
+              </button>
+              {(avatarUrl || avatarPreview) && (
+                <button
+                  type="button"
+                  onClick={handleRemoveAvatar}
+                  disabled={uploading}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 hover:border-red-300 transition disabled:opacity-50"
+                >
+                  <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round"/></svg>
+                  {t.removeAvatar}
+                </button>
+              )}
+            </div>
             <input
               ref={fileRef}
               type="file"
@@ -247,7 +286,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
               className="hidden"
               onChange={handleFileChange}
             />
-            <p className="mt-1.5 text-[11px] text-[#1c2a2b]/35">JPG, PNG, GIF — max 5 MB</p>
+            <p className="text-[11px] text-[#1c2a2b]/35">JPG, PNG, GIF — max 5 MB</p>
           </div>
         </div>
       </Section>

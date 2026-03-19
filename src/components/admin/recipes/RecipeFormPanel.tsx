@@ -602,6 +602,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [imageRemoved, setImageRemoved] = useState(false);
   const [loading, setLoading] = useState(!!recipeId);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -653,7 +654,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   // ── Load existing recipe ─────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!recipeId) { setForm(EMPTY_FORM); setGalleryItems([]); setLoading(false); return; }
+    if (!recipeId) { setForm(EMPTY_FORM); setGalleryItems([]); setImageFile(null); setImagePreview(null); setCurrentImageUrl(null); setImageRemoved(false); setLoading(false); return; }
     setLoading(true);
     Promise.all([
       supabase.from('recipes').select('*').eq('id', recipeId).single(),
@@ -663,6 +664,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
     ]).then(([{ data: r }, { data: ings }, { data: goals }, { data: mealTags }]) => {
       if (!r) { setLoading(false); return; }
       setCurrentImageUrl(r.image_url ?? null);
+      setImageRemoved(false);
       setForm({
         title:        { de: r.title?.de ?? '',        en: r.title?.en ?? '' },
         slug: r.slug ?? '',
@@ -820,6 +822,14 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
     setImagePreview(URL.createObjectURL(file));
   };
 
+  const handleRemoveCoverImage = async () => {
+    if (currentImageUrl) await deleteStorageUrl(currentImageUrl);
+    setCurrentImageUrl(null);
+    setImageFile(null);
+    setImagePreview(null);
+    setImageRemoved(true);
+  };
+
   const uploadImage = async (_id: string): Promise<string | null> => {
     if (!imageFile) return currentImageUrl;
     // Delete old cover image from storage before uploading replacement
@@ -906,7 +916,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
       // 2. Upload image
       const imageUrl = await uploadImage(id!);
-      if (imageUrl !== currentImageUrl) {
+      if (imageUrl !== currentImageUrl || imageRemoved) {
         await supabase.from('recipes').update({ image_url: imageUrl }).eq('id', id!);
       }
 
@@ -1398,12 +1408,23 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
             <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
               <SectionHead>Cover Image</SectionHead>
               {(imagePreview || currentImageUrl) && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={imagePreview ?? currentImageUrl!}
-                  alt="Preview"
-                  className="w-full h-44 object-cover rounded-xl border border-[#0e393d]/10"
-                />
+                <div className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imagePreview ?? currentImageUrl!}
+                    alt="Preview"
+                    className="w-full h-44 object-cover rounded-xl border border-[#0e393d]/10"
+                  />
+                  <button
+                    type="button"
+                    title="Remove photo"
+                    onClick={handleRemoveCoverImage}
+                    className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white hover:bg-red-600/80 transition"
+                  >
+                    <svg width="8" height="8" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round"/></svg>
+                    Remove
+                  </button>
+                </div>
               )}
               <button
                 type="button"

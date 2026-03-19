@@ -132,6 +132,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [imageRemoved, setImageRemoved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -148,6 +149,16 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
   // ── Panel helpers ────────────────────────────────────────────────────────────
 
+  const deleteImage = async (url: string | null) => {
+    if (!url) return;
+    const res = await fetch('/api/delete-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, bucket: 'product-images' }),
+    });
+    if (!res.ok) console.error('Delete failed:', await res.text());
+  };
+
   const openCreate = () => {
     setEditingId(null);
     setLang('de');
@@ -155,6 +166,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     setImageFile(null);
     setImagePreview(null);
     setCurrentImageUrl(null);
+    setImageRemoved(false);
     setError(null);
     setPanelOpen(true);
   };
@@ -178,6 +190,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     setImageFile(null);
     setImagePreview(null);
     setCurrentImageUrl(p.image_url);
+    setImageRemoved(false);
     setError(null);
     setPanelOpen(true);
   };
@@ -203,7 +216,9 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   };
 
   const uploadImage = async (_productId: string): Promise<string | null> => {
-    if (!imageFile) return currentImageUrl;
+    if (!imageFile) return imageRemoved ? null : currentImageUrl;
+    // Delete old image before uploading replacement
+    if (currentImageUrl) await deleteImage(currentImageUrl);
     // Use FileReader (browser-native) to get base64 — Buffer.from is Node-only and breaks in Safari
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -219,6 +234,14 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     const json = await res.json();
     if (!res.ok || !json.url) { console.error('[uploadImage]', json.error); return currentImageUrl; }
     return json.url as string;
+  };
+
+  const handleRemoveCoverImage = async () => {
+    if (currentImageUrl) await deleteImage(currentImageUrl);
+    setCurrentImageUrl(null);
+    setImageFile(null);
+    setImagePreview(null);
+    setImageRemoved(true);
   };
 
   // ── Save ─────────────────────────────────────────────────────────────────────
@@ -259,7 +282,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
       // Upload image after we have the product id
       const imageUrl = await uploadImage(productId!);
-      if (imageUrl !== currentImageUrl) {
+      if (imageUrl !== currentImageUrl || imageRemoved) {
         await supabase.from('products').update({ image_url: imageUrl }).eq('id', productId!);
       }
 
@@ -277,7 +300,8 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
   const handleDelete = async (p: Product) => {
     if (!confirm(`Delete "${p.name?.de || p.name?.en || p.sku || 'this product'}"? This is a soft-delete.`)) return;
-    await supabase.from('products').update({ deleted_at: new Date().toISOString() }).eq('id', p.id);
+    if (p.image_url) await deleteImage(p.image_url);
+    await supabase.from('products').update({ deleted_at: new Date().toISOString(), image_url: null }).eq('id', p.id);
     await refresh();
   };
 
@@ -614,12 +638,23 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                 <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Cover Image</p>
 
                 {(imagePreview || currentImageUrl) && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={imagePreview ?? currentImageUrl!}
-                    alt="Preview"
-                    className="w-full h-40 object-cover rounded-xl border border-[#0e393d]/10"
-                  />
+                  <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imagePreview ?? currentImageUrl!}
+                      alt="Preview"
+                      className="w-full h-40 object-cover rounded-xl border border-[#0e393d]/10"
+                    />
+                    <button
+                      type="button"
+                      title="Remove photo"
+                      onClick={handleRemoveCoverImage}
+                      className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white hover:bg-red-600/80 transition"
+                    >
+                      <svg width="8" height="8" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round"/></svg>
+                      Remove
+                    </button>
+                  </div>
                 )}
 
                 <button
@@ -627,7 +662,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                   onClick={() => fileInputRef.current?.click()}
                   className="w-full rounded-lg border border-dashed border-[#0e393d]/20 py-4 text-sm text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d]/70 hover:bg-[#0e393d]/3 transition"
                 >
-                  {imagePreview ? 'Replace image' : currentImageUrl ? 'Replace image' : 'Upload image'}
+                  {imagePreview || currentImageUrl ? 'Replace image' : 'Upload image'}
                   <span className="block text-xs mt-0.5 text-[#1c2a2b]/30">PNG, JPG, WebP · max 5 MB</span>
                 </button>
                 <input
