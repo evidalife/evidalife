@@ -801,16 +801,14 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
   // ── Storage helpers ───────────────────────────────────────────────────────────
 
-  const storagePathFromUrl = (url: string): string | null => {
-    const marker = '/recipe-images/';
-    const idx = url.indexOf(marker);
-    return idx === -1 ? null : url.slice(idx + marker.length);
-  };
-
   const deleteStorageUrl = async (url: string | null) => {
     if (!url) return;
-    const path = storagePathFromUrl(url);
-    if (path) await supabase.storage.from('recipe-images').remove([path]);
+    const res = await fetch('/api/delete-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, bucket: 'recipe-images' }),
+    });
+    if (!res.ok) console.error('Delete failed:', await res.text());
   };
 
   // ── Image ────────────────────────────────────────────────────────────────────

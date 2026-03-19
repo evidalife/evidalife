@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef } from 'react';
-import { createClient } from '@/lib/supabase/client';
 
 export type GalleryItem = {
   _key: string;
@@ -17,16 +16,9 @@ interface Props {
   maxPhotos?: number;
 }
 
-function storagePathFromUrl(url: string): string | null {
-  const marker = '/recipe-images/';
-  const idx = url.indexOf(marker);
-  return idx === -1 ? null : url.slice(idx + marker.length);
-}
 
 export default function GalleryUpload({ items, onChange, maxPhotos = 10 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const supabase = createClient();
-
   const addFiles = (files: FileList | null) => {
     if (!files) return;
     const remaining = maxPhotos - items.length;
@@ -45,10 +37,12 @@ export default function GalleryUpload({ items, onChange, maxPhotos = 10 }: Props
     const item = items.find((it) => it._key === key);
     // Delete from storage if it has an uploaded URL
     if (item?.url) {
-      const path = storagePathFromUrl(item.url);
-      if (path) {
-        await supabase.storage.from('recipe-images').remove([path]);
-      }
+      const res = await fetch('/api/delete-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: item.url, bucket: 'recipe-images' }),
+      });
+      if (!res.ok) console.error('Delete failed:', await res.text());
     }
     onChange(
       items
