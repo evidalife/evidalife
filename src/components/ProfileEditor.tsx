@@ -361,7 +361,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                 </svg>
                 {uploading ? t.uploading : t.changeAvatar}
               </button>
-              {(avatarUrl || avatarPreview) && (
+              {avatarUrl && (
                 <button
                   type="button"
                   onClick={handleRemoveAvatar}
