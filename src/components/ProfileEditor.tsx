@@ -11,6 +11,16 @@ export type ProfileData = {
   id: string;
   email: string;
   display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  date_of_birth: string | null;
+  sex: string | null;
+  height_cm: number | null;
+  phone: string | null;
+  country: string | null;
+  street_address: string | null;
+  city: string | null;
+  postal_code: string | null;
   avatar_url: string | null;
   onboarding_completed: boolean | null;
   is_admin: boolean | null;
@@ -26,10 +36,22 @@ const T = {
     removeAvatar:        'Bild entfernen',
     uploading:           'Wird hochgeladen…',
     personalInfo:        'Persönliche Informationen',
-    fullName:            'Vollständiger Name',
-    fullNamePlaceholder: 'Dein Name',
+    displayName:         'Anzeigename',
+    displayNameHint:     'Optionaler Spitzname, der im Header angezeigt wird.',
+    firstName:           'Vorname',
+    lastName:            'Nachname',
     email:               'E-Mail',
     emailHint:           'E-Mail-Adresse kann nicht geändert werden.',
+    dateOfBirth:         'Geburtsdatum',
+    sex:                 'Geschlecht',
+    sexOptions:          ['Männlich', 'Weiblich', 'Divers', 'Keine Angabe'] as string[],
+    phone:               'Telefon',
+    heightCm:            'Körpergröße (cm)',
+    address:             'Adresse',
+    streetAddress:       'Straße und Hausnummer',
+    city:                'Stadt',
+    postalCode:          'Postleitzahl',
+    country:             'Land',
     preferences:         'Einstellungen',
     language:            'Sprache',
     langDe:              'Deutsch',
@@ -54,10 +76,22 @@ const T = {
     removeAvatar:        'Remove photo',
     uploading:           'Uploading…',
     personalInfo:        'Personal information',
-    fullName:            'Full name',
-    fullNamePlaceholder: 'Your name',
+    displayName:         'Display name',
+    displayNameHint:     'Optional nickname shown in the header.',
+    firstName:           'First name',
+    lastName:            'Last name',
     email:               'Email',
     emailHint:           'Your email address cannot be changed.',
+    dateOfBirth:         'Date of birth',
+    sex:                 'Sex / Gender',
+    sexOptions:          ['Male', 'Female', 'Other', 'Prefer not to say'] as string[],
+    phone:               'Phone',
+    heightCm:            'Height (cm)',
+    address:             'Address',
+    streetAddress:       'Street address',
+    city:                'City',
+    postalCode:          'Postal code',
+    country:             'Country',
     preferences:         'Preferences',
     language:            'Language',
     langDe:              'Deutsch',
@@ -78,7 +112,55 @@ const T = {
   },
 };
 
+const SEX_VALUES = ['male', 'female', 'other', 'prefer_not_to_say'] as const;
+
+const EUROPEAN_COUNTRIES = [
+  { code: 'CH', name: 'Switzerland' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'AT', name: 'Austria' },
+  { code: 'LI', name: 'Liechtenstein' },
+  { code: 'FR', name: 'France' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'BE', name: 'Belgium' },
+  { code: 'LU', name: 'Luxembourg' },
+  { code: 'SE', name: 'Sweden' },
+  { code: 'NO', name: 'Norway' },
+  { code: 'DK', name: 'Denmark' },
+  { code: 'FI', name: 'Finland' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'IE', name: 'Ireland' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'PL', name: 'Poland' },
+  { code: 'CZ', name: 'Czech Republic' },
+  { code: 'SK', name: 'Slovakia' },
+  { code: 'HU', name: 'Hungary' },
+  { code: 'RO', name: 'Romania' },
+  { code: 'BG', name: 'Bulgaria' },
+  { code: 'HR', name: 'Croatia' },
+  { code: 'SI', name: 'Slovenia' },
+  { code: 'EE', name: 'Estonia' },
+  { code: 'LV', name: 'Latvia' },
+  { code: 'LT', name: 'Lithuania' },
+  { code: 'GR', name: 'Greece' },
+  { code: 'CY', name: 'Cyprus' },
+  { code: 'MT', name: 'Malta' },
+];
+
+// ─── Primitives ───────────────────────────────────────────────────────────────
+
 const inputCls = 'w-full rounded-xl border border-[#0e393d]/15 bg-white px-4 py-2.5 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/35 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition disabled:bg-[#0e393d]/4 disabled:text-[#1c2a2b]/40 disabled:cursor-not-allowed';
+const selectCls = inputCls + ' cursor-pointer';
+
+function FieldLabel({ text, hint }: { text: string; hint?: string }) {
+  return (
+    <div className="mb-1.5">
+      <span className="block text-xs font-medium text-[#0e393d]/70">{text}</span>
+      {hint && <span className="block text-[11px] text-[#1c2a2b]/35 mt-0.5">{hint}</span>}
+    </div>
+  );
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -94,78 +176,82 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function ProfileEditor({ profile, lang }: { profile: ProfileData; lang: Lang }) {
   const t = T[lang];
   const supabase = createClient();
-  const fileRef  = useRef<HTMLInputElement>(null);
-
+  const fileRef = useRef<HTMLInputElement>(null);
   const pendingDeleteRef = useRef<string | null>(null);
 
-  const [fullName,    setFullName]    = useState(profile.display_name ?? '');
-  const [avatarUrl,   setAvatarUrl]   = useState(profile.avatar_url ?? '');
-  const [avatarFile,  setAvatarFile]  = useState<File | null>(null);
+  // Avatar state
+  const [avatarUrl,     setAvatarUrl]     = useState(profile.avatar_url ?? '');
+  const [avatarFile,    setAvatarFile]    = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [uploading,   setUploading]   = useState(false);
-  const [langPref,    setLangPref]    = useState<'de' | 'en'>(lang);
-  const [saveState,   setSaveState]   = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [avatarBroken,  setAvatarBroken]  = useState(false);
+  const [uploading,     setUploading]     = useState(false);
 
-  // Read language from localStorage on mount
+  // Personal info state
+  const [displayName, setDisplayName] = useState(profile.display_name ?? '');
+  const [firstName,   setFirstName]   = useState(profile.first_name ?? '');
+  const [lastName,    setLastName]    = useState(profile.last_name ?? '');
+  const [dateOfBirth, setDateOfBirth] = useState(profile.date_of_birth ?? '');
+  const [sex,         setSex]         = useState(profile.sex ?? '');
+  const [phone,       setPhone]       = useState(profile.phone ?? '');
+  const [heightCm,    setHeightCm]    = useState(profile.height_cm != null ? String(profile.height_cm) : '');
+
+  // Address state
+  const [streetAddress, setStreetAddress] = useState(profile.street_address ?? '');
+  const [city,          setCity]          = useState(profile.city ?? '');
+  const [postalCode,    setPostalCode]    = useState(profile.postal_code ?? '');
+  const [country,       setCountry]       = useState(profile.country ?? '');
+
+  // UI state
+  const [langPref,   setLangPref]   = useState<'de' | 'en'>(lang);
+  const [saveState,  setSaveState]  = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
   useEffect(() => {
     const stored = localStorage.getItem('evida-lang');
     if (stored === 'de' || stored === 'en') setLangPref(stored);
   }, []);
 
-  // ── Avatar selection ───────────────────────────────────────────────────────
+  // ── Avatar ──────────────────────────────────────────────────────────────────
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setAvatarFile(file);
+    setAvatarBroken(false);
     const reader = new FileReader();
     reader.onload = () => setAvatarPreview(reader.result as string);
     reader.readAsDataURL(file);
   };
-
-  // ── Remove avatar ──────────────────────────────────────────────────────────
 
   const handleRemoveAvatar = () => {
     pendingDeleteRef.current = avatarUrl || null;
     setAvatarUrl('');
     setAvatarFile(null);
     setAvatarPreview(null);
+    setAvatarBroken(false);
   };
-
-  // ── Upload avatar via /api/upload-image ────────────────────────────────────
 
   const uploadAvatar = async (): Promise<string | null> => {
     if (!avatarFile) return avatarUrl || null;
     setUploading(true);
-
-    // Track old avatar for deletion after save succeeds
     if (avatarUrl) pendingDeleteRef.current = avatarUrl;
-
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload  = () => resolve((reader.result as string).split(',')[1]);
       reader.onerror = () => reject(reader.error);
       reader.readAsDataURL(avatarFile);
     });
-
-    const res  = await fetch('/api/upload-image', {
+    const res = await fetch('/api/upload-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        base64,
-        filename: avatarFile.name,
-        bucket: 'user-avatars',
-        contentType: avatarFile.type,
-      }),
+      body: JSON.stringify({ base64, filename: avatarFile.name, bucket: 'user-avatars', contentType: avatarFile.type }),
     });
-
     setUploading(false);
     if (!res.ok) return avatarUrl || null;
     const json = await res.json();
     return (json.url as string) ?? (avatarUrl || null);
   };
 
-  // ── Save ───────────────────────────────────────────────────────────────────
+  // ── Save ────────────────────────────────────────────────────────────────────
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,8 +263,18 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
     const { error } = await supabase
       .from('profiles')
       .update({
-        display_name: fullName.trim() || null,
-        avatar_url:   newAvatarUrl,
+        display_name:  displayName.trim()   || null,
+        first_name:    firstName.trim()     || null,
+        last_name:     lastName.trim()      || null,
+        date_of_birth: dateOfBirth          || null,
+        sex:           sex                  || null,
+        height_cm:     heightCm ? Number(heightCm) : null,
+        phone:         phone.trim()         || null,
+        country:       country              || null,
+        street_address: streetAddress.trim() || null,
+        city:          city.trim()          || null,
+        postal_code:   postalCode.trim()    || null,
+        avatar_url:    newAvatarUrl,
       })
       .eq('id', profile.id);
 
@@ -198,9 +294,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
       pendingDeleteRef.current = null;
     }
 
-    // Persist language preference
     localStorage.setItem('evida-lang', langPref);
-    // Trigger page language switch if changed
     if (langPref !== lang) {
       window.location.href = `/${langPref}/profile`;
       return;
@@ -212,19 +306,23 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
     setTimeout(() => setSaveState('idle'), 2500);
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Derived ─────────────────────────────────────────────────────────────────
 
-  const displayAvatar = avatarPreview ?? avatarUrl;
-  const initials = (profile.display_name ?? profile.email)
-    .split(/\s+/)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .slice(0, 2)
-    .join('');
+  const displayAvatarSrc = avatarPreview ?? avatarUrl;
+  const showAvatar = !!displayAvatarSrc && !avatarBroken;
+  const initials = (
+    firstName && lastName ? `${firstName[0]}${lastName[0]}` :
+    firstName             ? firstName[0] :
+    displayName           ? displayName[0] :
+    profile.email[0]      ?? '?'
+  ).toUpperCase();
 
   const memberSince = new Date(profile.created_at).toLocaleDateString(
     lang === 'de' ? 'de-DE' : 'en-US',
     { year: 'numeric', month: 'long' }
   );
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <form onSubmit={handleSave} className="space-y-5">
@@ -232,12 +330,16 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
       {/* ── Avatar ─────────────────────────────────────────────────────────── */}
       <Section title={t.avatar}>
         <div className="flex items-center gap-6">
-          {/* Avatar circle */}
           <div className="relative shrink-0">
             <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-[#0e393d]/15 bg-[#0e393d]/8 flex items-center justify-center">
-              {displayAvatar ? (
+              {showAvatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={displayAvatar} alt={fullName || 'Avatar'} className="w-full h-full object-cover" />
+                <img
+                  src={displayAvatarSrc}
+                  alt={firstName || 'Avatar'}
+                  className="w-full h-full object-cover"
+                  onError={() => setAvatarBroken(true)}
+                />
               ) : (
                 <span className="font-serif text-xl text-[#0e393d]/50">{initials}</span>
               )}
@@ -274,18 +376,14 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                   disabled={uploading}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 hover:border-red-300 transition disabled:opacity-50"
                 >
-                  <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round"/></svg>
+                  <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10">
+                    <path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round"/>
+                  </svg>
                   {t.removeAvatar}
                 </button>
               )}
             </div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileChange}
-            />
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
             <p className="text-[11px] text-[#1c2a2b]/35">JPG, PNG, GIF — max 5 MB</p>
           </div>
         </div>
@@ -294,26 +392,149 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
       {/* ── Personal info ──────────────────────────────────────────────────── */}
       <Section title={t.personalInfo}>
         <div className="space-y-4">
+
+          {/* Display name */}
           <div>
-            <label className="block text-xs font-medium text-[#0e393d]/70 mb-1.5">{t.fullName}</label>
+            <FieldLabel text={t.displayName} hint={t.displayNameHint} />
             <input
               type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder={t.fullNamePlaceholder}
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder={lang === 'de' ? 'z.B. Max' : 'e.g. Max'}
               className={inputCls}
             />
           </div>
+
+          {/* First + Last name */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <FieldLabel text={t.firstName} />
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder={lang === 'de' ? 'Vorname' : 'First name'}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <FieldLabel text={t.lastName} />
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder={lang === 'de' ? 'Nachname' : 'Last name'}
+                className={inputCls}
+              />
+            </div>
+          </div>
+
+          {/* Email (read-only) */}
           <div>
-            <label className="block text-xs font-medium text-[#0e393d]/70 mb-1.5">{t.email}</label>
-            <input
-              type="email"
-              value={profile.email}
-              disabled
-              className={inputCls}
-            />
+            <FieldLabel text={t.email} />
+            <input type="email" value={profile.email} disabled className={inputCls} />
             <p className="mt-1 text-[11px] text-[#1c2a2b]/35">{t.emailHint}</p>
           </div>
+
+          {/* Date of birth + Sex */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <FieldLabel text={t.dateOfBirth} />
+              <input
+                type="date"
+                value={dateOfBirth}
+                onChange={(e) => setDateOfBirth(e.target.value)}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <FieldLabel text={t.sex} />
+              <select value={sex} onChange={(e) => setSex(e.target.value)} className={selectCls}>
+                <option value="">—</option>
+                {SEX_VALUES.map((v, i) => (
+                  <option key={v} value={v}>{t.sexOptions[i]}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Phone + Height */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <FieldLabel text={t.phone} />
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+41 79 000 00 00"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <FieldLabel text={t.heightCm} />
+              <input
+                type="number"
+                value={heightCm}
+                onChange={(e) => setHeightCm(e.target.value)}
+                placeholder="170"
+                min={50}
+                max={250}
+                className={inputCls}
+              />
+            </div>
+          </div>
+
+        </div>
+      </Section>
+
+      {/* ── Address ────────────────────────────────────────────────────────── */}
+      <Section title={t.address}>
+        <div className="space-y-4">
+
+          <div>
+            <FieldLabel text={t.streetAddress} />
+            <input
+              type="text"
+              value={streetAddress}
+              onChange={(e) => setStreetAddress(e.target.value)}
+              placeholder={lang === 'de' ? 'Musterstrasse 1' : '123 Main St'}
+              className={inputCls}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <FieldLabel text={t.postalCode} />
+              <input
+                type="text"
+                value={postalCode}
+                onChange={(e) => setPostalCode(e.target.value)}
+                placeholder="8001"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <FieldLabel text={t.city} />
+              <input
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder={lang === 'de' ? 'Zürich' : 'Zurich'}
+                className={inputCls}
+              />
+            </div>
+          </div>
+
+          <div>
+            <FieldLabel text={t.country} />
+            <select value={country} onChange={(e) => setCountry(e.target.value)} className={selectCls}>
+              <option value="">—</option>
+              {EUROPEAN_COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
         </div>
       </Section>
 
@@ -386,8 +607,8 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
           }`}
         >
           {saveState === 'saving' ? t.saving
-           : saveState === 'saved' ? t.saved
-           : saveState === 'error' ? t.saveError
+           : saveState === 'saved'  ? t.saved
+           : saveState === 'error'  ? t.saveError
            : t.save}
         </button>
       </div>

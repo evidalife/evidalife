@@ -175,7 +175,7 @@ export default function PublicNav() {
                     {(profile?.display_name ?? profile?.first_name ?? user.email ?? '?')[0]?.toUpperCase()}
                   </span>
                 )}
-                {user.email?.split('@')[0] ?? login}
+                {profile?.display_name ?? profile?.first_name ?? user.email?.split('@')[0] ?? login}
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className={`transition-transform duration-200 ${userOpen ? 'rotate-180' : ''}`}>
                   <path d="M1.5 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
