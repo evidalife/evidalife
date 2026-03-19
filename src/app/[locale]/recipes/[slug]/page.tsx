@@ -4,6 +4,9 @@ import { Link } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import AddToShoppingListButton from '@/components/AddToShoppingListButton';
+import AddAllToShoppingListButton from '@/components/AddAllToShoppingListButton';
+import RecipeRating from '@/components/RecipeRating';
+import PrintButton from '@/components/PrintButton';
 import { createClient } from '@/lib/supabase/server';
 
 type Lang = 'de' | 'en';
@@ -31,6 +34,7 @@ const T = {
     featured: 'Empfohlen',
     goals: 'Gesundheitsziele',
     daily_dozen: 'Daily Dozen',
+    print: 'Drucken',
   },
   en: {
     back: 'Recipes',
@@ -52,6 +56,7 @@ const T = {
     featured: 'Featured',
     goals: 'Health Goals',
     daily_dozen: 'Daily Dozen',
+    print: 'Print',
   },
 };
 
@@ -181,6 +186,16 @@ export default async function RecipeDetailPage({
     .select('category_slug, category_icon')
     .eq('recipe_id', recipe.id);
 
+  // Fetch recipe ratings aggregate
+  const { data: ratingsData } = await supabase
+    .from('recipe_ratings')
+    .select('rating')
+    .eq('recipe_id', recipe.id);
+  const ratingCount = ratingsData?.length ?? 0;
+  const ratingAvg = ratingCount > 0
+    ? (ratingsData!.reduce((sum, r) => sum + (r.rating as number), 0) / ratingCount)
+    : null;
+
   const title       = recipe.title?.[locale] || recipe.title?.de || recipe.title?.en || '';
   const description = recipe.description?.[locale] || recipe.description?.de || '';
   const instructions = recipe.instructions?.[locale] || recipe.instructions?.de || '';
@@ -225,14 +240,19 @@ export default async function RecipeDetailPage({
 
         {/* Header */}
         <div className="mb-8">
-          {recipe.is_featured && (
-            <span className="inline-block mb-2 bg-[#ceab84] text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-full">
-              ★ {t.featured}
-            </span>
-          )}
-          <h1 className="font-serif text-3xl text-[#0e393d] mb-3">{title}</h1>
+          <div className="flex items-start justify-between gap-4 mb-2">
+            <div>
+              {recipe.is_featured && (
+                <span className="inline-block mb-2 bg-[#ceab84] text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-full">
+                  ★ {t.featured}
+                </span>
+              )}
+              <h1 className="font-serif text-3xl text-[#0e393d]">{title}</h1>
+            </div>
+            <PrintButton label={t.print} />
+          </div>
           {description && (
-            <p className="text-[#1c2a2b]/60 text-base leading-relaxed">{description}</p>
+            <p className="text-[#1c2a2b]/60 text-base leading-relaxed mt-3">{description}</p>
           )}
         </div>
 
@@ -277,7 +297,14 @@ export default async function RecipeDetailPage({
             {/* Ingredients */}
             {ingredients.length > 0 && (
               <section className="mb-10">
-                <h2 className="font-serif text-xl text-[#0e393d] mb-4">{t.ingredients}</h2>
+                <div className="flex items-center gap-3 mb-4">
+                  <h2 className="font-serif text-xl text-[#0e393d]">{t.ingredients}</h2>
+                  <AddAllToShoppingListButton
+                    ingredients={ingredients.filter((i) => !i.section_header)}
+                    recipeId={recipe.id}
+                    lang={locale}
+                  />
+                </div>
                 <ul className="space-y-2">
                   {ingredients.map((ing) => {
                     // Section header row
@@ -341,6 +368,14 @@ export default async function RecipeDetailPage({
 
           {/* Right sidebar */}
           <aside className="space-y-6">
+
+            {/* Ratings */}
+            <RecipeRating
+              recipeId={recipe.id}
+              initialAvg={ratingAvg}
+              initialCount={ratingCount}
+              lang={locale}
+            />
 
             {/* Nutrition */}
             {nutrition && Object.values(nutrition).some((v) => v != null) && (

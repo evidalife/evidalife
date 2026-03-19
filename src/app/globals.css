@@ -70,3 +70,34 @@ body {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Print styles ────────────────────────────────────────────────────────── */
+@media print {
+  /* Hide chrome */
+  nav, footer, aside,
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* Full-width main content */
+  main {
+    max-width: 100% !important;
+    padding: 0 1rem !important;
+  }
+
+  /* Remove background tints */
+  body {
+    background: white !important;
+  }
+
+  /* Keep ingredient cards readable */
+  .rounded-xl, .rounded-2xl {
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+  }
+
+  /* Page breaks */
+  section {
+    break-inside: avoid;
+  }
+}
