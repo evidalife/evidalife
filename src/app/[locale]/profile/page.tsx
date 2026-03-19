@@ -28,14 +28,14 @@ export default async function ProfilePage() {
 
   const { data: profileRow } = await supabase
     .from('profiles')
-    .select('id, email, full_name, avatar_url, onboarding_completed, is_admin, created_at')
+    .select('id, email, display_name, avatar_url, onboarding_completed, is_admin, created_at')
     .eq('id', user.id)
     .single();
 
   const profile: ProfileData = {
     id:                   user.id,
     email:                user.email ?? '',
-    full_name:            profileRow?.full_name ?? null,
+    display_name:         profileRow?.display_name ?? null,
     avatar_url:           profileRow?.avatar_url ?? null,
     onboarding_completed: profileRow?.onboarding_completed ?? null,
     is_admin:             profileRow?.is_admin ?? null,

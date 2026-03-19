@@ -10,7 +10,7 @@ type Lang = 'de' | 'en';
 export type ProfileData = {
   id: string;
   email: string;
-  full_name: string | null;
+  display_name: string | null;
   avatar_url: string | null;
   onboarding_completed: boolean | null;
   is_admin: boolean | null;
@@ -98,7 +98,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
 
   const pendingDeleteRef = useRef<string | null>(null);
 
-  const [fullName,    setFullName]    = useState(profile.full_name ?? '');
+  const [fullName,    setFullName]    = useState(profile.display_name ?? '');
   const [avatarUrl,   setAvatarUrl]   = useState(profile.avatar_url ?? '');
   const [avatarFile,  setAvatarFile]  = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -177,8 +177,8 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
     const { error } = await supabase
       .from('profiles')
       .update({
-        full_name:  fullName.trim() || null,
-        avatar_url: newAvatarUrl,
+        display_name: fullName.trim() || null,
+        avatar_url:   newAvatarUrl,
       })
       .eq('id', profile.id);
 
@@ -215,7 +215,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const displayAvatar = avatarPreview ?? avatarUrl;
-  const initials = (profile.full_name ?? profile.email)
+  const initials = (profile.display_name ?? profile.email)
     .split(/\s+/)
     .map((w) => w[0]?.toUpperCase() ?? '')
     .slice(0, 2)

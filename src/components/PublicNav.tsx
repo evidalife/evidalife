@@ -172,7 +172,7 @@ export default function PublicNav() {
                   <img src={profile.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
                 ) : (
                   <span className="w-6 h-6 rounded-full bg-[#f2ebdb]/20 flex items-center justify-center text-[10px] font-semibold">
-                    {(profile?.full_name ?? user.email ?? '?')[0]?.toUpperCase()}
+                    {(profile?.display_name ?? profile?.first_name ?? user.email ?? '?')[0]?.toUpperCase()}
                   </span>
                 )}
                 {user.email?.split('@')[0] ?? login}
