@@ -96,6 +96,8 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
   const supabase = createClient();
   const fileRef  = useRef<HTMLInputElement>(null);
 
+  const pendingDeleteRef = useRef<string | null>(null);
+
   const [fullName,    setFullName]    = useState(profile.full_name ?? '');
   const [avatarUrl,   setAvatarUrl]   = useState(profile.avatar_url ?? '');
   const [avatarFile,  setAvatarFile]  = useState<File | null>(null);
@@ -123,14 +125,8 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
 
   // ── Remove avatar ──────────────────────────────────────────────────────────
 
-  const handleRemoveAvatar = async () => {
-    if (avatarUrl) {
-      await fetch('/api/delete-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: avatarUrl, bucket: 'user-avatars' }),
-      });
-    }
+  const handleRemoveAvatar = () => {
+    pendingDeleteRef.current = avatarUrl || null;
     setAvatarUrl('');
     setAvatarFile(null);
     setAvatarPreview(null);
@@ -142,14 +138,8 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
     if (!avatarFile) return avatarUrl || null;
     setUploading(true);
 
-    // Delete old avatar before uploading replacement
-    if (avatarUrl) {
-      await fetch('/api/delete-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: avatarUrl, bucket: 'user-avatars' }),
-      });
-    }
+    // Track old avatar for deletion after save succeeds
+    if (avatarUrl) pendingDeleteRef.current = avatarUrl;
 
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -196,6 +186,16 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
       setSaveState('error');
       setTimeout(() => setSaveState('idle'), 3000);
       return;
+    }
+
+    // DB committed — now safe to delete old avatar from storage
+    if (pendingDeleteRef.current) {
+      await fetch('/api/delete-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: pendingDeleteRef.current, bucket: 'user-avatars' }),
+      });
+      pendingDeleteRef.current = null;
     }
 
     // Persist language preference

@@ -33,17 +33,7 @@ export default function GalleryUpload({ items, onChange, maxPhotos = 10 }: Props
     onChange([...items, ...newItems]);
   };
 
-  const remove = async (key: string) => {
-    const item = items.find((it) => it._key === key);
-    // Delete from storage if it has an uploaded URL
-    if (item?.url) {
-      const res = await fetch('/api/delete-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: item.url, bucket: 'recipe-images' }),
-      });
-      if (!res.ok) console.error('Delete failed:', await res.text());
-    }
+  const remove = (key: string) => {
     onChange(
       items
         .filter((it) => it._key !== key)

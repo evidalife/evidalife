@@ -133,6 +133,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [imageRemoved, setImageRemoved] = useState(false);
+  const pendingDeleteRef = useRef<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -167,6 +168,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     setImagePreview(null);
     setCurrentImageUrl(null);
     setImageRemoved(false);
+    pendingDeleteRef.current = null;
     setError(null);
     setPanelOpen(true);
   };
@@ -191,6 +193,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     setImagePreview(null);
     setCurrentImageUrl(p.image_url);
     setImageRemoved(false);
+    pendingDeleteRef.current = null;
     setError(null);
     setPanelOpen(true);
   };
@@ -217,8 +220,8 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
   const uploadImage = async (_productId: string): Promise<string | null> => {
     if (!imageFile) return imageRemoved ? null : currentImageUrl;
-    // Delete old image before uploading replacement
-    if (currentImageUrl) await deleteImage(currentImageUrl);
+    // Track old URL for deletion after save succeeds
+    if (currentImageUrl) pendingDeleteRef.current = currentImageUrl;
     // Use FileReader (browser-native) to get base64 — Buffer.from is Node-only and breaks in Safari
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -236,8 +239,8 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     return json.url as string;
   };
 
-  const handleRemoveCoverImage = async () => {
-    if (currentImageUrl) await deleteImage(currentImageUrl);
+  const handleRemoveCoverImage = () => {
+    pendingDeleteRef.current = currentImageUrl;
     setCurrentImageUrl(null);
     setImageFile(null);
     setImagePreview(null);
@@ -285,6 +288,10 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       if (imageUrl !== currentImageUrl || imageRemoved) {
         await supabase.from('products').update({ image_url: imageUrl }).eq('id', productId!);
       }
+
+      // DB committed — now safe to delete old storage file
+      await deleteImage(pendingDeleteRef.current);
+      pendingDeleteRef.current = null;
 
       await refresh();
       closePanel();

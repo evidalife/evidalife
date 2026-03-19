@@ -631,6 +631,10 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   // Save validation
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
+  // Pending storage deletes — only executed after a successful DB save
+  const pendingDeleteRef = useRef<string | null>(null);
+  const originalGalleryUrlsRef = useRef<Set<string>>(new Set());
+
   // ── Load reference data ───────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -654,7 +658,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   // ── Load existing recipe ─────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!recipeId) { setForm(EMPTY_FORM); setGalleryItems([]); setImageFile(null); setImagePreview(null); setCurrentImageUrl(null); setImageRemoved(false); setLoading(false); return; }
+    if (!recipeId) { setForm(EMPTY_FORM); setGalleryItems([]); setImageFile(null); setImagePreview(null); setCurrentImageUrl(null); setImageRemoved(false); pendingDeleteRef.current = null; originalGalleryUrlsRef.current = new Set(); setLoading(false); return; }
     setLoading(true);
     Promise.all([
       supabase.from('recipes').select('*').eq('id', recipeId).single(),
@@ -665,6 +669,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       if (!r) { setLoading(false); return; }
       setCurrentImageUrl(r.image_url ?? null);
       setImageRemoved(false);
+      pendingDeleteRef.current = null;
       setForm({
         title:        { de: r.title?.de ?? '',        en: r.title?.en ?? '' },
         slug: r.slug ?? '',
@@ -713,13 +718,13 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       });
       // Load gallery
       const raw = r.image_gallery as { url: string; order: number }[] | null;
-      setGalleryItems(
-        (raw ?? []).map((p, i) => ({
-          _key: `_g${i}`,
-          url: p.url,
-          order: p.order ?? i,
-        }))
-      );
+      const galleryEntries = (raw ?? []).map((p, i) => ({
+        _key: `_g${i}`,
+        url: p.url,
+        order: p.order ?? i,
+      }));
+      setGalleryItems(galleryEntries);
+      originalGalleryUrlsRef.current = new Set(galleryEntries.map(g => g.url).filter((u): u is string => !!u));
       setLoading(false);
     });
   }, [recipeId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -822,8 +827,8 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
     setImagePreview(URL.createObjectURL(file));
   };
 
-  const handleRemoveCoverImage = async () => {
-    if (currentImageUrl) await deleteStorageUrl(currentImageUrl);
+  const handleRemoveCoverImage = () => {
+    pendingDeleteRef.current = currentImageUrl;
     setCurrentImageUrl(null);
     setImageFile(null);
     setImagePreview(null);
@@ -832,8 +837,8 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
   const uploadImage = async (_id: string): Promise<string | null> => {
     if (!imageFile) return currentImageUrl;
-    // Delete old cover image from storage before uploading replacement
-    if (currentImageUrl) await deleteStorageUrl(currentImageUrl);
+    // Track old URL for deletion after save succeeds
+    if (currentImageUrl) pendingDeleteRef.current = currentImageUrl;
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve((reader.result as string).split(',')[1]);
@@ -1010,6 +1015,15 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       const { error: galErr } = await supabase.from('recipes').update({ image_gallery: galleryPayload }).eq('id', id!);
       if (galErr) throw galErr;
 
+      // DB is committed — now safe to delete removed storage files
+      await deleteStorageUrl(pendingDeleteRef.current);
+      pendingDeleteRef.current = null;
+      const savedGalleryUrls = new Set(galleryPayload.map(g => g.url));
+      for (const url of originalGalleryUrlsRef.current) {
+        if (!savedGalleryUrls.has(url)) await deleteStorageUrl(url);
+      }
+      originalGalleryUrlsRef.current = new Set(galleryPayload.map(g => g.url));
+
       onSaved();
     } catch (e: unknown) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1026,11 +1040,13 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
     const title = form.title.de || form.title.en || 'this recipe';
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
     setDeleting(true);
-    // Delete cover image and all gallery images from storage
-    await deleteStorageUrl(currentImageUrl);
-    for (const item of galleryItems) {
-      if (item.url) await deleteStorageUrl(item.url);
-    }
+    // Delete all storage files: pending removes + current cover + all gallery URLs
+    const storageUrlsToDelete = new Set<string>();
+    if (pendingDeleteRef.current) storageUrlsToDelete.add(pendingDeleteRef.current);
+    if (currentImageUrl) storageUrlsToDelete.add(currentImageUrl);
+    for (const url of originalGalleryUrlsRef.current) storageUrlsToDelete.add(url);
+    for (const item of galleryItems) { if (item.url) storageUrlsToDelete.add(item.url); }
+    for (const url of storageUrlsToDelete) await deleteStorageUrl(url);
     const { error: err } = await supabase.from('recipes').delete().eq('id', recipeId);
     setDeleting(false);
     if (err) { setError(err.message); return; }
