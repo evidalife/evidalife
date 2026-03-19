@@ -164,10 +164,9 @@ export default async function RecipeDetailPage({
     .select(`
       id, slug, title, description, instructions, image_url,
       prep_time_min, cook_time_min, servings, difficulty, is_featured,
-      nutrition,
-      recipe_ingredients(id, name, amount, unit, notes, sort_order),
-      recipe_daily_dozen_tags(daily_dozen_category, servings),
-      recipe_goal_tags(goal_tag)
+      nutrition_info,
+      recipe_ingredients(id, ingredient_name, amount, unit, notes, is_optional, sort_order, section_header),
+      recipe_goal_tags(goal)
     `)
     .or(`slug.eq.${slug},id.eq.${slug}`)
     .eq('is_published', true)
@@ -175,6 +174,12 @@ export default async function RecipeDetailPage({
     .single();
 
   if (!recipe) notFound();
+
+  // Fetch Daily Dozen coverage from view
+  const { data: ddRows } = await supabase
+    .from('v_recipe_daily_dozen_coverage')
+    .select('category_slug, category_icon')
+    .eq('recipe_id', recipe.id);
 
   const title       = recipe.title?.[locale] || recipe.title?.de || recipe.title?.en || '';
   const description = recipe.description?.[locale] || recipe.description?.de || '';
@@ -184,9 +189,9 @@ export default async function RecipeDetailPage({
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
   );
 
-  const ddTags  = (recipe.recipe_daily_dozen_tags ?? []) as { daily_dozen_category: string; servings: number }[];
-  const goals   = (recipe.recipe_goal_tags ?? []) as { goal_tag: string }[];
-  const nutrition = recipe.nutrition as {
+  const ddTags  = (ddRows ?? []) as { category_slug: string; category_icon: string }[];
+  const goals   = (recipe.recipe_goal_tags ?? []) as { goal: string }[];
+  const nutrition = recipe.nutrition_info as {
     calories?: number; protein_g?: number; fat_g?: number; carbs_g?: number; fiber_g?: number;
   } | null;
 
@@ -275,9 +280,24 @@ export default async function RecipeDetailPage({
                 <h2 className="font-serif text-xl text-[#0e393d] mb-4">{t.ingredients}</h2>
                 <ul className="space-y-2">
                   {ingredients.map((ing) => {
-                    const ingName = typeof ing.name === 'object'
-                      ? (ing.name as { de?: string; en?: string })?.[locale] || (ing.name as { de?: string; en?: string })?.de || ''
-                      : (ing.name as string) || '';
+                    // Section header row
+                    if (ing.section_header) {
+                      return (
+                        <li key={ing.id} className="pt-3 pb-1 first:pt-0">
+                          <h3 className="text-xs font-semibold uppercase tracking-wider text-[#ceab84]">
+                            {ing.section_header}
+                          </h3>
+                        </li>
+                      );
+                    }
+                    const ingName = typeof ing.ingredient_name === 'object' && ing.ingredient_name !== null
+                      ? (ing.ingredient_name as { de?: string; en?: string })?.[locale] || (ing.ingredient_name as { de?: string; en?: string })?.de || ''
+                      : String(ing.ingredient_name || '');
+                    const rawNotes = ing.notes;
+                    const notesText = !rawNotes ? '' :
+                      typeof rawNotes === 'object'
+                        ? ((rawNotes as { de?: string; en?: string })?.[locale] || (rawNotes as { de?: string; en?: string })?.de || '')
+                        : String(rawNotes);
                     const displayAmount = ing.amount != null ? ing.amount : null;
                     return (
                       <li
@@ -286,8 +306,8 @@ export default async function RecipeDetailPage({
                       >
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-medium text-[#1c2a2b]">{ingName}</span>
-                          {ing.notes && (
-                            <span className="ml-1.5 text-xs text-[#1c2a2b]/40">({ing.notes})</span>
+                          {notesText && (
+                            <span className="ml-1.5 text-xs text-[#1c2a2b]/40">({notesText})</span>
                           )}
                         </div>
                         {(displayAmount != null || ing.unit) && (
@@ -298,7 +318,7 @@ export default async function RecipeDetailPage({
                         <AddToShoppingListButton
                           ingredientName={ingName}
                           amount={displayAmount}
-                          unit={ing.unit ?? null}
+                          unit={typeof ing.unit === 'string' ? ing.unit : null}
                           recipeId={recipe.id}
                           lang={locale}
                           compact
@@ -371,11 +391,10 @@ export default async function RecipeDetailPage({
                 <div className="flex flex-wrap gap-1.5">
                   {ddTags.map((tag) => (
                     <span
-                      key={tag.daily_dozen_category}
+                      key={tag.category_slug}
                       className="rounded-full bg-[#ceab84]/12 px-2.5 py-1 text-xs font-medium text-[#8a6a3e]"
                     >
-                      {DD_LABELS[tag.daily_dozen_category]?.[locale] ?? tag.daily_dozen_category}
-                      {tag.servings > 1 && <span className="ml-1 text-[10px] opacity-60">×{tag.servings}</span>}
+                      {tag.category_icon} {DD_LABELS[tag.category_slug]?.[locale] ?? tag.category_slug}
                     </span>
                   ))}
                 </div>
@@ -389,10 +408,10 @@ export default async function RecipeDetailPage({
                 <div className="flex flex-wrap gap-1.5">
                   {goals.map((g) => (
                     <span
-                      key={g.goal_tag}
+                      key={g.goal}
                       className="rounded-full bg-[#0e393d]/6 px-2.5 py-1 text-xs font-medium text-[#0e393d]/70"
                     >
-                      {GOAL_LABELS[g.goal_tag]?.[locale] ?? g.goal_tag}
+                      {GOAL_LABELS[g.goal]?.[locale] ?? g.goal}
                     </span>
                   ))}
                 </div>

@@ -21,7 +21,6 @@ const GOAL_TAGS = [
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Lang = 'de' | 'en';
-
 type LangContent = { de: string; en: string };
 
 type IngredientOption = {
@@ -46,6 +45,26 @@ type DailyDozenCategoryOption = {
   icon: string | null;
 };
 
+type PrepNoteOption = {
+  id: string;
+  name: { de?: string; en?: string };
+  slug: string;
+};
+
+type CourseTypeOption = {
+  id: string;
+  name: { de?: string; en?: string };
+  slug: string;
+  sort_order: number;
+};
+
+type MealTypeOption = {
+  id: string;
+  name: { de?: string; en?: string };
+  slug: string;
+  sort_order: number;
+};
+
 type IngredientRow = {
   _key: string;
   ingredient_id: string | null;
@@ -53,8 +72,12 @@ type IngredientRow = {
   amount: string;
   unit_id: string | null;
   unit: string;
-  notes: string;
+  note_id: string | null;
+  note_display: string;
+  notes: { de: string; en: string } | null;
   is_optional: boolean;
+  /** null = ingredient row; string (incl. '') = section header row */
+  section_header: string | null;
 };
 
 type NutritionForm = {
@@ -74,6 +97,8 @@ type RecipeForm = {
   cook_time_min: string;
   servings: string;
   difficulty: string;
+  course_type_id: string;
+  meal_type_id: string;
   nutrition: NutritionForm;
   is_published: boolean;
   is_featured: boolean;
@@ -83,6 +108,19 @@ type RecipeForm = {
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
+const EMPTY_INGREDIENT: Omit<IngredientRow, '_key'> = {
+  ingredient_id: null,
+  ingredient_name: { de: '', en: '' },
+  amount: '',
+  unit_id: null,
+  unit: '',
+  note_id: null,
+  note_display: '',
+  notes: null,
+  is_optional: false,
+  section_header: null,
+};
+
 const EMPTY_FORM: RecipeForm = {
   title:        { de: '', en: '' },
   slug: '',
@@ -90,6 +128,8 @@ const EMPTY_FORM: RecipeForm = {
   instructions: { de: '', en: '' },
   prep_time_min: '', cook_time_min: '', servings: '',
   difficulty: 'easy',
+  course_type_id: '',
+  meal_type_id: '',
   nutrition: { calories: '', protein_g: '', fat_g: '', carbs_g: '', fiber_g: '' },
   is_published: false, is_featured: false,
   ingredients: [], goals: [],
@@ -156,7 +196,7 @@ function IconBtn({ onClick, title, children }: { onClick: () => void; title: str
 
 // ─── Ingredient Combobox ──────────────────────────────────────────────────────
 
-interface ComboboxProps {
+interface IngredientComboboxProps {
   value: string | null;
   displayValue: string;
   ingredientOptions: IngredientOption[];
@@ -164,23 +204,18 @@ interface ComboboxProps {
   onOpenQuickAdd: () => void;
 }
 
-function IngredientCombobox({ value, displayValue, ingredientOptions, onSelect, onOpenQuickAdd }: ComboboxProps) {
+function IngredientCombobox({ value, displayValue, ingredientOptions, onSelect, onOpenQuickAdd }: IngredientComboboxProps) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [inputVal, setInputVal] = useState(displayValue);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Sync display value when external value changes
-  useEffect(() => {
-    setInputVal(displayValue);
-  }, [displayValue]);
+  useEffect(() => { setInputVal(displayValue); }, [displayValue]);
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
-        // Reset input to current display value if nothing selected
         setInputVal(displayValue);
         setQuery('');
       }
@@ -196,45 +231,31 @@ function IngredientCombobox({ value, displayValue, ingredientOptions, onSelect, 
       }).slice(0, 30)
     : ingredientOptions.slice(0, 30);
 
-  const handleFocus = () => {
-    setQuery('');
-    setOpen(true);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setQuery(e.target.value);
-    setInputVal(e.target.value);
-    setOpen(true);
-  };
-
-  const handleSelect = (ing: IngredientOption) => {
-    onSelect(ing);
-    const label = [ing.name?.de, ing.name?.en].filter(Boolean).join(' / ');
-    setInputVal(label);
-    setQuery('');
-    setOpen(false);
-  };
-
   return (
     <div ref={containerRef} className="relative flex-1">
       <input
         value={inputVal}
-        onFocus={handleFocus}
-        onChange={handleChange}
+        onFocus={() => { setQuery(''); setOpen(true); }}
+        onChange={(e) => { setQuery(e.target.value); setInputVal(e.target.value); setOpen(true); }}
         placeholder="Search ingredient…"
         className="w-full rounded-md border border-[#0e393d]/12 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
       />
       {open && (
         <div className="absolute z-50 top-full left-0 mt-1 w-64 bg-white rounded-lg border border-[#0e393d]/15 shadow-lg overflow-hidden">
           <div className="max-h-48 overflow-y-auto">
-            {filtered.length === 0 && (
-              <div className="px-3 py-2 text-xs text-[#1c2a2b]/40">No results</div>
-            )}
+            {filtered.length === 0 && <div className="px-3 py-2 text-xs text-[#1c2a2b]/40">No results</div>}
             {filtered.map((ing) => (
               <button
                 key={ing.id}
                 type="button"
-                onMouseDown={(e) => { e.preventDefault(); handleSelect(ing); }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onSelect(ing);
+                  const label = [ing.name?.de, ing.name?.en].filter(Boolean).join(' / ');
+                  setInputVal(label);
+                  setQuery('');
+                  setOpen(false);
+                }}
                 className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#0e393d]/5 transition ${value === ing.id ? 'bg-[#0e393d]/8 font-medium' : ''}`}
               >
                 <span className="text-[#0e393d]">{ing.name?.de}</span>
@@ -257,16 +278,160 @@ function IngredientCombobox({ value, displayValue, ingredientOptions, onSelect, 
   );
 }
 
+// ─── Prep Notes Combobox ──────────────────────────────────────────────────────
+
+interface PrepNotesComboboxProps {
+  value: string | null;
+  displayValue: string;
+  noteOptions: PrepNoteOption[];
+  onSelect: (note: PrepNoteOption) => void;
+  onClear: () => void;
+  onOpenQuickAdd: () => void;
+}
+
+function PrepNotesCombobox({ value, displayValue, noteOptions, onSelect, onClear, onOpenQuickAdd }: PrepNotesComboboxProps) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const [inputVal, setInputVal] = useState(displayValue);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setInputVal(displayValue); }, [displayValue]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setInputVal(displayValue);
+        setQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [displayValue]);
+
+  const filtered = query.length > 0
+    ? noteOptions.filter((n) => {
+        const q = query.toLowerCase();
+        return n.name?.de?.toLowerCase().includes(q) || n.name?.en?.toLowerCase().includes(q);
+      }).slice(0, 20)
+    : noteOptions.slice(0, 20);
+
+  return (
+    <div ref={containerRef} className="relative w-36 shrink-0">
+      <div className="flex items-center rounded-md border border-[#0e393d]/12 bg-white overflow-hidden">
+        <input
+          value={inputVal}
+          onFocus={() => { setQuery(''); setOpen(true); }}
+          onChange={(e) => { setQuery(e.target.value); setInputVal(e.target.value); setOpen(true); }}
+          placeholder="Notes…"
+          className="flex-1 min-w-0 px-2 py-1 text-xs focus:outline-none bg-transparent"
+        />
+        {value && (
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); onClear(); setInputVal(''); setQuery(''); }}
+            className="px-1.5 text-[#1c2a2b]/30 hover:text-[#1c2a2b]/60 transition text-base leading-none"
+            title="Clear note"
+          >×</button>
+        )}
+      </div>
+      {open && (
+        <div className="absolute z-50 top-full left-0 mt-1 w-52 bg-white rounded-lg border border-[#0e393d]/15 shadow-lg overflow-hidden">
+          <div className="max-h-40 overflow-y-auto">
+            {filtered.length === 0 && <div className="px-3 py-2 text-xs text-[#1c2a2b]/40">No results</div>}
+            {filtered.map((note) => (
+              <button
+                key={note.id}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onSelect(note);
+                  const label = [note.name?.de, note.name?.en].filter(Boolean).join(' / ');
+                  setInputVal(label);
+                  setQuery('');
+                  setOpen(false);
+                }}
+                className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#0e393d]/5 transition ${value === note.id ? 'bg-[#0e393d]/8 font-medium' : ''}`}
+              >
+                <span className="text-[#0e393d]">{note.name?.de}</span>
+                {note.name?.en && <span className="text-[#1c2a2b]/40"> / {note.name.en}</span>}
+              </button>
+            ))}
+          </div>
+          <div className="border-t border-[#0e393d]/8 px-3 py-1.5">
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); setOpen(false); onOpenQuickAdd(); }}
+              className="text-xs text-[#ceab84] hover:text-[#8a6a3e] font-medium transition"
+            >
+              + New note
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Markdown Toolbar ─────────────────────────────────────────────────────────
+
+function MarkdownToolbar({ taRef, value, onChange }: {
+  taRef: React.RefObject<HTMLTextAreaElement | null>;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const insert = (before: string, after = '', defaultText = '') => {
+    const ta = taRef.current;
+    if (!ta) return;
+    const s = ta.selectionStart;
+    const e = ta.selectionEnd;
+    const sel = value.slice(s, e) || defaultText;
+    const next = value.slice(0, s) + before + sel + after + value.slice(e);
+    onChange(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const cur = s + before.length + sel.length + after.length;
+      ta.setSelectionRange(cur, cur);
+    });
+  };
+
+  const btns: { label: string; title: string; fn: () => void }[] = [
+    { label: 'B',       title: 'Bold',          fn: () => insert('**', '**', 'bold') },
+    { label: 'I',       title: 'Italic',         fn: () => insert('*', '*', 'italic') },
+    { label: '## H',    title: 'Heading',        fn: () => insert('\n## ', '', 'Heading') },
+    { label: '– List',  title: 'Bullet list',    fn: () => insert('\n- ', '', 'Item') },
+    { label: '1. Num',  title: 'Numbered list',  fn: () => insert('\n1. ', '', 'Item') },
+    { label: '> Quote', title: 'Blockquote',     fn: () => insert('\n> ', '', 'Quote') },
+    { label: '---',     title: 'Divider',        fn: () => insert('\n\n---\n\n') },
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-1 mb-1.5">
+      {btns.map((b) => (
+        <button
+          key={b.label}
+          type="button"
+          title={b.title}
+          onMouseDown={(e) => { e.preventDefault(); b.fn(); }}
+          className="rounded px-1.5 py-0.5 text-[11px] font-medium text-[#1c2a2b]/60 bg-[#0e393d]/5 hover:bg-[#0e393d]/12 hover:text-[#0e393d] transition select-none"
+        >
+          {b.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ─── Quick-Add Ingredient Modal ───────────────────────────────────────────────
 
-interface QuickAddModalProps {
+interface QuickAddIngredientModalProps {
   units: UnitOption[];
   categories: DailyDozenCategoryOption[];
   onSaved: (ing: IngredientOption) => void;
   onClose: () => void;
 }
 
-function QuickAddIngredientModal({ units, categories, onSaved, onClose }: QuickAddModalProps) {
+function QuickAddIngredientModal({ units, categories, onSaved, onClose }: QuickAddIngredientModalProps) {
   const supabase = createClient();
   const [nameDe, setNameDe] = useState('');
   const [nameEn, setNameEn] = useState('');
@@ -280,105 +445,125 @@ function QuickAddIngredientModal({ units, categories, onSaved, onClose }: QuickA
     if (!nameEn.trim()) { setError('Name (EN) is required.'); return; }
     setSaving(true);
     setError(null);
-    const payload = {
-      name: { de: nameDe.trim(), en: nameEn.trim() },
-      slug: ingredientSlugify(nameDe),
-      default_unit_id: defaultUnitId || null,
-      daily_dozen_category_id: categoryId || null,
-      is_common: false,
-    };
     const { data, error: err } = await supabase
       .from('ingredients')
-      .insert(payload)
+      .insert({
+        name: { de: nameDe.trim(), en: nameEn.trim() },
+        slug: ingredientSlugify(nameDe),
+        default_unit_id: defaultUnitId || null,
+        daily_dozen_category_id: categoryId || null,
+        is_common: false,
+      })
       .select('id, name, slug, default_unit_id')
       .single();
     setSaving(false);
     if (err) { setError(err.message); return; }
-    onSaved({
-      id: data.id,
-      name: data.name,
-      slug: data.slug,
-      default_unit_id: data.default_unit_id,
-    });
+    onSaved({ id: data.id, name: data.name, slug: data.slug, default_unit_id: data.default_unit_id });
   };
 
   return (
     <>
-      {/* Modal backdrop */}
       <div className="fixed inset-0 bg-black/40 z-[60]" onClick={onClose} />
-      {/* Modal */}
       <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl border border-[#0e393d]/10 shadow-2xl w-full max-w-sm">
           <div className="flex items-center justify-between border-b border-[#0e393d]/10 px-5 py-4">
             <h3 className="font-serif text-base text-[#0e393d]">Quick-Add Ingredient</h3>
             <button onClick={onClose} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-                <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
-              </svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/></svg>
             </button>
           </div>
           <div className="px-5 py-4 space-y-3">
             <Field label="Name DE *">
-              <input
-                className={inputCls}
-                value={nameDe}
-                onChange={(e) => setNameDe(e.target.value)}
-                placeholder="z.B. Spinat"
-                autoFocus
-              />
+              <input className={inputCls} value={nameDe} onChange={(e) => setNameDe(e.target.value)} placeholder="z.B. Spinat" autoFocus />
             </Field>
             <Field label="Name EN *">
-              <input
-                className={inputCls}
-                value={nameEn}
-                onChange={(e) => setNameEn(e.target.value)}
-                placeholder="e.g. Spinach"
-              />
+              <input className={inputCls} value={nameEn} onChange={(e) => setNameEn(e.target.value)} placeholder="e.g. Spinach" />
             </Field>
             <Field label="Default Unit">
-              <select
-                className={inputCls + ' cursor-pointer'}
-                value={defaultUnitId}
-                onChange={(e) => setDefaultUnitId(e.target.value)}
-              >
+              <select className={inputCls + ' cursor-pointer'} value={defaultUnitId} onChange={(e) => setDefaultUnitId(e.target.value)}>
                 <option value="">— No default unit</option>
                 {units.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.abbreviation?.de ?? u.code} — {u.name?.de ?? u.code}
-                  </option>
+                  <option key={u.id} value={u.id}>{u.abbreviation?.de ?? u.code} — {u.name?.de ?? u.code}</option>
                 ))}
               </select>
             </Field>
             <Field label="Daily Dozen Category">
-              <select
-                className={inputCls + ' cursor-pointer'}
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-              >
+              <select className={inputCls + ' cursor-pointer'} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
                 <option value="">— None</option>
                 {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.icon ? `${cat.icon} ` : ''}{cat.name?.de ?? cat.slug}
-                  </option>
+                  <option key={cat.id} value={cat.id}>{cat.icon ? `${cat.icon} ` : ''}{cat.name?.de ?? cat.slug}</option>
                 ))}
               </select>
             </Field>
-            {error && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
-            )}
+            {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
           </div>
           <div className="flex gap-3 border-t border-[#0e393d]/10 px-5 py-4">
-            <button
-              onClick={onClose}
-              className="flex-1 rounded-lg border border-[#0e393d]/15 py-2 text-sm font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition"
-            >
-              Cancel
+            <button onClick={onClose} className="flex-1 rounded-lg border border-[#0e393d]/15 py-2 text-sm font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition">Cancel</button>
+            <button onClick={handleSave} disabled={saving} className="flex-1 rounded-lg bg-[#0e393d] py-2 text-sm font-medium text-white hover:bg-[#0e393d]/90 disabled:opacity-50 transition">
+              {saving ? 'Saving…' : 'Create & Select'}
             </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex-1 rounded-lg bg-[#0e393d] py-2 text-sm font-medium text-white hover:bg-[#0e393d]/90 disabled:opacity-50 transition"
-            >
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Quick-Add Preparation Note Modal ────────────────────────────────────────
+
+interface QuickAddNoteModalProps {
+  onSaved: (note: PrepNoteOption) => void;
+  onClose: () => void;
+}
+
+function QuickAddNoteModal({ onSaved, onClose }: QuickAddNoteModalProps) {
+  const supabase = createClient();
+  const [nameDe, setNameDe] = useState('');
+  const [nameEn, setNameEn] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    if (!nameDe.trim() && !nameEn.trim()) { setError('At least one name is required.'); return; }
+    setSaving(true);
+    setError(null);
+    const { data, error: err } = await supabase
+      .from('preparation_notes')
+      .insert({
+        name: { de: nameDe.trim(), en: nameEn.trim() },
+        slug: slugify(nameDe || nameEn),
+        is_common: false,
+      })
+      .select('id, name, slug')
+      .single();
+    setSaving(false);
+    if (err) { setError(err.message); return; }
+    onSaved({ id: data.id, name: data.name, slug: data.slug });
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/40 z-[60]" onClick={onClose} />
+      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl border border-[#0e393d]/10 shadow-2xl w-full max-w-xs">
+          <div className="flex items-center justify-between border-b border-[#0e393d]/10 px-5 py-4">
+            <h3 className="font-serif text-base text-[#0e393d]">New Preparation Note</h3>
+            <button onClick={onClose} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/></svg>
+            </button>
+          </div>
+          <div className="px-5 py-4 space-y-3">
+            <Field label="Name DE">
+              <input className={inputCls} value={nameDe} onChange={(e) => setNameDe(e.target.value)} placeholder="z.B. zerdrückt" autoFocus />
+            </Field>
+            <Field label="Name EN">
+              <input className={inputCls} value={nameEn} onChange={(e) => setNameEn(e.target.value)} placeholder="e.g. crushed" />
+            </Field>
+            {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+          </div>
+          <div className="flex gap-3 border-t border-[#0e393d]/10 px-5 py-4">
+            <button onClick={onClose} className="flex-1 rounded-lg border border-[#0e393d]/15 py-2 text-sm font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition">Cancel</button>
+            <button onClick={handleSave} disabled={saving} className="flex-1 rounded-lg bg-[#0e393d] py-2 text-sm font-medium text-white hover:bg-[#0e393d]/90 disabled:opacity-50 transition">
               {saving ? 'Saving…' : 'Create & Select'}
             </button>
           </div>
@@ -391,7 +576,7 @@ function QuickAddIngredientModal({ units, categories, onSaved, onClose }: QuickA
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface Props {
-  recipeId: string | null; // null = new
+  recipeId: string | null;
   onClose: () => void;
   onSaved: () => void;
   onDeleted?: () => void;
@@ -400,6 +585,7 @@ interface Props {
 export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted }: Props) {
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
+  const instructionRef = useRef<HTMLTextAreaElement>(null);
 
   const [lang, setLang] = useState<Lang>('de');
   const [form, setForm] = useState<RecipeForm>(EMPTY_FORM);
@@ -411,14 +597,22 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Ingredient/unit data
+  // Reference data
   const [ingredientOptions, setIngredientOptions] = useState<IngredientOption[]>([]);
   const [unitOptions, setUnitOptions] = useState<UnitOption[]>([]);
   const [categoryOptions, setCategoryOptions] = useState<DailyDozenCategoryOption[]>([]);
+  const [prepNoteOptions, setPrepNoteOptions] = useState<PrepNoteOption[]>([]);
+  const [courseTypeOptions, setCourseTypeOptions] = useState<CourseTypeOption[]>([]);
+  const [mealTypeOptions, setMealTypeOptions] = useState<MealTypeOption[]>([]);
 
-  // Quick-add modal
+  // Modals
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [quickAddTargetKey, setQuickAddTargetKey] = useState<string | null>(null);
+  const [quickAddNoteOpen, setQuickAddNoteOpen] = useState(false);
+  const [quickAddNoteTargetKey, setQuickAddNoteTargetKey] = useState<string | null>(null);
+
+  // Goal validation
+  const [goalLimitWarning, setGoalLimitWarning] = useState(false);
 
   // ── Load reference data ───────────────────────────────────────────────────────
 
@@ -427,10 +621,16 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       supabase.from('ingredients').select('id, name, slug, default_unit_id').order('name->de'),
       supabase.from('measurement_units').select('id, code, name, abbreviation, sort_order').order('sort_order'),
       supabase.from('daily_dozen_categories').select('id, slug, name, icon').order('sort_order'),
-    ]).then(([{ data: ings }, { data: units }, { data: cats }]) => {
+      supabase.from('preparation_notes').select('id, name, slug').order('slug'),
+      supabase.from('recipe_course_types').select('id, name, slug, sort_order').order('sort_order'),
+      supabase.from('recipe_meal_types').select('id, name, slug, sort_order').order('sort_order'),
+    ]).then(([{ data: ings }, { data: units }, { data: cats }, { data: notes }, { data: courseTypes }, { data: mealTypes }]) => {
       if (ings) setIngredientOptions(ings as IngredientOption[]);
       if (units) setUnitOptions(units as UnitOption[]);
       if (cats) setCategoryOptions(cats as DailyDozenCategoryOption[]);
+      if (notes) setPrepNoteOptions(notes as PrepNoteOption[]);
+      if (courseTypes) setCourseTypeOptions(courseTypes as CourseTypeOption[]);
+      if (mealTypes) setMealTypeOptions(mealTypes as MealTypeOption[]);
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -455,6 +655,8 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         cook_time_min: r.cook_time_min != null ? String(r.cook_time_min) : '',
         servings:      r.servings     != null ? String(r.servings)      : '',
         difficulty:    r.difficulty   ?? 'easy',
+        course_type_id: r.course_type_id ?? '',
+        meal_type_id:   r.meal_type_id   ?? '',
         nutrition: {
           calories:  r.nutrition_info?.calories  != null ? String(r.nutrition_info.calories)  : '',
           protein_g: r.nutrition_info?.protein_g != null ? String(r.nutrition_info.protein_g) : '',
@@ -464,19 +666,30 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         },
         is_published: r.is_published ?? false,
         is_featured:  r.is_featured  ?? false,
-        ingredients: (ings ?? []).map((i) => ({
-          _key:            newKey(),
-          ingredient_id:   i.ingredient_id ?? null,
-          ingredient_name: {
-            de: (i.ingredient_name as { de?: string; en?: string } | null)?.de ?? (typeof i.ingredient_name === 'string' ? i.ingredient_name : '') ?? '',
-            en: (i.ingredient_name as { de?: string; en?: string } | null)?.en ?? '',
-          },
-          amount:     i.amount != null ? String(i.amount) : '',
-          unit_id:    i.unit_id ?? null,
-          unit:       i.unit ?? '',
-          notes:      i.notes  ?? '',
-          is_optional: i.is_optional ?? false,
-        })),
+        ingredients: (ings ?? []).map((i) => {
+          // Parse notes jsonb
+          const rawNotes = i.notes as { de?: string; en?: string } | string | null;
+          let notesObj: { de: string; en: string } | null = null;
+          if (rawNotes && typeof rawNotes === 'object' && !Array.isArray(rawNotes)) {
+            notesObj = { de: (rawNotes as { de?: string }).de ?? '', en: (rawNotes as { en?: string }).en ?? '' };
+          }
+          return {
+            _key:            newKey(),
+            ingredient_id:   i.ingredient_id ?? null,
+            ingredient_name: {
+              de: (i.ingredient_name as { de?: string; en?: string } | null)?.de ?? '',
+              en: (i.ingredient_name as { de?: string; en?: string } | null)?.en ?? '',
+            },
+            amount:     i.amount != null ? String(i.amount) : '',
+            unit_id:    i.unit_id ?? null,
+            unit:       (typeof i.unit === 'string' ? i.unit : '') ?? '',
+            note_id:    i.note_id ?? null,
+            note_display: notesObj ? [notesObj.de, notesObj.en].filter(Boolean).join(' / ') : '',
+            notes:      notesObj,
+            is_optional: i.is_optional ?? false,
+            section_header: i.section_header ?? null,
+          };
+        }),
         goals: (goals ?? []).map((g) => g.goal),
       });
       setLoading(false);
@@ -494,12 +707,12 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   // ── Ingredients ──────────────────────────────────────────────────────────────
 
   const addIngredient = () =>
+    setForm((f) => ({ ...f, ingredients: [...f.ingredients, { _key: newKey(), ...EMPTY_INGREDIENT }] }));
+
+  const addSection = () =>
     setForm((f) => ({
       ...f,
-      ingredients: [
-        ...f.ingredients,
-        { _key: newKey(), ingredient_id: null, ingredient_name: { de: '', en: '' }, amount: '', unit_id: null, unit: '', notes: '', is_optional: false },
-      ],
+      ingredients: [...f.ingredients, { _key: newKey(), ...EMPTY_INGREDIENT, section_header: '' }],
     }));
 
   const removeIngredient = (key: string) =>
@@ -508,13 +721,22 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   const updateIngredient = (key: string, patch: Partial<Omit<IngredientRow, '_key'>>) =>
     setForm((f) => ({ ...f, ingredients: f.ingredients.map((i) => i._key === key ? { ...i, ...patch } : i) }));
 
-  const selectIngredient = (key: string, ing: IngredientOption) => {
+  const selectIngredient = (key: string, ing: IngredientOption) =>
     updateIngredient(key, {
       ingredient_id: ing.id,
       ingredient_name: { de: ing.name?.de ?? '', en: ing.name?.en ?? '' },
       unit_id: ing.default_unit_id ?? null,
     });
-  };
+
+  const selectNote = (key: string, note: PrepNoteOption) =>
+    updateIngredient(key, {
+      note_id: note.id,
+      note_display: [note.name?.de, note.name?.en].filter(Boolean).join(' / '),
+      notes: { de: note.name?.de ?? '', en: note.name?.en ?? '' },
+    });
+
+  const clearNote = (key: string) =>
+    updateIngredient(key, { note_id: null, note_display: '', notes: null });
 
   const moveIngredient = (key: string, dir: -1 | 1) =>
     setForm((f) => {
@@ -527,15 +749,12 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
     });
 
   const getIngredientDisplay = (row: IngredientRow): string => {
-    const de = row.ingredient_name.de;
-    const en = row.ingredient_name.en;
+    const { de, en } = row.ingredient_name;
     if (de && en) return `${de} / ${en}`;
     return de || en || '';
   };
 
   // ── Goal tags ────────────────────────────────────────────────────────────────
-
-  const [goalLimitWarning, setGoalLimitWarning] = useState(false);
 
   const toggleGoal = (goal: string) => {
     setForm((f) => {
@@ -599,6 +818,8 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         cook_time_min: form.cook_time_min ? Number(form.cook_time_min) : null,
         servings:      form.servings      ? Number(form.servings)      : null,
         difficulty:    form.difficulty || null,
+        course_type_id: form.course_type_id || null,
+        meal_type_id:   form.meal_type_id   || null,
         nutrition_info: {
           calories:  form.nutrition.calories  ? Number(form.nutrition.calories)  : null,
           protein_g: form.nutrition.protein_g ? Number(form.nutrition.protein_g) : null,
@@ -632,9 +853,25 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       if (form.ingredients.length > 0) {
         const rows = form.ingredients
           .map((ing, idx) => {
+            // Section header row
+            if (ing.section_header !== null) {
+              return {
+                recipe_id:       id!,
+                ingredient_id:   null,
+                ingredient_name: { de: '', en: '' },
+                amount:          null,
+                unit_id:         null,
+                unit:            null,
+                notes:           null,
+                note_id:         null,
+                sort_order:      idx,
+                is_optional:     false,
+                section_header:  ing.section_header,
+              };
+            }
+            // Normal ingredient row
             const hasName = ing.ingredient_name.de.trim() || ing.ingredient_name.en.trim();
             if (!hasName && !ing.ingredient_id) return null;
-            // Build backward-compat unit string from unit option
             const unitOpt = unitOptions.find((u) => u.id === ing.unit_id);
             const unitStr = unitOpt
               ? (unitOpt.abbreviation?.de ?? unitOpt.abbreviation?.en ?? unitOpt.code)
@@ -646,9 +883,11 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
               amount:           ing.amount ? Number(ing.amount) : null,
               unit_id:          ing.unit_id ?? null,
               unit:             unitStr,
-              notes:            ing.notes.trim() || null,
+              notes:            ing.notes ?? null,
+              note_id:          ing.note_id ?? null,
               sort_order:       idx,
               is_optional:      ing.is_optional,
+              section_header:   null,
             };
           })
           .filter(Boolean);
@@ -684,24 +923,24 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
     setDeleting(true);
     const { error: err } = await supabase.from('recipes').delete().eq('id', recipeId);
     setDeleting(false);
-    if (err) {
-      setError(err.message);
-      return;
-    }
+    if (err) { setError(err.message); return; }
     (onDeleted ?? onSaved)();
   };
 
-  // ── Quick-add ingredient callback ─────────────────────────────────────────────
+  // ── Quick-add callbacks ───────────────────────────────────────────────────────
 
   const handleQuickAddSaved = (newIng: IngredientOption) => {
-    // Add to options list
     setIngredientOptions((prev) => [...prev, newIng]);
-    // Auto-select in the row that triggered it
-    if (quickAddTargetKey) {
-      selectIngredient(quickAddTargetKey, newIng);
-    }
+    if (quickAddTargetKey) selectIngredient(quickAddTargetKey, newIng);
     setQuickAddOpen(false);
     setQuickAddTargetKey(null);
+  };
+
+  const handleQuickAddNoteSaved = (newNote: PrepNoteOption) => {
+    setPrepNoteOptions((prev) => [...prev, newNote]);
+    if (quickAddNoteTargetKey) selectNote(quickAddNoteTargetKey, newNote);
+    setQuickAddNoteOpen(false);
+    setQuickAddNoteTargetKey(null);
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -711,7 +950,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/20 z-40 backdrop-blur-[1px]" onClick={onClose} />
 
-      {/* Panel — wider than products/orders to fit the multilingual editor */}
+      {/* Panel */}
       <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-3xl flex-col bg-white shadow-2xl">
 
         {/* Header */}
@@ -719,7 +958,6 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
           <h2 className="font-serif text-lg text-[#0e393d]">
             {recipeId ? 'Edit Recipe' : 'New Recipe'}
           </h2>
-          {/* Lang tabs */}
           <div className="flex items-center gap-3">
             <div className="flex rounded-lg border border-[#0e393d]/15 overflow-hidden text-xs">
               {(['de', 'en'] as Lang[]).map((l) => (
@@ -742,9 +980,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
         {/* Body */}
         {loading ? (
-          <div className="flex-1 flex items-center justify-center text-sm text-[#1c2a2b]/40">
-            Loading…
-          </div>
+          <div className="flex-1 flex items-center justify-center text-sm text-[#1c2a2b]/40">Loading…</div>
         ) : (
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-7">
 
@@ -772,7 +1008,13 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
               </Field>
 
               <Field label={`Instructions (${lang.toUpperCase()})`} hint="Markdown supported">
+                <MarkdownToolbar
+                  taRef={instructionRef}
+                  value={form.instructions[lang]}
+                  onChange={(v) => setLangField('instructions', lang, v)}
+                />
                 <textarea
+                  ref={instructionRef}
                   className={inputCls + ' resize-y'}
                   rows={6}
                   value={form.instructions[lang]}
@@ -807,6 +1049,36 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                   </select>
                 </Field>
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Course Type">
+                  <select
+                    className={inputCls + ' cursor-pointer'}
+                    value={form.course_type_id}
+                    onChange={(e) => setForm((f) => ({ ...f, course_type_id: e.target.value }))}
+                  >
+                    <option value="">— Any</option>
+                    {courseTypeOptions.map((ct) => (
+                      <option key={ct.id} value={ct.id}>
+                        {ct.name?.de || ct.name?.en || ct.slug}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Meal Type">
+                  <select
+                    className={inputCls + ' cursor-pointer'}
+                    value={form.meal_type_id}
+                    onChange={(e) => setForm((f) => ({ ...f, meal_type_id: e.target.value }))}
+                  >
+                    <option value="">— Any</option>
+                    {mealTypeOptions.map((mt) => (
+                      <option key={mt.id} value={mt.id}>
+                        {mt.name?.de || mt.name?.en || mt.slug}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
             </div>
 
             {/* ── Nutrition ───────────────────────────────────────────────── */}
@@ -837,92 +1109,141 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
             <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
               <div className="flex items-center justify-between">
                 <SectionHead>Ingredients ({form.ingredients.length})</SectionHead>
-                <button
-                  type="button"
-                  onClick={addIngredient}
-                  className="text-xs font-medium text-[#0e393d] hover:text-[#0e393d]/70 transition"
-                >
-                  + Add
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={addSection}
+                    className="text-xs font-medium text-[#ceab84] hover:text-[#8a6a3e] transition"
+                  >
+                    + Section
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addIngredient}
+                    className="text-xs font-medium text-[#0e393d] hover:text-[#0e393d]/70 transition"
+                  >
+                    + Add
+                  </button>
+                </div>
               </div>
+
+              {/* Column headers */}
+              {form.ingredients.some((i) => i.section_header === null) && (
+                <div className="flex items-center gap-2 px-3 text-[10px] font-medium uppercase tracking-wider text-[#1c2a2b]/30">
+                  <span className="w-14 shrink-0" />
+                  <span className="flex-1">Ingredient</span>
+                  <span className="w-36 shrink-0">Notes</span>
+                  <span className="w-20 shrink-0">Qty</span>
+                  <span className="w-28 shrink-0">Unit</span>
+                  <span className="w-16 shrink-0">Opt.</span>
+                  <span className="w-7 shrink-0" />
+                </div>
+              )}
 
               {form.ingredients.length === 0 && (
                 <p className="text-xs text-[#1c2a2b]/30 italic">No ingredients yet.</p>
               )}
 
-              <div className="space-y-2">
-                {form.ingredients.map((ing, idx) => (
-                  <div key={ing._key} className="flex items-center gap-2 rounded-lg border border-[#0e393d]/10 bg-[#fafaf8] px-3 py-2">
-                    {/* Reorder */}
-                    <div className="flex flex-col gap-0.5 shrink-0">
-                      <IconBtn onClick={() => moveIngredient(ing._key, -1)} title="Move up">
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 7l3-4 3 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      </IconBtn>
-                      <IconBtn onClick={() => moveIngredient(ing._key, 1)} title="Move down">
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3l3 4 3-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <div className="space-y-1.5">
+                {form.ingredients.map((ing, idx) => {
+
+                  // ── Section header row ────────────────────────────────────
+                  if (ing.section_header !== null) {
+                    return (
+                      <div key={ing._key} className="flex items-center gap-2 rounded-lg border border-[#ceab84]/40 bg-[#ceab84]/6 px-3 py-2">
+                        <div className="flex flex-col gap-0.5 shrink-0">
+                          <IconBtn onClick={() => moveIngredient(ing._key, -1)} title="Move up">
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 7l3-4 3 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </IconBtn>
+                          <IconBtn onClick={() => moveIngredient(ing._key, 1)} title="Move down">
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3l3 4 3-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </IconBtn>
+                        </div>
+                        <span className="text-[10px] font-bold text-[#ceab84]/70 shrink-0 w-5 text-center">§</span>
+                        <input
+                          type="text"
+                          value={ing.section_header}
+                          onChange={(e) => updateIngredient(ing._key, { section_header: e.target.value })}
+                          placeholder="Section title…"
+                          className="flex-1 text-sm font-semibold text-[#0e393d] bg-transparent border-none focus:outline-none placeholder:font-normal placeholder:text-[#ceab84]/40 placeholder:text-xs"
+                        />
+                        <IconBtn onClick={() => removeIngredient(ing._key)} title="Remove">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/></svg>
+                        </IconBtn>
+                      </div>
+                    );
+                  }
+
+                  // ── Normal ingredient row ─────────────────────────────────
+                  return (
+                    <div key={ing._key} className="flex items-center gap-2 rounded-lg border border-[#0e393d]/10 bg-[#fafaf8] px-3 py-2">
+                      {/* Reorder */}
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <IconBtn onClick={() => moveIngredient(ing._key, -1)} title="Move up">
+                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 7l3-4 3 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </IconBtn>
+                        <IconBtn onClick={() => moveIngredient(ing._key, 1)} title="Move down">
+                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3l3 4 3-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </IconBtn>
+                      </div>
+                      {/* Index */}
+                      <span className="w-5 text-center text-[11px] text-[#1c2a2b]/30 shrink-0">{idx + 1}</span>
+                      {/* Ingredient combobox */}
+                      <IngredientCombobox
+                        value={ing.ingredient_id}
+                        displayValue={getIngredientDisplay(ing)}
+                        ingredientOptions={ingredientOptions}
+                        onSelect={(opt) => selectIngredient(ing._key, opt)}
+                        onOpenQuickAdd={() => { setQuickAddTargetKey(ing._key); setQuickAddOpen(true); }}
+                      />
+                      {/* Notes combobox */}
+                      <PrepNotesCombobox
+                        value={ing.note_id}
+                        displayValue={ing.note_display}
+                        noteOptions={prepNoteOptions}
+                        onSelect={(note) => selectNote(ing._key, note)}
+                        onClear={() => clearNote(ing._key)}
+                        onOpenQuickAdd={() => { setQuickAddNoteTargetKey(ing._key); setQuickAddNoteOpen(true); }}
+                      />
+                      {/* Amount */}
+                      <input
+                        type="number" min={0} step={0.1}
+                        placeholder="Qty"
+                        value={ing.amount}
+                        onChange={(e) => updateIngredient(ing._key, { amount: e.target.value })}
+                        className="w-20 shrink-0 rounded-md border border-[#0e393d]/12 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
+                      />
+                      {/* Unit picker */}
+                      <select
+                        value={ing.unit_id ?? ''}
+                        onChange={(e) => updateIngredient(ing._key, { unit_id: e.target.value || null })}
+                        className="w-28 shrink-0 rounded-md border border-[#0e393d]/12 bg-white px-1 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20 cursor-pointer"
+                      >
+                        <option value="">Unit</option>
+                        {unitOptions.map((u) => (
+                          <option key={u.id} value={u.id}>{u.abbreviation?.de ?? u.code}</option>
+                        ))}
+                      </select>
+                      {/* Optional toggle */}
+                      <button
+                        type="button"
+                        title="Mark as optional ingredient"
+                        onClick={() => updateIngredient(ing._key, { is_optional: !ing.is_optional })}
+                        className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded border transition ${
+                          ing.is_optional
+                            ? 'border-[#ceab84]/50 text-[#8a6a3e] bg-[#ceab84]/10'
+                            : 'border-[#0e393d]/10 text-[#1c2a2b]/30 hover:border-[#0e393d]/20'
+                        }`}
+                      >
+                        Optional
+                      </button>
+                      {/* Remove */}
+                      <IconBtn onClick={() => removeIngredient(ing._key)} title="Remove">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/></svg>
                       </IconBtn>
                     </div>
-                    {/* Index */}
-                    <span className="w-5 text-center text-[11px] text-[#1c2a2b]/30 shrink-0">{idx + 1}</span>
-                    {/* Ingredient combobox */}
-                    <IngredientCombobox
-                      value={ing.ingredient_id}
-                      displayValue={getIngredientDisplay(ing)}
-                      ingredientOptions={ingredientOptions}
-                      onSelect={(opt) => selectIngredient(ing._key, opt)}
-                      onOpenQuickAdd={() => {
-                        setQuickAddTargetKey(ing._key);
-                        setQuickAddOpen(true);
-                      }}
-                    />
-                    {/* Notes */}
-                    <input
-                      type="text"
-                      placeholder="e.g. crushed, unsweetened…"
-                      value={ing.notes}
-                      onChange={(e) => updateIngredient(ing._key, { notes: e.target.value })}
-                      className="w-36 shrink-0 rounded-md border border-[#0e393d]/12 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
-                    />
-                    {/* Amount */}
-                    <input
-                      type="number" min={0} step={0.1}
-                      placeholder="Qty"
-                      value={ing.amount}
-                      onChange={(e) => updateIngredient(ing._key, { amount: e.target.value })}
-                      className="w-20 shrink-0 rounded-md border border-[#0e393d]/12 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
-                    />
-                    {/* Unit picker */}
-                    <select
-                      value={ing.unit_id ?? ''}
-                      onChange={(e) => updateIngredient(ing._key, { unit_id: e.target.value || null })}
-                      className="w-28 shrink-0 rounded-md border border-[#0e393d]/12 bg-white px-1 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20 cursor-pointer"
-                    >
-                      <option value="">Unit</option>
-                      {unitOptions.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.abbreviation?.de ?? u.code}
-                        </option>
-                      ))}
-                    </select>
-                    {/* Optional toggle */}
-                    <button
-                      type="button"
-                      title="Mark as optional ingredient"
-                      onClick={() => updateIngredient(ing._key, { is_optional: !ing.is_optional })}
-                      className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded border transition ${
-                        ing.is_optional
-                          ? 'border-[#ceab84]/50 text-[#8a6a3e] bg-[#ceab84]/10'
-                          : 'border-[#0e393d]/10 text-[#1c2a2b]/30 hover:border-[#0e393d]/20'
-                      }`}
-                    >
-                      Optional
-                    </button>
-                    {/* Remove */}
-                    <IconBtn onClick={() => removeIngredient(ing._key)} title="Remove">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/></svg>
-                    </IconBtn>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -1040,6 +1361,14 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
           categories={categoryOptions}
           onSaved={handleQuickAddSaved}
           onClose={() => { setQuickAddOpen(false); setQuickAddTargetKey(null); }}
+        />
+      )}
+
+      {/* Quick-Add Note Modal */}
+      {quickAddNoteOpen && (
+        <QuickAddNoteModal
+          onSaved={handleQuickAddNoteSaved}
+          onClose={() => { setQuickAddNoteOpen(false); setQuickAddNoteTargetKey(null); }}
         />
       )}
     </>

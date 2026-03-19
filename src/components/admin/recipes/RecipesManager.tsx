@@ -17,6 +17,8 @@ export type RecipeListItem = {
   is_featured: boolean | null;
   image_url: string | null;
   created_at: string;
+  course_type_id: string | null;
+  course_type: { name: { de?: string; en?: string } } | null;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -37,9 +39,16 @@ function DiffBadge({ d }: { d: string | null }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function RecipesManager({ initialRecipes }: { initialRecipes: RecipeListItem[] }) {
+export default function RecipesManager({
+  initialRecipes,
+  initialDdIcons,
+}: {
+  initialRecipes: RecipeListItem[];
+  initialDdIcons: Record<string, string[]>;
+}) {
   const supabase = createClient();
   const [recipes, setRecipes] = useState<RecipeListItem[]>(initialRecipes);
+  const [ddIcons, setDdIcons] = useState<Record<string, string[]>>(initialDdIcons);
   const [search, setSearch] = useState('');
   const [filterPublished, setFilterPublished] = useState<'all' | 'published' | 'draft'>('all');
   const [editingId, setEditingId] = useState<string | null | 'new'>(null);
@@ -47,9 +56,28 @@ export default function RecipesManager({ initialRecipes }: { initialRecipes: Rec
   const refresh = useCallback(async () => {
     const { data } = await supabase
       .from('recipes')
-      .select('id, title, difficulty, prep_time_min, cook_time_min, servings, is_published, is_featured, image_url, created_at')
+      .select(`
+        id, title, difficulty, prep_time_min, cook_time_min, servings,
+        is_published, is_featured, image_url, created_at, course_type_id,
+        course_type:recipe_course_types(name)
+      `)
       .order('created_at', { ascending: false });
-    if (data) setRecipes(data);
+    if (!data) return;
+    setRecipes(data as unknown as RecipeListItem[]);
+
+    const ids = data.map((r) => r.id);
+    if (ids.length > 0) {
+      const { data: ddRows } = await supabase
+        .from('v_recipe_daily_dozen_coverage')
+        .select('recipe_id, category_icon')
+        .in('recipe_id', ids);
+      const map: Record<string, string[]> = {};
+      for (const row of ddRows ?? []) {
+        if (!map[row.recipe_id]) map[row.recipe_id] = [];
+        map[row.recipe_id].push(row.category_icon);
+      }
+      setDdIcons(map);
+    }
   }, [supabase]);
 
   const filtered = recipes.filter((r) => {
@@ -101,7 +129,11 @@ export default function RecipesManager({ initialRecipes }: { initialRecipes: Rec
                 : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'
             }`}
           >
-            {f === 'all' ? `All (${recipes.length})` : f === 'published' ? `Published (${recipes.filter(r => r.is_published).length})` : `Drafts (${recipes.filter(r => !r.is_published).length})`}
+            {f === 'all'
+              ? `All (${recipes.length})`
+              : f === 'published'
+              ? `Published (${recipes.filter(r => r.is_published).length})`
+              : `Drafts (${recipes.filter(r => !r.is_published).length})`}
           </button>
         ))}
       </div>
@@ -111,8 +143,8 @@ export default function RecipesManager({ initialRecipes }: { initialRecipes: Rec
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-              {['', 'Title', 'Difficulty', 'Time', 'Servings', 'Status', ''].map((h, i) => (
-                <th key={i} className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">
+              {['', 'Title', 'Course', 'Difficulty', 'Time', 'Servings', 'Status', ''].map((h, i) => (
+                <th key={i} className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider whitespace-nowrap">
                   {h}
                 </th>
               ))}
@@ -121,7 +153,7 @@ export default function RecipesManager({ initialRecipes }: { initialRecipes: Rec
           <tbody className="divide-y divide-[#0e393d]/6">
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
+                <td colSpan={8} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
                   No recipes found.
                 </td>
               </tr>
@@ -142,7 +174,8 @@ export default function RecipesManager({ initialRecipes }: { initialRecipes: Rec
                     </div>
                   )}
                 </td>
-                {/* Title */}
+
+                {/* Title + DD icons */}
                 <td className="px-4 py-3">
                   <div className="font-medium text-[#0e393d] leading-snug">
                     {r.title?.de || r.title?.en || <span className="text-[#1c2a2b]/30 italic">Untitled</span>}
@@ -150,20 +183,40 @@ export default function RecipesManager({ initialRecipes }: { initialRecipes: Rec
                   {r.title?.de && r.title?.en && (
                     <div className="text-xs text-[#1c2a2b]/40 mt-0.5">{r.title.en}</div>
                   )}
-                  {r.is_featured && (
-                    <span className="inline-flex items-center rounded-full bg-[#ceab84]/15 px-1.5 py-0.5 text-[10px] font-medium text-[#8a6a3e] ring-1 ring-inset ring-[#ceab84]/30 mt-1">★ featured</span>
+                  <div className="flex items-center gap-1 mt-1 flex-wrap">
+                    {r.is_featured && (
+                      <span className="inline-flex items-center rounded-full bg-[#ceab84]/15 px-1.5 py-0.5 text-[10px] font-medium text-[#8a6a3e] ring-1 ring-inset ring-[#ceab84]/30">★ featured</span>
+                    )}
+                    {(ddIcons[r.id] ?? []).map((icon, i) => (
+                      <span key={i} className="text-sm leading-none" title="Daily Dozen category">{icon}</span>
+                    ))}
+                  </div>
+                </td>
+
+                {/* Course type */}
+                <td className="px-4 py-3">
+                  {r.course_type?.name ? (
+                    <span className="inline-flex items-center rounded-full bg-[#0e393d]/6 px-2 py-0.5 text-[11px] font-medium text-[#0e393d]/70">
+                      {r.course_type.name.de || r.course_type.name.en}
+                    </span>
+                  ) : (
+                    <span className="text-[#1c2a2b]/25 text-xs">—</span>
                   )}
                 </td>
+
                 {/* Difficulty */}
                 <td className="px-4 py-3"><DiffBadge d={r.difficulty} /></td>
+
                 {/* Time */}
                 <td className="px-4 py-3 text-xs text-[#1c2a2b]/60 whitespace-nowrap">
                   {r.prep_time_min != null || r.cook_time_min != null
                     ? `${(r.prep_time_min ?? 0) + (r.cook_time_min ?? 0)} min`
                     : '—'}
                 </td>
+
                 {/* Servings */}
                 <td className="px-4 py-3 text-xs text-[#1c2a2b]/60">{r.servings ?? '—'}</td>
+
                 {/* Status */}
                 <td className="px-4 py-3">
                   {r.is_published
@@ -171,6 +224,7 @@ export default function RecipesManager({ initialRecipes }: { initialRecipes: Rec
                     : <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset bg-gray-50 text-gray-600 ring-gray-500/20">Draft</span>
                   }
                 </td>
+
                 {/* Edit */}
                 <td className="px-4 py-3 text-right">
                   <button
