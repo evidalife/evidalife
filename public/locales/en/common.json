@@ -245,6 +245,88 @@
       "body": "For questions about these Terms of Service, reach us at"
     }
   },
+  "auth": {
+    "hero": {
+      "h1": "Live well.",
+      "h1em": "Scientifically grounded.",
+      "sub": "Evidence-based, whole-food, plant-based nutrition — combined with measurable health markers.",
+      "pillLogin": "Trusted by 2,400+ members in DACH",
+      "pillSignup": "Free to join — no credit card needed",
+      "pill2fa": "Your data is encrypted end-to-end",
+      "pillForgot": "We'll help you get back in"
+    },
+    "login": {
+      "heading": "Welcome back",
+      "subtext": "Sign in to your account",
+      "email": "Email",
+      "password": "Password",
+      "forgotPassword": "Forgot password?",
+      "signIn": "Sign in",
+      "orWith": "or continue with",
+      "noAccount": "Don't have an account?",
+      "createAccount": "Create account",
+      "show": "Show",
+      "hide": "Hide",
+      "errInvalid": "Invalid email or password. Please try again.",
+      "errGeneric": "An error occurred. Please try again."
+    },
+    "verify": {
+      "heading": "Two-factor authentication",
+      "subtext": "Enter the 6-digit code from your authenticator app",
+      "verify": "Verify",
+      "didntReceive": "Didn't receive a code?",
+      "resend": "Resend",
+      "backupCode": "Use backup code",
+      "backupCodeLabel": "Backup code",
+      "backToCode": "Back to code",
+      "errInvalid": "Invalid code. Please try again."
+    },
+    "signup": {
+      "heading": "Create your account",
+      "subtext": "Start your evidence-based health journey",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "firstNamePlaceholder": "Max",
+      "lastNamePlaceholder": "Mustermann",
+      "email": "Email",
+      "password": "Password",
+      "passwordPlaceholder": "Min. 8 characters",
+      "tcAgree": "I agree to the",
+      "tcTerms": "Terms & Conditions",
+      "tcAnd": "and",
+      "tcPrivacy": "Privacy Policy",
+      "createAccount": "Create account",
+      "alreadyHaveAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "orWith": "or with email",
+      "signUpGoogle": "Sign up with Google",
+      "signUpApple": "Sign up with Apple",
+      "confirmHeading": "Check your email",
+      "confirmSubtext": "We've sent a confirmation link to",
+      "backToLogin": "Back to sign in",
+      "show": "Show",
+      "hide": "Hide",
+      "errPasswordShort": "Password must be at least 8 characters",
+      "errTcRequired": "Please accept the Terms & Conditions"
+    },
+    "forgot": {
+      "heading": "Reset your password",
+      "subtext": "Enter your email and we'll send you a reset link",
+      "email": "Email",
+      "sendLink": "Send reset link",
+      "rememberPassword": "Remember your password?",
+      "signIn": "Sign in",
+      "successHeading": "Check your email",
+      "successSubtext": "We've sent a password reset link to",
+      "resend": "Resend"
+    },
+    "social": {
+      "google": "Google",
+      "apple": "Apple",
+      "errGoogle": "Google sign-in failed. Please try again.",
+      "errApple": "Apple sign-in failed. Please try again."
+    }
+  },
   "imprint": {
     "title": "Imprint",
     "s1": {
