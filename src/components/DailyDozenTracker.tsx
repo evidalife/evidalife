@@ -67,35 +67,46 @@ const T = {
   },
 };
 
-// ─── SVG progress ring ────────────────────────────────────────────────────────
+// ─── SVG progress ring (compact 52px) ─────────────────────────────────────────
 
-const R             = 28;
-const CX            = 36;
+const R             = 20;
+const CX            = 26;
 const CIRCUMFERENCE = 2 * Math.PI * R;
 
+// ringStroke / trackColor drive the three color states from the spec
+function ringColors(done: boolean, partial: boolean) {
+  if (done)    return { stroke: '#1D9E75', track: '#E1F5EE' };
+  if (partial) return { stroke: '#BA7517', track: '#FAEEDA' };
+  return { stroke: null, track: '#F1EFE8' };
+}
+
 function ProgressRing({ progress, done, icon }: { progress: number; done: boolean; icon: string | null }) {
-  const offset = CIRCUMFERENCE * (1 - Math.min(progress, 1));
-  const color  = done ? '#10b981' : progress > 0 ? '#ceab84' : '#0e393d1a';
+  const partial  = progress > 0 && !done;
+  const colors   = ringColors(done, partial);
+  const offset   = CIRCUMFERENCE * (1 - Math.min(progress, 1));
 
   return (
-    <svg width="72" height="72" viewBox="0 0 72 72" className="shrink-0">
-      <circle cx={CX} cy={CX} r={R} fill="none" stroke="#0e393d12" strokeWidth="5" />
-      <circle
-        cx={CX} cy={CX} r={R}
-        fill="none"
-        stroke={color}
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeDasharray={CIRCUMFERENCE}
-        strokeDashoffset={offset}
-        transform={`rotate(-90 ${CX} ${CX})`}
-        style={{ transition: 'stroke-dashoffset 0.35s ease, stroke 0.3s ease' }}
-      />
-      {done ? (
-        <text x={CX} y={CX + 1} textAnchor="middle" dominantBaseline="middle" fontSize="18">✓</text>
-      ) : icon ? (
+    <svg width="52" height="52" viewBox="0 0 52 52" className="shrink-0">
+      {/* Track */}
+      <circle cx={CX} cy={CX} r={R} fill="none" stroke={colors.track} strokeWidth="5" />
+      {/* Progress arc — only when there's something to show */}
+      {colors.stroke && (
+        <circle
+          cx={CX} cy={CX} r={R}
+          fill="none"
+          stroke={colors.stroke}
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeDasharray={CIRCUMFERENCE}
+          strokeDashoffset={offset}
+          transform={`rotate(-90 ${CX} ${CX})`}
+          style={{ transition: 'stroke-dashoffset 0.35s ease, stroke 0.3s ease' }}
+        />
+      )}
+      {/* Emoji always visible (spec: never replace with checkmark) */}
+      {icon && (
         <text x={CX} y={CX + 1} textAnchor="middle" dominantBaseline="middle" fontSize="20">{icon}</text>
-      ) : null}
+      )}
     </svg>
   );
 }
@@ -169,10 +180,10 @@ function InfoModal({ category, lang, onClose }: { category: DDCategory; lang: La
   );
 }
 
-// ─── Category card ────────────────────────────────────────────────────────────
+// ─── Category card (compact horizontal) ───────────────────────────────────────
 
 function CategoryCard({
-  category, servings, lang, onIncrement, onDecrement, pending, streakInfo, onInfoClick, isToday,
+  category, servings, lang, onIncrement, onDecrement, pending, onInfoClick,
 }: {
   category:    DDCategory;
   servings:    number;
@@ -180,41 +191,48 @@ function CategoryCard({
   onIncrement: () => void;
   onDecrement: () => void;
   pending:     boolean;
-  streakInfo:  CategoryStreakInfo;
+  streakInfo:  CategoryStreakInfo; // kept in signature so call-sites don't change
   onInfoClick: () => void;
-  isToday:     boolean;
+  isToday:     boolean;            // kept in signature so call-sites don't change
 }) {
-  const t        = T[lang];
   const target   = category.target_servings;
   const done     = servings >= target;
+  const partial  = servings > 0 && !done;
   const progress = target > 0 ? servings / target : 0;
   const name     = category.name[lang] || category.name.de || category.slug;
 
+  // ── Color tokens per state ─────────────────────────────────────────────────
+  const cardCls   = done
+    ? 'border-[#9FE1CB] bg-[#f0faf5]'
+    : 'border-[#0e393d]/10 bg-white hover:border-[#0e393d]/20';
+
+  const infoCls   = done
+    ? 'text-[#5DCAA5] bg-[#E1F5EE] hover:bg-[#c8f0e1]'
+    : 'text-[#0e393d]/35 bg-[#0e393d]/6 hover:bg-[#0e393d]/12 hover:text-[#0e393d]/65';
+
+  const counterCls = done    ? 'text-[#1D9E75]'
+    : partial ? 'text-[#BA7517]'
+    : 'text-[#1c2a2b]/40';
+
+  const minusCls = done
+    ? 'border-[#5DCAA5] bg-[#E1F5EE] text-[#1D9E75] hover:bg-[#c8f0e1]'
+    : 'border-[#0e393d]/15 bg-white text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d]';
+
+  const plusCls = done
+    ? 'border-[#5DCAA5] bg-[#E1F5EE] text-[#1D9E75] hover:bg-[#c8f0e1]'
+    : partial
+      ? 'border-[#BA7517]/40 bg-[#FAEEDA] text-[#BA7517] hover:bg-[#f5e1c0]'
+      : 'border-[#0e393d]/20 bg-[#0e393d] text-white hover:bg-[#0e393d]/85';
+
   return (
     <div
-      className={`relative flex flex-col items-center rounded-2xl border p-4 transition-all duration-200 ${
-        done
-          ? 'border-emerald-200 bg-emerald-50/60'
-          : 'border-[#0e393d]/10 bg-white hover:border-[#0e393d]/20'
-      }`}
+      className={`relative flex items-center gap-2.5 rounded-xl border px-2.5 py-2 transition-all duration-200 ${cardCls}`}
     >
-      {/* Streak badge — absolute top-left, today only */}
-      {isToday && streakInfo.streak > 0 && (
-        <div
-          className={`absolute top-2 left-2 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none ${
-            streakInfo.atRisk ? 'bg-amber-50 text-amber-500' : 'bg-emerald-50 text-emerald-600'
-          }`}
-          title={streakInfo.atRisk ? t.streakAtRisk : t.streakActive}
-        >
-          🔥{streakInfo.streak}
-        </div>
-      )}
-
-      {/* Info button — absolute top-right */}
+      {/* ① Info button — far left */}
       <button
         type="button"
         onClick={onInfoClick}
-        className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#0e393d]/6 flex items-center justify-center text-[#0e393d]/35 hover:bg-[#0e393d]/12 hover:text-[#0e393d]/65 transition"
+        className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center transition ${infoCls}`}
         aria-label={lang === 'de' ? 'Details anzeigen' : 'Show details'}
       >
         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -224,44 +242,43 @@ function CategoryCard({
         </svg>
       </button>
 
-      {/* Progress ring — mt-5 clears both absolute buttons */}
-      <div className="mt-5">
-        <ProgressRing progress={progress} done={done} icon={category.icon} />
+      {/* ② Progress ring 52px — emoji always inside */}
+      <ProgressRing progress={progress} done={done} icon={category.icon} />
+
+      {/* ③ Category name + optional ✓ */}
+      <div className="flex-1 min-w-0">
+        <span className="text-[13px] font-medium text-[#0e393d] leading-tight">
+          {name}
+        </span>
+        {done && (
+          <span className="ml-1 text-[#1D9E75] text-[13px] font-semibold">✓</span>
+        )}
       </div>
 
-      <p className={`mt-2 text-center text-xs font-semibold leading-tight ${done ? 'text-emerald-700' : 'text-[#0e393d]'}`}>
-        {name}
-      </p>
-      <p className={`mt-0.5 text-[11px] ${done ? 'text-emerald-600' : 'text-[#1c2a2b]/45'}`}>
-        {done ? t.complete : t.servings(servings, target)}
-      </p>
-
-      {/* +/- controls */}
-      <div className="mt-3 flex items-center gap-2">
+      {/* ④ Counter: minus | X / Y | plus */}
+      <div className="flex items-center gap-1.5 shrink-0">
         <button
           type="button"
           onClick={onDecrement}
           disabled={servings === 0 || pending}
           aria-label="Remove serving"
-          className="w-7 h-7 rounded-full border border-[#0e393d]/15 bg-white flex items-center justify-center text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d] transition disabled:opacity-30 disabled:cursor-not-allowed"
+          className={`w-[30px] h-[30px] rounded-full border flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed ${minusCls}`}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
         </button>
-        <span className={`w-5 text-center text-sm font-bold tabular-nums ${done ? 'text-emerald-600' : 'text-[#0e393d]'}`}>
-          {servings}
+
+        <span className={`text-[13px] font-semibold tabular-nums text-center w-9 ${counterCls}`}>
+          {servings}&thinsp;/&thinsp;{target}
         </span>
+
         <button
           type="button"
           onClick={onIncrement}
           disabled={pending}
           aria-label="Add serving"
-          className={`w-7 h-7 rounded-full flex items-center justify-center transition ${
-            done
-              ? 'border border-emerald-300 bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-              : 'border border-[#0e393d]/20 bg-[#0e393d] text-white hover:bg-[#0e393d]/85'
-          } disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`w-[30px] h-[30px] rounded-full border flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed ${plusCls}`}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="12" y1="5" x2="12" y2="19"/>
@@ -270,9 +287,9 @@ function CategoryCard({
         </button>
       </div>
 
-      {/* Pending spinner */}
+      {/* Pending overlay */}
       {pending && (
-        <div className="absolute inset-0 rounded-2xl flex items-center justify-center bg-white/50">
+        <div className="absolute inset-0 rounded-xl flex items-center justify-center bg-white/50">
           <svg className="w-4 h-4 text-[#0e393d]/40 animate-spin" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
@@ -532,7 +549,7 @@ export default function DailyDozenTracker({
       </div>
 
       {/* ── Category grid ──────────────────────────────────────────────────── */}
-      <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 transition-opacity duration-200 ${
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 transition-opacity duration-200 ${
         loadingDate ? 'opacity-40 pointer-events-none' : ''
       }`}>
         {categories.map((cat) => (
