@@ -66,3 +66,27 @@ When creating tables with user references:
 - Uses `servings_completed` not `servings`
 - Slugs use underscores
 - `recipe_ingredients.notes` is jsonb
+
+## External Service Access
+
+### Supabase
+- Project ref: `rwbmdxgcjgidalcoeppp` (eu-central-2, Zurich)
+- CLI: `supabase` is logged in and linked. Token stored in macOS keychain ("Supabase CLI").
+- For running SQL: Use the Supabase Management API with the personal access token from keychain. Do NOT use `supabase db dump` (requires Docker which is not installed).
+- REST API: Use service role key from `.env.local` for data operations.
+- If access fails or token expires: **ASK the user before trying workarounds.** Do not spend time searching for alternative methods.
+
+### Vercel
+- CLI: `vercel` is logged in. Team: evidalifes-projects. Project: evidalife.
+- Project ID: `prj_Jxk9uOncTluyxANkbe63fyFqjonX`
+- Org ID: `team_1NtIpK0Geax7sbM8QpUCJ99m`
+- Production URL: evidalife.com
+- Project is linked (`.vercel/project.json` exists).
+- Useful commands: `vercel env ls`, `vercel ls`, `vercel logs <url>`
+
+## Working Principles
+
+- **If you don't have access to a tool or service, ASK the user immediately.** Do not spend multiple attempts searching for tokens, trying workarounds, or exploring alternative access methods. Simply say "I can't access X — can you help me connect?" and wait for instructions.
+- **Always read CLAUDE.md at the start of every session** for conventions, DB rules, and access info.
+- **psql is NOT installed.** Use the Supabase Management API or REST API instead.
+- **Docker is NOT installed.** Commands requiring Docker (like `supabase db dump`) will fail.
