@@ -93,7 +93,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
           {/* Close button */}
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/')}
             aria-label="Close"
             className="px-3 py-2 rounded-r-full text-[#1c2a2b]/40 hover:text-[#0e393d] transition-colors"
           >
