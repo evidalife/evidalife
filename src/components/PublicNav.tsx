@@ -192,6 +192,12 @@ export default function PublicNav() {
                     >
                       Dashboard
                     </Link>
+                    <Link
+                      href="/profile"
+                      className="block px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
+                    >
+                      {locale === 'de' ? 'Profil' : 'Profile'}
+                    </Link>
                     {profile?.is_admin && (
                       <Link
                         href="/admin"

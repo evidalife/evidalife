@@ -214,7 +214,7 @@ export default function AdminSidebar() {
               </p>
             )}
             {group.items.map(({ label, href, icon }) => {
-              const isActive = href === '/admin' ? pathname === '/admin' : pathname.startsWith(href);
+              const isActive = href === '/' ? false : href === '/admin' ? pathname === '/admin' : pathname.startsWith(href);
               return (
                 <Link
                   key={href}
