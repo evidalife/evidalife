@@ -30,12 +30,18 @@ export type ProfileData = {
 
 // ─── Copy ─────────────────────────────────────────────────────────────────────
 
+const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2 MB
+const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+
 const T = {
   de: {
     avatar:              'Profilbild',
     changeAvatar:        'Bild ändern',
     removeAvatar:        'Bild entfernen',
     uploading:           'Wird hochgeladen…',
+    avatarTooBig:        'Das Bild muss kleiner als 2 MB sein.',
+    avatarWrongType:     'Bitte lade ein JPEG, PNG oder WebP Bild hoch.',
+    avatarUploadFailed:  'Upload fehlgeschlagen. Bitte erneut versuchen.',
     personalInfo:        'Persönliche Informationen',
     displayName:         'Anzeigename',
     displayNameHint:     'Optionaler Spitzname, der im Header angezeigt wird.',
@@ -76,6 +82,9 @@ const T = {
     changeAvatar:        'Change photo',
     removeAvatar:        'Remove photo',
     uploading:           'Uploading…',
+    avatarTooBig:        'Image must be smaller than 2 MB.',
+    avatarWrongType:     'Please upload a JPEG, PNG, or WebP image.',
+    avatarUploadFailed:  'Upload failed. Please try again.',
     personalInfo:        'Personal information',
     displayName:         'Display name',
     displayNameHint:     'Optional nickname shown in the header.',
@@ -184,6 +193,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
   const [avatarUrl,    setAvatarUrl]    = useState(profile.avatar_url ?? '');
   const [avatarBroken, setAvatarBroken] = useState(false);
   const [uploading,    setUploading]    = useState(false);
+  const [avatarError,  setAvatarError]  = useState('');
 
   // Personal info state
   const [displayName, setDisplayName] = useState(profile.display_name ?? '');
@@ -222,9 +232,26 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAvatarBroken(false);
-    setUploading(true);
 
+    // Reset state
+    setAvatarBroken(false);
+    setAvatarError('');
+    // Reset input so the same file can be re-selected after an error
+    e.target.value = '';
+
+    // Validate type
+    if (!(ALLOWED_AVATAR_TYPES as readonly string[]).includes(file.type)) {
+      setAvatarError(t.avatarWrongType);
+      return;
+    }
+
+    // Validate size
+    if (file.size > MAX_AVATAR_SIZE) {
+      setAvatarError(t.avatarTooBig);
+      return;
+    }
+
+    setUploading(true);
     const oldUrl = avatarUrl || null;
 
     const base64 = await new Promise<string>((resolve, reject) => {
@@ -240,7 +267,11 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
       body: JSON.stringify({ base64, filename: file.name, bucket: 'user-avatars', contentType: file.type }),
     });
 
-    if (!res.ok) { setUploading(false); return; }
+    if (!res.ok) {
+      setAvatarError(t.avatarUploadFailed);
+      setUploading(false);
+      return;
+    }
     const { url: newUrl } = await res.json();
 
     await supabase.from('profiles').update({ avatar_url: newUrl }).eq('id', profile.id);
@@ -375,8 +406,11 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                 </button>
               )}
             </div>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarFileChange} />
-            <p className="text-[11px] text-[#1c2a2b]/35">JPG, PNG, GIF — max 5 MB</p>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarFileChange} />
+            {avatarError
+              ? <p className="text-[11px] text-red-500">{avatarError}</p>
+              : <p className="text-[11px] text-[#1c2a2b]/35">JPG, PNG, WebP — max 2 MB</p>
+            }
           </div>
         </div>
       </Section>
