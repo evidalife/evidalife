@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import DDProgressChart from './DDProgressChart';
 import DDGauge         from './DDGauge';
@@ -42,8 +42,6 @@ export type HistoricalEntry = {
   servings:    number;
 };
 
-type CategoryStreakInfo = { streak: number; atRisk: boolean };
-
 // ─── Copy ─────────────────────────────────────────────────────────────────────
 
 const T = {
@@ -52,8 +50,6 @@ const T = {
     servings:        (cur: number, tgt: number) => `${cur} / ${tgt}`,
     servingSizes:    'Portionsgrössen (eine Portion)',
     qualifyingFoods: 'Geeignete Lebensmittel',
-    streakAtRisk:    'Streak gefährdet',
-    streakActive:    'Aktueller Streak',
     loading:         'Lade…',
   },
   en: {
@@ -61,8 +57,6 @@ const T = {
     servings:        (cur: number, tgt: number) => `${cur} / ${tgt}`,
     servingSizes:    'Serving Sizes (one serving)',
     qualifyingFoods: 'Qualifying Foods',
-    streakAtRisk:    'Streak at risk',
-    streakActive:    'Current streak',
     loading:         'Loading…',
   },
 };
@@ -191,9 +185,7 @@ function CategoryCard({
   onIncrement: () => void;
   onDecrement: () => void;
   pending:     boolean;
-  streakInfo:  CategoryStreakInfo; // kept in signature so call-sites don't change
   onInfoClick: () => void;
-  isToday:     boolean;            // kept in signature so call-sites don't change
 }) {
   const target   = category.target_servings;
   const done     = servings >= target;
@@ -327,15 +319,6 @@ export default function DailyDozenTracker({
     return m;
   });
 
-  // todayServings always tracks TODAY's data, even when the user browses a past date.
-  // Used exclusively for streak calculations so they stay live.
-  const [todayServings, setTodayServings] = useState<Record<string, number>>(() => {
-    const m: Record<string, number> = {};
-    for (const cat of categories) m[cat.id] = 0;
-    for (const e of entries) m[e.category_id] = e.servings;
-    return m;
-  });
-
   const [streak,       setStreak]       = useState<DDStreak | null>(initialStreak);
   const [pending,      setPending]      = useState<Record<string, boolean>>({});
   const [modalCatId,   setModalCatId]   = useState<string | null>(null);
@@ -367,52 +350,6 @@ export default function DailyDozenTracker({
     if (isInitialMount.current) { isInitialMount.current = false; return; }
     fetchEntriesForDate(selectedDate);
   }, [selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Per-category streak (always relative to real today) ───────────────────
-
-  const categoryStreaks = useMemo((): Record<string, CategoryStreakInfo> => {
-    const pastCompleted: Record<string, Set<string>> = {};
-    for (const cat of categories) pastCompleted[cat.id] = new Set();
-
-    for (const e of historicalEntries) {
-      if (e.date === today) continue;
-      const cat = categories.find((c) => c.id === e.category_id);
-      if (cat && e.servings >= cat.target_servings) pastCompleted[e.category_id].add(e.date);
-    }
-
-    // Always use todayServings (live state) for today's done-check — never SSR historical
-    const todayDoneMap: Record<string, boolean> = {};
-    for (const cat of categories) {
-      todayDoneMap[cat.id] = (todayServings[cat.id] ?? 0) >= cat.target_servings;
-    }
-
-    const result: Record<string, CategoryStreakInfo> = {};
-    for (const cat of categories) {
-      const past      = pastCompleted[cat.id];
-      const todayDone = todayDoneMap[cat.id];
-
-      if (todayDone) {
-        let s = 1;
-        const cursor = new Date(today + 'T12:00:00');
-        cursor.setDate(cursor.getDate() - 1);
-        while (past.has(cursor.toISOString().split('T')[0])) { s++; cursor.setDate(cursor.getDate() - 1); }
-        result[cat.id] = { streak: s, atRisk: false };
-      } else {
-        const yesterday = new Date(today + 'T12:00:00');
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yStr = yesterday.toISOString().split('T')[0];
-        if (past.has(yStr)) {
-          let s = 1;
-          yesterday.setDate(yesterday.getDate() - 1);
-          while (past.has(yesterday.toISOString().split('T')[0])) { s++; yesterday.setDate(yesterday.getDate() - 1); }
-          result[cat.id] = { streak: s, atRisk: true };
-        } else {
-          result[cat.id] = { streak: 0, atRisk: false };
-        }
-      }
-    }
-    return result;
-  }, [categories, historicalEntries, todayServings, today]);
 
   // ── Totals for gauge ───────────────────────────────────────────────────────
 
@@ -460,16 +397,12 @@ export default function DailyDozenTracker({
   // ── Change handler ─────────────────────────────────────────────────────────
 
   const changeServings = useCallback((categoryId: string, delta: number) => {
-    const date    = selectedDate;
-    const isToday = date === today;
-    const cat     = categories.find((c) => c.id === categoryId);
-    const max     = cat?.target_servings ?? Infinity;
+    const date = selectedDate;
+    const cat  = categories.find((c) => c.id === categoryId);
+    const max  = cat?.target_servings ?? Infinity;
     setServingsMap((prev) => {
       const next   = Math.min(max, Math.max(0, (prev[categoryId] ?? 0) + delta));
       const newMap = { ...prev, [categoryId]: next };
-
-      // Keep todayServings in sync for immediate streak updates
-      if (isToday) setTodayServings(newMap);
 
       clearTimeout(debounceRef.current[categoryId]);
       debounceRef.current[categoryId] = setTimeout(async () => {
@@ -561,9 +494,7 @@ export default function DailyDozenTracker({
             onIncrement={() => changeServings(cat.id, +1)}
             onDecrement={() => changeServings(cat.id, -1)}
             pending={!!pending[cat.id]}
-            streakInfo={categoryStreaks[cat.id] ?? { streak: 0, atRisk: false }}
             onInfoClick={() => setModalCatId(cat.id)}
-            isToday={isToday}
           />
         ))}
       </div>
