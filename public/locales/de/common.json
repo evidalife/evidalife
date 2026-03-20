@@ -143,8 +143,8 @@
       "body": "Deine Daten werden in der Infrastruktur von Supabase gespeichert. Unser Datenbankserver befindet sich in der Region EU (Zürich). Supabase verarbeitet Daten gemäss seinen Datenschutzbestimmungen und agiert als Auftragsverarbeiter."
     },
     "s5": {
-      "heading": "5. Cookies",
-      "body": "Diese Website verwendet keine Marketing- oder Tracking-Cookies. Wir setzen ausschliesslich technisch notwendige Cookies für die Authentifizierung (Session-Cookies), die nach dem Abmelden gelöscht werden."
+      "heading": "5. Cookies & lokale Speicherung",
+      "body": "Wir verwenden ausschliesslich technisch notwendige Cookies, um deine Anmeldesitzung aufrechtzuerhalten. Diese Cookies sind für die Funktion des Authentifizierungsdienstes unerlässlich und erfordern gemäss EU-Recht (Art. 5(3) ePrivacy-Richtlinie) keine Einwilligung. Wir verwenden keine Tracking-, Werbe- oder Drittanbieter-Cookies. Unsere Webanalyse erfolgt über Plausible Analytics, das vollständig ohne Cookies arbeitet und keine personenbezogenen Daten erhebt."
     },
     "s6": {
       "heading": "6. Deine Rechte",

@@ -143,8 +143,8 @@
       "body": "Your data is stored in Supabase infrastructure. Our database server is located in the EU (Zurich) region. Supabase processes data according to its privacy policy and acts as a data processor."
     },
     "s5": {
-      "heading": "5. Cookies",
-      "body": "This website uses no marketing or tracking cookies. We use only technically necessary cookies for authentication (session cookies), which are deleted after sign-out."
+      "heading": "5. Cookies & Local Storage",
+      "body": "We use strictly necessary cookies to maintain your login session after you sign in. These cookies are essential for the authentication service to function and do not require consent under EU law (Art. 5(3) ePrivacy Directive). We do not use any tracking, advertising, or third-party cookies. Our website analytics are provided by Plausible Analytics, which is fully cookieless and does not collect personal data."
     },
     "s6": {
       "heading": "6. Your rights",
