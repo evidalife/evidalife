@@ -35,6 +35,22 @@ function LoginForm() {
       return;
     }
 
+    // Check if account is deactivated (soft-deleted)
+    const { data: { user: signedInUser } } = await supabase.auth.getUser();
+    if (signedInUser) {
+      const { data: profileCheck } = await supabase
+        .from('profiles')
+        .select('deleted_at')
+        .eq('id', signedInUser.id)
+        .single();
+      if (profileCheck?.deleted_at) {
+        await supabase.auth.signOut();
+        setError(t('errDeactivated'));
+        setLoading(false);
+        return;
+      }
+    }
+
     // Check if MFA step-up is required
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aal?.nextLevel === 'aal2' && aal.nextLevel !== aal.currentLevel) {

@@ -264,7 +264,8 @@
       "show": "Show",
       "hide": "Hide",
       "errInvalid": "Invalid email or password. Please try again.",
-      "errGeneric": "An error occurred. Please try again."
+      "errGeneric": "An error occurred. Please try again.",
+      "errDeactivated": "This account has been deactivated. Please contact support."
     },
     "verify": {
       "heading": "Two-factor authentication",

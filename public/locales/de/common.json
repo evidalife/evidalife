@@ -264,7 +264,8 @@
       "show": "Anzeigen",
       "hide": "Verbergen",
       "errInvalid": "Ungültige E-Mail oder Passwort. Bitte erneut versuchen.",
-      "errGeneric": "Ein Fehler ist aufgetreten. Bitte erneut versuchen."
+      "errGeneric": "Ein Fehler ist aufgetreten. Bitte erneut versuchen.",
+      "errDeactivated": "Dieses Konto wurde deaktiviert. Bitte kontaktiere den Support."
     },
     "verify": {
       "heading": "Zwei-Faktor-Authentifizierung",

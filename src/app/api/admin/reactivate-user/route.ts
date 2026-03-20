@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function POST(req: NextRequest) {
-  // Verify the caller is an authenticated admin
   const serverClient = await createClient();
   const { data: { user } } = await serverClient.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -21,34 +20,11 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 });
 
   const admin = createAdminClient();
-
-  // Fetch profile to enforce deactivation-first rule and get avatar_url
-  const { data: targetProfile } = await admin
+  const { error } = await admin
     .from('profiles')
-    .select('deleted_at, avatar_url')
-    .eq('id', userId)
-    .single();
+    .update({ deleted_at: null })
+    .eq('id', userId);
 
-  if (!targetProfile?.deleted_at) {
-    return NextResponse.json(
-      { error: 'User must be deactivated before permanent deletion' },
-      { status: 400 }
-    );
-  }
-
-  // Delete avatar from storage if present
-  if (targetProfile.avatar_url) {
-    const marker = '/user-avatars/';
-    const idx = targetProfile.avatar_url.indexOf(marker);
-    if (idx !== -1) {
-      const storagePath = targetProfile.avatar_url.slice(idx + marker.length);
-      await admin.storage.from('user-avatars').remove([storagePath]);
-    }
-  }
-
-  // Delete from auth.users (cascades to profiles via FK)
-  const { error } = await admin.auth.admin.deleteUser(userId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
   return NextResponse.json({ ok: true });
 }

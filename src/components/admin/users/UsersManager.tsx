@@ -16,6 +16,7 @@ export type Profile = {
   onboarding_completed: boolean | null;
   created_at: string;
   updated_at: string | null;
+  deleted_at: string | null;
   phone: string | null;
   country: string | null;
   city: string | null;
@@ -31,8 +32,7 @@ export type Profile = {
 function getDisplayName(p: Profile): string {
   if (p.display_name) return p.display_name;
   const parts = [p.first_name, p.last_name].filter(Boolean);
-  if (parts.length > 0) return parts.join(' ');
-  return '';
+  return parts.length > 0 ? parts.join(' ') : '';
 }
 
 function getInitials(p: Profile): string {
@@ -44,60 +44,59 @@ function getInitials(p: Profile): string {
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('de-CH', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
+  return new Date(iso).toLocaleDateString('de-CH', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+async function adminPost(path: string, body: object): Promise<boolean> {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
+  return res.ok;
 }
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
     <button
       type="button"
-      onClick={() => onChange(!checked)}
+      onClick={onChange}
       className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
         checked ? 'bg-[#0e393d]' : 'bg-gray-200'
       }`}
     >
-      <span
-        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-          checked ? 'translate-x-4.5' : 'translate-x-0.5'
-        }`}
-      />
+      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
     </button>
   );
 }
 
-function Badge({ color, children }: { color: 'green' | 'gray' | 'teal' | 'red'; children: React.ReactNode }) {
-  const cls = {
+type BadgeColor = 'green' | 'gray' | 'teal' | 'red' | 'amber';
+function Badge({ color, children }: { color: BadgeColor; children: React.ReactNode }) {
+  const cls: Record<BadgeColor, string> = {
     green: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
     gray:  'bg-gray-50 text-gray-600 ring-gray-500/20',
     teal:  'bg-[#0e393d]/8 text-[#0e393d] ring-[#0e393d]/20',
     red:   'bg-red-50 text-red-700 ring-red-600/20',
-  }[color];
+    amber: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+  };
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${cls}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${cls[color]}`}>
       {children}
     </span>
   );
 }
 
-function UserAvatar({ profile }: { profile: Profile }) {
+function UserAvatar({ profile, muted }: { profile: Profile; muted?: boolean }) {
   if (profile.avatar_url) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={profile.avatar_url}
-        alt=""
-        className="w-8 h-8 rounded-full object-cover border border-[#0e393d]/10 shrink-0"
-      />
+      <img src={profile.avatar_url} alt="" className={`w-8 h-8 rounded-full object-cover border border-[#0e393d]/10 shrink-0 ${muted ? 'opacity-40' : ''}`} />
     );
   }
   return (
-    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0 bg-[#0e393d]">
+    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0 bg-[#0e393d] ${muted ? 'opacity-40' : ''}`}>
       {getInitials(profile)}
     </div>
   );
@@ -142,7 +141,7 @@ function UserDetail({ profile }: { profile: Profile }) {
           <DetailRow label="Street"        value={profile.street_address} />
           <DetailRow label="Joined"        value={formatDate(profile.created_at)} />
           <DetailRow label="Last updated"  value={formatDate(profile.updated_at)} />
-          <DetailRow label="Onboarding"    value={profile.onboarding_completed ? 'Completed' : 'Not completed'} />
+          {profile.deleted_at && <DetailRow label="Deactivated" value={formatDate(profile.deleted_at)} />}
         </dl>
       </td>
     </tr>
@@ -151,33 +150,44 @@ function UserDetail({ profile }: { profile: Profile }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-type FilterType = 'all' | 'admins' | 'regular';
+type FilterType = 'all' | 'admins' | 'members' | 'deactivated';
 
 export default function UsersManager({ initialProfiles }: { initialProfiles: Profile[] }) {
   const supabase = createClient();
 
-  const [profiles, setProfiles]     = useState<Profile[]>(initialProfiles);
-  const [search, setSearch]         = useState('');
-  const [filter, setFilter]         = useState<FilterType>('all');
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [profiles, setProfiles]   = useState<Profile[]>(initialProfiles);
+  const [search, setSearch]       = useState('');
+  const [filter, setFilter]       = useState<FilterType>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [confirmId, setConfirmId]   = useState<string | null>(null);
 
-  // ── Data refresh ────────────────────────────────────────────────────────────
+  // Per-row action state
+  const [updatingId, setUpdatingId]             = useState<string | null>(null);
+  const [confirmDeactivateId, setConfirmDeactivateId] = useState<string | null>(null);
+  const [deactivatingId, setDeactivatingId]     = useState<string | null>(null);
+  const [reactivatingId, setReactivatingId]     = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId]   = useState<string | null>(null);
+  const [deletingId, setDeletingId]             = useState<string | null>(null);
+
+  // ── Refresh ────────────────────────────────────────────────────────────────
 
   const refresh = useCallback(async () => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, email, first_name, last_name, display_name, avatar_url, is_admin, onboarding_completed, created_at, updated_at, phone, country, city, date_of_birth, sex, height_cm, street_address, postal_code')
+      .select('id, email, first_name, last_name, display_name, avatar_url, is_admin, onboarding_completed, created_at, updated_at, deleted_at, phone, country, city, date_of_birth, sex, height_cm, street_address, postal_code')
       .order('created_at', { ascending: false })
       .limit(500);
     if (data) setProfiles(data);
   }, [supabase]);
 
-  // ── Filtered list ────────────────────────────────────────────────────────────
+  // ── Filtered list ──────────────────────────────────────────────────────────
 
   const filtered = profiles.filter((p) => {
+    const active = !p.deleted_at;
+    if (filter === 'all'         && !active) return false;
+    if (filter === 'admins'      && (!active || !p.is_admin)) return false;
+    if (filter === 'members'     && (!active || p.is_admin)) return false;
+    if (filter === 'deactivated' && active) return false;
+
     if (search) {
       const q = search.toLowerCase();
       const matches =
@@ -187,46 +197,56 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
         p.display_name?.toLowerCase().includes(q);
       if (!matches) return false;
     }
-    if (filter === 'admins' && !p.is_admin) return false;
-    if (filter === 'regular' && p.is_admin) return false;
     return true;
   });
 
-  // ── Stats ─────────────────────────────────────────────────────────────────────
+  // ── Stats (active users only) ──────────────────────────────────────────────
 
-  const totalUsers  = profiles.length;
-  const adminCount  = profiles.filter((p) => p.is_admin).length;
-  const memberCount = profiles.filter((p) => !p.is_admin).length;
+  const active      = profiles.filter((p) => !p.deleted_at);
+  const totalUsers  = active.length;
+  const adminCount  = active.filter((p) => p.is_admin).length;
+  const memberCount = active.filter((p) => !p.is_admin).length;
 
-  // ── Admin toggle ─────────────────────────────────────────────────────────────
+  // ── Actions ────────────────────────────────────────────────────────────────
 
-  const toggleAdmin = (profile: Profile) => {
-    setUpdatingId(profile.id);
+  const toggleAdmin = (p: Profile) => {
+    setUpdatingId(p.id);
     supabase
       .from('profiles')
-      .update({ is_admin: !profile.is_admin })
-      .eq('id', profile.id)
+      .update({ is_admin: !p.is_admin })
+      .eq('id', p.id)
       .then(() => refresh().finally(() => setUpdatingId(null)));
   };
 
-  // ── Delete user ───────────────────────────────────────────────────────────────
+  const deactivate = async (userId: string) => {
+    setDeactivatingId(userId);
+    if (await adminPost('/api/admin/deactivate-user', { userId })) {
+      await refresh();
+      if (expandedId === userId) setExpandedId(null);
+    }
+    setDeactivatingId(null);
+    setConfirmDeactivateId(null);
+  };
+
+  const reactivate = async (userId: string) => {
+    setReactivatingId(userId);
+    if (await adminPost('/api/admin/reactivate-user', { userId })) await refresh();
+    setReactivatingId(null);
+  };
 
   const deleteUser = async (userId: string) => {
     setDeletingId(userId);
-    const res = await fetch('/api/admin/delete-user', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId }),
-    });
-    if (res.ok) {
+    if (await adminPost('/api/admin/delete-user', { userId })) {
       setProfiles((prev) => prev.filter((p) => p.id !== userId));
       if (expandedId === userId) setExpandedId(null);
     }
     setDeletingId(null);
-    setConfirmId(null);
+    setConfirmDeleteId(null);
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
+
+  const isDeactivatedView = filter === 'deactivated';
 
   return (
     <div className="p-8">
@@ -237,7 +257,7 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
         <p className="mt-0.5 text-sm text-[#1c2a2b]/50">View registered users and manage account details.</p>
       </div>
 
-      {/* Stats strip */}
+      {/* Stats strip — active users only */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         {[
           { label: 'Total users', value: totalUsers },
@@ -262,20 +282,23 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
         />
         <div className="flex gap-1.5">
           {([
-            { key: 'all',     label: 'All'          },
-            { key: 'admins',  label: 'Admins'       },
-            { key: 'regular', label: 'Regular users' },
-          ] as { key: FilterType; label: string }[]).map((p) => (
+            { key: 'all',         label: 'All'         },
+            { key: 'admins',      label: 'Admins'      },
+            { key: 'members',     label: 'Members'     },
+            { key: 'deactivated', label: 'Deactivated' },
+          ] as { key: FilterType; label: string }[]).map((pill) => (
             <button
-              key={p.key}
-              onClick={() => setFilter(p.key)}
+              key={pill.key}
+              onClick={() => setFilter(pill.key)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
-                filter === p.key
-                  ? 'bg-[#0e393d] text-white'
+                filter === pill.key
+                  ? pill.key === 'deactivated'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-[#0e393d] text-white'
                   : 'bg-[#0e393d]/8 text-[#0e393d]/70 hover:bg-[#0e393d]/15'
               }`}
             >
-              {p.label}
+              {pill.label}
             </button>
           ))}
         </div>
@@ -287,10 +310,16 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
           <thead>
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">User</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Role</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Admin</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">
+                {isDeactivatedView ? 'Status' : 'Role'}
+              </th>
+              {!isDeactivatedView && (
+                <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Admin</th>
+              )}
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Joined</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Last updated</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">
+                {isDeactivatedView ? 'Deactivated on' : 'Last updated'}
+              </th>
               <th className="px-4 py-3 w-10" />
             </tr>
           </thead>
@@ -303,23 +332,27 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
               </tr>
             )}
             {filtered.map((profile) => {
-              const isExpanded = expandedId === profile.id;
-              const isConfirming = confirmId === profile.id;
-              const isDeleting = deletingId === profile.id;
-              const displayName = getDisplayName(profile);
+              const isExpanded        = expandedId === profile.id;
+              const isDeactivated     = !!profile.deleted_at;
+              const displayName       = getDisplayName(profile);
+              const isConfirmDeact    = confirmDeactivateId === profile.id;
+              const isDeactivating    = deactivatingId === profile.id;
+              const isReactivating    = reactivatingId === profile.id;
+              const isConfirmDel      = confirmDeleteId === profile.id;
+              const isDeleting        = deletingId === profile.id;
 
               return (
                 <>
                   <tr
                     key={profile.id}
                     onClick={() => setExpandedId(isExpanded ? null : profile.id)}
-                    className="hover:bg-[#fafaf8] transition-colors cursor-pointer"
+                    className={`transition-colors cursor-pointer ${isDeactivated ? 'bg-gray-50/50 hover:bg-gray-50' : 'hover:bg-[#fafaf8]'}`}
                   >
                     {/* User: avatar + name + email */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <UserAvatar profile={profile} />
-                        <div>
+                        <UserAvatar profile={profile} muted={isDeactivated} />
+                        <div className={isDeactivated ? 'opacity-50' : ''}>
                           {displayName ? (
                             <>
                               <div className="font-medium text-[#0e393d]">{displayName}</div>
@@ -332,72 +365,107 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
                       </div>
                     </td>
 
-                    {/* Role badge */}
+                    {/* Role / Status badge */}
                     <td className="px-4 py-3">
-                      {profile.is_admin
-                        ? <Badge color="teal">Admin</Badge>
-                        : <Badge color="gray">Member</Badge>
+                      {isDeactivated
+                        ? <Badge color="red">Deactivated</Badge>
+                        : profile.is_admin
+                          ? <Badge color="teal">Admin</Badge>
+                          : <Badge color="gray">Member</Badge>
                       }
                     </td>
 
-                    {/* Admin toggle */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                        <Toggle
-                          checked={profile.is_admin ?? false}
-                          onChange={() => toggleAdmin(profile)}
-                        />
-                        {updatingId === profile.id && <Spinner />}
-                      </div>
-                    </td>
+                    {/* Admin toggle (active users only) */}
+                    {!isDeactivatedView && (
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Toggle
+                            checked={profile.is_admin ?? false}
+                            onChange={() => toggleAdmin(profile)}
+                          />
+                          {updatingId === profile.id && <Spinner />}
+                        </div>
+                      </td>
+                    )}
 
                     {/* Joined */}
-                    <td className="px-4 py-3 text-[#1c2a2b]/50 text-xs tabular-nums">
+                    <td className={`px-4 py-3 text-xs tabular-nums ${isDeactivated ? 'text-[#1c2a2b]/30' : 'text-[#1c2a2b]/50'}`}>
                       {formatDate(profile.created_at)}
                     </td>
 
-                    {/* Last updated */}
-                    <td className="px-4 py-3 text-[#1c2a2b]/50 text-xs tabular-nums">
-                      {formatDate(profile.updated_at)}
+                    {/* Last updated / Deactivated on */}
+                    <td className={`px-4 py-3 text-xs tabular-nums ${isDeactivated ? 'text-[#1c2a2b]/30' : 'text-[#1c2a2b]/50'}`}>
+                      {isDeactivated ? formatDate(profile.deleted_at) : formatDate(profile.updated_at)}
                     </td>
 
-                    {/* Delete / confirm */}
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      {isConfirming ? (
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => deleteUser(profile.id)}
-                            disabled={isDeleting}
-                            className="text-[11px] font-medium text-red-600 hover:text-red-800 transition disabled:opacity-50"
-                          >
-                            {isDeleting ? <Spinner /> : 'Delete'}
-                          </button>
-                          <span className="text-[#1c2a2b]/20">|</span>
-                          <button
-                            onClick={() => setConfirmId(null)}
-                            className="text-[11px] text-[#1c2a2b]/50 hover:text-[#1c2a2b] transition"
-                          >
-                            Cancel
-                          </button>
-                        </div>
+                    {/* Actions */}
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      {isDeactivated ? (
+                        /* Deactivated row actions: Reactivate + Delete forever */
+                        isConfirmDel ? (
+                          <div className="flex items-center gap-2 justify-end">
+                            <button
+                              onClick={() => deleteUser(profile.id)}
+                              disabled={isDeleting}
+                              className="text-[11px] font-medium text-red-600 hover:text-red-800 transition disabled:opacity-50 flex items-center gap-1"
+                            >
+                              {isDeleting ? <Spinner /> : 'Delete forever'}
+                            </button>
+                            <span className="text-[#1c2a2b]/20">|</span>
+                            <button onClick={() => setConfirmDeleteId(null)} className="text-[11px] text-[#1c2a2b]/50 hover:text-[#1c2a2b] transition">
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 justify-end">
+                            <button
+                              onClick={() => reactivate(profile.id)}
+                              disabled={isReactivating}
+                              className="text-[11px] font-medium text-emerald-600 hover:text-emerald-800 transition disabled:opacity-50 flex items-center gap-1"
+                            >
+                              {isReactivating ? <Spinner /> : 'Reactivate'}
+                            </button>
+                            <span className="text-[#1c2a2b]/20">|</span>
+                            <button
+                              onClick={() => setConfirmDeleteId(profile.id)}
+                              className="text-[11px] text-red-400 hover:text-red-600 transition"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )
                       ) : (
-                        <button
-                          onClick={() => setConfirmId(profile.id)}
-                          className="text-[#1c2a2b]/25 hover:text-red-500 transition-colors p-1 rounded"
-                          title="Delete user"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-                            <path d="M10 11v6M14 11v6" />
-                            <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
-                          </svg>
-                        </button>
+                        /* Active row action: Deactivate */
+                        isConfirmDeact ? (
+                          <div className="flex items-center gap-2 justify-end">
+                            <button
+                              onClick={() => deactivate(profile.id)}
+                              disabled={isDeactivating}
+                              className="text-[11px] font-medium text-amber-700 hover:text-amber-900 transition disabled:opacity-50 flex items-center gap-1"
+                            >
+                              {isDeactivating ? <Spinner /> : 'Deactivate'}
+                            </button>
+                            <span className="text-[#1c2a2b]/20">|</span>
+                            <button onClick={() => setConfirmDeactivateId(null)} className="text-[11px] text-[#1c2a2b]/50 hover:text-[#1c2a2b] transition">
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeactivateId(profile.id)}
+                            className="text-[#1c2a2b]/25 hover:text-amber-600 transition-colors p-1 rounded"
+                            title="Deactivate user"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10"/>
+                              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                            </svg>
+                          </button>
+                        )
                       )}
                     </td>
                   </tr>
 
-                  {/* Expanded detail row */}
                   {isExpanded && <UserDetail profile={profile} />}
                 </>
               );
