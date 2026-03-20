@@ -249,11 +249,7 @@
     "hero": {
       "h1": "Live well.",
       "h1em": "Scientifically grounded.",
-      "sub": "Evidence-based, whole-food, plant-based nutrition — combined with measurable health markers.",
-      "pillLogin": "Trusted by 2,400+ members in DACH",
-      "pillSignup": "Free to join — no credit card needed",
-      "pill2fa": "Your data is encrypted end-to-end",
-      "pillForgot": "We'll help you get back in"
+      "sub": "Evidence-based, whole-food, plant-based nutrition — combined with measurable health markers."
     },
     "login": {
       "heading": "Welcome back",

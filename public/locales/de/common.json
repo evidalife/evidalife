@@ -249,11 +249,7 @@
     "hero": {
       "h1": "Gesund leben.",
       "h1em": "Wissenschaftlich fundiert.",
-      "sub": "Evidenzgestützte, vollwertige, pflanzenbasierte Ernährung – kombiniert mit messbaren Gesundheitsmarkern.",
-      "pillLogin": "Vertraut von 2.400+ Mitgliedern in DACH",
-      "pillSignup": "Kostenlos – keine Kreditkarte erforderlich",
-      "pill2fa": "Deine Daten sind Ende-zu-Ende verschlüsselt",
-      "pillForgot": "Wir helfen dir, wieder Zugang zu erhalten"
+      "sub": "Evidenzgestützte, vollwertige, pflanzenbasierte Ernährung – kombiniert mit messbaren Gesundheitsmarkern."
     },
     "login": {
       "heading": "Willkommen zurück",
