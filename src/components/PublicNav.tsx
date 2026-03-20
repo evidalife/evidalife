@@ -195,11 +195,8 @@ export default function PublicNav() {
                     {profile?.is_admin && (
                       <Link
                         href="/admin"
-                        className="flex items-center gap-2 px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
+                        className="block px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
                       >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-60">
-                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                        </svg>
                         Admin Panel
                       </Link>
                     )}
