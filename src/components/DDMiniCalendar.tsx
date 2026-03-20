@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 type Lang = 'de' | 'en';
@@ -19,11 +19,11 @@ interface Props {
 export default function DDMiniCalendar({
   userId, categories, today, lang, selectedDate, onSelectDate, refreshKey = 0,
 }: Props) {
-  const supabase = createClient();
+  const supabase  = createClient();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // viewMonth: "YYYY-MM"
-  const [viewMonth,      setViewMonth]      = useState(() => today.substring(0, 7));
-  const [completionMap,  setCompletionMap]  = useState<Record<string, Completion>>({});
+  const [viewMonth,     setViewMonth]     = useState(() => today.substring(0, 7));
+  const [completionMap, setCompletionMap] = useState<Record<string, Completion>>({});
 
   const fetchMonth = useCallback(async (ym: string) => {
     const [y, m] = ym.split('-').map(Number);
@@ -37,7 +37,6 @@ export default function DDMiniCalendar({
       .gte('entry_date', firstDay)
       .lte('entry_date', lastDay);
 
-    // Group by date
     const byDate: Record<string, Record<string, number>> = {};
     for (const e of (data ?? [])) {
       if (!byDate[e.entry_date]) byDate[e.entry_date] = {};
@@ -54,140 +53,131 @@ export default function DDMiniCalendar({
 
   useEffect(() => { fetchMonth(viewMonth); }, [viewMonth, fetchMonth, refreshKey]);
 
-  // ── Calendar math ────────────────────────────────────────────────────────────
-  const [y, m]       = viewMonth.split('-').map(Number);
-  const daysInMonth  = new Date(y, m, 0).getDate();
-  const firstDow     = new Date(y, m - 1, 1).getDay(); // 0=Sun
-  const startOffset  = firstDow === 0 ? 6 : firstDow - 1; // Mon-based
+  // Scroll selected date into view when selection or month changes
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const btn = scrollRef.current.querySelector('[aria-pressed="true"]') as HTMLElement | null;
+    if (btn) btn.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  }, [viewMonth, selectedDate]);
 
-  const cells: (number | null)[] = Array(startOffset).fill(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-  while (cells.length < 42) cells.push(null); // always 6 rows → fixed height
-
-  const todayYM      = today.substring(0, 7);
-  const canGoNext    = viewMonth < todayYM;
+  const [y, m]      = viewMonth.split('-').map(Number);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const todayYM     = today.substring(0, 7);
+  const canGoNext   = viewMonth < todayYM;
 
   const prevMonth = () => {
-    const d = new Date(y, m - 2, 1); // m is 1-based, so m-2 = previous month (0-based)
+    const d = new Date(y, m - 2, 1);
     setViewMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   };
   const nextMonth = () => {
     if (!canGoNext) return;
-    const d = new Date(y, m, 1); // m is 1-based, so m = next month (0-based)
+    const d = new Date(y, m, 1);
     setViewMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   };
 
   const monthLabel = new Date(y, m - 1, 1).toLocaleDateString(
     lang === 'de' ? 'de-CH' : 'en-GB',
-    { month: 'long', year: 'numeric' }
+    { month: 'short', year: 'numeric' }
   );
-  const dayHeaders = lang === 'de'
-    ? ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
-    : ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+
+  const isOnToday = selectedDate === today && viewMonth === todayYM;
 
   return (
-    <div className="flex flex-col gap-2 min-w-0">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84]">
-        {lang === 'de' ? 'Kalender' : 'Calendar'}
-      </p>
+    <div className="flex flex-col gap-2.5 min-w-0">
 
-      {/* Month navigation */}
+      {/* Title row */}
       <div className="flex items-center justify-between">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84]">
+          {lang === 'de' ? 'Kalender' : 'Calendar'}
+        </p>
+        <button
+          onClick={() => { onSelectDate(today); setViewMonth(todayYM); }}
+          className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium transition-all ${
+            isOnToday
+              ? 'bg-[#0e393d] text-[#ceab84]'
+              : 'bg-[#0e393d]/8 text-[#1c2a2b]/55 hover:bg-[#0e393d]/15 hover:text-[#0e393d]'
+          }`}
+        >
+          {lang === 'de' ? 'Heute' : 'Today'}
+        </button>
+      </div>
+
+      {/* Strip row: ← | scrollable dates | month label | → */}
+      <div className="flex items-center gap-1.5">
+
+        {/* ← */}
         <button
           onClick={prevMonth}
-          className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-[#0e393d]/6 text-[#0e393d]/50 hover:text-[#0e393d] transition"
+          className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-[#0e393d]/6 text-[#0e393d]/50 hover:text-[#0e393d] transition"
           aria-label={lang === 'de' ? 'Vorheriger Monat' : 'Previous month'}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
         </button>
-        <span className="text-xs font-semibold text-[#0e393d] capitalize">{monthLabel}</span>
+
+        {/* Scrollable date pills */}
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-x-auto"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          <div className="flex gap-1 py-0.5">
+            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
+              const dateStr  = `${viewMonth}-${String(day).padStart(2, '0')}`;
+              const isFuture = dateStr > today;
+              const isSel    = dateStr === selectedDate;
+              const isToday  = dateStr === today;
+              const comp     = completionMap[dateStr];
+
+              let cls = 'shrink-0 w-[26px] h-[26px] flex items-center justify-center rounded-full text-[10px] font-medium transition-all ';
+
+              if (isSel) {
+                cls += 'bg-[#0e393d] text-[#ceab84] ring-1 ring-[#ceab84]';
+              } else if (isFuture) {
+                cls += 'text-[#1c2a2b]/20 cursor-default';
+              } else if (comp === 'full') {
+                cls += 'bg-[#1D9E75] text-white hover:bg-[#18875f] cursor-pointer';
+              } else if (comp === 'partial') {
+                cls += 'bg-[#ceab84]/25 text-[#8a6a3e] hover:bg-[#ceab84]/40 cursor-pointer';
+              } else {
+                cls += 'text-[#1c2a2b]/55 hover:bg-[#0e393d]/6 cursor-pointer';
+                if (isToday) cls += ' ring-1 ring-[#ceab84]/60';
+              }
+
+              return (
+                <button
+                  key={dateStr}
+                  className={cls}
+                  onClick={() => !isFuture && onSelectDate(dateStr)}
+                  disabled={isFuture}
+                  aria-label={dateStr}
+                  aria-pressed={isSel}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Month/year label */}
+        <span className="shrink-0 text-[10px] font-semibold text-[#0e393d]/55 capitalize whitespace-nowrap">
+          {monthLabel}
+        </span>
+
+        {/* → */}
         <button
           onClick={nextMonth}
           disabled={!canGoNext}
-          className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-[#0e393d]/6 text-[#0e393d]/50 hover:text-[#0e393d] transition disabled:opacity-25 disabled:cursor-not-allowed"
+          className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-[#0e393d]/6 text-[#0e393d]/50 hover:text-[#0e393d] transition disabled:opacity-25 disabled:cursor-not-allowed"
           aria-label={lang === 'de' ? 'Nächster Monat' : 'Next month'}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="9 18 15 12 9 6"/>
           </svg>
         </button>
-      </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-7 gap-y-0.5">
-        {/* Day headers */}
-        {dayHeaders.map((h) => (
-          <div key={h} className="text-center text-[9px] font-semibold text-[#1c2a2b]/35 py-0.5">
-            {h}
-          </div>
-        ))}
-
-        {/* Day cells */}
-        {cells.map((day, i) => {
-          if (!day) return <div key={`empty-${i}`} />;
-
-          const dateStr   = `${viewMonth}-${String(day).padStart(2, '0')}`;
-          const isFuture  = dateStr > today;
-          const isToday   = dateStr === today;
-          const isSel     = dateStr === selectedDate;
-          const comp      = completionMap[dateStr];
-
-          let base = 'w-full aspect-square flex items-center justify-center rounded-full text-[10px] font-medium transition-all ';
-
-          if (isFuture) {
-            base += 'text-[#1c2a2b]/20 cursor-default';
-          } else if (comp === 'full') {
-            base += 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 cursor-pointer';
-          } else if (comp === 'partial') {
-            base += 'bg-[#ceab84]/20 text-[#8a6a3e] hover:bg-[#ceab84]/35 cursor-pointer';
-          } else {
-            base += 'text-[#1c2a2b]/55 hover:bg-[#0e393d]/6 cursor-pointer';
-          }
-
-          // Selection ring
-          if (isSel && isToday) {
-            base += ' ring-2 ring-[#ceab84] ring-offset-1';
-          } else if (isSel) {
-            base += ' ring-2 ring-[#0e393d]/50 ring-offset-1';
-          } else if (isToday) {
-            base += ' ring-1 ring-[#ceab84]/60 ring-offset-1';
-          }
-
-          return (
-            <div key={dateStr} className="p-px">
-              <button
-                className={base}
-                onClick={() => !isFuture && onSelectDate(dateStr)}
-                disabled={isFuture}
-                aria-label={dateStr}
-                aria-pressed={isSel}
-              >
-                {day}
-              </button>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Jump to today */}
-      <div className="flex justify-center mt-2">
-        <div className="flex rounded-full bg-[#0e393d]/6 p-0.5">
-          <button
-            onClick={() => {
-              onSelectDate(today);
-              setViewMonth(today.substring(0, 7));
-            }}
-            className={`px-3 py-0.5 rounded-full text-[10px] font-medium transition-all ${
-              selectedDate === today && viewMonth === today.substring(0, 7)
-                ? 'bg-white text-[#0e393d] shadow-sm'
-                : 'text-[#1c2a2b]/50 hover:text-[#0e393d]'
-            }`}
-          >
-            {lang === 'de' ? 'Heute' : 'Today'}
-          </button>
-        </div>
       </div>
     </div>
   );

@@ -432,53 +432,58 @@ export default function DailyDozenTracker({
   return (
     <div className="space-y-4">
 
-      {/* ── 3-column dashboard header ─────────────────────────────────────── */}
-      <div className="rounded-2xl border border-[#0e393d]/10 bg-white overflow-hidden">
-        <div className="grid grid-cols-1 md:grid-cols-3">
+      {/* ── Dashboard header: Row 1 (Gauge + Chart) + Row 2 (Calendar strip) ── */}
+      <div className="space-y-2">
 
-          {/* Col 1 — Gauge */}
-          <div className="flex flex-col px-6 py-5 border-b md:border-b-0 md:border-r border-[#0e393d]/8">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-1">
-              {lang === 'de' ? 'Tagesportionen' : 'Daily Dozen Score'}
-            </p>
-            <div className="flex-1 flex items-center justify-center">
-              <DDGauge
-                current={totalServings}
-                total={totalTarget}
+        {/* Row 1 — Gauge | Chart */}
+        <div className="rounded-2xl border border-[#0e393d]/10 bg-white overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2">
+
+            {/* Gauge */}
+            <div className="flex flex-col px-6 py-5 border-b sm:border-b-0 sm:border-r border-[#0e393d]/8">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-1">
+                {lang === 'de' ? 'Tagesportionen' : 'Daily Dozen Score'}
+              </p>
+              <div className="flex-1 flex items-center justify-center">
+                <DDGauge
+                  current={totalServings}
+                  total={totalTarget}
+                  lang={lang}
+                  streak={streak}
+                  isToday={isToday}
+                  formattedDate={formattedDate}
+                />
+              </div>
+            </div>
+
+            {/* Chart */}
+            <div className="flex flex-col px-5 py-5">
+              <DDProgressChart
+                userId={userId}
+                categories={catSlim}
+                today={today}
                 lang={lang}
-                streak={streak}
-                isToday={isToday}
-                formattedDate={formattedDate}
+                compact
+                refreshKey={refreshKey}
               />
             </div>
-          </div>
 
-          {/* Col 2 — Chart */}
-          <div className="flex flex-col px-5 py-5 border-b md:border-b-0 md:border-r border-[#0e393d]/8">
-            <DDProgressChart
-              userId={userId}
-              categories={catSlim}
-              today={today}
-              lang={lang}
-              compact
-              refreshKey={refreshKey}
-            />
           </div>
-
-          {/* Col 3 — Calendar */}
-          <div className="px-5 py-5">
-            <DDMiniCalendar
-              userId={userId}
-              categories={catSlim}
-              today={today}
-              lang={lang}
-              selectedDate={selectedDate}
-              onSelectDate={setSelectedDate}
-              refreshKey={refreshKey}
-            />
-          </div>
-
         </div>
+
+        {/* Row 2 — Calendar strip */}
+        <div className="rounded-2xl border border-[#0e393d]/10 bg-white px-5 py-4">
+          <DDMiniCalendar
+            userId={userId}
+            categories={catSlim}
+            today={today}
+            lang={lang}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            refreshKey={refreshKey}
+          />
+        </div>
+
       </div>
 
       {/* ── Category grid ──────────────────────────────────────────────────── */}
