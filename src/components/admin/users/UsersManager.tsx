@@ -125,7 +125,7 @@ function DetailRow({ label, value }: { label: string; value: string | null | und
 function UserDetail({ profile }: { profile: Profile }) {
   return (
     <tr className="bg-[#f5f4f0]/60 border-b border-[#0e393d]/8">
-      <td colSpan={6} className="px-6 py-5">
+      <td colSpan={7} className="px-6 py-5">
         <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-4">
           <DetailRow label="Display name"  value={profile.display_name} />
           <DetailRow label="First name"    value={profile.first_name} />
@@ -162,6 +162,7 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
 
   // Per-row action state
   const [updatingId, setUpdatingId]             = useState<string | null>(null);
+  const [toggleError, setToggleError]           = useState<string | null>(null);
   const [confirmDeactivateId, setConfirmDeactivateId] = useState<string | null>(null);
   const [deactivatingId, setDeactivatingId]     = useState<string | null>(null);
   const [reactivatingId, setReactivatingId]     = useState<string | null>(null);
@@ -209,13 +210,22 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
-  const toggleAdmin = (p: Profile) => {
+  const toggleAdmin = async (p: Profile) => {
     setUpdatingId(p.id);
-    supabase
-      .from('profiles')
-      .update({ is_admin: !p.is_admin })
-      .eq('id', p.id)
-      .then(() => refresh().finally(() => setUpdatingId(null)));
+    setToggleError(null);
+    const newValue = !p.is_admin;
+    const res = await fetch('/api/admin/toggle-admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: p.id, isAdmin: newValue }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setToggleError(body.error ?? 'Failed to update admin status');
+    } else {
+      await refresh();
+    }
+    setUpdatingId(null);
   };
 
   const deactivate = async (userId: string) => {
@@ -305,11 +315,17 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
       </div>
 
       {/* Table */}
+      {toggleError && (
+        <div className="mb-3 px-4 py-2.5 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+          Admin toggle failed: {toggleError}
+        </div>
+      )}
       <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">User</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Display name</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">
                 {isDeactivatedView ? 'Status' : 'Role'}
               </th>
@@ -334,7 +350,6 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
             {filtered.map((profile) => {
               const isExpanded        = expandedId === profile.id;
               const isDeactivated     = !!profile.deleted_at;
-              const displayName       = getDisplayName(profile);
               const isConfirmDeact    = confirmDeactivateId === profile.id;
               const isDeactivating    = deactivatingId === profile.id;
               const isReactivating    = reactivatingId === profile.id;
@@ -348,14 +363,16 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
                     onClick={() => setExpandedId(isExpanded ? null : profile.id)}
                     className={`transition-colors cursor-pointer ${isDeactivated ? 'bg-gray-50/50 hover:bg-gray-50' : 'hover:bg-[#fafaf8]'}`}
                   >
-                    {/* User: avatar + name + email */}
+                    {/* User: avatar + real name + email */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <UserAvatar profile={profile} muted={isDeactivated} />
                         <div className={isDeactivated ? 'opacity-50' : ''}>
-                          {displayName ? (
+                          {(profile.first_name || profile.last_name) ? (
                             <>
-                              <div className="font-medium text-[#0e393d]">{displayName}</div>
+                              <div className="font-medium text-[#0e393d]">
+                                {[profile.first_name, profile.last_name].filter(Boolean).join(' ')}
+                              </div>
                               <div className="text-xs text-[#1c2a2b]/50 mt-0.5">{profile.email ?? '—'}</div>
                             </>
                           ) : (
@@ -363,6 +380,11 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
                           )}
                         </div>
                       </div>
+                    </td>
+
+                    {/* Display name */}
+                    <td className={`px-4 py-3 text-sm ${isDeactivated ? 'text-[#1c2a2b]/30' : 'text-[#1c2a2b]/70'}`}>
+                      {profile.display_name ?? <span className="text-[#1c2a2b]/25">—</span>}
                     </td>
 
                     {/* Role / Status badge */}

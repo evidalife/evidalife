@@ -39,7 +39,7 @@ export default function SignupPage() {
     setLoading(true);
     const supabase = createClient();
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -52,6 +52,14 @@ export default function SignupPage() {
       setError(signUpError.message);
       setLoading(false);
       return;
+    }
+
+    if (signUpData.user) {
+      await supabase.from('profiles').update({
+        first_name: firstName,
+        last_name: lastName,
+        display_name: firstName,
+      }).eq('id', signUpData.user.id);
     }
 
     setConfirmed(true);
