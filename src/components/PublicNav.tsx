@@ -186,26 +186,23 @@ export default function PublicNav() {
                     className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.14)] border border-[#0e393d]/8 min-w-[160px] py-1.5"
                     style={{ animation: 'dropdownIn 0.15s ease-out' }}
                   >
-                    {profile?.is_admin && (
-                      <>
-                        <Link
-                          href="/admin"
-                          className="flex items-center gap-2 px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-60">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                          </svg>
-                          Admin Panel
-                        </Link>
-                        <div className="h-px bg-[#0e393d]/10 mx-4 my-1.5" />
-                      </>
-                    )}
                     <Link
                       href="/dashboard"
                       className="block px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
                     >
                       Dashboard
                     </Link>
+                    {profile?.is_admin && (
+                      <Link
+                        href="/admin"
+                        className="flex items-center gap-2 px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-60">
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                        Admin Panel
+                      </Link>
+                    )}
                     <div className="h-px bg-[#0e393d]/10 mx-4 my-1.5" />
                     <button
                       onClick={handleSignOut}
