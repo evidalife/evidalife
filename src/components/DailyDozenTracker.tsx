@@ -485,14 +485,14 @@ export default function DailyDozenTracker({
 
         {/* Row 1 — Gauge | Chart */}
         <div className="rounded-2xl border border-[#0e393d]/10 bg-white overflow-hidden">
-          <div className="grid grid-cols-1 sm:grid-cols-2 sm:items-start">
+          <div className="grid grid-cols-1 sm:grid-cols-2 sm:items-stretch">
 
             {/* Gauge */}
             <div className="flex flex-col px-6 py-5 border-b sm:border-b-0 sm:border-r border-[#0e393d]/8">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-1">
                 Daily Dozen Score
               </p>
-              <div className="flex-1 flex items-center justify-center">
+              <div className="flex-1">
                 <DDGauge
                   current={totalServings}
                   total={totalTarget}

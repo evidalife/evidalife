@@ -99,7 +99,7 @@ export default function DDGauge({
       allDone:     'Alle Portionen!',
       oneAway:     '1 Portion bis zum perfekten Tag',
       catLabel:    'Kategorien',
-      scoreLabel:  'Score',
+      scoreLabel:  '% Score',
       streakLabel: 'Streak',
       days:        (n: number) => `${n} Tag${n !== 1 ? 'e' : ''}`,
     },
@@ -110,7 +110,7 @@ export default function DDGauge({
       allDone:     'All done!',
       oneAway:     '1 serving away from a perfect day',
       catLabel:    'categories',
-      scoreLabel:  'score',
+      scoreLabel:  '% score',
       streakLabel: 'streak',
       days:        (n: number) => `${n} day${n !== 1 ? 's' : ''}`,
     },
@@ -141,49 +141,57 @@ export default function DDGauge({
   const messageColor = isPerfect ? '#0C9C6C' : '#888';
 
   return (
-    <div className="flex flex-col items-center w-full">
+    <div className="flex flex-col items-center w-full h-full">
 
-      <svg viewBox="0 0 260 210" width="100%" style={{ overflow: 'visible' }}>
-        {isPerfect && (
-          <>
-            <style>{`@keyframes ddPulseGlow{0%,100%{opacity:.06}50%{opacity:.2}}`}</style>
-            <path
-              d={glowArcPath()}
-              fill="none"
-              stroke="#0C9C6C"
-              strokeWidth={MAX_THICK + 16}
-              strokeLinecap="round"
-              style={{ animation: 'ddPulseGlow 2.5s ease-in-out infinite' }}
-            />
-          </>
-        )}
+      {/* Gauge — grows to fill available height, SVG centered within */}
+      <div className="flex flex-col items-center justify-center flex-1">
+        <svg viewBox="0 0 260 210" width="100%" style={{ overflow: 'visible', maxWidth: 220 }}>
+          {isPerfect && (
+            <>
+              <style>{`@keyframes ddPulseGlow{0%,100%{opacity:.06}50%{opacity:.2}}`}</style>
+              <path
+                d={glowArcPath()}
+                fill="none"
+                stroke="#0C9C6C"
+                strokeWidth={MAX_THICK + 16}
+                strokeLinecap="round"
+                style={{ animation: 'ddPulseGlow 2.5s ease-in-out infinite' }}
+              />
+            </>
+          )}
 
-        {Array.from({ length: SEGS }, (_, i) => (
-          <path key={i} d={segPath(i)} fill={i < filledCount ? color : 'rgba(14,57,61,0.06)'} />
-        ))}
+          {Array.from({ length: SEGS }, (_, i) => (
+            <path key={i} d={segPath(i)} fill={i < filledCount ? color : 'rgba(14,57,61,0.06)'} />
+          ))}
 
-        <text
-          x={CX}
-          y={CY + 58}
-          textAnchor="middle"
-          fontSize={46}
-          fontWeight={700}
-          fill={isPerfect ? '#0C9C6C' : '#0e393d'}
-          style={{ fontFamily: '-apple-system, system-ui, sans-serif' }}
-        >
-          {current}
-        </text>
+          <text
+            x={CX}
+            y={CY + 58}
+            textAnchor="middle"
+            fontSize={46}
+            fontWeight={700}
+            fill={isPerfect ? '#0C9C6C' : '#0e393d'}
+            style={{ fontFamily: '-apple-system, system-ui, sans-serif' }}
+          >
+            {current}
+          </text>
 
-        <text x={l0x.toFixed(1)} y={l0y.toFixed(1)} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill="#aaa">0</text>
-        <text x={lTx.toFixed(1)} y={lTy.toFixed(1)} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill="#aaa">{total}</text>
+          <text x={l0x.toFixed(1)} y={l0y.toFixed(1)} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill="#aaa">0</text>
+          <text x={lTx.toFixed(1)} y={lTy.toFixed(1)} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill="#aaa">{total}</text>
 
-        <path d={needlePath} fill="#1c2a2b" opacity={0.65} />
-        <circle cx={CX} cy={CY} r={6}   fill="#1c2a2b" opacity={0.15} />
-        <circle cx={CX} cy={CY} r={3.5} fill="white"   stroke="#1c2a2b" strokeWidth={1} opacity={0.8} />
-      </svg>
+          <path d={needlePath} fill="#1c2a2b" opacity={0.65} />
+          <circle cx={CX} cy={CY} r={6}   fill="#1c2a2b" opacity={0.15} />
+          <circle cx={CX} cy={CY} r={3.5} fill="white"   stroke="#1c2a2b" strokeWidth={1} opacity={0.8} />
+        </svg>
+      </div>
 
-      {/* Stat pills */}
-      <div className="flex gap-2.5 mt-2">
+      {/* Message — centered between gauge bottom and pills top */}
+      <div className="flex items-center justify-center py-3">
+        <p style={{ fontSize: 12, color: messageColor, textAlign: 'center' }}>{message}</p>
+      </div>
+
+      {/* Stat pills — anchored to bottom */}
+      <div className="flex gap-2.5 pb-1">
         <div className="text-center px-3 py-1.5 bg-[#f5f4f0] rounded-lg">
           <div className="text-[13px] font-medium text-[#C4A96A]">{completedCategories}/{totalCategories}</div>
           <div className="text-[10px] text-[#888] mt-0.5">{T.catLabel}</div>
@@ -192,17 +200,10 @@ export default function DDGauge({
           <div className="text-[13px] font-medium text-[#0e393d]">{scorePct}%</div>
           <div className="text-[10px] text-[#888] mt-0.5">{T.scoreLabel}</div>
         </div>
-        {isToday && currentStreak > 0 && (
-          <div className="text-center px-3 py-1.5 bg-[#f5f4f0] rounded-lg">
-            <div className="text-[13px] font-medium text-[#0e393d]">{T.days(currentStreak)}</div>
-            <div className="text-[10px] text-[#888] mt-0.5">{T.streakLabel}</div>
-          </div>
-        )}
-      </div>
-
-      {/* Bottom message */}
-      <div className="h-5 flex items-center justify-center mt-2">
-        <p style={{ fontSize: 12, color: messageColor, textAlign: 'center' }}>{message}</p>
+        <div className="text-center px-3 py-1.5 bg-[#f5f4f0] rounded-lg">
+          <div className="text-[13px] font-medium text-[#0e393d]">{T.days(currentStreak)}</div>
+          <div className="text-[10px] text-[#888] mt-0.5">{T.streakLabel}</div>
+        </div>
       </div>
 
     </div>

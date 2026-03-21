@@ -201,7 +201,7 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
       <p className="text-sm text-[#1c2a2b]/30">{t.empty}</p>
     </div>
   ) : (
-    <div style={{ display: 'flex', alignItems: 'stretch' }}>
+    <div style={{ display: 'flex', alignItems: 'stretch', ...(compact ? { flex: 1, minHeight: 200, height: '100%' } : { height: 200 }) }}>
       {/* Left Y-axis title — Servings */}
       <div style={{
         writingMode: 'vertical-lr',
@@ -223,7 +223,7 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
       </div>
 
       {/* Chart */}
-      <div style={{ flex: 1, minHeight: 180 }}>
+      <div style={{ flex: 1 }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData} margin={{ top: 17, right: -10, bottom: 0, left: -10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(14,57,61,0.06)" vertical={false} />
@@ -338,11 +338,15 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
         <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-4">{t.heading}</p>
       )}
 
-      {chartContent}
+      {compact ? (
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          {chartContent}
+        </div>
+      ) : chartContent}
 
       {/* Toggle at bottom in compact mode */}
       {compact && (
-        <div className="flex justify-center mt-2">
+        <div className="flex justify-center mt-3">
           {periodToggle}
         </div>
       )}
