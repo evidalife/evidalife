@@ -57,7 +57,7 @@ export default function PublicNav() {
 
       {/* Main pill nav */}
       <nav
-        className="flex items-center justify-between px-5 py-3 bg-white/90 backdrop-blur-md rounded-full border border-white/70 shadow-[0_4px_24px_rgba(14,57,61,0.1)]"
+        className="flex items-center justify-between px-5 py-3 bg-white/90 backdrop-blur-md rounded-full border border-white/70 shadow-[0_4px_24px_rgba(14,57,61,0.1)] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
 
@@ -204,7 +204,7 @@ export default function PublicNav() {
                     {(profile?.display_name ?? profile?.first_name ?? user.email ?? '?')[0]?.toUpperCase()}
                   </span>
                 )}
-                {profile?.display_name ?? profile?.first_name ?? user.email?.split('@')[0] ?? login}
+                <span className="hidden sm:inline">{profile?.display_name ?? profile?.first_name ?? user.email?.split('@')[0] ?? login}</span>
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className={`transition-transform duration-200 ${userOpen ? 'rotate-180' : ''}`}>
                   <path d="M1.5 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
