@@ -353,9 +353,8 @@ export default function DailyDozenTracker({
 
   // ── Totals for gauge ───────────────────────────────────────────────────────
 
-  const totalServings          = categories.reduce((sum, c) => sum + (servingsMap[c.id] ?? 0), 0);
-  const totalTarget            = categories.reduce((sum, c) => sum + c.target_servings, 0);
-  const completedCategoriesNum = categories.filter((c) => (servingsMap[c.id] ?? 0) >= c.target_servings).length;
+  const totalServings = categories.reduce((sum, c) => sum + (servingsMap[c.id] ?? 0), 0);
+  const totalTarget   = categories.reduce((sum, c) => sum + c.target_servings, 0);
 
   // ── Streak update ──────────────────────────────────────────────────────────
   // Recalculates the streak from scratch on every upsert, handling both
@@ -500,8 +499,6 @@ export default function DailyDozenTracker({
                   streak={streak}
                   selectedDate={selectedDate}
                   today={today}
-                  completedCategories={completedCategoriesNum}
-                  totalCategories={categories.length}
                 />
               </div>
             </div>
