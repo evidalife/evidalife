@@ -11,7 +11,8 @@ import '../globals.css';
 const inter = Inter({
   variable: '--font-inter',
   subsets: ['latin'],
-  weight: ['300', '400', '500'],
+  weight: ['300', '400', '500', '600', '700'],
+  display: 'swap',
 });
 
 const playfair = Playfair_Display({
@@ -51,6 +52,7 @@ export default async function LocaleLayout({ children }: { children: React.React
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
+        <link rel="preconnect" href="https://rwbmdxgcjgidalcoeppp.supabase.co" />
         <Script
           defer
           data-domain="evidalife.com"

@@ -1,10 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/supabase/client';
-import DDProgressChart from './DDProgressChart';
-import DDGauge         from './DDGauge';
-import DDMiniCalendar  from './DDMiniCalendar';
+import DDGauge        from './DDGauge';
+import DDMiniCalendar from './DDMiniCalendar';
+
+const DDProgressChart = dynamic(() => import('./DDProgressChart'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-48 flex items-center justify-center">
+      <span className="text-[#1c2a2b]/20 text-sm">Loading chart...</span>
+    </div>
+  ),
+});
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -253,7 +262,7 @@ function CategoryCard({
           type="button"
           onClick={onDecrement}
           disabled={servings === 0 || pending}
-          aria-label="Remove serving"
+          aria-label="Decrease servings"
           className={`w-[30px] h-[30px] rounded-full border flex items-center justify-center transition disabled:opacity-30 disabled:cursor-default ${minusCls}`}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -269,7 +278,7 @@ function CategoryCard({
           type="button"
           onClick={onIncrement}
           disabled={pending}
-          aria-label="Add serving"
+          aria-label="Increase servings"
           className={`w-[30px] h-[30px] rounded-full border flex items-center justify-center transition disabled:opacity-50 disabled:cursor-default ${plusCls}`}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
