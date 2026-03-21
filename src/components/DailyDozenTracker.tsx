@@ -355,6 +355,7 @@ export default function DailyDozenTracker({
 
   const totalServings = categories.reduce((sum, c) => sum + (servingsMap[c.id] ?? 0), 0);
   const totalTarget   = categories.reduce((sum, c) => sum + c.target_servings, 0);
+  const completedCats = categories.filter((c) => (servingsMap[c.id] ?? 0) >= c.target_servings).length;
 
   // ── Streak update ──────────────────────────────────────────────────────────
   // Recalculates the streak from scratch on every upsert, handling both
@@ -489,7 +490,7 @@ export default function DailyDozenTracker({
             {/* Gauge */}
             <div className="flex flex-col px-6 py-5 border-b sm:border-b-0 sm:border-r border-[#0e393d]/8">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-1">
-                {lang === 'de' ? 'Tagesportionen' : 'Daily Dozen Score'}
+                Daily Dozen Score
               </p>
               <div className="flex-1 flex items-center justify-center">
                 <DDGauge
@@ -499,6 +500,8 @@ export default function DailyDozenTracker({
                   streak={streak}
                   selectedDate={selectedDate}
                   today={today}
+                  completedCategories={completedCats}
+                  totalCategories={categories.length}
                 />
               </div>
             </div>
