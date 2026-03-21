@@ -27,31 +27,33 @@ export default function DDMiniCalendar({
 }: Props) {
   const supabase = createClient();
 
-  // Track whether the sm: breakpoint is active so arrows step by 14 (desktop) or 7 (mobile)
-  const [isWide, setIsWide] = useState(false);
+  // Track visible count based on screen width:
+  // < 640px (iPhone): 5 dates | 640–1023px (tablet): 7 dates | ≥ 1024px (desktop): 14 dates
+  const [visibleCount, setVisibleCount] = useState(7);
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 640px)');
-    setIsWide(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsWide(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
+    const update = () => {
+      const w = window.innerWidth;
+      setVisibleCount(w < 640 ? 5 : w < 1024 ? 7 : 14);
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
   }, []);
-  const step = isWide ? 14 : 7;
 
-  // windowStart = first of the 7 primary visible dates; default = today - 3
+  // windowStart = first of the visible dates, centered on selectedDate
   const [windowStart, setWindowStart] = useState(() => addDays(today, -3));
   const [completionMap, setCompletionMap] = useState<Record<string, Completion>>({});
 
-  // Main 7 dates (always visible)
-  const dates     = Array.from({ length: 7 }, (_, i) => addDays(windowStart, i));
-  const windowEnd = dates[6];
+  // Recenter on selectedDate whenever visibleCount changes (rotation / resize)
+  useEffect(() => {
+    setWindowStart(addDays(selectedDate, -Math.floor(visibleCount / 2)));
+  }, [visibleCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Extra 7 dates shown on desktop only (the 7 days before windowStart)
-  const prevDates  = Array.from({ length: 7 }, (_, i) => addDays(windowStart, i - 7));
-  const fetchFrom  = prevDates[0];
+  const dates     = Array.from({ length: visibleCount }, (_, i) => addDays(windowStart, i));
+  const windowEnd = dates[dates.length - 1];
 
   // Can go forward only if the next window's first day is on or before today
-  const canGoNext = addDays(windowStart, step) <= today;
+  const canGoNext = addDays(windowStart, visibleCount) <= today;
 
   const fetchRange = useCallback(async (from: string, to: string) => {
     const { data } = await supabase
@@ -78,33 +80,33 @@ export default function DDMiniCalendar({
   }, [supabase, userId, categories]);
 
   useEffect(() => {
-    fetchRange(fetchFrom, windowEnd);
-  }, [windowStart, fetchRange, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    fetchRange(dates[0], windowEnd);
+  }, [windowStart, visibleCount, fetchRange, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const prevWindow = () => setWindowStart((s) => addDays(s, -step));
-  const nextWindow = () => { if (canGoNext) setWindowStart((s) => addDays(s, step)); };
+  const prevWindow = () => setWindowStart((s) => addDays(s, -visibleCount));
+  const nextWindow = () => { if (canGoNext) setWindowStart((s) => addDays(s, visibleCount)); };
 
   const goToToday = () => {
     onSelectDate(today);
-    setWindowStart(addDays(today, -3));
+    setWindowStart(addDays(today, -Math.floor(visibleCount / 2)));
   };
 
-  // Month label: derive from the middle date of the main 7
-  const midDate = dates[3];
+  // Month label from the middle date of the visible window
+  const midDate = dates[Math.floor(visibleCount / 2)];
   const [my, mm] = midDate.split('-').map(Number);
   const monthLabel = new Date(my, mm - 1, 1).toLocaleDateString(
     lang === 'de' ? 'de-CH' : 'en-GB',
     { month: 'short', year: 'numeric' }
   );
 
-  function renderDateButton(dateStr: string, extraCls?: string) {
+  function renderDateButton(dateStr: string) {
     const isFuture = dateStr > today;
     const isSel    = dateStr === selectedDate;
     const isToday  = dateStr === today;
     const comp     = completionMap[dateStr];
     const day      = Number(dateStr.split('-')[2]);
 
-    let cls = `w-[30px] h-[30px] items-center justify-center rounded-full text-[11px] font-medium transition-all ${extraCls ?? 'flex'} `;
+    let cls = 'w-[30px] h-[30px] flex items-center justify-center rounded-full text-[11px] font-medium transition-all ';
 
     if (isFuture) {
       cls += 'text-[#1c2a2b]/20 cursor-default';
@@ -174,12 +176,9 @@ export default function DDMiniCalendar({
           </svg>
         </button>
 
-        {/* Date circles — 7 on mobile, 14 on desktop */}
+        {/* Date circles — exactly visibleCount, evenly distributed */}
         <div className="flex flex-1 justify-evenly">
-          {/* Extra 7 — desktop only */}
-          {prevDates.map((dateStr) => renderDateButton(dateStr, 'hidden sm:flex'))}
-          {/* Main 7 — always visible */}
-          {dates.map((dateStr) => renderDateButton(dateStr, 'flex'))}
+          {dates.map((dateStr) => renderDateButton(dateStr))}
         </div>
 
         {/* Month/year label */}
