@@ -133,7 +133,7 @@ export default function PublicNav() {
 
           {/* Hamburger / X — mobile only */}
           <button
-            onClick={() => setMobileOpen((o) => !o)}
+            onClick={() => { setMobileOpen((o) => { const next = !o; if (next) { setLangOpen(false); setUserOpen(false); } return next; }); }}
             className="md:hidden w-9 h-9 flex items-center justify-center rounded-full text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors"
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={mobileOpen}
@@ -158,7 +158,7 @@ export default function PublicNav() {
             onMouseLeave={() => setLangOpen(false)}
           >
             <button
-              onClick={() => setLangOpen(!langOpen)}
+              onClick={() => { setMobileOpen(false); setLangOpen((o) => !o); }}
               className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[12px] font-medium text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors"
             >
               <span className="uppercase tracking-wider">{locale.toUpperCase()}</span>
@@ -197,7 +197,7 @@ export default function PublicNav() {
               onMouseEnter={() => setUserOpen(true)}
               onMouseLeave={() => setUserOpen(false)}
             >
-              <button className="bg-[#0e393d] text-[#f2ebdb] text-[12px] font-medium pl-1.5 pr-4 py-1.5 rounded-full tracking-wide transition-colors hover:bg-[#1a5055] whitespace-nowrap flex items-center gap-2">
+              <button onClick={() => { setMobileOpen(false); setUserOpen((o) => !o); }} className="bg-[#0e393d] text-[#f2ebdb] text-[12px] font-medium pl-1.5 pr-4 py-1.5 rounded-full tracking-wide transition-colors hover:bg-[#1a5055] whitespace-nowrap flex items-center gap-2">
                 {profile?.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
