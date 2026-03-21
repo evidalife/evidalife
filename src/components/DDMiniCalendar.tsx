@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 type Lang = 'de' | 'en';
@@ -16,26 +16,39 @@ interface Props {
   refreshKey?:  number;
 }
 
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split('T')[0];
+}
+
 export default function DDMiniCalendar({
   userId, categories, today, lang, selectedDate, onSelectDate, refreshKey = 0,
 }: Props) {
-  const supabase  = createClient();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const supabase = createClient();
 
-  const [viewMonth,     setViewMonth]     = useState(() => today.substring(0, 7));
+  // windowStart = first of the 7 primary visible dates; default = today - 3
+  const [windowStart, setWindowStart] = useState(() => addDays(today, -3));
   const [completionMap, setCompletionMap] = useState<Record<string, Completion>>({});
 
-  const fetchMonth = useCallback(async (ym: string) => {
-    const [y, m] = ym.split('-').map(Number);
-    const firstDay = `${ym}-01`;
-    const lastDay  = new Date(y, m, 0).toISOString().split('T')[0];
+  // Main 7 dates (always visible)
+  const dates     = Array.from({ length: 7 }, (_, i) => addDays(windowStart, i));
+  const windowEnd = dates[6];
 
+  // Extra 7 dates shown on desktop only (the 7 days before windowStart)
+  const prevDates  = Array.from({ length: 7 }, (_, i) => addDays(windowStart, i - 7));
+  const fetchFrom  = prevDates[0];
+
+  // Can go forward only if the next window's first day is on or before today
+  const canGoNext = addDays(windowStart, 7) <= today;
+
+  const fetchRange = useCallback(async (from: string, to: string) => {
     const { data } = await supabase
       .from('daily_dozen_entries')
       .select('entry_date, category_id, servings_completed')
       .eq('user_id', userId)
-      .gte('entry_date', firstDay)
-      .lte('entry_date', lastDay);
+      .gte('entry_date', from)
+      .lte('entry_date', to);
 
     const byDate: Record<string, Record<string, number>> = {};
     for (const e of (data ?? [])) {
@@ -48,130 +61,126 @@ export default function DDMiniCalendar({
       const done = categories.filter((c) => (catMap[c.id] ?? 0) >= c.target_servings).length;
       map[date] = done === 0 ? 'empty' : done === categories.length ? 'full' : 'partial';
     }
-    setCompletionMap(map);
+    // Merge so data from other windows persists while navigating
+    setCompletionMap((prev) => ({ ...prev, ...map }));
   }, [supabase, userId, categories]);
 
-  useEffect(() => { fetchMonth(viewMonth); }, [viewMonth, fetchMonth, refreshKey]);
-
-  // Scroll selected date into view when selection or month changes
   useEffect(() => {
-    if (!scrollRef.current) return;
-    const btn = scrollRef.current.querySelector('[aria-pressed="true"]') as HTMLElement | null;
-    if (btn) btn.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
-  }, [viewMonth, selectedDate]);
+    fetchRange(fetchFrom, windowEnd);
+  }, [windowStart, fetchRange, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [y, m]      = viewMonth.split('-').map(Number);
-  const daysInMonth = new Date(y, m, 0).getDate();
-  const todayYM     = today.substring(0, 7);
-  const canGoNext   = viewMonth < todayYM;
+  const prevWindow = () => setWindowStart((s) => addDays(s, -7));
+  const nextWindow = () => { if (canGoNext) setWindowStart((s) => addDays(s, 7)); };
 
-  const prevMonth = () => {
-    const d = new Date(y, m - 2, 1);
-    setViewMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-  };
-  const nextMonth = () => {
-    if (!canGoNext) return;
-    const d = new Date(y, m, 1);
-    setViewMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  const goToToday = () => {
+    onSelectDate(today);
+    setWindowStart(addDays(today, -3));
   };
 
-  const monthLabel = new Date(y, m - 1, 1).toLocaleDateString(
+  // Month label: derive from the middle date of the main 7
+  const midDate = dates[3];
+  const [my, mm] = midDate.split('-').map(Number);
+  const monthLabel = new Date(my, mm - 1, 1).toLocaleDateString(
     lang === 'de' ? 'de-CH' : 'en-GB',
     { month: 'short', year: 'numeric' }
   );
 
-  const isOnToday = selectedDate === today && viewMonth === todayYM;
+  function renderDateButton(dateStr: string, extraCls?: string) {
+    const isFuture = dateStr > today;
+    const isSel    = dateStr === selectedDate;
+    const isToday  = dateStr === today;
+    const comp     = completionMap[dateStr];
+    const day      = Number(dateStr.split('-')[2]);
+
+    let cls = `w-[30px] h-[30px] items-center justify-center rounded-full text-[11px] font-medium transition-all ${extraCls ?? 'flex'} `;
+
+    if (isFuture) {
+      cls += 'text-[#1c2a2b]/20 cursor-default';
+    } else if (comp === 'full') {
+      cls += 'bg-[#1D9E75] text-white hover:bg-[#18875f] cursor-pointer';
+    } else if (comp === 'partial') {
+      cls += 'bg-[#ceab84]/25 text-[#8a6a3e] hover:bg-[#ceab84]/40 cursor-pointer';
+    } else {
+      cls += 'text-[#1c2a2b]/55 hover:bg-[#0e393d]/6 cursor-pointer';
+    }
+
+    // Selected: ring color matches the date's state (green for full, gold otherwise)
+    if (isSel) {
+      const ringColor = comp === 'full' ? 'ring-[#1D9E75]' : 'ring-[#ceab84]';
+      cls += ` ring-2 ${ringColor} ring-offset-1`;
+    } else if (isToday) {
+      cls += ' ring-1 ring-[#ceab84]/50 ring-offset-1';
+    }
+
+    return (
+      <button
+        key={dateStr}
+        className={cls}
+        onClick={() => !isFuture && onSelectDate(dateStr)}
+        disabled={isFuture}
+        aria-label={dateStr}
+        aria-pressed={isSel}
+      >
+        {day}
+      </button>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2.5 min-w-0">
 
-      {/* Title row */}
+      {/* Title row: "CALENDAR" + "Today" pill */}
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84]">
           {lang === 'de' ? 'Kalender' : 'Calendar'}
         </p>
-        <button
-          onClick={() => { onSelectDate(today); setViewMonth(todayYM); }}
-          className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium transition-all ${
-            isOnToday
-              ? 'bg-[#0e393d] text-[#ceab84]'
-              : 'bg-[#0e393d]/8 text-[#1c2a2b]/55 hover:bg-[#0e393d]/15 hover:text-[#0e393d]'
-          }`}
-        >
-          {lang === 'de' ? 'Heute' : 'Today'}
-        </button>
+        <div className="rounded-full bg-[#0e393d]/6 p-0.5">
+          <button
+            onClick={goToToday}
+            className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium transition-all ${
+              selectedDate === today
+                ? 'bg-white text-[#0e393d] shadow-sm'
+                : 'text-[#1c2a2b]/50 hover:text-[#0e393d]'
+            }`}
+          >
+            {lang === 'de' ? 'Heute' : 'Today'}
+          </button>
+        </div>
       </div>
 
-      {/* Strip row: ← | scrollable dates | month label | → */}
-      <div className="flex items-center gap-1.5">
+      {/* Strip: ← | date circles | month label | → */}
+      <div className="flex items-center gap-2">
 
         {/* ← */}
         <button
-          onClick={prevMonth}
+          onClick={prevWindow}
           className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-[#0e393d]/6 text-[#0e393d]/50 hover:text-[#0e393d] transition"
-          aria-label={lang === 'de' ? 'Vorheriger Monat' : 'Previous month'}
+          aria-label={lang === 'de' ? 'Vorherige Woche' : 'Previous week'}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
         </button>
 
-        {/* Scrollable date pills */}
-        <div
-          ref={scrollRef}
-          className="flex-1 overflow-x-auto"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          <div className="flex gap-1 py-0.5">
-            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
-              const dateStr  = `${viewMonth}-${String(day).padStart(2, '0')}`;
-              const isFuture = dateStr > today;
-              const isSel    = dateStr === selectedDate;
-              const isToday  = dateStr === today;
-              const comp     = completionMap[dateStr];
-
-              let cls = 'shrink-0 w-[26px] h-[26px] flex items-center justify-center rounded-full text-[10px] font-medium transition-all ';
-
-              if (isSel) {
-                cls += 'bg-[#0e393d] text-[#ceab84] ring-1 ring-[#ceab84]';
-              } else if (isFuture) {
-                cls += 'text-[#1c2a2b]/20 cursor-default';
-              } else if (comp === 'full') {
-                cls += 'bg-[#1D9E75] text-white hover:bg-[#18875f] cursor-pointer';
-              } else if (comp === 'partial') {
-                cls += 'bg-[#ceab84]/25 text-[#8a6a3e] hover:bg-[#ceab84]/40 cursor-pointer';
-              } else {
-                cls += 'text-[#1c2a2b]/55 hover:bg-[#0e393d]/6 cursor-pointer';
-                if (isToday) cls += ' ring-1 ring-[#ceab84]/60';
-              }
-
-              return (
-                <button
-                  key={dateStr}
-                  className={cls}
-                  onClick={() => !isFuture && onSelectDate(dateStr)}
-                  disabled={isFuture}
-                  aria-label={dateStr}
-                  aria-pressed={isSel}
-                >
-                  {day}
-                </button>
-              );
-            })}
-          </div>
+        {/* Date circles — 7 on mobile, 14 on desktop */}
+        <div className="flex gap-1">
+          {/* Extra 7 — desktop only */}
+          {prevDates.map((dateStr) => renderDateButton(dateStr, 'hidden sm:flex'))}
+          {/* Main 7 — always visible */}
+          {dates.map((dateStr) => renderDateButton(dateStr, 'flex'))}
         </div>
 
         {/* Month/year label */}
-        <span className="shrink-0 text-[10px] font-semibold text-[#0e393d]/55 capitalize whitespace-nowrap">
+        <span className="shrink-0 text-[10px] font-semibold text-[#0e393d]/50 capitalize whitespace-nowrap">
           {monthLabel}
         </span>
 
         {/* → */}
         <button
-          onClick={nextMonth}
+          onClick={nextWindow}
           disabled={!canGoNext}
-          className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-[#0e393d]/6 text-[#0e393d]/50 hover:text-[#0e393d] transition disabled:opacity-25 disabled:cursor-not-allowed"
-          aria-label={lang === 'de' ? 'Nächster Monat' : 'Next month'}
+          className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-[#0e393d]/6 text-[#0e393d]/50 hover:text-[#0e393d] transition disabled:opacity-25 disabled:cursor-default"
+          aria-label={lang === 'de' ? 'Nächste Woche' : 'Next week'}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="9 18 15 12 9 6"/>

@@ -3,12 +3,12 @@
 type Lang = 'de' | 'en';
 
 interface Props {
-  current:       number;
-  total:         number;
-  lang:          Lang;
-  streak:        { current_streak: number; longest_streak: number } | null;
-  isToday:       boolean;
-  formattedDate: string;
+  current:      number;
+  total:        number;
+  lang:         Lang;
+  streak:       { current_streak: number; longest_streak: number } | null;
+  selectedDate: string;
+  today:        string;
 }
 
 // ── Gauge geometry ─────────────────────────────────────────────────────────────
@@ -27,7 +27,7 @@ function gaugeColor(current: number, total: number): string {
   return '#ceab84';
 }
 
-export default function DDGauge({ current, total, lang, streak, isToday, formattedDate }: Props) {
+export default function DDGauge({ current, total, lang, streak, selectedDate, today }: Props) {
   const pct     = total > 0 ? Math.min(current / total, 1) : 0;
   const fillArc = pct * GAUGE_ARC;
   const color   = gaugeColor(current, total);
@@ -36,27 +36,47 @@ export default function DDGauge({ current, total, lang, streak, isToday, formatt
   const currentStreak = streak?.current_streak ?? 0;
   const longestStreak = streak?.longest_streak ?? 0;
 
+  // Compute days difference (positive = selectedDate is in the past)
+  const selD     = new Date(selectedDate + 'T12:00:00');
+  const todD     = new Date(today + 'T12:00:00');
+  const daysDiff = Math.round((todD.getTime() - selD.getTime()) / 86400000);
+  const isToday  = daysDiff === 0;
+
+  const locale = lang === 'de' ? 'de-CH' : 'en-GB';
+
   const T = {
     de: {
-      label:    'Portionen heute',
-      past:     'am',
-      done:     '🎉 Alle Portionen!',
-      streak:   (n: number) => `🔥 ${n} Tag${n !== 1 ? 'e' : ''} Streak`,
-      longest:  (n: number) => `Längste Serie: ${n} Tage`,
-      noStreak: 'Starte deinen Streak!',
+      label:       'Portionen heute',
+      yesterday:   'Gestern',
+      lastWeekday: (w: string) => `Letzten ${w}`,
+      done:        '🎉 Alle Portionen!',
+      streak:      (n: number) => `🔥 ${n} Tag${n !== 1 ? 'e' : ''} Streak`,
+      longest:     (n: number) => `Längste Serie: ${n} Tage`,
+      noStreak:    'Starte deinen Streak!',
     },
     en: {
-      label:    'Servings today',
-      past:     'on',
-      done:     '🎉 All servings done!',
-      streak:   (n: number) => `🔥 ${n}-day streak`,
-      longest:  (n: number) => `Longest: ${n} days`,
-      noStreak: 'Start your streak!',
+      label:       'Servings today',
+      yesterday:   'Yesterday',
+      lastWeekday: (w: string) => `Last ${w}`,
+      done:        '🎉 All servings done!',
+      streak:      (n: number) => `🔥 ${n}-day streak`,
+      longest:     (n: number) => `Longest: ${n} days`,
+      noStreak:    'Start your streak!',
     },
   }[lang];
 
-  // Short date for past-day label: just the day part e.g. "Mittwoch" or "Wednesday"
-  const dayName = formattedDate.split(',')[0];
+  // Smart relative date label
+  let subLabel: string;
+  if (isToday) {
+    subLabel = T.label;
+  } else if (daysDiff === 1) {
+    subLabel = T.yesterday;
+  } else if (daysDiff < 7) {
+    const weekday = selD.toLocaleDateString(locale, { weekday: 'long' });
+    subLabel = T.lastWeekday(weekday);
+  } else {
+    subLabel = selD.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
+  }
 
   return (
     <div className="flex flex-col items-center gap-1 w-full">
@@ -106,9 +126,7 @@ export default function DDGauge({ current, total, lang, streak, isToday, formatt
       {allDone ? (
         <p className="text-[11px] font-semibold text-emerald-600 text-center">{T.done}</p>
       ) : (
-        <p className="text-[11px] text-[#1c2a2b]/40 text-center">
-          {isToday ? T.label : `${T.past} ${dayName}`}
-        </p>
+        <p className="text-[11px] text-[#1c2a2b]/40 text-center">{subLabel}</p>
       )}
 
       {/* Streak — only when viewing today */}

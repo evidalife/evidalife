@@ -254,7 +254,7 @@ function CategoryCard({
           onClick={onDecrement}
           disabled={servings === 0 || pending}
           aria-label="Remove serving"
-          className={`w-[30px] h-[30px] rounded-full border flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed ${minusCls}`}
+          className={`w-[30px] h-[30px] rounded-full border flex items-center justify-center transition disabled:opacity-30 disabled:cursor-default ${minusCls}`}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="5" y1="12" x2="19" y2="12"/>
@@ -270,7 +270,7 @@ function CategoryCard({
           onClick={onIncrement}
           disabled={pending}
           aria-label="Add serving"
-          className={`w-[30px] h-[30px] rounded-full border flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed ${plusCls}`}
+          className={`w-[30px] h-[30px] rounded-full border flex items-center justify-center transition disabled:opacity-50 disabled:cursor-default ${plusCls}`}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="12" y1="5" x2="12" y2="19"/>
@@ -418,13 +418,6 @@ export default function DailyDozenTracker({
   // ── Derived ────────────────────────────────────────────────────────────────
 
   const modalCat  = modalCatId ? categories.find((c) => c.id === modalCatId) ?? null : null;
-  const isToday   = selectedDate === today;
-
-  const formattedDate = new Date(selectedDate + 'T12:00:00').toLocaleDateString(
-    lang === 'de' ? 'de-CH' : 'en-GB',
-    { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
-  );
-
   const catSlim = categories.map((c) => ({ id: c.id, target_servings: c.target_servings }));
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -450,8 +443,8 @@ export default function DailyDozenTracker({
                   total={totalTarget}
                   lang={lang}
                   streak={streak}
-                  isToday={isToday}
-                  formattedDate={formattedDate}
+                  selectedDate={selectedDate}
+                  today={today}
                 />
               </div>
             </div>
