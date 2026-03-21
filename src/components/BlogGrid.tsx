@@ -181,7 +181,9 @@ export default function BlogGrid({ articles, lang }: { articles: ArticleCard[]; 
                   <Link href={href} className="block relative w-56 shrink-0 bg-[#0e393d]/6 overflow-hidden hidden sm:block">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={article.featured_image_url}
+                      src={article.featured_image_url.includes('/storage/v1/object/public/')
+                        ? article.featured_image_url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=400&height=300&resize=cover'
+                        : article.featured_image_url}
                       alt={title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
@@ -213,7 +215,9 @@ export default function BlogGrid({ articles, lang }: { articles: ArticleCard[]; 
                   {article.featured_image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={article.featured_image_url}
+                      src={article.featured_image_url.includes('/storage/v1/object/public/')
+                        ? article.featured_image_url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=400&height=300&resize=cover'
+                        : article.featured_image_url}
                       alt={title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />

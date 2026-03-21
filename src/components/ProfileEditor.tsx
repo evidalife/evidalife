@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useRef, useState, useEffect } from 'react';
-import Cropper from 'react-easy-crop';
+import dynamic from 'next/dynamic';
+import type CropperType from 'react-easy-crop';
+const Cropper = dynamic(() => import('react-easy-crop').then((m) => m.default), { ssr: false }) as unknown as typeof CropperType;
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthProvider';
 

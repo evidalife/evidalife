@@ -44,7 +44,9 @@ export default function RecipeGallery({ photos }: Props) {
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={photo.url}
+          src={photo.url.includes('/storage/v1/object/public/')
+            ? photo.url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=400&height=300&resize=cover'
+            : photo.url}
           alt=""
           className="w-full h-64 object-cover"
         />

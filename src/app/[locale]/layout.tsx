@@ -54,6 +54,7 @@ export default async function LocaleLayout({ children }: { children: React.React
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-visual" />
         <link rel="preconnect" href="https://rwbmdxgcjgidalcoeppp.supabase.co" />
+        <link rel="preconnect" href="https://plausible.io" />
         <Script
           defer
           data-domain="evidalife.com"

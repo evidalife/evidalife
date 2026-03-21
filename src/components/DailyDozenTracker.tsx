@@ -338,7 +338,12 @@ export default function DailyDozenTracker({
   const [refreshKey,   setRefreshKey]   = useState(0);
 
   const debounceRef    = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const streakTimeoutRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const servingsMapRef    = useRef<Record<string, number>>(servingsMap);
   const isInitialMount = useRef(true);
+
+  // Keep servingsMapRef in sync for streak debounce
+  useEffect(() => { servingsMapRef.current = servingsMap; }, [servingsMap]);
 
   // ── Fetch entries on date change (skip mount — use SSR data for today) ──────
 
@@ -470,11 +475,16 @@ export default function DailyDozenTracker({
       debounceRef.current[categoryId] = setTimeout(async () => {
         await upsertEntry(categoryId, next, date);
         setRefreshKey((k) => k + 1); // refresh calendar + chart immediately after upsert
-        updateStreak(newMap, date);   // fire-and-forget — doesn't block the calendar update
       }, 400);
 
       return newMap;
     });
+
+    // Debounce streak: 2s after last tap so rapid +/+/+/+ only runs one 365-day query
+    if (streakTimeoutRef.current) clearTimeout(streakTimeoutRef.current);
+    streakTimeoutRef.current = setTimeout(() => {
+      updateStreak(servingsMapRef.current, date);
+    }, 2000);
   }, [upsertEntry, updateStreak, selectedDate, today]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
