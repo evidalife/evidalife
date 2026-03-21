@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
+import Cropper from 'react-easy-crop';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthProvider';
 
@@ -30,7 +31,7 @@ export type ProfileData = {
 
 // ─── Copy ─────────────────────────────────────────────────────────────────────
 
-const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2 MB
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
 const T = {
@@ -39,9 +40,13 @@ const T = {
     changeAvatar:        'Bild ändern',
     removeAvatar:        'Bild entfernen',
     uploading:           'Wird hochgeladen…',
-    avatarTooBig:        'Das Bild muss kleiner als 2 MB sein.',
+    avatarTooBig:        'Das Bild muss kleiner als 5 MB sein.',
     avatarWrongType:     'Bitte lade ein JPEG, PNG oder WebP Bild hoch.',
     avatarUploadFailed:  'Upload fehlgeschlagen. Bitte erneut versuchen.',
+    cropTitle:           'Bild zuschneiden',
+    cropSave:            'Speichern',
+    cropCancel:          'Abbrechen',
+    cropZoom:            'Zoom',
     personalInfo:        'Persönliche Informationen',
     displayName:         'Anzeigename',
     displayNameHint:     'Optionaler Spitzname, der im Header angezeigt wird.',
@@ -82,9 +87,13 @@ const T = {
     changeAvatar:        'Change photo',
     removeAvatar:        'Remove photo',
     uploading:           'Uploading…',
-    avatarTooBig:        'Image must be smaller than 2 MB.',
+    avatarTooBig:        'Image must be smaller than 5 MB.',
     avatarWrongType:     'Please upload a JPEG, PNG, or WebP image.',
     avatarUploadFailed:  'Upload failed. Please try again.',
+    cropTitle:           'Crop photo',
+    cropSave:            'Save',
+    cropCancel:          'Cancel',
+    cropZoom:            'Zoom',
     personalInfo:        'Personal information',
     displayName:         'Display name',
     displayNameHint:     'Optional nickname shown in the header.',
@@ -181,6 +190,23 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+// ─── Crop helper ──────────────────────────────────────────────────────────────
+
+async function getCroppedImg(
+  imageSrc: string,
+  pixelCrop: { x: number; y: number; width: number; height: number },
+): Promise<Blob> {
+  const image = new Image();
+  image.src = imageSrc;
+  await new Promise<void>((resolve) => { image.onload = () => resolve(); });
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, 256, 256);
+  return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.9));
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ProfileEditor({ profile, lang }: { profile: ProfileData; lang: Lang }) {
@@ -194,6 +220,17 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
   const [avatarBroken, setAvatarBroken] = useState(false);
   const [uploading,    setUploading]    = useState(false);
   const [avatarError,  setAvatarError]  = useState('');
+
+  // Crop modal state
+  const [cropModalOpen,      setCropModalOpen]      = useState(false);
+  const [cropImage,          setCropImage]          = useState<string | null>(null);
+  const [crop,               setCrop]               = useState({ x: 0, y: 0 });
+  const [zoom,               setZoom]               = useState(1);
+  const [croppedAreaPixels,  setCroppedAreaPixels]  = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+
+  const onCropComplete = useCallback((_: unknown, croppedPixels: { x: number; y: number; width: number; height: number }) => {
+    setCroppedAreaPixels(croppedPixels);
+  }, []);
 
   // Personal info state
   const [displayName, setDisplayName] = useState(profile.display_name ?? '');
@@ -229,7 +266,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
     });
   };
 
-  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -251,20 +288,35 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
       return;
     }
 
+    // Open crop modal
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImage(reader.result as string);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCroppedAreaPixels(null);
+      setCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropSave = async () => {
+    if (!cropImage || !croppedAreaPixels) return;
+    setCropModalOpen(false);
     setUploading(true);
     const oldUrl = avatarUrl || null;
 
-    const base64 = await new Promise<string>((resolve, reject) => {
+    const blob = await getCroppedImg(cropImage, croppedAreaPixels);
+    const base64 = await new Promise<string>((resolve) => {
       const reader = new FileReader();
-      reader.onload  = () => resolve((reader.result as string).split(',')[1]);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.readAsDataURL(blob);
     });
 
     const res = await fetch('/api/upload-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ base64, filename: file.name, bucket: 'user-avatars', contentType: file.type }),
+      body: JSON.stringify({ base64, filename: 'avatar.jpg', bucket: 'user-avatars', contentType: 'image/jpeg' }),
     });
 
     if (!res.ok) {
@@ -278,8 +330,14 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
     if (oldUrl) await deleteAvatarFromStorage(oldUrl);
 
     setAvatarUrl(newUrl);
+    setCropImage(null);
     setUploading(false);
     await refreshProfile();
+  };
+
+  const handleCropCancel = () => {
+    setCropModalOpen(false);
+    setCropImage(null);
   };
 
   const handleRemoveAvatar = async () => {
@@ -348,315 +406,377 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <form onSubmit={handleSave} className="space-y-5">
-
-      {/* ── Avatar ─────────────────────────────────────────────────────────── */}
-      <Section title={t.avatar}>
-        <div className="flex items-center gap-6">
-          <div className="relative shrink-0">
-            <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-[#0e393d]/15 bg-[#0e393d]/8 flex items-center justify-center">
-              {showAvatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={avatarUrl.includes('/storage/v1/object/public/')
-                    ? avatarUrl.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=96&height=96&resize=cover'
-                    : avatarUrl}
-                  alt={firstName || 'Avatar'}
-                  className="w-full h-full object-cover"
-                  onError={() => setAvatarBroken(true)}
-                />
-              ) : (
-                <span className="font-serif text-xl text-[#0e393d]/50">{initials}</span>
-              )}
+    <>
+      {/* ── Crop modal ─────────────────────────────────────────────────────── */}
+      {cropModalOpen && cropImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-[#0e393d]/10">
+              <p className="text-sm font-semibold text-[#0e393d]">{t.cropTitle}</p>
             </div>
-            {uploading && (
-              <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center">
-                <svg className="w-5 h-5 text-white animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
-                </svg>
-              </div>
-            )}
-          </div>
 
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
+            {/* Crop area */}
+            <div className="relative w-full" style={{ height: 300 }}>
+              <Cropper
+                image={cropImage}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                cropShape="round"
+                showGrid={false}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+              />
+            </div>
+
+            {/* Zoom slider */}
+            <div className="px-5 pt-4 pb-2">
+              <label className="block text-[11px] font-medium text-[#1c2a2b]/50 mb-1.5">{t.cropZoom}</label>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.01}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                style={{ accentColor: '#0e393d' }}
+              />
+            </div>
+
+            {/* Buttons */}
+            <div className="flex items-center justify-end gap-2.5 px-5 py-4 border-t border-[#0e393d]/10">
               <button
                 type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#0e393d]/20 bg-white px-4 py-2 text-sm font-medium text-[#0e393d] hover:bg-[#0e393d]/5 hover:border-[#0e393d]/35 transition disabled:opacity-50"
+                onClick={handleCropCancel}
+                className="rounded-xl border border-[#0e393d]/20 bg-white px-4 py-2 text-sm font-medium text-[#0e393d] hover:bg-[#0e393d]/5 transition"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                  <polyline points="17 8 12 3 7 8"/>
-                  <line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-                {uploading ? t.uploading : t.changeAvatar}
+                {t.cropCancel}
               </button>
-              {avatarUrl && (
-                <button
-                  type="button"
-                  onClick={handleRemoveAvatar}
-                  disabled={uploading}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 hover:border-red-300 transition disabled:opacity-50"
-                >
-                  <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10">
-                    <path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round"/>
-                  </svg>
-                  {t.removeAvatar}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleCropSave}
+                className="rounded-xl bg-[#0e393d] px-4 py-2 text-sm font-medium text-white hover:bg-[#0e393d]/85 transition"
+              >
+                {t.cropSave}
+              </button>
             </div>
-            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarFileChange} />
-            {avatarError
-              ? <p className="text-[11px] text-red-500">{avatarError}</p>
-              : <p className="text-[11px] text-[#1c2a2b]/35">JPG, PNG, WebP — max 2 MB</p>
-            }
           </div>
         </div>
-      </Section>
+      )}
 
-      {/* ── Personal info ──────────────────────────────────────────────────── */}
-      <Section title={t.personalInfo}>
-        <div className="space-y-4">
+      <form onSubmit={handleSave} className="space-y-5">
 
-          {/* Display name */}
-          <div>
-            <FieldLabel text={t.displayName} hint={t.displayNameHint} />
-            <input
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder={lang === 'de' ? 'z.B. Max' : 'e.g. Max'}
-              className={inputCls}
-            />
+        {/* ── Avatar ─────────────────────────────────────────────────────────── */}
+        <Section title={t.avatar}>
+          <div className="flex items-center gap-6">
+            <div className="relative shrink-0">
+              <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-[#0e393d]/15 bg-[#0e393d]/8 flex items-center justify-center">
+                {showAvatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatarUrl.includes('/storage/v1/object/public/')
+                      ? avatarUrl.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=96&height=96&resize=cover'
+                      : avatarUrl}
+                    alt={firstName || 'Avatar'}
+                    className="w-full h-full object-cover"
+                    onError={() => setAvatarBroken(true)}
+                  />
+                ) : (
+                  <span className="font-serif text-xl text-[#0e393d]/50">{initials}</span>
+                )}
+              </div>
+              {uploading && (
+                <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                  </svg>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  className="inline-flex items-center gap-2 rounded-xl border border-[#0e393d]/20 bg-white px-4 py-2 text-sm font-medium text-[#0e393d] hover:bg-[#0e393d]/5 hover:border-[#0e393d]/35 transition disabled:opacity-50"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  {uploading ? t.uploading : t.changeAvatar}
+                </button>
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    disabled={uploading}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 hover:border-red-300 transition disabled:opacity-50"
+                  >
+                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10">
+                      <path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round"/>
+                    </svg>
+                    {t.removeAvatar}
+                  </button>
+                )}
+              </div>
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarFileChange} />
+              {avatarError
+                ? <p className="text-[11px] text-red-500">{avatarError}</p>
+                : <p className="text-[11px] text-[#1c2a2b]/35">JPG, PNG, WebP — max 5 MB</p>
+              }
+            </div>
           </div>
+        </Section>
 
-          {/* First + Last name */}
-          <div className="grid grid-cols-2 gap-4">
+        {/* ── Personal info ──────────────────────────────────────────────────── */}
+        <Section title={t.personalInfo}>
+          <div className="space-y-4">
+
+            {/* Display name */}
             <div>
-              <FieldLabel text={t.firstName} />
+              <FieldLabel text={t.displayName} hint={t.displayNameHint} />
               <input
                 type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder={lang === 'de' ? 'Vorname' : 'First name'}
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder={lang === 'de' ? 'z.B. Max' : 'e.g. Max'}
                 className={inputCls}
               />
             </div>
+
+            {/* First + Last name */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <FieldLabel text={t.firstName} />
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder={lang === 'de' ? 'Vorname' : 'First name'}
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <FieldLabel text={t.lastName} />
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder={lang === 'de' ? 'Nachname' : 'Last name'}
+                  className={inputCls}
+                />
+              </div>
+            </div>
+
+            {/* Email (read-only) */}
             <div>
-              <FieldLabel text={t.lastName} />
+              <FieldLabel text={t.email} />
+              <input type="email" value={profile.email} disabled className={inputCls} />
+              <p className="mt-1 text-[11px] text-[#1c2a2b]/35">{t.emailHint}</p>
+            </div>
+
+            {/* Date of birth + Sex */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <FieldLabel text={t.dateOfBirth} />
+                <input
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <FieldLabel text={t.sex} />
+                <select value={sex} onChange={(e) => setSex(e.target.value)} className={selectCls}>
+                  <option value="">—</option>
+                  {SEX_VALUES.map((v, i) => (
+                    <option key={v} value={v}>{t.sexOptions[i]}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Phone + Height */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <FieldLabel text={t.phone} />
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+41 79 000 00 00"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <FieldLabel text={t.heightCm} />
+                <input
+                  type="number"
+                  value={heightCm}
+                  onChange={(e) => setHeightCm(e.target.value)}
+                  placeholder="170"
+                  min={50}
+                  max={250}
+                  className={inputCls}
+                />
+              </div>
+            </div>
+
+          </div>
+        </Section>
+
+        {/* ── Address ────────────────────────────────────────────────────────── */}
+        <Section title={t.address}>
+          <div className="space-y-4">
+
+            <div>
+              <FieldLabel text={t.streetAddress} />
               <input
                 type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder={lang === 'de' ? 'Nachname' : 'Last name'}
+                value={streetAddress}
+                onChange={(e) => setStreetAddress(e.target.value)}
+                placeholder={lang === 'de' ? 'Musterstrasse 1' : '123 Main St'}
                 className={inputCls}
               />
             </div>
-          </div>
 
-          {/* Email (read-only) */}
-          <div>
-            <FieldLabel text={t.email} />
-            <input type="email" value={profile.email} disabled className={inputCls} />
-            <p className="mt-1 text-[11px] text-[#1c2a2b]/35">{t.emailHint}</p>
-          </div>
-
-          {/* Date of birth + Sex */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <FieldLabel text={t.dateOfBirth} />
-              <input
-                type="date"
-                value={dateOfBirth}
-                onChange={(e) => setDateOfBirth(e.target.value)}
-                className={inputCls}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <FieldLabel text={t.postalCode} />
+                <input
+                  type="text"
+                  value={postalCode}
+                  onChange={(e) => setPostalCode(e.target.value)}
+                  placeholder="8001"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <FieldLabel text={t.city} />
+                <input
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder={lang === 'de' ? 'Zürich' : 'Zurich'}
+                  className={inputCls}
+                />
+              </div>
             </div>
+
             <div>
-              <FieldLabel text={t.sex} />
-              <select value={sex} onChange={(e) => setSex(e.target.value)} className={selectCls}>
+              <FieldLabel text={t.country} />
+              <select value={country} onChange={(e) => setCountry(e.target.value)} className={selectCls}>
                 <option value="">—</option>
-                {SEX_VALUES.map((v, i) => (
-                  <option key={v} value={v}>{t.sexOptions[i]}</option>
+                {EUROPEAN_COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>{c.name}</option>
                 ))}
               </select>
             </div>
+
           </div>
+        </Section>
 
-          {/* Phone + Height */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <FieldLabel text={t.phone} />
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+41 79 000 00 00"
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <FieldLabel text={t.heightCm} />
-              <input
-                type="number"
-                value={heightCm}
-                onChange={(e) => setHeightCm(e.target.value)}
-                placeholder="170"
-                min={50}
-                max={250}
-                className={inputCls}
-              />
-            </div>
-          </div>
-
-        </div>
-      </Section>
-
-      {/* ── Address ────────────────────────────────────────────────────────── */}
-      <Section title={t.address}>
-        <div className="space-y-4">
-
+        {/* ── Preferences ────────────────────────────────────────────────────── */}
+        <Section title={t.preferences}>
           <div>
-            <FieldLabel text={t.streetAddress} />
-            <input
-              type="text"
-              value={streetAddress}
-              onChange={(e) => setStreetAddress(e.target.value)}
-              placeholder={lang === 'de' ? 'Musterstrasse 1' : '123 Main St'}
-              className={inputCls}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <FieldLabel text={t.postalCode} />
-              <input
-                type="text"
-                value={postalCode}
-                onChange={(e) => setPostalCode(e.target.value)}
-                placeholder="8001"
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <FieldLabel text={t.city} />
-              <input
-                type="text"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder={lang === 'de' ? 'Zürich' : 'Zurich'}
-                className={inputCls}
-              />
-            </div>
-          </div>
-
-          <div>
-            <FieldLabel text={t.country} />
-            <select value={country} onChange={(e) => setCountry(e.target.value)} className={selectCls}>
-              <option value="">—</option>
-              {EUROPEAN_COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>{c.name}</option>
+            <p className="text-xs font-medium text-[#0e393d]/70 mb-2">{t.language}</p>
+            <div className="flex gap-2">
+              {(['de', 'en'] as const).map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setLangPref(l)}
+                  className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition ${
+                    langPref === l
+                      ? 'border-[#0e393d] bg-[#0e393d] text-white'
+                      : 'border-[#0e393d]/15 bg-white text-[#1c2a2b]/60 hover:border-[#0e393d]/35 hover:text-[#1c2a2b]'
+                  }`}
+                >
+                  <span>{l === 'de' ? '🇩🇪' : '🇬🇧'}</span>
+                  {l === 'de' ? t.langDe : t.langEn}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
+        </Section>
 
-        </div>
-      </Section>
-
-      {/* ── Preferences ────────────────────────────────────────────────────── */}
-      <Section title={t.preferences}>
-        <div>
-          <p className="text-xs font-medium text-[#0e393d]/70 mb-2">{t.language}</p>
-          <div className="flex gap-2">
-            {(['de', 'en'] as const).map((l) => (
-              <button
-                key={l}
-                type="button"
-                onClick={() => setLangPref(l)}
-                className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition ${
-                  langPref === l
-                    ? 'border-[#0e393d] bg-[#0e393d] text-white'
-                    : 'border-[#0e393d]/15 bg-white text-[#1c2a2b]/60 hover:border-[#0e393d]/35 hover:text-[#1c2a2b]'
-                }`}
-              >
-                <span>{l === 'de' ? '🇩🇪' : '🇬🇧'}</span>
-                {l === 'de' ? t.langDe : t.langEn}
-              </button>
-            ))}
-          </div>
-        </div>
-      </Section>
-
-      {/* ── Account info ───────────────────────────────────────────────────── */}
-      <Section title={t.account}>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-[#1c2a2b]/50">{t.memberSince}</span>
-            <span className="font-medium text-[#1c2a2b]">{memberSince}</span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-[#1c2a2b]/50">{t.onboarding}</span>
-            <span className={`inline-flex items-center gap-1 text-xs font-medium ${profile.onboarding_completed ? 'text-emerald-600' : 'text-[#1c2a2b]/40'}`}>
-              {profile.onboarding_completed ? (
-                <>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M2 6.5l3 3 5-5.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  {t.onboardingDone}
-                </>
-              ) : t.onboardingPending}
-            </span>
-          </div>
-          {profile.is_admin && (
+        {/* ── Account info ───────────────────────────────────────────────────── */}
+        <Section title={t.account}>
+          <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-[#1c2a2b]/50">Role</span>
-              <span className="inline-flex items-center rounded-full bg-[#0e393d] px-2.5 py-0.5 text-[10px] font-semibold text-white">
-                {t.adminBadge}
+              <span className="text-[#1c2a2b]/50">{t.memberSince}</span>
+              <span className="font-medium text-[#1c2a2b]">{memberSince}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-[#1c2a2b]/50">{t.onboarding}</span>
+              <span className={`inline-flex items-center gap-1 text-xs font-medium ${profile.onboarding_completed ? 'text-emerald-600' : 'text-[#1c2a2b]/40'}`}>
+                {profile.onboarding_completed ? (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6.5l3 3 5-5.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    {t.onboardingDone}
+                  </>
+                ) : t.onboardingPending}
               </span>
             </div>
-          )}
+            {profile.is_admin && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-[#1c2a2b]/50">Role</span>
+                <span className="inline-flex items-center rounded-full bg-[#0e393d] px-2.5 py-0.5 text-[10px] font-semibold text-white">
+                  {t.adminBadge}
+                </span>
+              </div>
+            )}
+          </div>
+        </Section>
+
+        {/* ── Save button ────────────────────────────────────────────────────── */}
+        <div className="flex items-center gap-3">
+          <button
+            type="submit"
+            disabled={saveState === 'saving' || uploading}
+            className={`inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold transition ${
+              saveState === 'saved'
+                ? 'bg-emerald-500 text-white'
+                : saveState === 'error'
+                ? 'bg-red-500 text-white'
+                : 'bg-[#0e393d] text-white hover:bg-[#0e393d]/85 disabled:opacity-60'
+            }`}
+          >
+            {saveState === 'saving' ? t.saving
+             : saveState === 'saved'  ? t.saved
+             : saveState === 'error'  ? t.saveError
+             : t.save}
+          </button>
         </div>
-      </Section>
 
-      {/* ── Save button ────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={saveState === 'saving' || uploading}
-          className={`inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold transition ${
-            saveState === 'saved'
-              ? 'bg-emerald-500 text-white'
-              : saveState === 'error'
-              ? 'bg-red-500 text-white'
-              : 'bg-[#0e393d] text-white hover:bg-[#0e393d]/85 disabled:opacity-60'
-          }`}
-        >
-          {saveState === 'saving' ? t.saving
-           : saveState === 'saved'  ? t.saved
-           : saveState === 'error'  ? t.saveError
-           : t.save}
-        </button>
-      </div>
+        {/* ── Delete account ─────────────────────────────────────────────────── */}
+        <section className="rounded-2xl border border-red-200/60 bg-red-50/40 p-6">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-red-500/70 mb-3">{t.deleteSection}</h2>
+          <p className="text-sm text-[#1c2a2b]/60 mb-4">{t.deleteInfo}</p>
+          <a
+            href="mailto:support@evidalife.com"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            {t.deleteContact}
+          </a>
+        </section>
 
-      {/* ── Delete account ─────────────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-red-200/60 bg-red-50/40 p-6">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-red-500/70 mb-3">{t.deleteSection}</h2>
-        <p className="text-sm text-[#1c2a2b]/60 mb-4">{t.deleteInfo}</p>
-        <a
-          href="mailto:support@evidalife.com"
-          className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-            <polyline points="22,6 12,13 2,6"/>
-          </svg>
-          {t.deleteContact}
-        </a>
-      </section>
-
-    </form>
+      </form>
+    </>
   );
 }
