@@ -358,9 +358,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
               {showAvatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={avatarUrl.includes('/storage/v1/object/public/')
-                    ? avatarUrl.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=96&height=96&resize=cover'
-                    : avatarUrl}
+                  src={avatarUrl}
                   alt={firstName || 'Avatar'}
                   className="w-full h-full object-cover"
                   onError={() => setAvatarBroken(true)}

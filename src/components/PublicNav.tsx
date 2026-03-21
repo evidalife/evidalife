@@ -200,13 +200,7 @@ export default function PublicNav() {
               <button className="bg-[#0e393d] text-[#f2ebdb] text-[12px] font-medium pl-1.5 pr-4 py-1.5 rounded-full tracking-wide transition-colors hover:bg-[#1a5055] whitespace-nowrap flex items-center gap-2">
                 {profile?.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={profile.avatar_url.includes('/storage/v1/object/public/')
-                      ? profile.avatar_url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=96&height=96&resize=cover'
-                      : profile.avatar_url}
-                    alt=""
-                    className="w-6 h-6 rounded-full object-cover"
-                  />
+                  <img src={profile.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
                 ) : (
                   <span className="w-6 h-6 rounded-full bg-[#f2ebdb]/20 flex items-center justify-center text-[10px] font-semibold">
                     {(profile?.display_name ?? profile?.first_name ?? user.email ?? '?')[0]?.toUpperCase()}
