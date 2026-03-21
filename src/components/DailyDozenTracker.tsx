@@ -484,7 +484,7 @@ export default function DailyDozenTracker({
 
         {/* Row 1 — Gauge | Chart */}
         <div className="rounded-2xl border border-[#0e393d]/10 bg-white overflow-hidden">
-          <div className="grid grid-cols-1 sm:grid-cols-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 sm:items-start">
 
             {/* Gauge */}
             <div className="flex flex-col px-6 py-5 border-b sm:border-b-0 sm:border-r border-[#0e393d]/8">
