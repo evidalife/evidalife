@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname, Link } from '@/i18n/navigation';
 import { useAuth } from '@/context/AuthProvider';
@@ -25,9 +25,17 @@ export default function PublicNav() {
   const pathname = usePathname();
   const { user, profile } = useAuth();
   const t = useTranslations('nav');
-  const [langOpen, setLangOpen] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const [userOpen, setUserOpen] = useState(false);
+  const [langOpen,         setLangOpen]         = useState(false);
+  const [activeDropdown,   setActiveDropdown]   = useState<string | null>(null);
+  const [userOpen,         setUserOpen]         = useState(false);
+  const [mobileOpen,       setMobileOpen]       = useState(false);
+  const [expandedSection,  setExpandedSection]  = useState<string | null>(null);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false);
+    setExpandedSection(null);
+  }, [pathname]);
 
   const changeLang = (l: Locale) => {
     router.replace(pathname, { locale: l });
@@ -46,6 +54,8 @@ export default function PublicNav() {
 
   return (
     <div className="fixed top-5 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-[1060px] z-50">
+
+      {/* Main pill nav */}
       <nav
         className="flex items-center justify-between px-5 py-3 bg-white/90 backdrop-blur-md rounded-full border border-white/70 shadow-[0_4px_24px_rgba(14,57,61,0.1)]"
         onClick={(e) => e.stopPropagation()}
@@ -59,7 +69,7 @@ export default function PublicNav() {
           </span>
         </Link>
 
-        {/* Center nav items — same spacing and style as homepage */}
+        {/* Center nav items — desktop only */}
         <div className="hidden md:flex gap-6 items-center">
           {NAV_SECTIONS.map((section) => {
             const items = dropdowns[section] ?? [];
@@ -72,7 +82,6 @@ export default function PublicNav() {
                 onMouseEnter={() => setActiveDropdown(section)}
                 onMouseLeave={() => setActiveDropdown(null)}
               >
-                {/* Section name is a Link so clicking navigates to /kitchen, /health, /fit, /shop */}
                 <Link
                   href={`/${section.toLowerCase()}`}
                   className={`flex items-center gap-1 text-[0.8rem] font-light cursor-pointer hover:text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors px-3 py-1.5 rounded-full ${
@@ -117,8 +126,28 @@ export default function PublicNav() {
           })}
         </div>
 
-        {/* Right: lang toggle + login/user */}
+        {/* Right side: hamburger (mobile) + lang toggle + user */}
         <div className="flex items-center gap-2">
+
+          {/* Hamburger / X — mobile only */}
+          <button
+            onClick={() => setMobileOpen((o) => !o)}
+            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors"
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileOpen}
+          >
+            {mobileOpen ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="3" y1="6"  x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            )}
+          </button>
 
           {/* Lang toggle */}
           <div
@@ -227,6 +256,68 @@ export default function PublicNav() {
           )}
         </div>
       </nav>
+
+      {/* Mobile menu — slide down below the pill, md:hidden */}
+      <div
+        className="md:hidden overflow-hidden"
+        style={{
+          maxHeight: mobileOpen ? '600px' : '0',
+          transition: 'max-height 0.3s ease',
+        }}
+      >
+        <div className="mt-2 rounded-2xl bg-white/90 backdrop-blur-md border border-[#0e393d]/8 shadow-[0_8px_32px_rgba(14,57,61,0.14)] overflow-hidden">
+          {NAV_SECTIONS.map((section, si) => {
+            const items = dropdowns[section] ?? [];
+            const slugs = NAV_SLUG_MAP[section] ?? [];
+            const isExp = expandedSection === section;
+            return (
+              <div key={section} className={si > 0 ? 'border-t border-[#0e393d]/6' : ''}>
+                {/* Section row */}
+                <button
+                  onClick={() => setExpandedSection(isExp ? null : section)}
+                  className="flex w-full items-center justify-between px-5 py-3.5 text-[0.8rem] font-medium text-[#0e393d] hover:bg-[#f5f4f0] transition-colors"
+                >
+                  <span>{section}</span>
+                  <svg
+                    width="12" height="12" viewBox="0 0 10 10" fill="none"
+                    className={`transition-transform duration-200 ${isExp ? 'rotate-180' : ''}`}
+                  >
+                    <path d="M1.5 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+
+                {/* Sub-items accordion */}
+                <div
+                  style={{
+                    maxHeight: isExp ? '400px' : '0',
+                    overflow: 'hidden',
+                    transition: 'max-height 0.25s ease',
+                  }}
+                >
+                  <div className="pb-1.5">
+                    {items.map((label, i) => {
+                      const href = slugs[i];
+                      if (label === null || href === null) {
+                        return <div key={i} className="h-px bg-[#0e393d]/8 mx-5 my-1" />;
+                      }
+                      return (
+                        <Link
+                          key={i}
+                          href={href}
+                          className="block px-8 py-2.5 text-[13px] font-light text-[#1c2a2b] hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
+                        >
+                          {label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
     </div>
   );
 }
