@@ -52,6 +52,7 @@ export default async function LocaleLayout({ children }: { children: React.React
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-visual" />
         <link rel="preconnect" href="https://rwbmdxgcjgidalcoeppp.supabase.co" />
         <Script
           defer
@@ -60,7 +61,7 @@ export default async function LocaleLayout({ children }: { children: React.React
           strategy="afterInteractive"
         />
       </head>
-      <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} ${playfair.variable} font-sans antialiased overscroll-none`}>
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>{children}</AuthProvider>
           <CookieBanner />

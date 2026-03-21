@@ -227,7 +227,7 @@ function CategoryCard({
 
   return (
     <div
-      className={`relative flex items-center gap-2.5 rounded-xl border px-2.5 py-2 transition-all duration-200 ${cardCls}`}
+      className={`relative flex items-center gap-2.5 rounded-xl border px-2.5 py-2 transition-all duration-200 min-h-[52px] ${cardCls}`}
     >
       {/* ① Info button — far left */}
       <button
@@ -263,6 +263,7 @@ function CategoryCard({
           onClick={onDecrement}
           disabled={servings === 0 || pending}
           aria-label="Decrease servings"
+          style={{ touchAction: 'manipulation' }}
           className={`w-[30px] h-[30px] rounded-full border flex items-center justify-center transition disabled:opacity-30 disabled:cursor-default ${minusCls}`}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -279,6 +280,7 @@ function CategoryCard({
           onClick={onIncrement}
           disabled={pending}
           aria-label="Increase servings"
+          style={{ touchAction: 'manipulation' }}
           className={`w-[30px] h-[30px] rounded-full border flex items-center justify-center transition disabled:opacity-50 disabled:cursor-default ${plusCls}`}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
