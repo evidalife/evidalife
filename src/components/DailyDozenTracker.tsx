@@ -357,21 +357,71 @@ export default function DailyDozenTracker({
   const totalTarget   = categories.reduce((sum, c) => sum + c.target_servings, 0);
 
   // ── Streak update ──────────────────────────────────────────────────────────
+  // Recalculates the streak from scratch on every upsert, handling both
+  // increments and decrements, and past-date edits.
 
   const updateStreak = useCallback(async (newMap: Record<string, number>, date: string) => {
-    if (date !== today) return;
-    const nowComplete = categories.every((c) => (newMap[c.id] ?? 0) >= c.target_servings);
-    if (!nowComplete) return;
+    // Step 1: determine whether TODAY is fully complete.
+    // If editing today, use newMap. If editing a past date, query today from the DB
+    // (upsertEntry was already awaited so DB reflects the latest value for `date`).
+    let todayComplete: boolean;
+    if (date === today) {
+      todayComplete = categories.every((c) => (newMap[c.id] ?? 0) >= c.target_servings);
+    } else {
+      const { data: todayData } = await supabase
+        .from('daily_dozen_entries')
+        .select('category_id, servings_completed')
+        .eq('user_id', userId)
+        .eq('entry_date', today);
+      const todayMap: Record<string, number> = {};
+      for (const cat of categories) todayMap[cat.id] = 0;
+      for (const e of (todayData ?? [])) todayMap[e.category_id] = e.servings_completed;
+      todayComplete = categories.every((c) => (todayMap[c.id] ?? 0) >= c.target_servings);
+    }
 
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yStr = yesterday.toISOString().split('T')[0];
-
-    let newCurrent = 1;
-    if (streak?.last_completed_date === yStr) {
-      newCurrent = (streak.current_streak ?? 0) + 1;
-    } else if (streak?.last_completed_date === today) {
+    // Step 2: if today isn't complete, current streak is 0 — no need to query history.
+    if (!todayComplete) {
+      const newLongest = streak?.longest_streak ?? 0;
+      const updated: DDStreak = { current_streak: 0, longest_streak: newLongest, last_completed_date: streak?.last_completed_date ?? null };
+      setStreak(updated);
+      await supabase.from('daily_dozen_streaks').upsert(
+        { user_id: userId, current_streak_days: 0, longest_streak_days: newLongest, last_completed_date: updated.last_completed_date },
+        { onConflict: 'user_id' }
+      );
       return;
+    }
+
+    // Step 3: today is complete — query up to 365 days of history to count the streak.
+    const limitD = new Date(today + 'T12:00:00');
+    limitD.setDate(limitD.getDate() - 365);
+    const fromStr = limitD.toISOString().split('T')[0];
+
+    const { data: histData } = await supabase
+      .from('daily_dozen_entries')
+      .select('entry_date, category_id, servings_completed')
+      .eq('user_id', userId)
+      .gte('entry_date', fromStr)
+      .lte('entry_date', today);
+
+    const byDate: Record<string, Record<string, number>> = {};
+    for (const e of (histData ?? [])) {
+      if (!byDate[e.entry_date]) byDate[e.entry_date] = {};
+      byDate[e.entry_date][e.category_id] = e.servings_completed;
+    }
+    // Overlay in-flight changes (DB was already updated, but this is a safety net)
+    byDate[date] = { ...(byDate[date] ?? {}), ...newMap };
+
+    // Walk backwards from today counting consecutive complete days
+    let newCurrent = 0;
+    let checkDate  = today;
+    while (checkDate >= fromStr) {
+      const dayMap   = byDate[checkDate] ?? {};
+      const complete = categories.every((c) => (dayMap[c.id] ?? 0) >= c.target_servings);
+      if (!complete) break;
+      newCurrent++;
+      const d = new Date(checkDate + 'T12:00:00');
+      d.setDate(d.getDate() - 1);
+      checkDate = d.toISOString().split('T')[0];
     }
 
     const newLongest = Math.max(newCurrent, streak?.longest_streak ?? 0);

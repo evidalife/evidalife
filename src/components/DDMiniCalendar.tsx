@@ -134,7 +134,7 @@ export default function DDMiniCalendar({
         <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84]">
           {lang === 'de' ? 'Kalender' : 'Calendar'}
         </p>
-        <div className="rounded-full bg-[#0e393d]/6 p-0.5">
+        <div className="flex rounded-full bg-[#0e393d]/6 p-0.5">
           <button
             onClick={goToToday}
             className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium transition-all ${
@@ -163,7 +163,7 @@ export default function DDMiniCalendar({
         </button>
 
         {/* Date circles — 7 on mobile, 14 on desktop */}
-        <div className="flex gap-1">
+        <div className="flex flex-1 justify-evenly">
           {/* Extra 7 — desktop only */}
           {prevDates.map((dateStr) => renderDateButton(dateStr, 'hidden sm:flex'))}
           {/* Main 7 — always visible */}
