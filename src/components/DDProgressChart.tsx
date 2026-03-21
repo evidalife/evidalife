@@ -50,9 +50,10 @@ function dotColor(v: number, max: number): string {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function DDProgressChart({ userId, categories, today, lang, compact = false, refreshKey = 0 }: Props) {
-  const [period, setPeriod]   = useState<Period>('week');
-  const [entries, setEntries] = useState<RawEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [period, setPeriod]     = useState<Period>('week');
+  const [entries, setEntries]   = useState<RawEntry[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const supabase = createClient();
 
   const fetchData = useCallback(async (p: Period) => {
@@ -70,6 +71,7 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
       .order('entry_date');
 
     setEntries(data ?? []);
+    setInitialLoad(false);
     setLoading(false);
   }, [supabase, userId, today]);
 
@@ -189,7 +191,7 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
 
   const emptyH = 'h-28';
 
-  const chartContent = loading ? (
+  const chartContent = (initialLoad && loading) ? (
     <div className={`${emptyH} flex items-center justify-center`}>
       <svg className="w-5 h-5 text-[#0e393d]/25 animate-spin" viewBox="0 0 24 24" fill="none">
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
@@ -339,10 +341,14 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
       )}
 
       {compact ? (
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, minHeight: 200, display: 'flex', flexDirection: 'column' }}>
           {chartContent}
         </div>
-      ) : chartContent}
+      ) : (
+        <div style={{ minHeight: 200 }}>
+          {chartContent}
+        </div>
+      )}
 
       {/* Toggle at bottom in compact mode */}
       {compact && (
