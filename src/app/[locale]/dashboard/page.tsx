@@ -28,7 +28,7 @@ const T = {
     bioNoneHint:   'Bestelle deinen ersten Bluttest, um deine Biomarker zu sehen.',
     orderCta:      'Test bestellen',
     dailyDozen:    'Daily Dozen – Heute',
-    ddOf:          (done: number, total: number) => `${done} von ${total} Kategorien`,
+    ddOf:          (done: number, total: number) => `${done} von ${total} Portionen`,
     quickLinks:    'Schnellzugriff',
     collected:     'Abgenommen',
     streak:        (n: number) => `🔥 ${n} Tage Streak`,
@@ -67,7 +67,7 @@ const T = {
     bioNoneHint:   'Order your first blood test to see your biomarkers.',
     orderCta:      'Order a test',
     dailyDozen:    'Daily Dozen – Today',
-    ddOf:          (done: number, total: number) => `${done} of ${total} categories`,
+    ddOf:          (done: number, total: number) => `${done} of ${total} servings`,
     quickLinks:    'Quick Links',
     collected:     'Collected',
     streak:        (n: number) => `🔥 ${n}-day streak`,
@@ -297,9 +297,9 @@ export default async function DashboardPage() {
 
     supabase
       .from('daily_dozen_entries')
-      .select('category_id, servings')
+      .select('category_id, servings_completed')
       .eq('user_id', user.id)
-      .eq('date', today),
+      .eq('entry_date', today),
 
     supabase
       .from('daily_dozen_streaks')
@@ -342,13 +342,13 @@ export default async function DashboardPage() {
   const ddEntries    = ddEntriesRes.status === 'fulfilled'    ? (ddEntriesRes.value.data ?? [])    : [];
   const ddStreak     = ddStreakRes.status === 'fulfilled'     ? ddStreakRes.value.data              : null;
 
-  const ddDone = ddCategories.filter((cat) => {
+  const ddTotalServings = ddCategories.reduce((s, c) => s + c.target_servings, 0);
+  const ddDone = ddCategories.reduce((s, cat) => {
     const entry = ddEntries.find((e) => e.category_id === cat.id);
-    return (entry?.servings ?? 0) >= cat.target_servings;
-  }).length;
-  const ddTotal = ddCategories.length;
-  const ddPct   = ddTotal > 0 ? Math.round((ddDone / ddTotal) * 100) : 0;
-  const ddAllDone = ddDone === ddTotal && ddTotal > 0;
+    return s + Math.min(entry?.servings_completed ?? 0, cat.target_servings);
+  }, 0);
+  const ddPct     = ddTotalServings > 0 ? Math.round((ddDone / ddTotalServings) * 100) : 0;
+  const ddAllDone = ddTotalServings > 0 && ddDone >= ddTotalServings;
 
   const hasLabResults = latestResults.length > 0;
   const systemKeys    = Object.keys(bySystem).sort();
@@ -425,7 +425,7 @@ export default async function DashboardPage() {
                 </span>
               </div>
               <p className="text-xs text-[#1c2a2b]/45">
-                {ddTotal > 0 ? t.ddOf(ddDone, ddTotal) : (locale === 'de' ? 'Keine Kategorien gefunden' : 'No categories found')}
+                {ddCategories.length > 0 ? t.ddOf(ddDone, ddTotalServings) : (locale === 'de' ? 'Keine Kategorien gefunden' : 'No categories found')}
                 {ddAllDone && ' 🎉'}
               </p>
             </div>

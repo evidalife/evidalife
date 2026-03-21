@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import DDProgressChart from './DDProgressChart';
 import DDGauge         from './DDGauge';
@@ -457,8 +457,8 @@ export default function DailyDozenTracker({
       clearTimeout(debounceRef.current[categoryId]);
       debounceRef.current[categoryId] = setTimeout(async () => {
         await upsertEntry(categoryId, next, date);
-        await updateStreak(newMap, date);
-        setRefreshKey((k) => k + 1); // refresh chart + calendar
+        setRefreshKey((k) => k + 1); // refresh calendar + chart immediately after upsert
+        updateStreak(newMap, date);   // fire-and-forget — doesn't block the calendar update
       }, 400);
 
       return newMap;
@@ -467,8 +467,12 @@ export default function DailyDozenTracker({
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
-  const modalCat  = modalCatId ? categories.find((c) => c.id === modalCatId) ?? null : null;
-  const catSlim = categories.map((c) => ({ id: c.id, target_servings: c.target_servings }));
+  const modalCat = modalCatId ? categories.find((c) => c.id === modalCatId) ?? null : null;
+  // Stable reference — prevents DDMiniCalendar/DDProgressChart from re-fetching on every render
+  const catSlim  = useMemo(
+    () => categories.map((c) => ({ id: c.id, target_servings: c.target_servings })),
+    [categories]
+  );
 
   // ── Render ─────────────────────────────────────────────────────────────────
 

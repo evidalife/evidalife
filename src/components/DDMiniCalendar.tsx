@@ -27,6 +27,17 @@ export default function DDMiniCalendar({
 }: Props) {
   const supabase = createClient();
 
+  // Track whether the sm: breakpoint is active so arrows step by 14 (desktop) or 7 (mobile)
+  const [isWide, setIsWide] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 640px)');
+    setIsWide(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsWide(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  const step = isWide ? 14 : 7;
+
   // windowStart = first of the 7 primary visible dates; default = today - 3
   const [windowStart, setWindowStart] = useState(() => addDays(today, -3));
   const [completionMap, setCompletionMap] = useState<Record<string, Completion>>({});
@@ -40,7 +51,7 @@ export default function DDMiniCalendar({
   const fetchFrom  = prevDates[0];
 
   // Can go forward only if the next window's first day is on or before today
-  const canGoNext = addDays(windowStart, 7) <= today;
+  const canGoNext = addDays(windowStart, step) <= today;
 
   const fetchRange = useCallback(async (from: string, to: string) => {
     const { data } = await supabase
@@ -58,8 +69,9 @@ export default function DDMiniCalendar({
 
     const map: Record<string, Completion> = {};
     for (const [date, catMap] of Object.entries(byDate)) {
-      const done = categories.filter((c) => (catMap[c.id] ?? 0) >= c.target_servings).length;
-      map[date] = done === 0 ? 'empty' : done === categories.length ? 'full' : 'partial';
+      const totalServings = categories.reduce((s, c) => s + (catMap[c.id] ?? 0), 0);
+      const allDone       = categories.every((c) => (catMap[c.id] ?? 0) >= c.target_servings);
+      map[date] = totalServings === 0 ? 'empty' : allDone ? 'full' : 'partial';
     }
     // Merge so data from other windows persists while navigating
     setCompletionMap((prev) => ({ ...prev, ...map }));
@@ -69,8 +81,8 @@ export default function DDMiniCalendar({
     fetchRange(fetchFrom, windowEnd);
   }, [windowStart, fetchRange, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const prevWindow = () => setWindowStart((s) => addDays(s, -7));
-  const nextWindow = () => { if (canGoNext) setWindowStart((s) => addDays(s, 7)); };
+  const prevWindow = () => setWindowStart((s) => addDays(s, -step));
+  const nextWindow = () => { if (canGoNext) setWindowStart((s) => addDays(s, step)); };
 
   const goToToday = () => {
     onSelectDate(today);
