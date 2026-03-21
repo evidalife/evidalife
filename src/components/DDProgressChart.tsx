@@ -226,8 +226,8 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
           <p className="text-sm text-[#1c2a2b]/30">{t.empty}</p>
         </div>
       ) : (
-        <div className="flex-1">
-          <ResponsiveContainer width="100%" height="100%">
+        <div>
+          <ResponsiveContainer width="100%" height={chartH}>
             <BarChart
               data={chartData}
               margin={{ top: 4, right: 0, left: 0, bottom: 0 }}
