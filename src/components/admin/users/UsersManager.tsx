@@ -92,7 +92,13 @@ function UserAvatar({ profile, muted }: { profile: Profile; muted?: boolean }) {
   if (profile.avatar_url) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={profile.avatar_url} alt="" className={`w-8 h-8 rounded-full object-cover border border-[#0e393d]/10 shrink-0 ${muted ? 'opacity-40' : ''}`} />
+      <img
+        src={profile.avatar_url.includes('/storage/v1/object/public/')
+          ? profile.avatar_url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=96&height=96&resize=cover'
+          : profile.avatar_url}
+        alt=""
+        className={`w-8 h-8 rounded-full object-cover border border-[#0e393d]/10 shrink-0 ${muted ? 'opacity-40' : ''}`}
+      />
     );
   }
   return (
