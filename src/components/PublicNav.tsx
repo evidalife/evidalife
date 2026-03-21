@@ -57,15 +57,17 @@ export default function PublicNav() {
 
       {/* Main pill nav */}
       <nav
-        className="flex items-center justify-between px-5 py-3 bg-white/90 backdrop-blur-md rounded-full border border-white/70 shadow-[0_4px_24px_rgba(14,57,61,0.1)] overflow-hidden"
+        className="flex items-center justify-between px-5 py-3 bg-white/90 backdrop-blur-md rounded-full border border-white/70 shadow-[0_4px_24px_rgba(14,57,61,0.1)] overflow-visible"
         onClick={(e) => e.stopPropagation()}
       >
 
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity shrink-0">
           <Image src="/evida-logo.png" alt="Evida Life" width={34} height={34} className="rounded-full" />
-          <span className="font-medium text-[0.8rem] tracking-[0.16em] uppercase text-[#0e393d]">
-            EVIDA LIFE
+          <span className="hidden sm:inline font-medium text-[0.8rem] tracking-[0.16em] uppercase text-[#0e393d]">EVIDA LIFE</span>
+          <span className="sm:hidden flex flex-col leading-tight font-medium text-[0.8rem] tracking-[0.16em] uppercase text-[#0e393d]">
+            <span>EVIDA</span>
+            <span>LIFE</span>
           </span>
         </Link>
 
@@ -127,7 +129,7 @@ export default function PublicNav() {
         </div>
 
         {/* Right side: hamburger (mobile) + lang toggle + user */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
 
           {/* Hamburger / X — mobile only */}
           <button
