@@ -161,6 +161,8 @@ export default function PublicNav() {
           >
             <button
               onClick={() => { const willOpen = !langOpen; closeAllMenus(); if (willOpen) setLangOpen(true); }}
+              aria-label="Switch language"
+              aria-expanded={langOpen}
               className="flex items-center gap-1.5 px-3 py-2 rounded-full text-[12px] font-medium text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors"
             >
               <span className="uppercase tracking-wider">{locale.toUpperCase()}</span>
@@ -199,7 +201,7 @@ export default function PublicNav() {
               onMouseEnter={() => setUserOpen(true)}
               onMouseLeave={() => setUserOpen(false)}
             >
-              <button onClick={() => { const willOpen = !userOpen; closeAllMenus(); if (willOpen) setUserOpen(true); }} className="bg-[#0e393d] text-[#f2ebdb] text-[12px] font-medium pl-1.5 pr-4 py-1.5 rounded-full tracking-wide transition-colors hover:bg-[#1a5055] whitespace-nowrap flex items-center gap-2">
+              <button onClick={() => { const willOpen = !userOpen; closeAllMenus(); if (willOpen) setUserOpen(true); }} aria-label="Open user menu" aria-expanded={userOpen} className="bg-[#0e393d] text-[#f2ebdb] text-[12px] font-medium pl-1.5 pr-4 py-1.5 rounded-full tracking-wide transition-colors hover:bg-[#1a5055] whitespace-nowrap flex items-center gap-2">
                 {profile?.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -248,6 +250,7 @@ export default function PublicNav() {
                     <div className="h-px bg-[#0e393d]/10 mx-4 my-1.5" />
                     <button
                       onClick={handleSignOut}
+                      aria-label={locale === 'de' ? 'Abmelden' : 'Sign out'}
                       className="w-full text-left px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-red-600 transition-colors"
                     >
                       {locale === 'de' ? 'Abmelden' : 'Sign out'}
@@ -285,6 +288,8 @@ export default function PublicNav() {
                 {/* Section row */}
                 <button
                   onClick={() => setExpandedSection(isExp ? null : section)}
+                  aria-label={`Toggle ${section} menu`}
+                  aria-expanded={isExp}
                   className="flex w-full items-center justify-between px-5 py-3.5 text-[0.8rem] font-medium text-[#0e393d] hover:bg-[#f5f4f0] transition-colors"
                 >
                   <span>{section}</span>

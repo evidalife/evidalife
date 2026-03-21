@@ -453,6 +453,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
               <button
                 type="button"
                 onClick={handleCropCancel}
+                aria-label={t.cropCancel}
                 className="rounded-xl border border-[#0e393d]/20 bg-white px-4 py-2 text-sm font-medium text-[#0e393d] hover:bg-[#0e393d]/5 transition"
               >
                 {t.cropCancel}
@@ -460,6 +461,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
               <button
                 type="button"
                 onClick={handleCropSave}
+                aria-label={t.cropSave}
                 className="rounded-xl bg-[#0e393d] px-4 py-2 text-sm font-medium text-white hover:bg-[#0e393d]/85 transition"
               >
                 {t.cropSave}
@@ -506,6 +508,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                   type="button"
                   onClick={() => fileRef.current?.click()}
                   disabled={uploading}
+                  aria-label={t.changeAvatar}
                   className="inline-flex items-center gap-2 rounded-xl border border-[#0e393d]/20 bg-white px-4 py-2 text-sm font-medium text-[#0e393d] hover:bg-[#0e393d]/5 hover:border-[#0e393d]/35 transition disabled:opacity-50"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -520,6 +523,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                     type="button"
                     onClick={handleRemoveAvatar}
                     disabled={uploading}
+                    aria-label={t.removeAvatar}
                     className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 hover:border-red-300 transition disabled:opacity-50"
                   >
                     <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10">
@@ -747,6 +751,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
           <button
             type="submit"
             disabled={saveState === 'saving' || uploading}
+            aria-label={t.save}
             className={`inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold transition ${
               saveState === 'saved'
                 ? 'bg-emerald-500 text-white'

@@ -34,6 +34,7 @@ export default function SocialLoginButtons({ googleLabel, appleLabel, errGoogle,
       <button
         type="button"
         onClick={() => handleOAuth('google')}
+        aria-label={googleLabel}
         className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-lg border border-[#0e393d]/15 bg-white text-sm text-[#1c2a2b] hover:bg-[#f5f4f0] hover:border-[#0e393d]/25 transition-colors"
       >
         <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
@@ -49,6 +50,7 @@ export default function SocialLoginButtons({ googleLabel, appleLabel, errGoogle,
       <button
         type="button"
         onClick={() => handleOAuth('apple')}
+        aria-label={appleLabel}
         className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-lg border border-[#0e393d]/15 bg-white text-sm text-[#1c2a2b] hover:bg-[#f5f4f0] hover:border-[#0e393d]/25 transition-colors"
       >
         <svg width="15" height="18" viewBox="0 0 814 1000" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
