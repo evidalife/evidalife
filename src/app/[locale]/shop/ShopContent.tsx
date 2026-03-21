@@ -139,6 +139,7 @@ function PackageCard({ product, index, onCheckoutError }: { product: Product; in
       <button
         onClick={handleCheckout}
         disabled={loading}
+        aria-label={t('cta')}
         className={`block w-full rounded-xl py-3 text-center text-sm font-medium transition-colors disabled:opacity-60 ${
           featured
             ? 'bg-[#ceab84] text-[#0e393d] hover:bg-[#ceab84]/90'
@@ -192,6 +193,7 @@ function AddonCard({ product, onCheckoutError }: { product: Product; onCheckoutE
       <button
         onClick={handleCheckout}
         disabled={loading}
+        aria-label={t('addons.cta')}
         className="block w-full rounded-xl border border-[#0e393d]/20 py-2.5 text-center text-sm font-medium text-[#0e393d] hover:bg-[#0e393d] hover:text-white transition-colors disabled:opacity-60"
       >
         {loading ? '…' : t('addons.cta')}
