@@ -903,7 +903,8 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                 {/* Grams per unit — only shown for non-gram-based units */}
                 {(() => {
                   const selectedUnit = units.find(u => u.id === form.default_unit_id);
-                  const isGramBased = !selectedUnit || ['g', 'kg', 'mg', 'ml', 'l'].includes(selectedUnit.code?.toLowerCase() ?? '');
+                  if (!selectedUnit) return null; // no unit selected — nothing to convert
+                  const isGramBased = ['g', 'kg', 'mg', 'ml', 'l'].includes(selectedUnit.code?.toLowerCase() ?? '');
                   if (isGramBased) return null;
                   return (
                     <div>
