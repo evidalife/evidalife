@@ -53,7 +53,7 @@ Return ONLY a compact JSON object with these exact keys:
 
 Rules:
 - code: short lowercase identifier, e.g. "tbsp", "bag", "btl", "piece" (max 10 chars)
-- category: one of exactly "Weight", "Volume", "Count"
+- category: one of exactly "weight", "volume", "count", "other"
 - sort_order: use ${nextSortOrder} (next logical number after current max)
 - If a unit has no standard abbreviation in a given language, use an empty string for that abbrev field.
 No markdown, no explanation.`;

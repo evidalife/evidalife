@@ -400,7 +400,7 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
       .update({
         name: buildName(editForm),
         abbreviation: buildAbbrev(editForm),
-        category: editForm.category.trim() || null,
+        category: editForm.category.trim().toLowerCase() || null,
         sort_order: editForm.sort_order ? parseInt(editForm.sort_order, 10) : null,
       })
       .eq('id', editingId);
@@ -421,7 +421,7 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
         code: addForm.code.trim(),
         name: buildName(addForm),
         abbreviation: buildAbbrev(addForm),
-        category: addForm.category.trim() || null,
+        category: addForm.category.trim().toLowerCase() || null,
         sort_order: addForm.sort_order ? parseInt(addForm.sort_order, 10) : null,
       });
     setSaving(false);
@@ -527,7 +527,7 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
       };
 
       const updatePayload: Record<string, unknown> = { name: updatedName, abbreviation: updatedAbbrev };
-      if (s.category) updatePayload.category = s.category;
+      if (s.category) updatePayload.category = s.category.toLowerCase();
 
       await supabase
         .from('measurement_units')
