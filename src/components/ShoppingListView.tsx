@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Link } from '@/i18n/navigation';
 import { localized } from '@/lib/localized';
@@ -44,21 +44,119 @@ type IngredientSuggestion = {
 // ─── Daily Dozen categories ────────────────────────────────────────────────────
 
 const DD_CATEGORIES = [
-  { slug: 'beans',        icon: '🫘', label: { en: 'Beans',                  de: 'Hülsenfrüchte',     fr: 'Légumineuses',        es: 'Legumbres',           it: 'Legumi'            } },
-  { slug: 'berries',      icon: '🫐', label: { en: 'Berries',                de: 'Beeren',            fr: 'Baies',               es: 'Bayas',               it: 'Bacche'            } },
-  { slug: 'fruits',       icon: '🍎', label: { en: 'Other Fruits',           de: 'Sonstige Früchte',  fr: 'Autres fruits',       es: 'Otras frutas',        it: 'Altri frutti'      } },
-  { slug: 'cruciferous',  icon: '🥦', label: { en: 'Cruciferous Vegetables', de: 'Kreuzblütler',      fr: 'Légumes crucifères',  es: 'Verduras crucíferas', it: 'Verdure crocifere' } },
-  { slug: 'greens',       icon: '🥬', label: { en: 'Greens',                 de: 'Blattgemüse',       fr: 'Légumes verts',       es: 'Verduras de hoja',    it: 'Verdure a foglia'  } },
-  { slug: 'vegetables',   icon: '🥕', label: { en: 'Other Vegetables',       de: 'Sonstiges Gemüse',  fr: 'Autres légumes',      es: 'Otras verduras',      it: 'Altre verdure'     } },
-  { slug: 'flaxseeds',    icon: '🌰', label: { en: 'Flaxseeds',              de: 'Leinsamen',         fr: 'Graines de lin',      es: 'Semillas de lino',    it: 'Semi di lino'      } },
-  { slug: 'nuts',         icon: '🥜', label: { en: 'Nuts & Seeds',           de: 'Nüsse & Samen',     fr: 'Noix & graines',      es: 'Nueces y semillas',   it: 'Noci e semi'       } },
-  { slug: 'herbs_spices', icon: '🌿', label: { en: 'Herbs & Spices',         de: 'Kräuter & Gewürze', fr: 'Herbes & épices',     es: 'Hierbas y especias',  it: 'Erbe e spezie'     } },
-  { slug: 'whole_grains', icon: '🌾', label: { en: 'Whole Grains',           de: 'Vollkornprodukte',  fr: 'Céréales complètes',  es: 'Granos integrales',   it: 'Cereali integrali' } },
-  { slug: 'beverages',    icon: '💧', label: { en: 'Beverages',              de: 'Getränke',          fr: 'Boissons',            es: 'Bebidas',             it: 'Bevande'           } },
+  { slug: 'beans',        icon: '🫘', label: { en: 'Beans',              de: 'Bohnen',          fr: 'Légumineuses',       es: 'Legumbres',            it: 'Legumi'            } },
+  { slug: 'berries',      icon: '🫐', label: { en: 'Berries',            de: 'Beeren',          fr: 'Baies',              es: 'Bayas',                it: 'Bacche'            } },
+  { slug: 'fruits',       icon: '🍎', label: { en: 'Other Fruits',       de: 'Anderes Obst',    fr: 'Autres fruits',      es: 'Otras frutas',         it: 'Altra frutta'      } },
+  { slug: 'cruciferous',  icon: '🥦', label: { en: 'Cruciferous',        de: 'Kreuzblütler',    fr: 'Légumes crucifères', es: 'Verduras crucíferas',  it: 'Verdure crocifere' } },
+  { slug: 'greens',       icon: '🥬', label: { en: 'Greens',             de: 'Blattgemüse',     fr: 'Légumes verts',      es: 'Verduras de hoja',     it: 'Verdure a foglia'  } },
+  { slug: 'vegetables',   icon: '🥕', label: { en: 'Other Vegetables',   de: 'Anderes Gemüse',  fr: 'Autres légumes',     es: 'Otras verduras',       it: 'Altre verdure'     } },
+  { slug: 'flaxseeds',    icon: '🌰', label: { en: 'Flaxseeds',          de: 'Leinsamen',       fr: 'Graines de lin',     es: 'Semillas de lino',     it: 'Semi di lino'      } },
+  { slug: 'nuts',         icon: '🥜', label: { en: 'Nuts & Seeds',       de: 'Nüsse & Samen',   fr: 'Noix & graines',     es: 'Frutos secos',         it: 'Noci e semi'       } },
+  { slug: 'herbs_spices', icon: '🌿', label: { en: 'Herbs & Spices',     de: 'Kräuter & Gewürze',fr: 'Herbes & épices',   es: 'Hierbas y especias',   it: 'Erbe e spezie'     } },
+  { slug: 'whole_grains', icon: '🌾', label: { en: 'Whole Grains',       de: 'Vollkornprodukte',fr: 'Céréales complètes', es: 'Granos integrales',    it: 'Cereali integrali' } },
+  { slug: 'beverages',    icon: '🍵', label: { en: 'Beverages',          de: 'Getränke',        fr: 'Boissons',           es: 'Bebidas',              it: 'Bevande'           } },
 ] as const;
+
+const OTHER_CAT  = { icon: '📦', label: { en: 'Other',    de: 'Sonstiges',  fr: 'Autres',   es: 'Otros',    it: 'Altri'    } };
+const PERSONAL_CAT = { icon: '🛒', label: { en: 'Personal', de: 'Persönlich', fr: 'Personnel',es: 'Personal', it: 'Personale' } };
 
 const DD_ORDER = DD_CATEGORIES.map((c) => c.slug);
 const DD_MAP = new Map<string, (typeof DD_CATEGORIES)[number]>(DD_CATEGORIES.map((c) => [c.slug, c]));
+
+// ─── Translations ──────────────────────────────────────────────────────────────
+
+const T = {
+  de: {
+    eyebrow: 'Meine Liste',
+    heading: 'Einkaufsliste',
+    addItem: 'Artikel hinzufügen…',
+    enterHint: 'Enter: als persönlichen Artikel hinzufügen',
+    allFilter: 'Alle',
+    clearChecked: 'Erledigte löschen',
+    xOfY: (x: number, y: number) => `${x} von ${y} erledigt`,
+    noItems: 'Deine Liste ist leer.',
+    noItemsHint: 'Füge Zutaten hinzu oder starte von einem Rezept.',
+    loginPrompt: 'Bitte melde dich an, um deine Einkaufsliste zu sehen.',
+    loginBtn: 'Anmelden',
+    removeAria: 'Entfernen',
+    qty: 'Menge',
+    unitLabel: 'Einheit',
+    add: 'Hinzufügen',
+    items: (n: number) => `${n} ${n === 1 ? 'Artikel' : 'Artikel'}`,
+  },
+  en: {
+    eyebrow: 'My List',
+    heading: 'Shopping List',
+    addItem: 'Add an item…',
+    enterHint: 'Press Enter to add as a personal item',
+    allFilter: 'All',
+    clearChecked: 'Clear checked',
+    xOfY: (x: number, y: number) => `${x} of ${y} checked`,
+    noItems: 'Your list is empty.',
+    noItemsHint: 'Add ingredients or start from a recipe.',
+    loginPrompt: 'Please sign in to view your shopping list.',
+    loginBtn: 'Sign in',
+    removeAria: 'Remove',
+    qty: 'Qty',
+    unitLabel: 'Unit',
+    add: 'Add',
+    items: (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`,
+  },
+  fr: {
+    eyebrow: 'Ma liste',
+    heading: 'Liste de courses',
+    addItem: 'Ajouter un article…',
+    enterHint: 'Entrée : ajouter comme article personnel',
+    allFilter: 'Tous',
+    clearChecked: 'Supprimer les cochés',
+    xOfY: (x: number, y: number) => `${x} sur ${y} cochés`,
+    noItems: 'Votre liste est vide.',
+    noItemsHint: 'Ajoutez des ingrédients ou commencez par une recette.',
+    loginPrompt: 'Connectez-vous pour voir votre liste de courses.',
+    loginBtn: 'Se connecter',
+    removeAria: 'Supprimer',
+    qty: 'Qté',
+    unitLabel: 'Unité',
+    add: 'Ajouter',
+    items: (n: number) => `${n} article${n !== 1 ? 's' : ''}`,
+  },
+  es: {
+    eyebrow: 'Mi lista',
+    heading: 'Lista de compras',
+    addItem: 'Agregar un artículo…',
+    enterHint: 'Intro: añadir como artículo personal',
+    allFilter: 'Todos',
+    clearChecked: 'Borrar marcados',
+    xOfY: (x: number, y: number) => `${x} de ${y} marcados`,
+    noItems: 'Tu lista está vacía.',
+    noItemsHint: 'Agrega ingredientes o empieza desde una receta.',
+    loginPrompt: 'Por favor inicia sesión para ver tu lista de compras.',
+    loginBtn: 'Iniciar sesión',
+    removeAria: 'Eliminar',
+    qty: 'Cant.',
+    unitLabel: 'Unidad',
+    add: 'Agregar',
+    items: (n: number) => `${n} artículo${n !== 1 ? 's' : ''}`,
+  },
+  it: {
+    eyebrow: 'La mia lista',
+    heading: 'Lista della spesa',
+    addItem: 'Aggiungi un articolo…',
+    enterHint: 'Invio: aggiunge come articolo personale',
+    allFilter: 'Tutti',
+    clearChecked: 'Rimuovi selezionati',
+    xOfY: (x: number, y: number) => `${x} di ${y} selezionati`,
+    noItems: 'La tua lista è vuota.',
+    noItemsHint: 'Aggiungi ingredienti o inizia da una ricetta.',
+    loginPrompt: 'Accedi per vedere la tua lista della spesa.',
+    loginBtn: 'Accedi',
+    removeAria: 'Rimuovi',
+    qty: 'Qtà',
+    unitLabel: 'Unità',
+    add: 'Aggiungi',
+    items: (n: number) => n === 1 ? '1 articolo' : `${n} articoli`,
+  },
+};
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -88,124 +186,40 @@ function highlightMatch(text: string, query: string) {
   );
 }
 
-function groupByCategory(items: ShoppingListItem[]): { slug: string; items: ShoppingListItem[] }[] {
+function truncate(text: string, max = 22): string {
+  return text.length > max ? text.slice(0, max) + '…' : text;
+}
+
+function resolveCategory(item: ShoppingListItem, ingCategoryMap: Map<string, string>): string {
+  if (item.is_personal) return 'personal';
+  if (item.daily_dozen_category_slug) return item.daily_dozen_category_slug;
+  // Fallback: look up by EN ingredient name
+  const nameEn = getIngredientLabel(item.ingredient_name, 'en').toLowerCase().trim();
+  if (nameEn) {
+    const cat = ingCategoryMap.get(nameEn);
+    if (cat) return cat;
+  }
+  return 'other';
+}
+
+function groupItems(
+  items: ShoppingListItem[],
+  ingCategoryMap: Map<string, string>
+): { slug: string; items: ShoppingListItem[] }[] {
   const groups: Record<string, ShoppingListItem[]> = {};
   for (const item of items) {
-    const cat = item.daily_dozen_category_slug || 'other';
+    const cat = resolveCategory(item, ingCategoryMap);
     if (!groups[cat]) groups[cat] = [];
     groups[cat].push(item);
   }
-  const ordered: { slug: string; items: ShoppingListItem[] }[] = DD_ORDER
-    .filter((slug) => groups[slug])
-    .map((slug) => ({ slug: slug as string, items: groups[slug] }));
-  if (groups['other']) ordered.push({ slug: 'other', items: groups['other'] });
-  return ordered;
+  const result: { slug: string; items: ShoppingListItem[] }[] = [];
+  for (const slug of DD_ORDER) {
+    if (groups[slug as string]) result.push({ slug: slug as string, items: groups[slug as string] });
+  }
+  if (groups['other'])    result.push({ slug: 'other',    items: groups['other'] });
+  if (groups['personal']) result.push({ slug: 'personal', items: groups['personal'] });
+  return result;
 }
-
-// ─── Translations ──────────────────────────────────────────────────────────────
-
-const T = {
-  de: {
-    eyebrow: 'Meine Liste',
-    heading: 'Einkaufsliste',
-    addItem: 'Artikel hinzufügen…',
-    enterHint: 'Enter drücken, um als persönlichen Artikel hinzuzufügen',
-    fromRecipes: 'Aus Rezepten',
-    personal: 'Persönliche Artikel',
-    allFilter: 'Alle',
-    clearChecked: 'Erledigte löschen',
-    xOfY: (x: number, y: number) => `${x} von ${y} erledigt`,
-    noItems: 'Deine Liste ist leer.',
-    noItemsHint: 'Füge Zutaten hinzu oder starte von einem Rezept.',
-    loginPrompt: 'Bitte melde dich an, um deine Einkaufsliste zu sehen.',
-    loginBtn: 'Anmelden',
-    removeAria: 'Entfernen',
-    qty: 'Menge',
-    unitLabel: 'Einheit',
-    add: 'Hinzufügen',
-    other: 'Sonstiges',
-  },
-  en: {
-    eyebrow: 'My List',
-    heading: 'Shopping List',
-    addItem: 'Add an item…',
-    enterHint: 'Press Enter to add as a personal item',
-    fromRecipes: 'From recipes',
-    personal: 'Personal items',
-    allFilter: 'All',
-    clearChecked: 'Clear checked',
-    xOfY: (x: number, y: number) => `${x} of ${y} checked`,
-    noItems: 'Your list is empty.',
-    noItemsHint: 'Add ingredients or start from a recipe.',
-    loginPrompt: 'Please sign in to view your shopping list.',
-    loginBtn: 'Sign in',
-    removeAria: 'Remove',
-    qty: 'Qty',
-    unitLabel: 'Unit',
-    add: 'Add',
-    other: 'Other',
-  },
-  fr: {
-    eyebrow: 'Ma liste',
-    heading: 'Liste de courses',
-    addItem: 'Ajouter un article…',
-    enterHint: 'Appuyez sur Entrée pour ajouter comme article personnel',
-    fromRecipes: 'Issus de recettes',
-    personal: 'Articles personnels',
-    allFilter: 'Tous',
-    clearChecked: 'Supprimer les cochés',
-    xOfY: (x: number, y: number) => `${x} sur ${y} cochés`,
-    noItems: 'Votre liste est vide.',
-    noItemsHint: 'Ajoutez des ingrédients ou commencez par une recette.',
-    loginPrompt: 'Connectez-vous pour voir votre liste de courses.',
-    loginBtn: 'Se connecter',
-    removeAria: 'Supprimer',
-    qty: 'Qté',
-    unitLabel: 'Unité',
-    add: 'Ajouter',
-    other: 'Autres',
-  },
-  es: {
-    eyebrow: 'Mi lista',
-    heading: 'Lista de compras',
-    addItem: 'Agregar un artículo…',
-    enterHint: 'Pulsa Intro para añadir como artículo personal',
-    fromRecipes: 'De recetas',
-    personal: 'Artículos personales',
-    allFilter: 'Todos',
-    clearChecked: 'Borrar marcados',
-    xOfY: (x: number, y: number) => `${x} de ${y} marcados`,
-    noItems: 'Tu lista está vacía.',
-    noItemsHint: 'Agrega ingredientes o empieza desde una receta.',
-    loginPrompt: 'Por favor inicia sesión para ver tu lista de compras.',
-    loginBtn: 'Iniciar sesión',
-    removeAria: 'Eliminar',
-    qty: 'Cant.',
-    unitLabel: 'Unidad',
-    add: 'Agregar',
-    other: 'Otros',
-  },
-  it: {
-    eyebrow: 'La mia lista',
-    heading: 'Lista della spesa',
-    addItem: 'Aggiungi un articolo…',
-    enterHint: 'Premi Invio per aggiungere come articolo personale',
-    fromRecipes: 'Dalle ricette',
-    personal: 'Articoli personali',
-    allFilter: 'Tutti',
-    clearChecked: 'Rimuovi selezionati',
-    xOfY: (x: number, y: number) => `${x} di ${y} selezionati`,
-    noItems: 'La tua lista è vuota.',
-    noItemsHint: 'Aggiungi ingredienti o inizia da una ricetta.',
-    loginPrompt: 'Accedi per vedere la tua lista della spesa.',
-    loginBtn: 'Accedi',
-    removeAria: 'Rimuovi',
-    qty: 'Qtà',
-    unitLabel: 'Unità',
-    add: 'Aggiungi',
-    other: 'Altro',
-  },
-};
 
 // ─── ProgressRing ──────────────────────────────────────────────────────────────
 
@@ -219,12 +233,8 @@ function ProgressRing({ checked, total }: { checked: number; total: number }) {
       <circle cx="24" cy="24" r={r} fill="none" stroke="#0e393d12" strokeWidth="3.5" />
       <circle
         cx="24" cy="24" r={r}
-        fill="none"
-        stroke="#0C9C6C"
-        strokeWidth="3.5"
-        strokeLinecap="round"
-        strokeDasharray={circ}
-        strokeDashoffset={offset}
+        fill="none" stroke="#0C9C6C" strokeWidth="3.5" strokeLinecap="round"
+        strokeDasharray={circ} strokeDashoffset={offset}
         transform="rotate(-90 24 24)"
         style={{ transition: 'stroke-dashoffset 0.4s ease' }}
       />
@@ -250,12 +260,13 @@ function ItemRow({
     ? item.personal_name
     : getIngredientLabel(item.ingredient_name, lang);
   const amount = formatAmount(item.amount, item.unit);
-  const recipe = (!item.is_personal && item.recipe_title)
-    ? localized(item.recipe_title, lang)
+  const recipeLabel = (!item.is_personal && item.recipe_title)
+    ? truncate(localized(item.recipe_title, lang) || '', 22)
     : null;
 
   return (
-    <li className={`group flex items-center gap-3 rounded-xl border border-[#0e393d]/8 bg-white px-4 py-3 hover:border-[#0e393d]/15 transition ${item.is_checked ? 'opacity-45' : ''}`}>
+    <li className={`group flex items-center gap-3 rounded-xl border border-[#0e393d]/8 bg-white px-3.5 py-2.5 hover:border-[#0e393d]/15 transition ${item.is_checked ? 'opacity-45' : ''}`}>
+      {/* Checkbox */}
       <button
         type="button"
         onClick={() => onToggle(item)}
@@ -273,34 +284,105 @@ function ItemRow({
         )}
       </button>
 
-      <div className="flex-1 min-w-0">
-        <span className={`text-sm text-[#1c2a2b] ${item.is_checked ? 'line-through' : ''}`}>
+      {/* Name + amount */}
+      <div className="flex-1 min-w-0 flex items-baseline gap-2">
+        <span className={`text-sm font-medium text-[#1c2a2b] leading-snug ${item.is_checked ? 'line-through' : ''}`}>
           {label}
         </span>
-        {(amount || recipe) && (
-          <div className="flex items-center gap-2 mt-0.5">
-            {amount && <span className="text-xs text-[#1c2a2b]/40">{amount}</span>}
-            {recipe && (
-              <>
-                {amount && <span className="text-[#1c2a2b]/20">·</span>}
-                <span className="hidden sm:inline text-xs text-[#ceab84]/80">{recipe}</span>
-              </>
-            )}
-          </div>
+        {amount && (
+          <span className="shrink-0 text-xs text-[#1c2a2b]/40">{amount}</span>
         )}
       </div>
 
+      {/* Recipe pill + delete */}
+      <div className="shrink-0 flex items-center gap-1">
+        {recipeLabel && (
+          <span className="hidden sm:inline text-[10px] text-[#ceab84] bg-[#ceab84]/8 rounded-full px-2 py-0.5 whitespace-nowrap group-hover:hidden">
+            {recipeLabel}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => onDelete(item.id)}
+          className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded-md text-[#1c2a2b]/30 hover:text-red-500 hover:bg-red-50 transition"
+          aria-label={removeAria}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </li>
+  );
+}
+
+// ─── CategorySection ───────────────────────────────────────────────────────────
+
+function CategorySection({
+  slug, catItems, lang, t, onToggle, onDelete, collapsed, onCollapseToggle,
+}: {
+  slug: string;
+  catItems: ShoppingListItem[];
+  lang: Lang;
+  t: typeof T.en;
+  onToggle: (item: ShoppingListItem) => void;
+  onDelete: (id: string) => void;
+  collapsed: boolean;
+  onCollapseToggle: () => void;
+}) {
+  const ddCat = DD_MAP.get(slug);
+  const icon  = ddCat?.icon ?? (slug === 'personal' ? PERSONAL_CAT.icon : OTHER_CAT.icon);
+  const label = ddCat
+    ? (ddCat.label[lang] ?? ddCat.label.en)
+    : slug === 'personal'
+      ? (PERSONAL_CAT.label[lang] ?? PERSONAL_CAT.label.en)
+      : (OTHER_CAT.label[lang] ?? OTHER_CAT.label.en);
+
+  const unchecked = catItems.filter((i) => !i.is_checked);
+  const checked   = catItems.filter((i) => i.is_checked);
+  const display   = [...unchecked, ...checked];
+
+  return (
+    <div>
+      {/* Header */}
       <button
         type="button"
-        onClick={() => onDelete(item.id)}
-        className="shrink-0 opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded-md text-[#1c2a2b]/30 hover:text-red-500 hover:bg-red-50 transition"
-        aria-label={removeAria}
+        onClick={onCollapseToggle}
+        className="w-full flex items-center gap-2 py-2 text-left group/header"
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/>
+        <span className="text-base leading-none">{icon}</span>
+        <span className="text-[11px] font-semibold uppercase tracking-widest text-[#1c2a2b]/40 group-hover/header:text-[#1c2a2b]/60 transition">
+          {label}
+        </span>
+        <span className="flex-1" />
+        <span className="text-[11px] text-[#1c2a2b]/30 mr-1">
+          {t.items(unchecked.length)}
+        </span>
+        <svg
+          width="12" height="12" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          className={`text-[#1c2a2b]/25 transition-transform duration-200 ${collapsed ? '-rotate-90' : ''}`}
+        >
+          <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
-    </li>
+
+      {/* Items */}
+      {!collapsed && (
+        <ul className="grid grid-cols-1 md:grid-cols-2 gap-1.5 mb-1">
+          {display.map((item) => (
+            <ItemRow
+              key={item.id}
+              item={item}
+              lang={lang}
+              onToggle={onToggle}
+              onDelete={onDelete}
+              removeAria={t.removeAria}
+            />
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -317,43 +399,72 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
   const t = T[lang];
   const supabase = createClient();
 
-  const [list, setList] = useState<ShoppingList | null>(initialList);
+  const [list, setList]   = useState<ShoppingList | null>(initialList);
   const [items, setItems] = useState<ShoppingListItem[]>(initialItems);
+  const [ingCategoryMap]  = useState<Map<string, string>>(() => new Map());
+  const ingMapRef = useRef(ingCategoryMap);
 
   // Recipe filter
   const [activeRecipe, setActiveRecipe] = useState<string | null>(null);
 
-  // Unified input state
-  const [query, setQuery] = useState('');
+  // Collapsed category sections
+  const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
+
+  // Unified input
+  const [query, setQuery]           = useState('');
   const [suggestions, setSuggestions] = useState<IngredientSuggestion[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIng, setSelectedIng] = useState<IngredientSuggestion | null>(null);
-  const [newQty, setNewQty] = useState('');
+  const [newQty, setNewQty]   = useState('');
   const [newUnit, setNewUnit] = useState('');
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding]   = useState(false);
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Derived
-  const recipeItems = items.filter((i) => !i.is_personal);
-  const personalItems = items.filter((i) => i.is_personal);
-  const filteredRecipeItems = activeRecipe
-    ? recipeItems.filter((i) => i.recipe_id === activeRecipe)
-    : recipeItems;
-  const totalChecked = items.filter((i) => i.is_checked).length;
-  const totalItems = items.length;
+  // ── On mount: fetch ingredient→category map ───────────────────────────────────
 
-  const uniqueRecipes = Array.from(
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('ingredients')
+        .select('id, name, daily_dozen_categories(slug)');
+      if (data) {
+        for (const ing of data as Array<{ id: string; name: Record<string, string>; daily_dozen_categories: unknown }>) {
+          const dc = ing.daily_dozen_categories;
+          const catSlug = Array.isArray(dc) ? (dc[0] as { slug?: string })?.slug : (dc as { slug?: string } | null)?.slug;
+          if (catSlug) {
+            const nameEn = localized(ing.name, 'en').toLowerCase().trim();
+            if (nameEn) ingMapRef.current.set(nameEn, catSlug);
+          }
+        }
+      }
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Derived ───────────────────────────────────────────────────────────────────
+
+  const uniqueRecipes = useMemo(() => Array.from(
     new Map(
       items
         .filter((i) => i.recipe_id && i.recipe_title)
         .map((i) => [i.recipe_id!, { id: i.recipe_id!, title: i.recipe_title! }])
     ).values()
+  ), [items]);
+
+  const displayItems = useMemo(() =>
+    activeRecipe
+      ? items.filter((i) => !i.is_personal && i.recipe_id === activeRecipe)
+      : items,
+    [items, activeRecipe]
   );
 
-  const grouped = groupByCategory(filteredRecipeItems);
-  const personalUnchecked = activeRecipe ? [] : personalItems.filter((i) => !i.is_checked);
-  const personalChecked   = activeRecipe ? [] : personalItems.filter((i) => i.is_checked);
+  const grouped = useMemo(() =>
+    groupItems(displayItems, ingMapRef.current),
+    [displayItems]
+  );
+
+  const totalChecked = items.filter((i) => i.is_checked).length;
+  const totalItems   = items.length;
 
   // ── Close dropdown on outside click ──────────────────────────────────────────
 
@@ -367,7 +478,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // ── Ingredient autocomplete ────────────────────────────────────────────────────
+  // ── Autocomplete ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (selectedIng || query.length < 2) {
@@ -390,22 +501,19 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     return () => { cancelled = true; };
   }, [query, lang, selectedIng]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Realtime subscription ──────────────────────────────────────────────────────
+  // ── Realtime ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!list) return;
     const channel = supabase
       .channel(`shopping_list_items:${list.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'shopping_list_items', filter: `list_id=eq.${list.id}` },
-        () => { refreshItems(); }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shopping_list_items', filter: `list_id=eq.${list.id}` },
+        () => { refreshItems(); })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [list?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Data helpers ───────────────────────────────────────────────────────────────
+  // ── Data helpers ──────────────────────────────────────────────────────────────
 
   const refreshItems = useCallback(async () => {
     if (!list) return;
@@ -436,7 +544,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     return data;
   }, [list, userId, t.heading, supabase]);
 
-  // ── Actions ────────────────────────────────────────────────────────────────────
+  // ── Actions ───────────────────────────────────────────────────────────────────
 
   const handleSelectIngredient = (ing: IngredientSuggestion) => {
     setSelectedIng(ing);
@@ -537,7 +645,16 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     }
   };
 
-  // ── Not logged in ──────────────────────────────────────────────────────────────
+  const toggleCollapse = (slug: string) => {
+    setCollapsedCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  };
+
+  // ── Not logged in ─────────────────────────────────────────────────────────────
 
   if (!userId) {
     return (
@@ -559,7 +676,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     );
   }
 
-  // ── Main UI ────────────────────────────────────────────────────────────────────
+  // ── Main UI ───────────────────────────────────────────────────────────────────
 
   const showEnterHint = query.trim().length >= 2 && !selectedIng && !showDropdown;
 
@@ -598,7 +715,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
                   : 'bg-white text-[#1c2a2b]/60 border-[#0e393d]/15 hover:border-[#0e393d]/30'
               }`}
             >
-              {localized(r.title as Record<string, string>, lang) || '—'}
+              {truncate(localized(r.title as Record<string, string>, lang) || '—', 28)}
             </button>
           ))}
         </div>
@@ -606,6 +723,13 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
 
       {/* Unified input */}
       <div ref={inputContainerRef} className="relative mb-1">
+        <svg
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#1c2a2b]/30 pointer-events-none"
+          width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+        >
+          <path d="M12 5v14M5 12h14" />
+        </svg>
         <input
           ref={inputRef}
           type="text"
@@ -618,7 +742,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
           }}
           onKeyDown={handleInputKeyDown}
           placeholder={t.addItem}
-          className="w-full rounded-xl border border-[#0e393d]/15 bg-white px-4 py-2.5 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
+          className="w-full rounded-xl border border-[#0e393d]/15 bg-white pl-10 pr-4 py-2.5 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
         />
         {/* Autocomplete dropdown */}
         {showDropdown && suggestions.length > 0 && (
@@ -645,10 +769,10 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
 
       {/* Enter hint */}
       {showEnterHint && (
-        <p className="text-xs text-[#1c2a2b]/35 mb-3 px-1">{t.enterHint}</p>
+        <p className="text-xs text-[#1c2a2b]/30 mb-2 px-1">{t.enterHint}</p>
       )}
 
-      {/* Qty + Unit + Add — shown when ingredient selected */}
+      {/* Qty + Unit + Add */}
       {selectedIng && (
         <div className="flex gap-2 mt-2 mb-4">
           <input
@@ -657,8 +781,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
             onChange={(e) => setNewQty(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleAddIngredient(); }}
             placeholder={t.qty}
-            min={0}
-            step={0.1}
+            min={0} step={0.1}
             className="w-20 rounded-xl border border-[#0e393d]/15 bg-white px-3 py-2.5 text-sm text-center text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
           />
           <input
@@ -690,47 +813,28 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
         </div>
       )}
 
-      {/* From recipes — grouped by Daily Dozen category */}
+      {/* Grouped category sections */}
       {grouped.length > 0 && (
-        <div className="mt-4 space-y-5">
-          {!activeRecipe && recipeItems.length > 0 && (
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#1c2a2b]/30">{t.fromRecipes}</p>
-          )}
-          {grouped.map(({ slug, items: catItems }) => {
-            const cat = DD_MAP.get(slug as string);
-            const label = cat ? cat.label[lang] : t.other;
-            const icon = cat?.icon;
-            return (
-              <div key={slug}>
-                <p className="flex items-center gap-1.5 text-xs font-medium text-[#1c2a2b]/50 mb-2">
-                  {icon && <span>{icon}</span>}
-                  {label}
-                </p>
-                <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {catItems.map((item) => (
-                    <ItemRow key={item.id} item={item} lang={lang} onToggle={handleToggle} onDelete={handleDelete} removeAria={t.removeAria} />
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Personal items */}
-      {(personalUnchecked.length > 0 || personalChecked.length > 0) && (
-        <div className="mt-5 mb-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#1c2a2b]/30 mb-2">{t.personal}</p>
-          <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {[...personalUnchecked, ...personalChecked].map((item) => (
-              <ItemRow key={item.id} item={item} lang={lang} onToggle={handleToggle} onDelete={handleDelete} removeAria={t.removeAria} />
-            ))}
-          </ul>
+        <div className="mt-4 divide-y divide-[#0e393d]/6">
+          {grouped.map(({ slug, items: catItems }) => (
+            <div key={slug} className="py-3">
+              <CategorySection
+                slug={slug}
+                catItems={catItems}
+                lang={lang}
+                t={t}
+                onToggle={handleToggle}
+                onDelete={handleDelete}
+                collapsed={collapsedCats.has(slug)}
+                onCollapseToggle={() => toggleCollapse(slug)}
+              />
+            </div>
+          ))}
         </div>
       )}
 
       {/* Spacer */}
-      <div className="flex-1" />
+      <div className="flex-1 min-h-8" />
 
       {/* Footer */}
       {items.length > 0 && (
