@@ -17,7 +17,7 @@ const GOAL_TAGS = [
   { key: 'longevity',            label: 'Longevity' },
   { key: 'gut_health',           label: 'Gut Health' },
   { key: 'energy',               label: 'Energy' },
-  { key: 'immune',               label: 'Immune Support' },
+  { key: 'immune_boost',          label: 'Immune Support' },
   { key: 'bone_health',          label: 'Bone Health' },
   { key: 'brain_health',         label: 'Brain Health' },
   { key: 'diabetes_prevention',  label: 'Diabetes Prevention' },
