@@ -5,8 +5,8 @@ import { createClient } from '@/lib/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Lang = 'de' | 'en';
-type I18n = { de?: string; en?: string } | null;
+type Lang = 'de' | 'en' | 'fr' | 'es' | 'it';
+type I18n = Record<string, string> | null;
 
 export type Course = {
   id: string;
@@ -35,16 +35,16 @@ type LessonRow = {
 };
 
 type FormState = {
-  title: { de: string; en: string };
-  description: { de: string; en: string };
+  title: { de: string; en: string; fr: string; es: string; it: string };
+  description: { de: string; en: string; fr: string; es: string; it: string };
   slug: string;
   sort_order: string;
   is_published: boolean;
 };
 
 const EMPTY_FORM: FormState = {
-  title: { de: '', en: '' },
-  description: { de: '', en: '' },
+  title: { de: '', en: '', fr: '', es: '', it: '' },
+  description: { de: '', en: '', fr: '', es: '', it: '' },
   slug: '',
   sort_order: '0',
   is_published: false,
@@ -110,6 +110,7 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [lang, setLang] = useState<Lang>('de');
+  const [translating, setTranslating] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [lessons, setLessons] = useState<LessonRow[]>([]);
   const [allArticles, setAllArticles] = useState<ArticleOption[]>([]);
@@ -164,8 +165,8 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
     setEditingId(c.id);
     setLang('de');
     setForm({
-      title: { de: c.title?.de ?? '', en: c.title?.en ?? '' },
-      description: { de: c.description?.de ?? '', en: c.description?.en ?? '' },
+      title: { de: c.title?.de ?? '', en: c.title?.en ?? '', fr: c.title?.fr ?? '', es: c.title?.es ?? '', it: c.title?.it ?? '' },
+      description: { de: c.description?.de ?? '', en: c.description?.en ?? '', fr: c.description?.fr ?? '', es: c.description?.es ?? '', it: c.description?.it ?? '' },
       slug: c.slug ?? '',
       sort_order: String(c.sort_order),
       is_published: c.is_published,
@@ -253,6 +254,32 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
   const toggleLessonFree = (key: string) =>
     setLessons((prev) => prev.map((l) => l._key === key ? { ...l, is_free: !l.is_free } : l));
 
+  // ── AI Translate ──────────────────────────────────────────────────────────────
+
+  const handleTranslate = async () => {
+    const srcTitle = form.title.en || form.title.de;
+    if (!srcTitle) { alert('Enter an EN or DE title first.'); return; }
+    setTranslating(true);
+    try {
+      const res = await fetch('/api/admin/translate-course', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title_en: form.title.en || form.title.de, description_en: form.description.en || form.description.de }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Translate failed');
+      setForm((f) => ({
+        ...f,
+        title:       { ...f.title,       fr: f.title.fr       || json.title_fr       || '', es: f.title.es       || json.title_es       || '', it: f.title.it       || json.title_it       || '' },
+        description: { ...f.description, fr: f.description.fr || json.description_fr || '', es: f.description.es || json.description_es || '', it: f.description.it || json.description_it || '' },
+      }));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   // ── Save ──────────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
@@ -267,8 +294,8 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
       const imageUrl = await uploadImage();
 
       const payload = {
-        title: { de: form.title.de, en: form.title.en },
-        description: { de: form.description.de, en: form.description.en },
+        title: { de: form.title.de, en: form.title.en, fr: form.title.fr, es: form.title.es, it: form.title.it },
+        description: { de: form.description.de, en: form.description.en, fr: form.description.fr, es: form.description.es, it: form.description.it },
         slug: form.slug.trim() || slugify(form.title.de || form.title.en),
         image_url: imageUrl,
         sort_order: form.sort_order ? Number(form.sort_order) : 0,
@@ -420,8 +447,16 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
             <div className="flex items-center justify-between border-b border-[#0e393d]/10 px-6 py-4 shrink-0">
               <h2 className="font-serif text-lg text-[#0e393d]">{editingId ? 'Edit Course' : 'New Course'}</h2>
               <div className="flex items-center gap-3">
+                {/* AI Translate */}
+                <button
+                  onClick={handleTranslate}
+                  disabled={translating}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#ceab84]/40 text-[10px] font-medium text-[#8a6a3e] hover:bg-[#ceab84]/10 disabled:opacity-50 transition whitespace-nowrap"
+                >
+                  {translating ? '…' : '✦ AI Translate'}
+                </button>
                 <div className="flex rounded-lg border border-[#0e393d]/15 overflow-hidden text-xs">
-                  {(['de', 'en'] as Lang[]).map((l) => (
+                  {(['de', 'en', 'fr', 'es', 'it'] as Lang[]).map((l) => (
                     <button key={l} onClick={() => setLang(l)}
                       className={`px-3 py-1.5 font-medium transition ${lang === l ? 'bg-[#0e393d] text-white' : 'text-[#1c2a2b]/60 hover:bg-[#0e393d]/5'}`}>
                       {l.toUpperCase()}

@@ -31,9 +31,9 @@ function slugify(text: string): string {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Lang = 'de' | 'en';
+type Lang = 'de' | 'en' | 'fr' | 'es' | 'it';
 
-type LangContent = { de: string; en: string };
+type LangContent = { de: string; en: string; fr: string; es: string; it: string };
 
 type ArticleForm = {
   title:           LangContent;
@@ -52,12 +52,12 @@ type ArticleForm = {
 };
 
 const EMPTY_FORM: ArticleForm = {
-  title:           { de: '', en: '' },
+  title:           { de: '', en: '', fr: '', es: '', it: '' },
   slug:            '',
-  excerpt:         { de: '', en: '' },
-  content:         { de: '', en: '' },
-  seo_title:       { de: '', en: '' },
-  seo_description: { de: '', en: '' },
+  excerpt:         { de: '', en: '', fr: '', es: '', it: '' },
+  content:         { de: '', en: '', fr: '', es: '', it: '' },
+  seo_title:       { de: '', en: '', fr: '', es: '', it: '' },
+  seo_description: { de: '', en: '', fr: '', es: '', it: '' },
   author_name:     '',
   category:        'health',
   reading_time_min: '',
@@ -118,6 +118,7 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
   const [deleting, setDeleting] = useState(false);
 
   const [lang, setLang]                 = useState<Lang>('de');
+  const [translating, setTranslating]   = useState(false);
   const [form, setForm]                 = useState<ArticleForm>(EMPTY_FORM);
   const [tagInput, setTagInput]         = useState('');
   const [imageFile, setImageFile]       = useState<File | null>(null);
@@ -146,12 +147,12 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
       const pa = a.published_at ? new Date(a.published_at).toISOString().slice(0, 16) : '';
 
       setForm({
-        title:           { de: a.title?.de ?? '',           en: a.title?.en ?? '' },
+        title:           { de: a.title?.de ?? '',           en: a.title?.en ?? '',           fr: a.title?.fr ?? '',           es: a.title?.es ?? '',           it: a.title?.it ?? '' },
         slug:            a.slug ?? '',
-        excerpt:         { de: a.excerpt?.de ?? '',         en: a.excerpt?.en ?? '' },
-        content:         { de: a.content?.de ?? '',         en: a.content?.en ?? '' },
-        seo_title:       { de: a.seo_title?.de ?? '',       en: a.seo_title?.en ?? '' },
-        seo_description: { de: a.seo_description?.de ?? '', en: a.seo_description?.en ?? '' },
+        excerpt:         { de: a.excerpt?.de ?? '',         en: a.excerpt?.en ?? '',         fr: a.excerpt?.fr ?? '',         es: a.excerpt?.es ?? '',         it: a.excerpt?.it ?? '' },
+        content:         { de: a.content?.de ?? '',         en: a.content?.en ?? '',         fr: a.content?.fr ?? '',         es: a.content?.es ?? '',         it: a.content?.it ?? '' },
+        seo_title:       { de: a.seo_title?.de ?? '',       en: a.seo_title?.en ?? '',       fr: a.seo_title?.fr ?? '',       es: a.seo_title?.es ?? '',       it: a.seo_title?.it ?? '' },
+        seo_description: { de: a.seo_description?.de ?? '', en: a.seo_description?.en ?? '', fr: a.seo_description?.fr ?? '', es: a.seo_description?.es ?? '', it: a.seo_description?.it ?? '' },
         author_name:     a.author_name     ?? '',
         category:        a.category        ?? 'health',
         reading_time_min: a.reading_time_min != null ? String(a.reading_time_min) : '',
@@ -193,6 +194,39 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
 
   const removeTag = (tag: string) =>
     setForm((f) => ({ ...f, tags: f.tags.filter((t) => t !== tag) }));
+
+  // ── AI Translate ──────────────────────────────────────────────────────────────
+
+  const handleTranslate = async () => {
+    const src = form.title.en || form.title.de;
+    if (!src) { alert('Enter an EN or DE title first.'); return; }
+    setTranslating(true);
+    try {
+      const res = await fetch('/api/admin/translate-article', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title_en:           form.title.en || form.title.de,
+          excerpt_en:         form.excerpt.en || form.excerpt.de,
+          seo_title_en:       form.seo_title.en || form.seo_title.de,
+          seo_description_en: form.seo_description.en || form.seo_description.de,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Translate failed');
+      setForm((f) => ({
+        ...f,
+        title:           { ...f.title,           fr: f.title.fr           || json.title_fr           || '', es: f.title.es           || json.title_es           || '', it: f.title.it           || json.title_it           || '' },
+        excerpt:         { ...f.excerpt,         fr: f.excerpt.fr         || json.excerpt_fr         || '', es: f.excerpt.es         || json.excerpt_es         || '', it: f.excerpt.it         || json.excerpt_it         || '' },
+        seo_title:       { ...f.seo_title,       fr: f.seo_title.fr       || json.seo_title_fr       || '', es: f.seo_title.es       || json.seo_title_es       || '', it: f.seo_title.it       || json.seo_title_it       || '' },
+        seo_description: { ...f.seo_description, fr: f.seo_description.fr || json.seo_description_fr || '', es: f.seo_description.es || json.seo_description_es || '', it: f.seo_description.it || json.seo_description_it || '' },
+      }));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   // ── Image ─────────────────────────────────────────────────────────────────────
 
@@ -238,12 +272,12 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
 
     try {
       const payload = {
-        title:           { de: form.title.de,           en: form.title.en },
+        title:           { de: form.title.de,           en: form.title.en,           fr: form.title.fr,           es: form.title.es,           it: form.title.it },
         slug:            form.slug.trim() || slugify(form.title.de || form.title.en),
-        excerpt:         { de: form.excerpt.de,         en: form.excerpt.en },
-        content:         { de: form.content.de,         en: form.content.en },
-        seo_title:       { de: form.seo_title.de,       en: form.seo_title.en },
-        seo_description: { de: form.seo_description.de, en: form.seo_description.en },
+        excerpt:         { de: form.excerpt.de,         en: form.excerpt.en,         fr: form.excerpt.fr,         es: form.excerpt.es,         it: form.excerpt.it },
+        content:         { de: form.content.de,         en: form.content.en,         fr: form.content.fr,         es: form.content.es,         it: form.content.it },
+        seo_title:       { de: form.seo_title.de,       en: form.seo_title.en,       fr: form.seo_title.fr,       es: form.seo_title.es,       it: form.seo_title.it },
+        seo_description: { de: form.seo_description.de, en: form.seo_description.en, fr: form.seo_description.fr, es: form.seo_description.es, it: form.seo_description.it },
         author_name:      form.author_name.trim() || null,
         category:         form.category || null,
         reading_time_min: form.reading_time_min ? Number(form.reading_time_min) : null,
@@ -325,9 +359,17 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
             {articleId ? 'Edit Article' : 'New Article'}
           </h2>
           <div className="flex items-center gap-3">
+            {/* AI Translate */}
+            <button
+              onClick={handleTranslate}
+              disabled={translating}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#ceab84]/40 text-[10px] font-medium text-[#8a6a3e] hover:bg-[#ceab84]/10 disabled:opacity-50 transition whitespace-nowrap"
+            >
+              {translating ? '…' : '✦ AI Translate'}
+            </button>
             {/* Lang switcher */}
             <div className="flex rounded-lg border border-[#0e393d]/15 overflow-hidden text-xs">
-              {(['de', 'en'] as Lang[]).map((l) => (
+              {(['de', 'en', 'fr', 'es', 'it'] as Lang[]).map((l) => (
                 <button
                   key={l}
                   onClick={() => setLang(l)}

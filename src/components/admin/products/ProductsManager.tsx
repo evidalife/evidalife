@@ -21,9 +21,9 @@ async function compressImage(file: File, maxWidth = 800, quality = 0.85): Promis
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Lang = 'de' | 'en';
-type LangContent = { de: string; en: string };
-type I18n = { de?: string; en?: string } | null;
+type Lang = 'de' | 'en' | 'fr' | 'es' | 'it';
+type LangContent = { de: string; en: string; fr: string; es: string; it: string };
+type I18n = Record<string, string> | null;
 
 export type Product = {
   id: string;
@@ -59,9 +59,9 @@ type FormState = {
 };
 
 const EMPTY_FORM: FormState = {
-  name: { de: '', en: '' },
+  name: { de: '', en: '', fr: '', es: '', it: '' },
   sku: '', slug: '',
-  description: { de: '', en: '' },
+  description: { de: '', en: '', fr: '', es: '', it: '' },
   price_chf: '', price_eur: '',
   tax_class: 'standard', product_type: 'test_package',
   marker_count: '',
@@ -144,6 +144,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [lang, setLang] = useState<Lang>('de');
+  const [translating, setTranslating] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -197,10 +198,10 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     setEditingId(p.id);
     setLang('de');
     setForm({
-      name: { de: p.name?.de ?? '', en: p.name?.en ?? '' },
+      name: { de: p.name?.de ?? '', en: p.name?.en ?? '', fr: p.name?.fr ?? '', es: p.name?.es ?? '', it: p.name?.it ?? '' },
       sku: p.sku ?? '',
       slug: p.slug ?? '',
-      description: { de: p.description?.de ?? '', en: p.description?.en ?? '' },
+      description: { de: p.description?.de ?? '', en: p.description?.en ?? '', fr: p.description?.fr ?? '', es: p.description?.es ?? '', it: p.description?.it ?? '' },
       price_chf: p.price_chf != null ? String(p.price_chf) : '',
       price_eur: p.price_eur != null ? String(p.price_eur) : '',
       tax_class: p.tax_class ?? 'standard',
@@ -274,6 +275,32 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     setImageRemoved(true);
   };
 
+  // ── AI Translate ──────────────────────────────────────────────────────────────
+
+  const handleTranslate = async () => {
+    const srcName = form.name.en || form.name.de;
+    if (!srcName) { alert('Enter an EN or DE name first.'); return; }
+    setTranslating(true);
+    try {
+      const res = await fetch('/api/admin/translate-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name_en: form.name.en || form.name.de, description_en: form.description.en || form.description.de }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Translate failed');
+      setForm((f) => ({
+        ...f,
+        name:        { ...f.name,        fr: f.name.fr        || json.name_fr        || '', es: f.name.es        || json.name_es        || '', it: f.name.it        || json.name_it        || '' },
+        description: { ...f.description, fr: f.description.fr || json.description_fr || '', es: f.description.es || json.description_es || '', it: f.description.it || json.description_it || '' },
+      }));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   // ── Save ─────────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
@@ -285,10 +312,10 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     setError(null);
 
     const payload = {
-      name: { de: form.name.de, en: form.name.en },
+      name: { de: form.name.de, en: form.name.en, fr: form.name.fr, es: form.name.es, it: form.name.it },
       sku: form.sku.trim() || null,
       slug: form.slug.trim() || slugify(form.name.de || form.name.en),
-      description: { de: form.description.de, en: form.description.en },
+      description: { de: form.description.de, en: form.description.en, fr: form.description.fr, es: form.description.es, it: form.description.it },
       price_chf: form.price_chf ? Number(form.price_chf) : null,
       price_eur: form.price_eur ? Number(form.price_eur) : null,
       tax_class: form.tax_class || null,
@@ -503,9 +530,17 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                 {editingId ? 'Edit Product' : 'New Product'}
               </h2>
               <div className="flex items-center gap-3">
+                {/* AI Translate */}
+                <button
+                  onClick={handleTranslate}
+                  disabled={translating}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#ceab84]/40 text-[10px] font-medium text-[#8a6a3e] hover:bg-[#ceab84]/10 disabled:opacity-50 transition whitespace-nowrap"
+                >
+                  {translating ? '…' : '✦ AI Translate'}
+                </button>
                 {/* Lang tabs */}
                 <div className="flex rounded-lg border border-[#0e393d]/15 overflow-hidden text-xs">
-                  {(['de', 'en'] as Lang[]).map((l) => (
+                  {(['de', 'en', 'fr', 'es', 'it'] as Lang[]).map((l) => (
                     <button
                       key={l}
                       onClick={() => setLang(l)}
