@@ -26,7 +26,13 @@ export async function POST(req: NextRequest) {
   const langName = LANG_NAMES[language] ?? 'English';
   const client = new Anthropic({ apiKey });
 
-  const prompt = `You are a recipe styling expert. Take these recipe instructions in ${langName} and enhance them with professional markdown formatting. Add **bold** for key ingredients and temperatures. Ensure steps are properly numbered. Add section headers (## Prep, ## Cook, ## Serve) if the recipe has distinct phases. Highlight tips with > quote blocks. Add --- dividers between major sections. Preserve ALL existing photo references (![photo:N]) exactly as-is. Do NOT change the actual content or recipe steps. Return ONLY valid JSON with a single "instructions" key.
+  const prompt = `You are a recipe styling expert. Take these recipe instructions in ${langName} and enhance them with professional markdown formatting. Add **bold** for key ingredients and temperatures. Ensure steps are properly numbered. Add section headers (## Prep, ## Cook, ## Serve). Highlight tips with > quote blocks. Add --- dividers between major sections. Preserve ALL existing photo references (![photo:N]) exactly as-is. Do NOT change the actual content or recipe steps. Return ONLY valid JSON with a single "instructions" key.
+
+CRITICAL: Use this exact section structure for ALL languages:
+- ## Prep — only preparation steps like washing, chopping, measuring. If no distinct prep steps exist, leave this section empty with just the header and ---
+- ## Cook — ALL cooking steps with numbered list
+- ## Serve — plating and serving steps
+Never put cooking steps under ## Prep. The section headers must ALWAYS be in English (## Prep, ## Cook, ## Serve) regardless of the recipe language — they are formatting markers, not translated text.
 
 INSTRUCTIONS:
 ${instructions}
