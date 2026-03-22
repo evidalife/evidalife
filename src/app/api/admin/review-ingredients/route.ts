@@ -74,18 +74,18 @@ export async function POST(req: NextRequest) {
 
   const prompt = `You are a nutrition and culinary database expert. For each ingredient, fill in ONLY the fields marked as needed. Do NOT include fields that are not marked.
 
-Fields to fill when marked:
-- need_de: German culinary name
-- need_fr: French culinary name
-- need_es: Spanish culinary name
-- need_it: Italian culinary name
-- need_nutrition: kcal_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g, fiber_per_100g (USDA/European BLS values per 100g, round to 1 decimal; use cooked values for pasta/rice/legumes)
-- need_grams: grams_per_unit — average grams for one "unit" (unit field provided). Examples: 1 jalapeño (stk) = 14g, 1 garlic clove (zehe) = 5g, 1 tbsp (el) honey = 21g
+Output key names (use EXACTLY these keys in the changes object):
+- need_de → key "name_de": German culinary name
+- need_fr → key "name_fr": French culinary name
+- need_es → key "name_es": Spanish culinary name
+- need_it → key "name_it": Italian culinary name
+- need_nutrition → keys "kcal_per_100g", "protein_per_100g", "fat_per_100g", "carbs_per_100g", "fiber_per_100g" (USDA/European BLS values per 100g, round to 1 decimal; use cooked values for pasta/rice/legumes)
+- need_grams → key "grams_per_unit": average grams for one "unit" (unit field provided). Examples: 1 jalapeño (stk) = 14g, 1 garlic clove (zehe) = 5g, 1 tbsp (el) honey = 21g
 
 Ingredients:
 ${JSON.stringify(items)}
 
-Return ONLY a compact JSON array. Each element: {"id":"...","changes":{<only needed fields>}}
+Return ONLY a compact JSON array. Each element: {"id":"...","changes":{<only needed fields with exact key names above>}}
 Include ONLY ingredients that need at least one change.
 No markdown, no explanation.`;
 
