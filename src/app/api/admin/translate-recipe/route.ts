@@ -21,9 +21,9 @@ export async function POST(req: NextRequest) {
 
   const client = new Anthropic({ apiKey });
 
-  const prompt = `You are translating recipe content from English to German for a Swiss/DACH audience. Maintain cooking terminology accurately. Use natural German phrasing. Convert any remaining US/imperial measurements to metric (e.g. °F→°C, cups→g/ml, oz→g).
-
-Translate the following recipe fields from English to German:
+  const prompt = `Translate this recipe content from English to German (de), French (fr), Spanish (es), and Italian (it).
+For German, use Swiss/DACH conventions and culinary terms. For all languages, use natural phrasing.
+Convert any remaining US/imperial measurements to metric (°F→°C, cups→g/ml, oz→g, lb→g).
 
 TITLE: ${title}
 
@@ -34,9 +34,12 @@ ${instructions}
 
 Return ONLY valid JSON:
 {
-  "title_de": string,
-  "description_de": string,
-  "instructions_de": string
+  "translations": {
+    "de": { "title": string, "description": string, "instructions": string },
+    "fr": { "title": string, "description": string, "instructions": string },
+    "es": { "title": string, "description": string, "instructions": string },
+    "it": { "title": string, "description": string, "instructions": string }
+  }
 }
 
 Return ONLY the JSON object, no markdown, no explanation.`;
@@ -44,7 +47,7 @@ Return ONLY the JSON object, no markdown, no explanation.`;
   try {
     const message = await client.messages.create({
       model: 'claude-sonnet-4-5',
-      max_tokens: 2048,
+      max_tokens: 8192,
       messages: [{ role: 'user', content: prompt }],
     });
 

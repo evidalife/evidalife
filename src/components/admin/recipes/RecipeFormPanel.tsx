@@ -25,8 +25,19 @@ const GOAL_TAGS = [
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Lang = 'de' | 'en';
-type LangContent = { de: string; en: string };
+type Lang = 'en' | 'de' | 'fr' | 'es' | 'it';
+type LangContent = { en: string; de: string; fr: string; es: string; it: string };
+
+const ALL_LANGS: Lang[] = ['en', 'de', 'fr', 'es', 'it'];
+const LANG_LABELS: Record<Lang, string> = { en: 'EN', de: 'DE', fr: 'FR', es: 'ES', it: 'IT' };
+
+const LANG_PLACEHOLDERS: Record<Lang, { title: string; description: string; instructions: string }> = {
+  en: { title: 'e.g. Green Smoothie with Spinach', description: 'Short description…', instructions: '1. Wash spinach…\n2. Blend all…' },
+  de: { title: 'z.B. Grüner Smoothie mit Spinat', description: 'Kurze Beschreibung…', instructions: '1. Spinat waschen…\n2. Alle Zutaten…' },
+  fr: { title: 'ex. Smoothie vert aux épinards', description: 'Courte description…', instructions: '1. Laver les épinards…' },
+  es: { title: 'p.ej. Batido verde con espinacas', description: 'Breve descripción…', instructions: '1. Lavar las espinacas…' },
+  it: { title: 'es. Frullato verde con spinaci', description: 'Breve descrizione…', instructions: '1. Lavare gli spinaci…' },
+};
 
 type IngredientOption = {
   id: string;
@@ -132,10 +143,10 @@ const EMPTY_INGREDIENT: Omit<IngredientRow, '_key'> = {
 };
 
 const EMPTY_FORM: RecipeForm = {
-  title:        { de: '', en: '' },
+  title:        { en: '', de: '', fr: '', es: '', it: '' },
   slug: '',
-  description:  { de: '', en: '' },
-  instructions: { de: '', en: '' },
+  description:  { en: '', de: '', fr: '', es: '', it: '' },
+  instructions: { en: '', de: '', fr: '', es: '', it: '' },
   prep_time_min: '', cook_time_min: '', servings: '',
   difficulty: 'easy',
   course_type_id: '',
@@ -975,6 +986,9 @@ function ParsedResultCard({
 interface NewIngredientEntry {
   name_en: string;
   name_de: string;
+  name_fr: string;
+  name_es: string;
+  name_it: string;
   default_unit_id: string;
   daily_dozen_category_id: string;
   kcal_per_100g: string;
@@ -1003,6 +1017,9 @@ function MissingIngredientsModal({
     missing.map((m) => ({
       name_en: m.name_en,
       name_de: m.name_en, // user can edit
+      name_fr: '',
+      name_es: '',
+      name_it: '',
       default_unit_id: '',
       daily_dozen_category_id: '',
       kcal_per_100g: '',
@@ -1049,6 +1066,15 @@ function MissingIngredientsModal({
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
+                    <label className="block text-xs font-medium text-[#0e393d]/60 mb-1">Name EN *</label>
+                    <input
+                      className={inputCls}
+                      value={entry.name_en}
+                      onChange={(e) => update(i, { name_en: e.target.value })}
+                      placeholder="English…"
+                    />
+                  </div>
+                  <div>
                     <label className="block text-xs font-medium text-[#0e393d]/60 mb-1">Name DE *</label>
                     <input
                       className={inputCls}
@@ -1057,13 +1083,33 @@ function MissingIngredientsModal({
                       placeholder="Deutsch…"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <label className="block text-xs font-medium text-[#0e393d]/60 mb-1">Name EN *</label>
+                    <label className="block text-xs font-medium text-[#0e393d]/60 mb-1">Name FR</label>
                     <input
                       className={inputCls}
-                      value={entry.name_en}
-                      onChange={(e) => update(i, { name_en: e.target.value })}
-                      placeholder="English…"
+                      value={entry.name_fr}
+                      onChange={(e) => update(i, { name_fr: e.target.value })}
+                      placeholder="Français…"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[#0e393d]/60 mb-1">Name ES</label>
+                    <input
+                      className={inputCls}
+                      value={entry.name_es}
+                      onChange={(e) => update(i, { name_es: e.target.value })}
+                      placeholder="Español…"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[#0e393d]/60 mb-1">Name IT</label>
+                    <input
+                      className={inputCls}
+                      value={entry.name_it}
+                      onChange={(e) => update(i, { name_it: e.target.value })}
+                      placeholder="Italiano…"
                     />
                   </div>
                 </div>
@@ -1267,10 +1313,10 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       setCropGrid((r as Record<string, unknown>).cover_crop_grid as CropData | null ?? null);
       pendingDeleteRef.current = null;
       setForm({
-        title:        { de: r.title?.de ?? '',        en: r.title?.en ?? '' },
+        title:        { en: r.title?.en ?? '', de: r.title?.de ?? '', fr: r.title?.fr ?? '', es: r.title?.es ?? '', it: r.title?.it ?? '' },
         slug: r.slug ?? '',
-        description:  { de: r.description?.de ?? '',  en: r.description?.en ?? '' },
-        instructions: { de: r.instructions?.de ?? '', en: r.instructions?.en ?? '' },
+        description:  { en: r.description?.en ?? '', de: r.description?.de ?? '', fr: r.description?.fr ?? '', es: r.description?.es ?? '', it: r.description?.it ?? '' },
+        instructions: { en: r.instructions?.en ?? '', de: r.instructions?.de ?? '', fr: r.instructions?.fr ?? '', es: r.instructions?.es ?? '', it: r.instructions?.it ?? '' },
         prep_time_min: r.prep_time_min != null ? String(r.prep_time_min) : '',
         cook_time_min: r.cook_time_min != null ? String(r.cook_time_min) : '',
         servings:      r.servings     != null ? String(r.servings)      : '',
@@ -1516,12 +1562,12 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
   const validate = (): string[] => {
     const errs: string[] = [];
-    if (!form.title.de.trim())          errs.push('Title (DE) is required.');
     if (!form.title.en.trim())          errs.push('Title (EN) is required.');
-    if (!form.description.de.trim())    errs.push('Description (DE) is required.');
+    if (!form.title.de.trim())          errs.push('Title (DE) is required.');
     if (!form.description.en.trim())    errs.push('Description (EN) is required.');
-    if (!form.instructions.de.trim())   errs.push('Instructions (DE) are required.');
+    if (!form.description.de.trim())    errs.push('Description (DE) is required.');
     if (!form.instructions.en.trim())   errs.push('Instructions (EN) are required.');
+    if (!form.instructions.de.trim())   errs.push('Instructions (DE) are required.');
     if (!form.prep_time_min.trim())     errs.push('Prep time is required.');
     if (!form.cook_time_min.trim())     errs.push('Cook time is required.');
     if (!form.servings.trim())          errs.push('Servings is required.');
@@ -1545,10 +1591,10 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
     try {
       const payload = {
-        title:        { de: form.title.de,        en: form.title.en },
-        slug: form.slug.trim() || slugify(form.title.de || form.title.en),
-        description:  { de: form.description.de,  en: form.description.en },
-        instructions: { de: form.instructions.de, en: form.instructions.en },
+        title:        form.title,
+        slug: form.slug.trim() || slugify(form.title.en || form.title.de),
+        description:  form.description,
+        instructions: form.instructions,
         prep_time_min: form.prep_time_min ? Number(form.prep_time_min) : null,
         cook_time_min: form.cook_time_min ? Number(form.cook_time_min) : null,
         servings:      form.servings      ? Number(form.servings)      : null,
@@ -1699,7 +1745,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
   const handleDelete = async () => {
     if (!recipeId) return;
-    const title = form.title.de || form.title.en || 'this recipe';
+    const title = form.title.en || form.title.de || 'this recipe';
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
     setDeleting(true);
     // Delete all storage files: pending removes + current cover + all gallery URLs
@@ -1851,11 +1897,12 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Translation failed');
+      const t = json.translations as Record<string, { title: string; description: string; instructions: string }>;
       setForm((f) => ({
         ...f,
-        title: { ...f.title, de: json.title_de ?? f.title.de },
-        description: { ...f.description, de: json.description_de ?? f.description.de },
-        instructions: { ...f.instructions, de: json.instructions_de ?? f.instructions.de },
+        title:        { ...f.title,        de: t.de?.title        ?? f.title.de,        fr: t.fr?.title        ?? f.title.fr,        es: t.es?.title        ?? f.title.es,        it: t.it?.title        ?? f.title.it },
+        description:  { ...f.description,  de: t.de?.description  ?? f.description.de,  fr: t.fr?.description  ?? f.description.fr,  es: t.es?.description  ?? f.description.es,  it: t.it?.description  ?? f.description.it },
+        instructions: { ...f.instructions, de: t.de?.instructions ?? f.instructions.de, fr: t.fr?.instructions ?? f.instructions.fr, es: t.es?.instructions ?? f.instructions.es, it: t.it?.instructions ?? f.instructions.it },
       }));
       setTranslateStatus('done');
     } catch {
@@ -1926,13 +1973,13 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
           </h2>
           <div className="flex items-center gap-3">
             <div className="flex rounded-lg border border-[#0e393d]/15 overflow-hidden text-xs">
-              {(['en', 'de'] as Lang[]).map((l) => (
+              {ALL_LANGS.map((l) => (
                 <button
                   key={l}
                   onClick={() => setLang(l)}
-                  className={`px-3 py-1.5 font-medium transition ${lang === l ? 'bg-[#0e393d] text-white' : 'text-[#1c2a2b]/60 hover:bg-[#0e393d]/5'}`}
+                  className={`px-2.5 py-1.5 font-medium transition ${lang === l ? 'bg-[#0e393d] text-white' : 'text-[#1c2a2b]/60 hover:bg-[#0e393d]/5'}`}
                 >
-                  {l.toUpperCase()}
+                  {LANG_LABELS[l]}
                 </button>
               ))}
             </div>
@@ -2026,7 +2073,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                       className={inputCls}
                       value={form.title[lang]}
                       onChange={(e) => setLangField('title', lang, e.target.value)}
-                      placeholder={lang === 'de' ? 'z.B. Grüner Smoothie mit Spinat' : 'e.g. Green Smoothie with Spinach'}
+                      placeholder={LANG_PLACEHOLDERS[lang].title}
                     />
                   </Field>
 
@@ -2036,7 +2083,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                       rows={2}
                       value={form.description[lang]}
                       onChange={(e) => setLangField('description', lang, e.target.value)}
-                      placeholder={lang === 'de' ? 'Kurze Beschreibung…' : 'Short description…'}
+                      placeholder={LANG_PLACEHOLDERS[lang].description}
                     />
                   </Field>
 
@@ -2052,7 +2099,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                       rows={6}
                       value={form.instructions[lang]}
                       onChange={(e) => setLangField('instructions', lang, e.target.value)}
-                      placeholder={lang === 'de' ? '1. Spinat waschen…\n2. Alle Zutaten…' : '1. Wash spinach…\n2. Blend all…'}
+                      placeholder={LANG_PLACEHOLDERS[lang].instructions}
                     />
                     {lang === 'en' && (
                       <div className="flex justify-end mt-1.5">
@@ -2072,7 +2119,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                             </svg>
                           )}
-                          {translateStatus === 'loading' ? 'Translating…' : translateStatus === 'done' ? '✓ DE ready — switch to review' : '✨ Translate to DE'}
+                          {translateStatus === 'loading' ? 'Translating…' : translateStatus === 'done' ? '✓ All languages ready' : '✨ Translate to all'}
                         </button>
                       </div>
                     )}
@@ -2644,7 +2691,13 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
               const { data } = await supabase
                 .from('ingredients')
                 .insert({
-                  name: { de: ni.name_de, en: ni.name_en },
+                  name: {
+                    en: ni.name_en,
+                    de: ni.name_de,
+                    ...(ni.name_fr && { fr: ni.name_fr }),
+                    ...(ni.name_es && { es: ni.name_es }),
+                    ...(ni.name_it && { it: ni.name_it }),
+                  },
                   slug: ni.name_en.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'ingredient',
                   default_unit_id: ni.default_unit_id || null,
                   daily_dozen_category_id: ni.daily_dozen_category_id || null,

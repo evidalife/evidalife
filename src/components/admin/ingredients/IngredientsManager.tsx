@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type I18n = { de?: string; en?: string } | null;
+type I18n = { en?: string; de?: string; fr?: string; es?: string; it?: string } | null;
 
 export type Ingredient = {
   id: string;
@@ -40,8 +40,11 @@ export type DailyDozenCategory = {
 };
 
 type FormState = {
-  name_de: string;
   name_en: string;
+  name_de: string;
+  name_fr: string;
+  name_es: string;
+  name_it: string;
   slug: string;
   default_unit_id: string;
   daily_dozen_category_id: string;
@@ -54,8 +57,11 @@ type FormState = {
 };
 
 const EMPTY_FORM: FormState = {
-  name_de: '',
   name_en: '',
+  name_de: '',
+  name_fr: '',
+  name_es: '',
+  name_it: '',
   slug: '',
   default_unit_id: '',
   daily_dozen_category_id: '',
@@ -143,12 +149,12 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
   const [error, setError] = useState<string | null>(null);
   const slugRef = useRef(false);
 
-  // Auto-generate slug from DE name (only when creating and slug not manually edited)
+  // Auto-generate slug from EN name (only when creating and slug not manually edited)
   useEffect(() => {
-    if (!editingId && !slugManuallyEdited && form.name_de) {
-      setForm((prev) => ({ ...prev, slug: slugify(form.name_de) }));
+    if (!editingId && !slugManuallyEdited && form.name_en) {
+      setForm((prev) => ({ ...prev, slug: slugify(form.name_en) }));
     }
-  }, [form.name_de, editingId, slugManuallyEdited]);
+  }, [form.name_en, editingId, slugManuallyEdited]);
 
   // suppress exhaustive-deps warning for slugRef
   slugRef.current = slugManuallyEdited;
@@ -176,8 +182,11 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
   const openEdit = (ing: Ingredient) => {
     setEditingId(ing.id);
     setForm({
-      name_de: ing.name?.de ?? '',
       name_en: ing.name?.en ?? '',
+      name_de: ing.name?.de ?? '',
+      name_fr: ing.name?.fr ?? '',
+      name_es: ing.name?.es ?? '',
+      name_it: ing.name?.it ?? '',
       slug: ing.slug ?? '',
       default_unit_id: ing.default_unit_id ?? '',
       daily_dozen_category_id: ing.daily_dozen_category_id ?? '',
@@ -204,20 +213,25 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
   // ── Save ──────────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
-    if (!form.name_de.trim()) {
-      setError('Name (DE) is required.');
-      return;
-    }
     if (!form.name_en.trim()) {
       setError('Name (EN) is required.');
+      return;
+    }
+    if (!form.name_de.trim()) {
+      setError('Name (DE) is required.');
       return;
     }
     setSaving(true);
     setError(null);
 
+    const nameObj: Record<string, string> = { en: form.name_en.trim(), de: form.name_de.trim() };
+    if (form.name_fr.trim()) nameObj.fr = form.name_fr.trim();
+    if (form.name_es.trim()) nameObj.es = form.name_es.trim();
+    if (form.name_it.trim()) nameObj.it = form.name_it.trim();
+
     const payload = {
-      name: { de: form.name_de.trim(), en: form.name_en.trim() },
-      slug: form.slug.trim() || slugify(form.name_de),
+      name: nameObj,
+      slug: form.slug.trim() || slugify(form.name_en),
       default_unit_id: form.default_unit_id || null,
       daily_dozen_category_id: form.daily_dozen_category_id || null,
       is_common: form.is_common,
@@ -250,7 +264,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
 
   const handleDelete = async () => {
     if (!editingId) return;
-    const name = form.name_de || form.name_en || 'this ingredient';
+    const name = form.name_en || form.name_de || 'this ingredient';
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
     const { error } = await supabase.from('ingredients').delete().eq('id', editingId);
     if (error) { setError(error.message); return; }
@@ -277,8 +291,11 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
     if (!search) return true;
     const q = search.toLowerCase();
     return (
-      ing.name?.de?.toLowerCase().includes(q) ||
       ing.name?.en?.toLowerCase().includes(q) ||
+      ing.name?.de?.toLowerCase().includes(q) ||
+      ing.name?.fr?.toLowerCase().includes(q) ||
+      ing.name?.es?.toLowerCase().includes(q) ||
+      ing.name?.it?.toLowerCase().includes(q) ||
       ing.slug?.toLowerCase().includes(q)
     );
   });
@@ -382,11 +399,16 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                   {/* Name */}
                   <td className="px-4 py-3">
                     <div className="font-medium text-[#0e393d]">
-                      {ing.name?.de || ing.name?.en || <span className="text-[#1c2a2b]/30">—</span>}
-                      {ing.name?.de && ing.name?.en && (
-                        <span className="text-[#1c2a2b]/40"> / {ing.name.en}</span>
+                      {ing.name?.en || ing.name?.de || <span className="text-[#1c2a2b]/30">—</span>}
+                      {ing.name?.de && (
+                        <span className="text-[#1c2a2b]/40"> / {ing.name.de}</span>
                       )}
                     </div>
+                    {(ing.name?.fr || ing.name?.es || ing.name?.it) && (
+                      <div className="text-[10px] text-[#1c2a2b]/30 mt-0.5">
+                        {[ing.name?.fr, ing.name?.es, ing.name?.it].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
                   </td>
 
                   {/* Default Unit */}
@@ -477,25 +499,51 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
               <div className="space-y-3">
                 <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Names</p>
 
-                <Field label="Name DE *">
-                  <input
-                    className={inputCls}
-                    value={form.name_de}
-                    onChange={(e) => setField('name_de', e.target.value)}
-                    placeholder="z.B. Spinat"
-                  />
-                </Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Name EN *">
+                    <input
+                      className={inputCls}
+                      value={form.name_en}
+                      onChange={(e) => setField('name_en', e.target.value)}
+                      placeholder="e.g. Spinach"
+                      autoFocus
+                    />
+                  </Field>
+                  <Field label="Name DE *">
+                    <input
+                      className={inputCls}
+                      value={form.name_de}
+                      onChange={(e) => setField('name_de', e.target.value)}
+                      placeholder="z.B. Spinat"
+                    />
+                  </Field>
+                  <Field label="Name FR">
+                    <input
+                      className={inputCls}
+                      value={form.name_fr}
+                      onChange={(e) => setField('name_fr', e.target.value)}
+                      placeholder="ex. Épinard"
+                    />
+                  </Field>
+                  <Field label="Name ES">
+                    <input
+                      className={inputCls}
+                      value={form.name_es}
+                      onChange={(e) => setField('name_es', e.target.value)}
+                      placeholder="ej. Espinaca"
+                    />
+                  </Field>
+                  <Field label="Name IT">
+                    <input
+                      className={inputCls}
+                      value={form.name_it}
+                      onChange={(e) => setField('name_it', e.target.value)}
+                      placeholder="es. Spinacio"
+                    />
+                  </Field>
+                </div>
 
-                <Field label="Name EN *">
-                  <input
-                    className={inputCls}
-                    value={form.name_en}
-                    onChange={(e) => setField('name_en', e.target.value)}
-                    placeholder="e.g. Spinach"
-                  />
-                </Field>
-
-                <Field label="Slug" hint="Auto-generated from DE name. Edit to override.">
+                <Field label="Slug" hint="Auto-generated from EN name. Edit to override.">
                   <input
                     className={inputCls}
                     value={form.slug}
@@ -503,7 +551,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                       setSlugManuallyEdited(true);
                       setField('slug', e.target.value);
                     }}
-                    placeholder="spinat"
+                    placeholder="spinach"
                   />
                 </Field>
               </div>
