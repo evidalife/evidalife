@@ -29,6 +29,11 @@ type IngredientOption = {
   name: { de?: string; en?: string };
   slug: string;
   default_unit_id: string | null;
+  kcal_per_100g: number | null;
+  protein_per_100g: number | null;
+  fat_per_100g: number | null;
+  carbs_per_100g: number | null;
+  fiber_per_100g: number | null;
 };
 
 type UnitOption = {
@@ -165,9 +170,6 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
-function SectionHead({ children }: { children: React.ReactNode }) {
-  return <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84] mb-3">{children}</p>;
-}
 
 function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
   return (
@@ -192,6 +194,46 @@ function IconBtn({ onClick, title, children }: { onClick: () => void; title: str
     <button type="button" onClick={onClick} title={title}
       className="flex items-center justify-center w-7 h-7 rounded-md text-[#1c2a2b]/40 hover:text-[#0e393d] hover:bg-[#0e393d]/8 transition"
     >{children}</button>
+  );
+}
+
+function SectionBlock({
+  title, open, onToggle, badge, children,
+}: {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  badge?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border-t border-[#0e393d]/8 pt-5">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between mb-3 group"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">{title}</span>
+          {badge && <span>{badge}</span>}
+        </div>
+        <svg
+          width="14" height="14" viewBox="0 0 14 14" fill="none"
+          className={`text-[#0e393d]/30 group-hover:text-[#0e393d]/60 transition-transform ${open ? 'rotate-180' : ''}`}
+        >
+          <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {open && <div>{children}</div>}
+    </div>
+  );
+}
+
+function SectionBadge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-full bg-[#0e393d]/8 px-2 py-0.5 text-[10px] font-medium text-[#0e393d]/60">
+      {children}
+    </span>
   );
 }
 
@@ -597,7 +639,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   const fileRef = useRef<HTMLInputElement>(null);
   const instructionRef = useRef<HTMLTextAreaElement>(null);
 
-  const [lang, setLang] = useState<Lang>('de');
+  const [lang, setLang] = useState<Lang>('en');
   const [form, setForm] = useState<RecipeForm>(EMPTY_FORM);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -625,6 +667,9 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   // Gallery
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
 
+  // Nutrition auto-calc mode
+  const [nutritionAutoMode, setNutritionAutoMode] = useState(true);
+
   // Goal validation
   const [goalLimitWarning, setGoalLimitWarning] = useState(false);
 
@@ -635,11 +680,27 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   const pendingDeleteRef = useRef<string | null>(null);
   const originalGalleryUrlsRef = useRef<Set<string>>(new Set());
 
+  // Collapsible sections — new recipe defaults: all key sections open; edit: all open except quick import
+  type SectionKey = 'content' | 'basics' | 'ingredients' | 'nutrition' | 'goals' | 'cover' | 'gallery' | 'settings';
+  const newRecipeDefaults: Record<SectionKey, boolean> = {
+    content: true, basics: true, ingredients: true,
+    nutrition: false, goals: false, cover: false, gallery: false, settings: false,
+  };
+  const editRecipeDefaults: Record<SectionKey, boolean> = {
+    content: true, basics: true, ingredients: true,
+    nutrition: true, goals: true, cover: true, gallery: true, settings: true,
+  };
+  const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>(
+    recipeId ? editRecipeDefaults : newRecipeDefaults
+  );
+  const toggleSection = (key: SectionKey) =>
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+
   // ── Load reference data ───────────────────────────────────────────────────────
 
   useEffect(() => {
     Promise.all([
-      supabase.from('ingredients').select('id, name, slug, default_unit_id').order('name->de'),
+      supabase.from('ingredients').select('id, name, slug, default_unit_id, kcal_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g, fiber_per_100g').order('name->de'),
       supabase.from('measurement_units').select('id, code, name, abbreviation, sort_order').order('sort_order'),
       supabase.from('daily_dozen_categories').select('id, slug, name, icon').order('sort_order'),
       supabase.from('preparation_notes').select('id, name, slug').order('slug'),
@@ -738,6 +799,54 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
   const setNutrition = (key: keyof NutritionForm, v: string) =>
     setForm((f) => ({ ...f, nutrition: { ...f.nutrition, [key]: v } }));
+
+  // Gram-based unit conversion map (unit code → grams per 1 unit)
+  const GRAM_UNITS: Record<string, number> = { g: 1, kg: 1000, mg: 0.001 };
+
+  const autoCalcNutrition = (): NutritionForm | null => {
+    const servings = Number(form.servings);
+    if (!servings || servings <= 0) return null;
+
+    let kcal = 0, protein = 0, fat = 0, carbs = 0, fiber = 0;
+    let anyIngredientWithData = false;
+
+    for (const row of form.ingredients) {
+      if (row.section_header !== null) continue;
+      if (!row.ingredient_id) continue;
+      const ing = ingredientOptions.find((o) => o.id === row.ingredient_id);
+      if (!ing) continue;
+      if (ing.kcal_per_100g == null && ing.protein_per_100g == null) continue;
+
+      const unitOpt = unitOptions.find((u) => u.id === row.unit_id);
+      const unitCode = unitOpt?.code ?? '';
+      const gramsPerUnit = GRAM_UNITS[unitCode];
+      if (!gramsPerUnit) continue; // non-gram unit — skip
+
+      const qty = Number(row.amount) || 0;
+      const totalGrams = qty * gramsPerUnit;
+      const factor = totalGrams / 100;
+
+      kcal    += (ing.kcal_per_100g    ?? 0) * factor;
+      protein += (ing.protein_per_100g ?? 0) * factor;
+      fat     += (ing.fat_per_100g     ?? 0) * factor;
+      carbs   += (ing.carbs_per_100g   ?? 0) * factor;
+      fiber   += (ing.fiber_per_100g   ?? 0) * factor;
+      anyIngredientWithData = true;
+    }
+
+    if (!anyIngredientWithData) return null;
+
+    const round1 = (v: number) => Math.round(v / servings * 10) / 10;
+    return {
+      calories:  String(Math.round(kcal / servings)),
+      protein_g: String(round1(protein)),
+      fat_g:     String(round1(fat)),
+      carbs_g:   String(round1(carbs)),
+      fiber_g:   String(round1(fiber)),
+    };
+  };
+
+  const autoCalc = nutritionAutoMode ? autoCalcNutrition() : null;
 
   // ── Ingredients ──────────────────────────────────────────────────────────────
 
@@ -897,13 +1006,16 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         servings:      form.servings      ? Number(form.servings)      : null,
         difficulty:    form.difficulty || null,
         course_type_id: form.course_type_id || null,
-        nutrition_info: {
-          calories:  form.nutrition.calories  ? Number(form.nutrition.calories)  : null,
-          protein_g: form.nutrition.protein_g ? Number(form.nutrition.protein_g) : null,
-          fat_g:     form.nutrition.fat_g     ? Number(form.nutrition.fat_g)     : null,
-          carbs_g:   form.nutrition.carbs_g   ? Number(form.nutrition.carbs_g)   : null,
-          fiber_g:   form.nutrition.fiber_g   ? Number(form.nutrition.fiber_g)   : null,
-        },
+        nutrition_info: (() => {
+          const n = autoCalc ?? form.nutrition;
+          return {
+            calories:  n.calories  ? Number(n.calories)  : null,
+            protein_g: n.protein_g ? Number(n.protein_g) : null,
+            fat_g:     n.fat_g     ? Number(n.fat_g)     : null,
+            carbs_g:   n.carbs_g   ? Number(n.carbs_g)   : null,
+            fiber_g:   n.fiber_g   ? Number(n.fiber_g)   : null,
+          };
+        })(),
         is_published: form.is_published,
         is_featured:  form.is_featured,
       };
@@ -1086,7 +1198,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
           </h2>
           <div className="flex items-center gap-3">
             <div className="flex rounded-lg border border-[#0e393d]/15 overflow-hidden text-xs">
-              {(['de', 'en'] as Lang[]).map((l) => (
+              {(['en', 'de'] as Lang[]).map((l) => (
                 <button
                   key={l}
                   onClick={() => setLang(l)}
@@ -1108,90 +1220,127 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         {loading ? (
           <div className="flex-1 flex items-center justify-center text-sm text-[#1c2a2b]/40">Loading…</div>
         ) : (
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-7">
+          <div className="flex-1 overflow-y-auto px-6 py-5">
 
-            {/* ── Multilingual content ─────────────────────────────────────── */}
+            {/* ── Content ───────────────────────────────────────────────── */}
             <div className="space-y-4">
-              <SectionHead>Content — {lang.toUpperCase()}</SectionHead>
+              <button
+                type="button"
+                onClick={() => toggleSection('content')}
+                className="flex w-full items-center justify-between group"
+              >
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Content — {lang.toUpperCase()}</span>
+                <svg
+                  width="14" height="14" viewBox="0 0 14 14" fill="none"
+                  className={`text-[#0e393d]/30 group-hover:text-[#0e393d]/60 transition-transform ${openSections.content ? 'rotate-180' : ''}`}
+                >
+                  <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
 
-              <Field label={`Title (${lang.toUpperCase()}) *`}>
-                <input
-                  className={inputCls}
-                  value={form.title[lang]}
-                  onChange={(e) => setLangField('title', lang, e.target.value)}
-                  placeholder={lang === 'de' ? 'z.B. Grüner Smoothie mit Spinat' : 'e.g. Green Spinach Smoothie'}
-                />
-              </Field>
+              {openSections.content && (
+                <div className="space-y-4">
+                  <Field label={`Title (${lang.toUpperCase()}) *`}>
+                    <input
+                      className={inputCls}
+                      value={form.title[lang]}
+                      onChange={(e) => setLangField('title', lang, e.target.value)}
+                      placeholder={lang === 'de' ? 'z.B. Grüner Smoothie mit Spinat' : 'e.g. Green Smoothie with Spinach'}
+                    />
+                  </Field>
 
-              <Field label={`Description (${lang.toUpperCase()})`}>
-                <textarea
-                  className={inputCls + ' resize-none'}
-                  rows={2}
-                  value={form.description[lang]}
-                  onChange={(e) => setLangField('description', lang, e.target.value)}
-                  placeholder={lang === 'de' ? 'Kurze Beschreibung…' : 'Short description…'}
-                />
-              </Field>
+                  <Field label={`Description (${lang.toUpperCase()})`}>
+                    <textarea
+                      className={inputCls + ' resize-none'}
+                      rows={2}
+                      value={form.description[lang]}
+                      onChange={(e) => setLangField('description', lang, e.target.value)}
+                      placeholder={lang === 'de' ? 'Kurze Beschreibung…' : 'Short description…'}
+                    />
+                  </Field>
 
-              <Field label={`Instructions (${lang.toUpperCase()})`} hint="Markdown supported">
-                <MarkdownToolbar
-                  taRef={instructionRef}
-                  value={form.instructions[lang]}
-                  onChange={(v) => setLangField('instructions', lang, v)}
-                />
-                <textarea
-                  ref={instructionRef}
-                  className={inputCls + ' resize-y'}
-                  rows={6}
-                  value={form.instructions[lang]}
-                  onChange={(e) => setLangField('instructions', lang, e.target.value)}
-                  placeholder={lang === 'de' ? '1. Spinat waschen…\n2. Alle Zutaten…' : '1. Wash spinach…\n2. Blend all…'}
-                />
-              </Field>
+                  <Field label={`Instructions (${lang.toUpperCase()})`} hint="Markdown supported">
+                    <MarkdownToolbar
+                      taRef={instructionRef}
+                      value={form.instructions[lang]}
+                      onChange={(v) => setLangField('instructions', lang, v)}
+                    />
+                    <textarea
+                      ref={instructionRef}
+                      className={inputCls + ' resize-y'}
+                      rows={6}
+                      value={form.instructions[lang]}
+                      onChange={(e) => setLangField('instructions', lang, e.target.value)}
+                      placeholder={lang === 'de' ? '1. Spinat waschen…\n2. Alle Zutaten…' : '1. Wash spinach…\n2. Blend all…'}
+                    />
+                  </Field>
+                </div>
+              )}
             </div>
 
             {/* ── Basics ──────────────────────────────────────────────────── */}
-            <div className="space-y-4 border-t border-[#0e393d]/8 pt-6">
-              <SectionHead>Basics</SectionHead>
-              <div className="grid grid-cols-4 gap-3">
-                <Field label="Prep (min)">
-                  <input type="number" min={0} className={inputCls} value={form.prep_time_min}
-                    onChange={(e) => setForm((f) => ({ ...f, prep_time_min: e.target.value }))} placeholder="10" />
-                </Field>
-                <Field label="Cook (min)">
-                  <input type="number" min={0} className={inputCls} value={form.cook_time_min}
-                    onChange={(e) => setForm((f) => ({ ...f, cook_time_min: e.target.value }))} placeholder="20" />
-                </Field>
-                <Field label="Servings">
-                  <input type="number" min={1} className={inputCls} value={form.servings}
-                    onChange={(e) => setForm((f) => ({ ...f, servings: e.target.value }))} placeholder="2" />
-                </Field>
-                <Field label="Difficulty">
-                  <select className={inputCls + ' cursor-pointer'} value={form.difficulty}
-                    onChange={(e) => setForm((f) => ({ ...f, difficulty: e.target.value }))}>
-                    <option value="easy">Easy</option>
-                    <option value="medium">Medium</option>
-                    <option value="hard">Hard</option>
-                  </select>
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Course Type">
-                  <select
-                    className={inputCls + ' cursor-pointer'}
-                    value={form.course_type_id}
-                    onChange={(e) => setForm((f) => ({ ...f, course_type_id: e.target.value }))}
-                  >
-                    <option value="">— Any</option>
-                    {courseTypeOptions.map((ct) => (
-                      <option key={ct.id} value={ct.id}>
-                        {ct.name?.en || ct.name?.de || ct.slug}
-                      </option>
+            <SectionBlock title="Basics" open={openSections.basics} onToggle={() => toggleSection('basics')}>
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-3">
+                  <Field label="Prep (min)">
+                    <input type="number" min={0} className={inputCls} value={form.prep_time_min}
+                      onChange={(e) => setForm((f) => ({ ...f, prep_time_min: e.target.value }))} placeholder="10" />
+                  </Field>
+                  <Field label="Cook (min)">
+                    <input type="number" min={0} className={inputCls} value={form.cook_time_min}
+                      onChange={(e) => setForm((f) => ({ ...f, cook_time_min: e.target.value }))} placeholder="20" />
+                  </Field>
+                  <Field label="Servings">
+                    <input type="number" min={1} className={inputCls} value={form.servings}
+                      onChange={(e) => setForm((f) => ({ ...f, servings: e.target.value }))} placeholder="2" />
+                  </Field>
+                </div>
+
+                {/* Difficulty pills */}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-medium text-[#0e393d]/60 w-[70px] shrink-0">Difficulty</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(['easy', 'medium', 'hard'] as const).map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, difficulty: d }))}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition capitalize ${
+                          form.difficulty === d
+                            ? 'bg-[#0e393d] text-white'
+                            : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'
+                        }`}
+                      >
+                        {d.charAt(0).toUpperCase() + d.slice(1)}
+                      </button>
                     ))}
-                  </select>
-                </Field>
-                <div>
-                  <label className="block text-xs font-medium text-[#0e393d]/60 mb-1.5">Meal Type</label>
+                  </div>
+                </div>
+
+                {/* Course Type pills */}
+                <div className="flex items-start gap-3">
+                  <span className="text-xs font-medium text-[#0e393d]/60 w-[70px] shrink-0 pt-1">Course</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {courseTypeOptions.map((ct) => (
+                      <button
+                        key={ct.id}
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, course_type_id: f.course_type_id === ct.id ? '' : ct.id }))}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                          form.course_type_id === ct.id
+                            ? 'bg-[#0e393d] text-white'
+                            : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'
+                        }`}
+                      >
+                        {ct.name?.en || ct.name?.de || ct.slug}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Meal Type pills */}
+                <div className="flex items-start gap-3">
+                  <span className="text-xs font-medium text-[#0e393d]/60 w-[70px] shrink-0 pt-1">Meal</span>
                   <div className="flex flex-wrap gap-1.5">
                     {mealTypeOptions.map((mt) => {
                       const active = form.meal_type_ids.includes(mt.id);
@@ -1220,36 +1369,96 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                   </div>
                 </div>
               </div>
-            </div>
+            </SectionBlock>
 
             {/* ── Nutrition ───────────────────────────────────────────────── */}
-            <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
-              <SectionHead>Nutrition (per serving)</SectionHead>
-              <div className="grid grid-cols-5 gap-3">
-                {([
-                  ['calories',  'kcal'],
-                  ['protein_g', 'Protein g'],
-                  ['fat_g',     'Fat g'],
-                  ['carbs_g',   'Carbs g'],
-                  ['fiber_g',   'Fiber g'],
-                ] as [keyof NutritionForm, string][]).map(([key, label]) => (
-                  <Field key={key} label={label}>
-                    <input
-                      type="number" min={0} step={0.1}
-                      className={inputCls}
-                      value={form.nutrition[key]}
-                      onChange={(e) => setNutrition(key, e.target.value)}
-                      placeholder="0"
-                    />
-                  </Field>
-                ))}
+            <SectionBlock
+              title="Nutrition"
+              open={openSections.nutrition}
+              onToggle={() => toggleSection('nutrition')}
+              badge={
+                <span className="flex items-center gap-1">
+                  <SectionBadge>per serving</SectionBadge>
+                  {autoCalc && <SectionBadge>auto</SectionBadge>}
+                </span>
+              }
+            >
+              <div className="space-y-3">
+                {autoCalc && (
+                  <div className="flex items-center justify-between rounded-lg bg-violet-50 border border-violet-200/60 px-3 py-2">
+                    <p className="text-[11px] text-violet-700">
+                      Auto-calculated from ingredient database (÷ {form.servings || '?'} servings)
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNutritionAutoMode(false);
+                        setForm((f) => ({ ...f, nutrition: autoCalc }));
+                      }}
+                      className="text-[11px] font-medium text-violet-600 hover:text-violet-800 transition whitespace-nowrap ml-2"
+                    >
+                      Edit manually
+                    </button>
+                  </div>
+                )}
+                {!nutritionAutoMode && (
+                  <button
+                    type="button"
+                    onClick={() => setNutritionAutoMode(true)}
+                    className="text-[11px] font-medium text-violet-600 hover:text-violet-800 transition"
+                  >
+                    ↩ Switch back to auto-calculate
+                  </button>
+                )}
+                <div className="grid grid-cols-5 gap-3">
+                  {([
+                    ['calories',  'Calories', 'kcal'],
+                    ['protein_g', 'Protein',  'g'],
+                    ['fat_g',     'Fat',      'g'],
+                    ['carbs_g',   'Carbs',    'g'],
+                    ['fiber_g',   'Fiber',    'g'],
+                  ] as [keyof NutritionForm, string, string][]).map(([key, label, unit]) => {
+                    const displayVal = autoCalc ? autoCalc[key] : form.nutrition[key];
+                    return (
+                      <div key={key}>
+                        <label className="block text-xs font-medium text-[#0e393d]/70 mb-1">{label}</label>
+                        <div className="relative">
+                          <input
+                            type="number" min={0} step={0.1}
+                            readOnly={!!autoCalc}
+                            className={`w-full rounded-lg border border-[#0e393d]/15 pl-2 pr-7 py-2 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition ${autoCalc ? 'bg-violet-50/60 cursor-default' : 'bg-white'}`}
+                            value={displayVal}
+                            onChange={(e) => { if (!autoCalc) setNutrition(key, e.target.value); }}
+                            placeholder="0"
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#1c2a2b]/40 pointer-events-none">{unit}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            </SectionBlock>
 
             {/* ── Ingredients ─────────────────────────────────────────────── */}
-            <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
-              <div className="flex items-center justify-between">
-                <SectionHead>Ingredients ({form.ingredients.length})</SectionHead>
+            <div className="border-t border-[#0e393d]/8 pt-5">
+              <div className="flex items-center justify-between mb-3">
+                <button
+                  type="button"
+                  onClick={() => toggleSection('ingredients')}
+                  className="flex items-center gap-2 group"
+                >
+                  <span className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Ingredients</span>
+                  {form.ingredients.filter((i) => i.section_header === null).length > 0 && (
+                    <SectionBadge>{form.ingredients.filter((i) => i.section_header === null).length}</SectionBadge>
+                  )}
+                  <svg
+                    width="14" height="14" viewBox="0 0 14 14" fill="none"
+                    className={`text-[#0e393d]/30 group-hover:text-[#0e393d]/60 transition-transform ${openSections.ingredients ? 'rotate-180' : ''}`}
+                  >
+                    <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -1267,6 +1476,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                   </button>
                 </div>
               </div>
+            {openSections.ingredients && (<div className="space-y-3">
 
               {/* Column headers */}
               {form.ingredients.some((i) => i.section_header === null) && (
@@ -1386,101 +1596,116 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                   );
                 })}
               </div>
+            </div>)}
             </div>
 
             {/* ── Goal tags ────────────────────────────────────────────────── */}
-            <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
-              <div className="flex items-center justify-between">
-                <SectionHead>Health Goals</SectionHead>
-                <span className="text-[11px] text-[#1c2a2b]/40">{form.goals.length}/5</span>
+            <SectionBlock
+              title="Health Goals"
+              open={openSections.goals}
+              onToggle={() => toggleSection('goals')}
+              badge={form.goals.length > 0 ? <SectionBadge>{form.goals.length} / 5</SectionBadge> : undefined}
+            >
+              <div className="space-y-3">
+                {goalLimitWarning && (
+                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
+                    Maximum 5 health goals allowed.
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {GOAL_TAGS.map(({ key, label }) => {
+                    const active = form.goals.includes(key);
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => toggleGoal(key)}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                          active
+                            ? 'bg-[#0e393d] text-white'
+                            : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              {goalLimitWarning && (
-                <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
-                  Maximum 5 health goals allowed.
-                </p>
-              )}
-              <div className="flex flex-wrap gap-2">
-                {GOAL_TAGS.map(({ key, label }) => {
-                  const active = form.goals.includes(key);
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => toggleGoal(key)}
-                      className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                        active
-                          ? 'bg-[#0e393d] text-white'
-                          : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            </SectionBlock>
 
             {/* ── Image ───────────────────────────────────────────────────── */}
-            <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
-              <SectionHead>Cover Image</SectionHead>
-              {(imagePreview || currentImageUrl) && (
-                <div className="relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imagePreview ?? currentImageUrl!}
-                    alt="Preview"
-                    className="w-full h-44 object-cover rounded-xl border border-[#0e393d]/10"
-                  />
-                  <button
-                    type="button"
-                    title="Remove photo"
-                    onClick={handleRemoveCoverImage}
-                    className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white hover:bg-red-600/80 transition"
-                  >
-                    <svg width="8" height="8" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round"/></svg>
-                    Remove
-                  </button>
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="w-full rounded-lg border border-dashed border-[#0e393d]/20 py-4 text-sm text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d]/70 hover:bg-[#0e393d]/3 transition"
-              >
-                {imagePreview || currentImageUrl ? 'Replace image' : 'Upload image'}
-                <span className="block text-xs mt-0.5 text-[#1c2a2b]/30">PNG, JPG, WebP · max 5 MB</span>
-              </button>
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-            </div>
+            {/* ── Cover Image ──────────────────────────────────────────────── */}
+            <SectionBlock
+              title="Cover Image"
+              open={openSections.cover}
+              onToggle={() => toggleSection('cover')}
+              badge={(imagePreview || currentImageUrl) ? <SectionBadge>uploaded</SectionBadge> : undefined}
+            >
+              <div className="space-y-3">
+                {(imagePreview || currentImageUrl) && (
+                  <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imagePreview ?? currentImageUrl!}
+                      alt="Preview"
+                      className="w-full h-44 object-cover rounded-xl border border-[#0e393d]/10"
+                    />
+                    <button
+                      type="button"
+                      title="Remove photo"
+                      onClick={handleRemoveCoverImage}
+                      className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white hover:bg-red-600/80 transition"
+                    >
+                      <svg width="8" height="8" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round"/></svg>
+                      Remove
+                    </button>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="w-full rounded-lg border border-dashed border-[#0e393d]/20 py-4 text-sm text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d]/70 hover:bg-[#0e393d]/3 transition"
+                >
+                  {imagePreview || currentImageUrl ? 'Replace image' : 'Upload image'}
+                  <span className="block text-xs mt-0.5 text-[#1c2a2b]/30">PNG, JPG, WebP · max 5 MB</span>
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+              </div>
+            </SectionBlock>
 
             {/* ── Gallery Photos ───────────────────────────────────────────── */}
-            <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
-              <div className="flex items-center justify-between">
-                <SectionHead>Gallery Photos</SectionHead>
-                <span className="text-[11px] text-[#1c2a2b]/40">{galleryItems.length}/10</span>
+            <SectionBlock
+              title="Gallery Photos"
+              open={openSections.gallery}
+              onToggle={() => toggleSection('gallery')}
+              badge={<SectionBadge>{galleryItems.length} / 10</SectionBadge>}
+            >
+              <div className="space-y-3">
+                <p className="text-[11px] text-[#1c2a2b]/40">
+                  Use <code className="bg-[#0e393d]/6 px-1 rounded text-[10px]">![photo:N]</code> in instructions to embed photo N inline.
+                </p>
+                <GalleryUpload items={galleryItems} onChange={setGalleryItems} />
               </div>
-              <p className="text-[11px] text-[#1c2a2b]/40">
-                Use <code className="bg-[#0e393d]/6 px-1 rounded text-[10px]">![photo:N]</code> in instructions to embed photo N inline.
-              </p>
-              <GalleryUpload items={galleryItems} onChange={setGalleryItems} />
-            </div>
+            </SectionBlock>
 
-            {/* ── Publish settings ─────────────────────────────────────────── */}
-            <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
-              <SectionHead>Settings</SectionHead>
-              <Toggle
-                checked={form.is_published}
-                onChange={(v) => setForm((f) => ({ ...f, is_published: v }))}
-                label="Published"
-                hint="Visible to users in the recipe database"
-              />
-              <Toggle
-                checked={form.is_featured}
-                onChange={(v) => setForm((f) => ({ ...f, is_featured: v }))}
-                label="Featured"
-                hint="Highlighted on the homepage and recipe list"
-              />
-            </div>
+            {/* ── Settings ─────────────────────────────────────────────────── */}
+            <SectionBlock title="Settings" open={openSections.settings} onToggle={() => toggleSection('settings')}>
+              <div className="space-y-3">
+                <Toggle
+                  checked={form.is_published}
+                  onChange={(v) => setForm((f) => ({ ...f, is_published: v }))}
+                  label="Published"
+                  hint="Visible to users in the recipe database"
+                />
+                <Toggle
+                  checked={form.is_featured}
+                  onChange={(v) => setForm((f) => ({ ...f, is_featured: v }))}
+                  label="Featured"
+                  hint="Highlighted on the homepage and recipe list"
+                />
+              </div>
+            </SectionBlock>
 
           </div>
         )}

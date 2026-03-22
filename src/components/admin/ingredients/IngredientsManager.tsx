@@ -15,6 +15,11 @@ export type Ingredient = {
   daily_dozen_category_id: string | null;
   is_common: boolean | null;
   created_at: string;
+  kcal_per_100g: number | null;
+  protein_per_100g: number | null;
+  fat_per_100g: number | null;
+  carbs_per_100g: number | null;
+  fiber_per_100g: number | null;
 };
 
 export type MeasurementUnit = {
@@ -41,6 +46,11 @@ type FormState = {
   default_unit_id: string;
   daily_dozen_category_id: string;
   is_common: boolean;
+  kcal_per_100g: string;
+  protein_per_100g: string;
+  fat_per_100g: string;
+  carbs_per_100g: string;
+  fiber_per_100g: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -50,6 +60,11 @@ const EMPTY_FORM: FormState = {
   default_unit_id: '',
   daily_dozen_category_id: '',
   is_common: false,
+  kcal_per_100g: '',
+  protein_per_100g: '',
+  fat_per_100g: '',
+  carbs_per_100g: '',
+  fiber_per_100g: '',
 };
 
 function slugify(text: string): string {
@@ -143,7 +158,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
   const refresh = useCallback(async () => {
     const { data } = await supabase
       .from('ingredients')
-      .select('id, name, slug, default_unit_id, daily_dozen_category_id, is_common, created_at')
+      .select('id, name, slug, default_unit_id, daily_dozen_category_id, is_common, created_at, kcal_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g, fiber_per_100g')
       .order('created_at', { ascending: false });
     if (data) setIngredients(data);
   }, [supabase]);
@@ -167,6 +182,11 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
       default_unit_id: ing.default_unit_id ?? '',
       daily_dozen_category_id: ing.daily_dozen_category_id ?? '',
       is_common: ing.is_common ?? false,
+      kcal_per_100g: ing.kcal_per_100g != null ? String(ing.kcal_per_100g) : '',
+      protein_per_100g: ing.protein_per_100g != null ? String(ing.protein_per_100g) : '',
+      fat_per_100g: ing.fat_per_100g != null ? String(ing.fat_per_100g) : '',
+      carbs_per_100g: ing.carbs_per_100g != null ? String(ing.carbs_per_100g) : '',
+      fiber_per_100g: ing.fiber_per_100g != null ? String(ing.fiber_per_100g) : '',
     });
     setSlugManuallyEdited(true); // treat as manually edited when editing existing
     setError(null);
@@ -201,6 +221,11 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
       default_unit_id: form.default_unit_id || null,
       daily_dozen_category_id: form.daily_dozen_category_id || null,
       is_common: form.is_common,
+      kcal_per_100g: form.kcal_per_100g !== '' ? Number(form.kcal_per_100g) : null,
+      protein_per_100g: form.protein_per_100g !== '' ? Number(form.protein_per_100g) : null,
+      fat_per_100g: form.fat_per_100g !== '' ? Number(form.fat_per_100g) : null,
+      carbs_per_100g: form.carbs_per_100g !== '' ? Number(form.carbs_per_100g) : null,
+      fiber_per_100g: form.fiber_per_100g !== '' ? Number(form.fiber_per_100g) : null,
     };
 
     try {
@@ -336,6 +361,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Name</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Default Unit</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Daily Dozen Category</th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Nutrition</th>
               <th className="px-4 py-3 text-center text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Common</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Actions</th>
             </tr>
@@ -343,7 +369,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
           <tbody className="divide-y divide-[#0e393d]/6">
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
+                <td colSpan={6} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
                   No ingredients found.
                 </td>
               </tr>
@@ -382,6 +408,17 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                     ) : (
                       <span className="text-[#1c2a2b]/30">—</span>
                     )}
+                  </td>
+
+                  {/* Nutrition */}
+                  <td className="px-4 py-3 text-center">
+                    {(() => {
+                      const fields = [ing.kcal_per_100g, ing.protein_per_100g, ing.fat_per_100g, ing.carbs_per_100g, ing.fiber_per_100g];
+                      const filled = fields.filter((v) => v != null).length;
+                      if (filled === 5) return <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" title="All nutrition data filled" />;
+                      if (filled > 0) return <span className="inline-block w-2 h-2 rounded-full bg-amber-400" title={`${filled}/5 fields filled`} />;
+                      return <span className="text-[#1c2a2b]/20">—</span>;
+                    })()}
                   </td>
 
                   {/* Common */}
@@ -504,6 +541,36 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                     ))}
                   </select>
                 </Field>
+              </div>
+
+              {/* Nutrition */}
+              <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Nutrition (per 100g)</p>
+                <div className="grid grid-cols-5 gap-2">
+                  {([
+                    ['kcal_per_100g',    'Calories', 'kcal'],
+                    ['protein_per_100g', 'Protein',  'g'],
+                    ['fat_per_100g',     'Fat',      'g'],
+                    ['carbs_per_100g',   'Carbs',    'g'],
+                    ['fiber_per_100g',   'Fiber',    'g'],
+                  ] as [keyof FormState, string, string][]).map(([key, label, unit]) => (
+                    <div key={key}>
+                      <label className="block text-xs font-medium text-[#0e393d]/70 mb-1">{label}</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.1}
+                          value={form[key] as string}
+                          onChange={(e) => setField(key, e.target.value as FormState[typeof key])}
+                          placeholder="—"
+                          className="w-full rounded-lg border border-[#0e393d]/15 bg-white pl-2 pr-6 py-2 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#1c2a2b]/40 pointer-events-none">{unit}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Settings */}
