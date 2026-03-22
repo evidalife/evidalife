@@ -149,6 +149,9 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
   const [error, setError] = useState<string | null>(null);
   const slugRef = useRef(false);
 
+  // AI autocomplete (per-ingredient in panel)
+  const [autocompleteStatus, setAutocompleteStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+
   // Bulk nutrition fill
   const [bulkNutritionStatus, setBulkNutritionStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [bulkNutritionProgress, setBulkNutritionProgress] = useState({ done: 0, total: 0 });
@@ -184,6 +187,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
     setForm(EMPTY_FORM);
     setSlugManuallyEdited(false);
     setError(null);
+    setAutocompleteStatus('idle');
     setPanelOpen(true);
   };
 
@@ -207,6 +211,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
     });
     setSlugManuallyEdited(true); // treat as manually edited when editing existing
     setError(null);
+    setAutocompleteStatus('idle');
     setPanelOpen(true);
   };
 
@@ -278,6 +283,49 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
     if (error) { setError(error.message); return; }
     await refresh();
     closePanel();
+  };
+
+  // ── AI Autocomplete (panel) ───────────────────────────────────────────────────
+
+  const handleAutocomplete = async () => {
+    if (!form.name_en.trim() && !form.name_de.trim()) return;
+    setAutocompleteStatus('running');
+    try {
+      const res = await fetch('/api/admin/autocomplete-ingredient', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name_en: form.name_en, name_de: form.name_de }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+
+      setForm((prev) => ({
+        ...prev,
+        name_en: prev.name_en || data.name_en || '',
+        name_de: prev.name_de || data.name_de || '',
+        name_fr: prev.name_fr || data.name_fr || '',
+        name_es: prev.name_es || data.name_es || '',
+        name_it: prev.name_it || data.name_it || '',
+        kcal_per_100g: prev.kcal_per_100g || (data.kcal_per_100g != null ? String(data.kcal_per_100g) : ''),
+        protein_per_100g: prev.protein_per_100g || (data.protein_per_100g != null ? String(data.protein_per_100g) : ''),
+        fat_per_100g: prev.fat_per_100g || (data.fat_per_100g != null ? String(data.fat_per_100g) : ''),
+        carbs_per_100g: prev.carbs_per_100g || (data.carbs_per_100g != null ? String(data.carbs_per_100g) : ''),
+        fiber_per_100g: prev.fiber_per_100g || (data.fiber_per_100g != null ? String(data.fiber_per_100g) : ''),
+        // Only set category/unit if not already set
+        daily_dozen_category_id: prev.daily_dozen_category_id || (() => {
+          if (!data.suggested_daily_dozen_slug) return '';
+          return categories.find((c) => c.slug === data.suggested_daily_dozen_slug)?.id ?? '';
+        })(),
+        default_unit_id: prev.default_unit_id || (() => {
+          if (!data.suggested_unit_code) return '';
+          return units.find((u) => u.code === data.suggested_unit_code)?.id ?? '';
+        })(),
+      }));
+      setAutocompleteStatus('done');
+    } catch (e) {
+      console.error('Autocomplete error:', e);
+      setAutocompleteStatus('error');
+    }
   };
 
   // ── Bulk nutrition fill ───────────────────────────────────────────────────────
@@ -652,7 +700,29 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
 
               {/* Names */}
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Names</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Names</p>
+                  <button
+                    type="button"
+                    onClick={() => { if (autocompleteStatus !== 'running') handleAutocomplete(); }}
+                    disabled={autocompleteStatus === 'running' || (!form.name_en.trim() && !form.name_de.trim())}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-violet-50 text-violet-700 text-[11px] font-medium hover:bg-violet-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    title="Fill all fields with AI based on the ingredient name"
+                  >
+                    {autocompleteStatus === 'running' ? (
+                      <>
+                        <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>
+                        Autocompleting…
+                      </>
+                    ) : autocompleteStatus === 'done' ? (
+                      <>✓ Fields filled</>
+                    ) : autocompleteStatus === 'error' ? (
+                      <>⚠ Retry AI</>
+                    ) : (
+                      <>✦ AI Autocomplete</>
+                    )}
+                  </button>
+                </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Name EN *">
