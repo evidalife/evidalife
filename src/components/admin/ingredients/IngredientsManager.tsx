@@ -325,7 +325,8 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
       }
       await refresh();
       setBulkNutritionStatus('done');
-    } catch {
+    } catch (e) {
+      console.error('Bulk nutrition error:', e);
       setBulkNutritionStatus('error');
     }
   };
@@ -377,7 +378,8 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
       }
       await refresh();
       setBulkTranslateStatus('done');
-    } catch {
+    } catch (e) {
+      console.error('Bulk translate error:', e);
       setBulkTranslateStatus('error');
     }
   };
@@ -426,7 +428,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
         <div className="flex items-center gap-2">
           {/* Bulk translate button */}
           <button
-            onClick={bulkTranslateStatus === 'idle' || bulkTranslateStatus === 'error' ? handleBulkTranslate : undefined}
+            onClick={() => { if (bulkTranslateStatus !== 'running') handleBulkTranslate(); }}
             disabled={bulkTranslateStatus === 'running'}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#0e393d]/20 text-[#0e393d] text-xs font-medium hover:bg-[#0e393d]/5 disabled:opacity-50 disabled:cursor-not-allowed transition"
             title="Translate missing FR/ES/IT names for all ingredients"
@@ -447,7 +449,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
 
           {/* Bulk nutrition button */}
           <button
-            onClick={bulkNutritionStatus === 'idle' || bulkNutritionStatus === 'error' ? handleBulkNutrition : undefined}
+            onClick={() => { if (bulkNutritionStatus !== 'running') handleBulkNutrition(); }}
             disabled={bulkNutritionStatus === 'running'}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#0e393d]/20 text-[#0e393d] text-xs font-medium hover:bg-[#0e393d]/5 disabled:opacity-50 disabled:cursor-not-allowed transition"
             title="Fill nutrition values for ingredients missing all nutrition data"
