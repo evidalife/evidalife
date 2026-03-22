@@ -17,13 +17,30 @@ interface Props {
 }
 
 
+async function compressGalleryImage(file: File): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 1200 / bitmap.width);
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, w, h);
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      resolve(new File([blob!], file.name, { type: 'image/webp' }));
+    }, 'image/webp', 0.85);
+  });
+}
+
 export default function GalleryUpload({ items, onChange, maxPhotos = 10 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const addFiles = (files: FileList | null) => {
+  const addFiles = async (files: FileList | null) => {
     if (!files) return;
     const remaining = maxPhotos - items.length;
     const toAdd = Array.from(files).slice(0, remaining);
-    const newItems: GalleryItem[] = toAdd.map((file, i) => ({
+    const compressed = await Promise.all(toAdd.map(compressGalleryImage));
+    const newItems: GalleryItem[] = compressed.map((file, i) => ({
       _key: `_g${Date.now()}_${i}`,
       url: null,
       order: items.length + i,

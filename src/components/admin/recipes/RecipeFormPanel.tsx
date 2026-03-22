@@ -1,6 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
+import type CropperType from 'react-easy-crop';
+const Cropper = dynamic(() => import('react-easy-crop').then((m) => m.default), { ssr: false }) as unknown as typeof CropperType;
 import { createClient } from '@/lib/supabase/client';
 import GalleryUpload, { type GalleryItem } from './GalleryUpload';
 
@@ -234,6 +237,210 @@ function SectionBadge({ children }: { children: React.ReactNode }) {
     <span className="inline-flex items-center rounded-full bg-[#0e393d]/8 px-2 py-0.5 text-[10px] font-medium text-[#0e393d]/60">
       {children}
     </span>
+  );
+}
+
+// ─── Cover Image Crop Types + Helpers ─────────────────────────────────────────
+
+type CropArea = { x: number; y: number; width: number; height: number };
+type CropData = { x: number; y: number; width: number; height: number; zoom: number };
+
+async function compressImage(file: File, maxWidth = 1200, quality = 0.85): Promise<{ blob: Blob; sizeKb: number }> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxWidth / bitmap.width);
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  const mimeType = file.type === 'image/png' ? 'image/png' : 'image/webp';
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      resolve({ blob: blob!, sizeKb: Math.round(blob!.size / 1024) });
+    }, mimeType, quality);
+  });
+}
+
+async function getCroppedCanvas(
+  imageSrc: string,
+  pixelCrop: CropArea,
+  outputWidth: number,
+  outputHeight: number,
+): Promise<HTMLCanvasElement> {
+  const image = new Image();
+  image.src = imageSrc;
+  await new Promise<void>((resolve) => { image.onload = () => resolve(); });
+  const canvas = document.createElement('canvas');
+  canvas.width = outputWidth;
+  canvas.height = outputHeight;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, outputWidth, outputHeight);
+  return canvas;
+}
+
+// ─── Cover Crop Modal ─────────────────────────────────────────────────────────
+
+interface CoverCropModalProps {
+  imageUrl: string;
+  initialDetail: CropData | null;
+  initialGrid: CropData | null;
+  onConfirm: (detail: CropData, grid: CropData) => void;
+  onClose: () => void;
+}
+
+function CoverCropModal({ imageUrl, initialDetail, initialGrid, onConfirm, onClose }: CoverCropModalProps) {
+  const [activeTab, setActiveTab] = useState<'detail' | 'grid'>('detail');
+
+  const [detailCrop, setDetailCrop] = useState(initialDetail ? { x: initialDetail.x, y: initialDetail.y } : { x: 0, y: 0 });
+  const [detailZoom, setDetailZoom] = useState(initialDetail?.zoom ?? 1);
+  const [detailPixels, setDetailPixels] = useState<CropArea | null>(null);
+
+  const [gridCrop, setGridCrop] = useState(initialGrid ? { x: initialGrid.x, y: initialGrid.y } : { x: 0, y: 0 });
+  const [gridZoom, setGridZoom] = useState(initialGrid?.zoom ?? 1);
+  const [gridPixels, setGridPixels] = useState<CropArea | null>(null);
+
+  const [detailPreview, setDetailPreview] = useState<string | null>(null);
+  const [gridPreview, setGridPreview] = useState<string | null>(null);
+
+  const onDetailCropComplete = useCallback((_: unknown, pixels: CropArea) => {
+    setDetailPixels(pixels);
+  }, []);
+
+  const onGridCropComplete = useCallback((_: unknown, pixels: CropArea) => {
+    setGridPixels(pixels);
+  }, []);
+
+  // Render previews when pixel crops change
+  useEffect(() => {
+    if (!detailPixels) return;
+    getCroppedCanvas(imageUrl, detailPixels, 480, 270).then((c) => setDetailPreview(c.toDataURL('image/webp', 0.7)));
+  }, [imageUrl, detailPixels]);
+
+  useEffect(() => {
+    if (!gridPixels) return;
+    getCroppedCanvas(imageUrl, gridPixels, 400, 300).then((c) => setGridPreview(c.toDataURL('image/webp', 0.7)));
+  }, [imageUrl, gridPixels]);
+
+  const handleConfirm = () => {
+    const detail: CropData = { x: detailCrop.x, y: detailCrop.y, width: detailPixels?.width ?? 0, height: detailPixels?.height ?? 0, zoom: detailZoom };
+    const grid: CropData = { x: gridCrop.x, y: gridCrop.y, width: gridPixels?.width ?? 0, height: gridPixels?.height ?? 0, zoom: gridZoom };
+    onConfirm(detail, grid);
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/50 z-[60]" onClick={onClose} />
+      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl border border-[#0e393d]/10 shadow-2xl w-full max-w-xl overflow-hidden">
+
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-[#0e393d]/10 px-5 py-4">
+            <h3 className="font-serif text-base text-[#0e393d]">Crop Cover Image</h3>
+            <button onClick={onClose} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/></svg>
+            </button>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex border-b border-[#0e393d]/10 px-5">
+            {(['detail', 'grid'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2.5 text-xs font-medium transition border-b-2 -mb-px ${
+                  activeTab === tab
+                    ? 'border-[#0e393d] text-[#0e393d]'
+                    : 'border-transparent text-[#1c2a2b]/50 hover:text-[#1c2a2b]'
+                }`}
+              >
+                {tab === 'detail' ? 'Detail 16:9' : 'Grid 4:3'}
+              </button>
+            ))}
+          </div>
+
+          {/* Crop area */}
+          <div className="relative bg-black" style={{ height: 280 }}>
+            {activeTab === 'detail' && (
+              <Cropper
+                image={imageUrl}
+                crop={detailCrop}
+                zoom={detailZoom}
+                aspect={16 / 9}
+                onCropChange={setDetailCrop}
+                onZoomChange={setDetailZoom}
+                onCropComplete={onDetailCropComplete}
+              />
+            )}
+            {activeTab === 'grid' && (
+              <Cropper
+                image={imageUrl}
+                crop={gridCrop}
+                zoom={gridZoom}
+                aspect={4 / 3}
+                onCropChange={setGridCrop}
+                onZoomChange={setGridZoom}
+                onCropComplete={onGridCropComplete}
+              />
+            )}
+          </div>
+
+          {/* Zoom slider */}
+          <div className="flex items-center gap-3 px-5 py-3 border-t border-[#0e393d]/8">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="text-[#1c2a2b]/40 shrink-0"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35" strokeLinecap="round"/><path d="M11 8v6M8 11h6"/></svg>
+            <input
+              type="range" min={1} max={3} step={0.05}
+              value={activeTab === 'detail' ? detailZoom : gridZoom}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (activeTab === 'detail') setDetailZoom(v);
+                else setGridZoom(v);
+              }}
+              className="flex-1 accent-[#0e393d]"
+            />
+            <span className="text-[11px] text-[#1c2a2b]/40 w-8 text-right">
+              {(activeTab === 'detail' ? detailZoom : gridZoom).toFixed(1)}×
+            </span>
+          </div>
+
+          {/* Previews */}
+          <div className="flex gap-4 px-5 pb-4">
+            <div className="flex-1">
+              <p className="text-[10px] text-[#1c2a2b]/40 mb-1">Detail page (16:9)</p>
+              <div className="rounded-lg overflow-hidden bg-[#f5f4f0] border border-[#0e393d]/8" style={{ aspectRatio: '16/9' }}>
+                {detailPreview
+                  // eslint-disable-next-line @next/next/no-img-element
+                  ? <img src={detailPreview} alt="" className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center text-[10px] text-[#1c2a2b]/20">preview</div>
+                }
+              </div>
+            </div>
+            <div className="w-32 shrink-0">
+              <p className="text-[10px] text-[#1c2a2b]/40 mb-1">Grid card (4:3)</p>
+              <div className="rounded-lg overflow-hidden bg-[#f5f4f0] border border-[#0e393d]/8" style={{ aspectRatio: '4/3' }}>
+                {gridPreview
+                  // eslint-disable-next-line @next/next/no-img-element
+                  ? <img src={gridPreview} alt="" className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center text-[10px] text-[#1c2a2b]/20">preview</div>
+                }
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex gap-3 border-t border-[#0e393d]/10 px-5 py-4">
+            <button onClick={onClose} className="flex-1 rounded-lg border border-[#0e393d]/15 py-2 text-sm font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition">
+              Cancel
+            </button>
+            <button onClick={handleConfirm} className="flex-1 rounded-lg bg-[#0e393d] py-2 text-sm font-medium text-white hover:bg-[#0e393d]/90 transition">
+              Apply crop
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -510,7 +717,7 @@ function QuickAddIngredientModal({ units, categories, onSaved, onClose }: QuickA
       .single();
     setSaving(false);
     if (err) { setError(err.message); return; }
-    onSaved({ id: data.id, name: data.name, slug: data.slug, default_unit_id: data.default_unit_id });
+    onSaved({ id: data.id, name: data.name, slug: data.slug, default_unit_id: data.default_unit_id, kcal_per_100g: null, protein_per_100g: null, fat_per_100g: null, carbs_per_100g: null, fiber_per_100g: null });
   };
 
   return (
@@ -645,6 +852,10 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [imageRemoved, setImageRemoved] = useState(false);
+  const [imageCompressedKb, setImageCompressedKb] = useState<number | null>(null);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropDetail, setCropDetail] = useState<CropData | null>(null);
+  const [cropGrid, setCropGrid] = useState<CropData | null>(null);
   const [loading, setLoading] = useState(!!recipeId);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -730,6 +941,8 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       if (!r) { setLoading(false); return; }
       setCurrentImageUrl(r.image_url ?? null);
       setImageRemoved(false);
+      setCropDetail((r as Record<string, unknown>).cover_crop_detail as CropData | null ?? null);
+      setCropGrid((r as Record<string, unknown>).cover_crop_grid as CropData | null ?? null);
       pendingDeleteRef.current = null;
       setForm({
         title:        { de: r.title?.de ?? '',        en: r.title?.en ?? '' },
@@ -929,11 +1142,21 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
   // ── Image ────────────────────────────────────────────────────────────────────
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+    // Client-side compression
+    const { blob, sizeKb } = await compressImage(file);
+    const compressed = new File([blob], file.name, { type: blob.type });
+    setImageFile(compressed);
+    setImageCompressedKb(sizeKb);
+    const previewUrl = URL.createObjectURL(compressed);
+    setImagePreview(previewUrl);
+    setCropDetail(null);
+    setCropGrid(null);
+    setCropModalOpen(true);
+    // Reset file input
+    e.target.value = '';
   };
 
   const handleRemoveCoverImage = () => {
@@ -942,6 +1165,9 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
     setImageFile(null);
     setImagePreview(null);
     setImageRemoved(true);
+    setImageCompressedKb(null);
+    setCropDetail(null);
+    setCropGrid(null);
   };
 
   const uploadImage = async (_id: string): Promise<string | null> => {
@@ -1018,6 +1244,8 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         })(),
         is_published: form.is_published,
         is_featured:  form.is_featured,
+        cover_crop_detail: cropDetail ?? null,
+        cover_crop_grid:   cropGrid ?? null,
       };
 
       // 1. Upsert recipe row
@@ -1651,16 +1879,33 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                       alt="Preview"
                       className="w-full h-44 object-cover rounded-xl border border-[#0e393d]/10"
                     />
-                    <button
-                      type="button"
-                      title="Remove photo"
-                      onClick={handleRemoveCoverImage}
-                      className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white hover:bg-red-600/80 transition"
-                    >
-                      <svg width="8" height="8" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round"/></svg>
-                      Remove
-                    </button>
+                    <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                      {imagePreview && (
+                        <button
+                          type="button"
+                          onClick={() => setCropModalOpen(true)}
+                          className="flex items-center gap-1 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white hover:bg-[#0e393d]/80 transition"
+                        >
+                          ✂ Crop
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        title="Remove photo"
+                        onClick={handleRemoveCoverImage}
+                        className="flex items-center gap-1 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white hover:bg-red-600/80 transition"
+                      >
+                        <svg width="8" height="8" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round"/></svg>
+                        Remove
+                      </button>
+                    </div>
                   </div>
+                )}
+                {imageCompressedKb && (
+                  <p className="text-[11px] text-[#1c2a2b]/40">Auto-compressed · {imageCompressedKb} KB</p>
+                )}
+                {(cropDetail || cropGrid) && (
+                  <p className="text-[11px] text-emerald-600">✓ Crops set: {[cropDetail && '16:9', cropGrid && '4:3'].filter(Boolean).join(', ')}</p>
                 )}
                 <button
                   type="button"
@@ -1668,7 +1913,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                   className="w-full rounded-lg border border-dashed border-[#0e393d]/20 py-4 text-sm text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d]/70 hover:bg-[#0e393d]/3 transition"
                 >
                   {imagePreview || currentImageUrl ? 'Replace image' : 'Upload image'}
-                  <span className="block text-xs mt-0.5 text-[#1c2a2b]/30">PNG, JPG, WebP · max 5 MB</span>
+                  <span className="block text-xs mt-0.5 text-[#1c2a2b]/30">PNG, JPG, WebP · auto-compressed</span>
                 </button>
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
               </div>
@@ -1768,6 +2013,21 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         <QuickAddNoteModal
           onSaved={handleQuickAddNoteSaved}
           onClose={() => { setQuickAddNoteOpen(false); setQuickAddNoteTargetKey(null); }}
+        />
+      )}
+
+      {/* Cover Crop Modal */}
+      {cropModalOpen && imagePreview && (
+        <CoverCropModal
+          imageUrl={imagePreview}
+          initialDetail={cropDetail}
+          initialGrid={cropGrid}
+          onConfirm={(detail, grid) => {
+            setCropDetail(detail);
+            setCropGrid(grid);
+            setCropModalOpen(false);
+          }}
+          onClose={() => setCropModalOpen(false)}
         />
       )}
     </>
