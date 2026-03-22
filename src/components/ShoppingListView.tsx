@@ -27,6 +27,9 @@ export type ShoppingListItem = {
   recipe_title?: Record<string, string> | null;
 };
 
+// DisplayItem: a ShoppingListItem or merge of several (deduplication)
+type DisplayItem = ShoppingListItem & { sourceIds: string[] };
+
 export type ShoppingList = {
   id: string;
   user_id: string;
@@ -44,21 +47,29 @@ type IngredientSuggestion = {
 // ─── Daily Dozen categories ────────────────────────────────────────────────────
 
 const DD_CATEGORIES = [
-  { slug: 'beans',        icon: '🫘', label: { en: 'Beans',              de: 'Bohnen',          fr: 'Légumineuses',       es: 'Legumbres',            it: 'Legumi'            } },
-  { slug: 'berries',      icon: '🫐', label: { en: 'Berries',            de: 'Beeren',          fr: 'Baies',              es: 'Bayas',                it: 'Bacche'            } },
-  { slug: 'fruits',       icon: '🍎', label: { en: 'Other Fruits',       de: 'Anderes Obst',    fr: 'Autres fruits',      es: 'Otras frutas',         it: 'Altra frutta'      } },
-  { slug: 'cruciferous',  icon: '🥦', label: { en: 'Cruciferous',        de: 'Kreuzblütler',    fr: 'Légumes crucifères', es: 'Verduras crucíferas',  it: 'Verdure crocifere' } },
-  { slug: 'greens',       icon: '🥬', label: { en: 'Greens',             de: 'Blattgemüse',     fr: 'Légumes verts',      es: 'Verduras de hoja',     it: 'Verdure a foglia'  } },
-  { slug: 'vegetables',   icon: '🥕', label: { en: 'Other Vegetables',   de: 'Anderes Gemüse',  fr: 'Autres légumes',     es: 'Otras verduras',       it: 'Altre verdure'     } },
-  { slug: 'flaxseeds',    icon: '🌰', label: { en: 'Flaxseeds',          de: 'Leinsamen',       fr: 'Graines de lin',     es: 'Semillas de lino',     it: 'Semi di lino'      } },
-  { slug: 'nuts',         icon: '🥜', label: { en: 'Nuts & Seeds',       de: 'Nüsse & Samen',   fr: 'Noix & graines',     es: 'Frutos secos',         it: 'Noci e semi'       } },
-  { slug: 'herbs_spices', icon: '🌿', label: { en: 'Herbs & Spices',     de: 'Kräuter & Gewürze',fr: 'Herbes & épices',   es: 'Hierbas y especias',   it: 'Erbe e spezie'     } },
-  { slug: 'whole_grains', icon: '🌾', label: { en: 'Whole Grains',       de: 'Vollkornprodukte',fr: 'Céréales complètes', es: 'Granos integrales',    it: 'Cereali integrali' } },
-  { slug: 'beverages',    icon: '🍵', label: { en: 'Beverages',          de: 'Getränke',        fr: 'Boissons',           es: 'Bebidas',              it: 'Bevande'           } },
+  { slug: 'beans',            icon: '🫘', label: { en: 'Beans',              de: 'Bohnen',            fr: 'Légumineuses',       es: 'Legumbres',            it: 'Legumi'            } },
+  { slug: 'berries',          icon: '🫐', label: { en: 'Berries',            de: 'Beeren',            fr: 'Baies',              es: 'Bayas',                it: 'Bacche'            } },
+  { slug: 'other_fruits',     icon: '🍎', label: { en: 'Other Fruits',       de: 'Anderes Obst',      fr: 'Autres fruits',      es: 'Otras frutas',         it: 'Altra frutta'      } },
+  { slug: 'cruciferous',      icon: '🥦', label: { en: 'Cruciferous',        de: 'Kreuzblütler',      fr: 'Légumes crucifères', es: 'Verduras crucíferas',  it: 'Verdure crocifere' } },
+  { slug: 'greens',           icon: '🥬', label: { en: 'Greens',             de: 'Blattgemüse',       fr: 'Légumes verts',      es: 'Verduras de hoja',     it: 'Verdure a foglia'  } },
+  { slug: 'other_vegetables', icon: '🥕', label: { en: 'Other Vegetables',   de: 'Anderes Gemüse',    fr: 'Autres légumes',     es: 'Otras verduras',       it: 'Altre verdure'     } },
+  { slug: 'flaxseeds',        icon: '🌰', label: { en: 'Flaxseeds',          de: 'Leinsamen',         fr: 'Graines de lin',     es: 'Semillas de lino',     it: 'Semi di lino'      } },
+  { slug: 'nuts_seeds',       icon: '🥜', label: { en: 'Nuts & Seeds',       de: 'Nüsse & Samen',     fr: 'Noix & graines',     es: 'Frutos secos',         it: 'Noci e semi'       } },
+  { slug: 'herbs_spices',     icon: '🌿', label: { en: 'Herbs & Spices',     de: 'Kräuter & Gewürze', fr: 'Herbes & épices',    es: 'Hierbas y especias',   it: 'Erbe e spezie'     } },
+  { slug: 'whole_grains',     icon: '🌾', label: { en: 'Whole Grains',       de: 'Vollkornprodukte',  fr: 'Céréales complètes', es: 'Granos integrales',    it: 'Cereali integrali' } },
+  { slug: 'beverages',        icon: '💧', label: { en: 'Beverages',          de: 'Getränke',          fr: 'Boissons',           es: 'Bebidas',              it: 'Bevande'           } },
+  { slug: 'exercise',         icon: '🏃', label: { en: 'Exercise',           de: 'Bewegung',          fr: 'Exercice',           es: 'Ejercicio',            it: 'Esercizio'         } },
 ] as const;
 
-const OTHER_CAT  = { icon: '📦', label: { en: 'Other',    de: 'Sonstiges',  fr: 'Autres',   es: 'Otros',    it: 'Altri'    } };
-const PERSONAL_CAT = { icon: '🛒', label: { en: 'Personal', de: 'Persönlich', fr: 'Personnel',es: 'Personal', it: 'Personale' } };
+// Alias old DB slugs → new slugs (in case DB still uses the old names)
+const SLUG_ALIASES: Record<string, string> = {
+  fruits:     'other_fruits',
+  vegetables: 'other_vegetables',
+  nuts:       'nuts_seeds',
+};
+
+const OTHER_CAT    = { icon: '📦', label: { en: 'Other',    de: 'Sonstiges',  fr: 'Autres',    es: 'Otros',    it: 'Altri'     } };
+const PERSONAL_CAT = { icon: '🛒', label: { en: 'Personal', de: 'Persönlich', fr: 'Personnel', es: 'Personal', it: 'Personale' } };
 
 const DD_ORDER = DD_CATEGORIES.map((c) => c.slug);
 const DD_MAP = new Map<string, (typeof DD_CATEGORIES)[number]>(DD_CATEGORIES.map((c) => [c.slug, c]));
@@ -67,93 +78,53 @@ const DD_MAP = new Map<string, (typeof DD_CATEGORIES)[number]>(DD_CATEGORIES.map
 
 const T = {
   de: {
-    eyebrow: 'Meine Liste',
-    heading: 'Einkaufsliste',
-    addItem: 'Artikel hinzufügen…',
-    enterHint: 'Enter: als persönlichen Artikel hinzufügen',
-    allFilter: 'Alle',
-    clearChecked: 'Erledigte löschen',
+    eyebrow: 'Meine Liste', heading: 'Einkaufsliste',
+    addItem: 'Artikel hinzufügen…', enterHint: 'Enter: als persönlichen Artikel hinzufügen',
+    allFilter: 'Alle', clearChecked: 'Erledigte löschen',
     xOfY: (x: number, y: number) => `${x} von ${y} erledigt`,
-    noItems: 'Deine Liste ist leer.',
-    noItemsHint: 'Füge Zutaten hinzu oder starte von einem Rezept.',
-    loginPrompt: 'Bitte melde dich an, um deine Einkaufsliste zu sehen.',
-    loginBtn: 'Anmelden',
-    removeAria: 'Entfernen',
-    qty: 'Menge',
-    unitLabel: 'Einheit',
-    add: 'Hinzufügen',
-    items: (n: number) => `${n} ${n === 1 ? 'Artikel' : 'Artikel'}`,
+    noItems: 'Deine Liste ist leer.', noItemsHint: 'Füge Zutaten hinzu oder starte von einem Rezept.',
+    loginPrompt: 'Bitte melde dich an, um deine Einkaufsliste zu sehen.', loginBtn: 'Anmelden',
+    removeAria: 'Entfernen', qty: 'Menge', unitLabel: 'Einheit', add: 'Hinzufügen',
+    items: (n: number) => `${n} Artikel`,
   },
   en: {
-    eyebrow: 'My List',
-    heading: 'Shopping List',
-    addItem: 'Add an item…',
-    enterHint: 'Press Enter to add as a personal item',
-    allFilter: 'All',
-    clearChecked: 'Clear checked',
+    eyebrow: 'My List', heading: 'Shopping List',
+    addItem: 'Add an item…', enterHint: 'Press Enter to add as a personal item',
+    allFilter: 'All', clearChecked: 'Clear checked',
     xOfY: (x: number, y: number) => `${x} of ${y} checked`,
-    noItems: 'Your list is empty.',
-    noItemsHint: 'Add ingredients or start from a recipe.',
-    loginPrompt: 'Please sign in to view your shopping list.',
-    loginBtn: 'Sign in',
-    removeAria: 'Remove',
-    qty: 'Qty',
-    unitLabel: 'Unit',
-    add: 'Add',
+    noItems: 'Your list is empty.', noItemsHint: 'Add ingredients or start from a recipe.',
+    loginPrompt: 'Please sign in to view your shopping list.', loginBtn: 'Sign in',
+    removeAria: 'Remove', qty: 'Qty', unitLabel: 'Unit', add: 'Add',
     items: (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`,
   },
   fr: {
-    eyebrow: 'Ma liste',
-    heading: 'Liste de courses',
-    addItem: 'Ajouter un article…',
-    enterHint: 'Entrée : ajouter comme article personnel',
-    allFilter: 'Tous',
-    clearChecked: 'Supprimer les cochés',
+    eyebrow: 'Ma liste', heading: 'Liste de courses',
+    addItem: 'Ajouter un article…', enterHint: 'Entrée : ajouter comme article personnel',
+    allFilter: 'Tous', clearChecked: 'Supprimer les cochés',
     xOfY: (x: number, y: number) => `${x} sur ${y} cochés`,
-    noItems: 'Votre liste est vide.',
-    noItemsHint: 'Ajoutez des ingrédients ou commencez par une recette.',
-    loginPrompt: 'Connectez-vous pour voir votre liste de courses.',
-    loginBtn: 'Se connecter',
-    removeAria: 'Supprimer',
-    qty: 'Qté',
-    unitLabel: 'Unité',
-    add: 'Ajouter',
+    noItems: 'Votre liste est vide.', noItemsHint: 'Ajoutez des ingrédients ou commencez par une recette.',
+    loginPrompt: 'Connectez-vous pour voir votre liste de courses.', loginBtn: 'Se connecter',
+    removeAria: 'Supprimer', qty: 'Qté', unitLabel: 'Unité', add: 'Ajouter',
     items: (n: number) => `${n} article${n !== 1 ? 's' : ''}`,
   },
   es: {
-    eyebrow: 'Mi lista',
-    heading: 'Lista de compras',
-    addItem: 'Agregar un artículo…',
-    enterHint: 'Intro: añadir como artículo personal',
-    allFilter: 'Todos',
-    clearChecked: 'Borrar marcados',
+    eyebrow: 'Mi lista', heading: 'Lista de compras',
+    addItem: 'Agregar un artículo…', enterHint: 'Intro: añadir como artículo personal',
+    allFilter: 'Todos', clearChecked: 'Borrar marcados',
     xOfY: (x: number, y: number) => `${x} de ${y} marcados`,
-    noItems: 'Tu lista está vacía.',
-    noItemsHint: 'Agrega ingredientes o empieza desde una receta.',
-    loginPrompt: 'Por favor inicia sesión para ver tu lista de compras.',
-    loginBtn: 'Iniciar sesión',
-    removeAria: 'Eliminar',
-    qty: 'Cant.',
-    unitLabel: 'Unidad',
-    add: 'Agregar',
+    noItems: 'Tu lista está vacía.', noItemsHint: 'Agrega ingredientes o empieza desde una receta.',
+    loginPrompt: 'Por favor inicia sesión para ver tu lista de compras.', loginBtn: 'Iniciar sesión',
+    removeAria: 'Eliminar', qty: 'Cant.', unitLabel: 'Unidad', add: 'Agregar',
     items: (n: number) => `${n} artículo${n !== 1 ? 's' : ''}`,
   },
   it: {
-    eyebrow: 'La mia lista',
-    heading: 'Lista della spesa',
-    addItem: 'Aggiungi un articolo…',
-    enterHint: 'Invio: aggiunge come articolo personale',
-    allFilter: 'Tutti',
-    clearChecked: 'Rimuovi selezionati',
+    eyebrow: 'La mia lista', heading: 'Lista della spesa',
+    addItem: 'Aggiungi un articolo…', enterHint: 'Invio: aggiunge come articolo personale',
+    allFilter: 'Tutti', clearChecked: 'Rimuovi selezionati',
     xOfY: (x: number, y: number) => `${x} di ${y} selezionati`,
-    noItems: 'La tua lista è vuota.',
-    noItemsHint: 'Aggiungi ingredienti o inizia da una ricetta.',
-    loginPrompt: 'Accedi per vedere la tua lista della spesa.',
-    loginBtn: 'Accedi',
-    removeAria: 'Rimuovi',
-    qty: 'Qtà',
-    unitLabel: 'Unità',
-    add: 'Aggiungi',
+    noItems: 'La tua lista è vuota.', noItemsHint: 'Aggiungi ingredienti o inizia da una ricetta.',
+    loginPrompt: 'Accedi per vedere la tua lista della spesa.', loginBtn: 'Accedi',
+    removeAria: 'Rimuovi', qty: 'Qtà', unitLabel: 'Unità', add: 'Aggiungi',
     items: (n: number) => n === 1 ? '1 articolo' : `${n} articoli`,
   },
 };
@@ -186,33 +157,76 @@ function highlightMatch(text: string, query: string) {
   );
 }
 
-function truncate(text: string, max = 22): string {
+function truncate(text: string, max = 25): string {
   return text.length > max ? text.slice(0, max) + '…' : text;
 }
 
-function resolveCategory(item: ShoppingListItem, ingCategoryMap: Map<string, string>): string {
+// Resolve a shopping list item to its DD category slug
+function resolveCategory(
+  item: DisplayItem,
+  nameMap: Map<string, string>,  // ingredient name EN → category slug
+  idMap: Map<string, string>,    // ingredient id → category slug
+): string {
   if (item.is_personal) return 'personal';
-  if (item.daily_dozen_category_slug) return item.daily_dozen_category_slug;
-  // Fallback: look up by EN ingredient name
+  // 1. Stored on item
+  if (item.daily_dozen_category_slug) {
+    return SLUG_ALIASES[item.daily_dozen_category_slug] ?? item.daily_dozen_category_slug;
+  }
+  // 2. By ingredient_id
+  if (item.ingredient_id) {
+    const cat = idMap.get(item.ingredient_id);
+    if (cat) return cat;
+  }
+  // 3. By EN name
   const nameEn = getIngredientLabel(item.ingredient_name, 'en').toLowerCase().trim();
   if (nameEn) {
-    const cat = ingCategoryMap.get(nameEn);
+    const cat = nameMap.get(nameEn);
     if (cat) return cat;
   }
   return 'other';
 }
 
+// Deduplicate non-personal items: same ingredient + same unit → merge, sum amounts
+function deduplicateItems(nonPersonalItems: ShoppingListItem[]): DisplayItem[] {
+  const groups = new Map<string, ShoppingListItem[]>();
+  for (const item of nonPersonalItems) {
+    const nameEn = getIngredientLabel(item.ingredient_name, 'en').toLowerCase().trim();
+    const unit   = (item.unit ?? '').toLowerCase().trim();
+    const key    = `${nameEn}||${unit}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(item);
+  }
+  return Array.from(groups.values()).map((group) => {
+    const first       = group[0];
+    const totalAmount = group.some((i) => i.amount != null)
+      ? group.reduce((sum, i) => sum + (i.amount ?? 0), 0)
+      : null;
+    return {
+      ...first,
+      amount:     totalAmount,
+      is_checked: group.every((i) => i.is_checked),
+      sourceIds:  group.map((i) => i.id),
+    };
+  });
+}
+
+function toDisplayItems(items: ShoppingListItem[]): DisplayItem[] {
+  return items.map((i) => ({ ...i, sourceIds: [i.id] }));
+}
+
+// Group display items by DD category
 function groupItems(
-  items: ShoppingListItem[],
-  ingCategoryMap: Map<string, string>
-): { slug: string; items: ShoppingListItem[] }[] {
-  const groups: Record<string, ShoppingListItem[]> = {};
+  items: DisplayItem[],
+  nameMap: Map<string, string>,
+  idMap: Map<string, string>,
+): { slug: string; items: DisplayItem[] }[] {
+  const groups: Record<string, DisplayItem[]> = {};
   for (const item of items) {
-    const cat = resolveCategory(item, ingCategoryMap);
+    const cat = resolveCategory(item, nameMap, idMap);
     if (!groups[cat]) groups[cat] = [];
     groups[cat].push(item);
   }
-  const result: { slug: string; items: ShoppingListItem[] }[] = [];
+  const result: { slug: string; items: DisplayItem[] }[] = [];
   for (const slug of DD_ORDER) {
     if (groups[slug as string]) result.push({ slug: slug as string, items: groups[slug as string] });
   }
@@ -224,20 +238,14 @@ function groupItems(
 // ─── ProgressRing ──────────────────────────────────────────────────────────────
 
 function ProgressRing({ checked, total }: { checked: number; total: number }) {
-  const r = 18;
-  const circ = 2 * Math.PI * r;
-  const progress = total > 0 ? checked / total : 0;
-  const offset = circ * (1 - progress);
+  const r = 18, circ = 2 * Math.PI * r;
+  const offset = circ * (1 - (total > 0 ? checked / total : 0));
   return (
     <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true" className="shrink-0">
       <circle cx="24" cy="24" r={r} fill="none" stroke="#0e393d12" strokeWidth="3.5" />
-      <circle
-        cx="24" cy="24" r={r}
-        fill="none" stroke="#0C9C6C" strokeWidth="3.5" strokeLinecap="round"
-        strokeDasharray={circ} strokeDashoffset={offset}
-        transform="rotate(-90 24 24)"
-        style={{ transition: 'stroke-dashoffset 0.4s ease' }}
-      />
+      <circle cx="24" cy="24" r={r} fill="none" stroke="#0C9C6C" strokeWidth="3.5"
+        strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
+        transform="rotate(-90 24 24)" style={{ transition: 'stroke-dashoffset 0.4s ease' }} />
       <text x="24" y="28.5" textAnchor="middle" fontSize="11" fontWeight="600" fill="#0e393d" fontFamily="sans-serif">
         {checked}/{total}
       </text>
@@ -247,22 +255,17 @@ function ProgressRing({ checked, total }: { checked: number; total: number }) {
 
 // ─── ItemRow ───────────────────────────────────────────────────────────────────
 
-function ItemRow({
-  item, lang, onToggle, onDelete, removeAria,
-}: {
-  item: ShoppingListItem;
+function ItemRow({ item, lang, onToggle, onDelete, removeAria }: {
+  item: DisplayItem;
   lang: Lang;
-  onToggle: (item: ShoppingListItem) => void;
-  onDelete: (id: string) => void;
+  onToggle: (item: DisplayItem) => void;
+  onDelete: (item: DisplayItem) => void;
   removeAria: string;
 }) {
-  const label = item.is_personal && item.personal_name
+  const label  = item.is_personal && item.personal_name
     ? item.personal_name
     : getIngredientLabel(item.ingredient_name, lang);
   const amount = formatAmount(item.amount, item.unit);
-  const recipeLabel = (!item.is_personal && item.recipe_title)
-    ? truncate(localized(item.recipe_title, lang) || '', 22)
-    : null;
 
   return (
     <li className={`group flex items-center gap-3 rounded-xl border border-[#0e393d]/8 bg-white px-3.5 py-2.5 hover:border-[#0e393d]/15 transition ${item.is_checked ? 'opacity-45' : ''}`}>
@@ -272,9 +275,7 @@ function ItemRow({
         onClick={() => onToggle(item)}
         aria-pressed={item.is_checked}
         className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
-          item.is_checked
-            ? 'bg-[#0C9C6C] border-[#0C9C6C]'
-            : 'border-[#0e393d]/25 hover:border-[#0e393d]/60'
+          item.is_checked ? 'bg-[#0C9C6C] border-[#0C9C6C]' : 'border-[#0e393d]/25 hover:border-[#0e393d]/60'
         }`}
       >
         {item.is_checked && (
@@ -294,39 +295,30 @@ function ItemRow({
         )}
       </div>
 
-      {/* Recipe pill + delete */}
-      <div className="shrink-0 flex items-center gap-1">
-        {recipeLabel && (
-          <span className="hidden sm:inline text-[10px] text-[#ceab84] bg-[#ceab84]/8 rounded-full px-2 py-0.5 whitespace-nowrap group-hover:hidden">
-            {recipeLabel}
-          </span>
-        )}
-        <button
-          type="button"
-          onClick={() => onDelete(item.id)}
-          className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded-md text-[#1c2a2b]/30 hover:text-red-500 hover:bg-red-50 transition"
-          aria-label={removeAria}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/>
-          </svg>
-        </button>
-      </div>
+      {/* Delete */}
+      <button
+        type="button"
+        onClick={() => onDelete(item)}
+        className="shrink-0 opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded-md text-[#1c2a2b]/30 hover:text-red-500 hover:bg-red-50 transition"
+        aria-label={removeAria}
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/>
+        </svg>
+      </button>
     </li>
   );
 }
 
 // ─── CategorySection ───────────────────────────────────────────────────────────
 
-function CategorySection({
-  slug, catItems, lang, t, onToggle, onDelete, collapsed, onCollapseToggle,
-}: {
+function CategorySection({ slug, catItems, lang, t, onToggle, onDelete, collapsed, onCollapseToggle }: {
   slug: string;
-  catItems: ShoppingListItem[];
+  catItems: DisplayItem[];
   lang: Lang;
   t: typeof T.en;
-  onToggle: (item: ShoppingListItem) => void;
-  onDelete: (id: string) => void;
+  onToggle: (item: DisplayItem) => void;
+  onDelete: (item: DisplayItem) => void;
   collapsed: boolean;
   onCollapseToggle: () => void;
 }) {
@@ -344,41 +336,25 @@ function CategorySection({
 
   return (
     <div>
-      {/* Header */}
-      <button
-        type="button"
-        onClick={onCollapseToggle}
-        className="w-full flex items-center gap-2 py-2 text-left group/header"
-      >
+      <button type="button" onClick={onCollapseToggle}
+        className="w-full flex items-center gap-2 py-2 text-left group/header">
         <span className="text-base leading-none">{icon}</span>
         <span className="text-[11px] font-semibold uppercase tracking-widest text-[#1c2a2b]/40 group-hover/header:text-[#1c2a2b]/60 transition">
           {label}
         </span>
         <span className="flex-1" />
-        <span className="text-[11px] text-[#1c2a2b]/30 mr-1">
-          {t.items(unchecked.length)}
-        </span>
-        <svg
-          width="12" height="12" viewBox="0 0 24 24" fill="none"
+        <span className="text-[11px] text-[#1c2a2b]/30 mr-1">{t.items(unchecked.length)}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          className={`text-[#1c2a2b]/25 transition-transform duration-200 ${collapsed ? '-rotate-90' : ''}`}
-        >
+          className={`text-[#1c2a2b]/25 transition-transform duration-200 ${collapsed ? '-rotate-90' : ''}`}>
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
-
-      {/* Items */}
       {!collapsed && (
         <ul className="grid grid-cols-1 md:grid-cols-2 gap-1.5 mb-1">
           {display.map((item) => (
-            <ItemRow
-              key={item.id}
-              item={item}
-              lang={lang}
-              onToggle={onToggle}
-              onDelete={onDelete}
-              removeAria={t.removeAria}
-            />
+            <ItemRow key={item.id} item={item} lang={lang}
+              onToggle={onToggle} onDelete={onDelete} removeAria={t.removeAria} />
           ))}
         </ul>
       )}
@@ -401,43 +377,47 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
 
   const [list, setList]   = useState<ShoppingList | null>(initialList);
   const [items, setItems] = useState<ShoppingListItem[]>(initialItems);
-  const [ingCategoryMap]  = useState<Map<string, string>>(() => new Map());
-  const ingMapRef = useRef(ingCategoryMap);
 
-  // Recipe filter
-  const [activeRecipe, setActiveRecipe] = useState<string | null>(null);
+  // Ingredient→category maps (useState so changes trigger useMemo recalc)
+  const [ingNameMap, setIngNameMap] = useState<Map<string, string>>(new Map()); // nameEn → catSlug
+  const [ingIdMap,   setIngIdMap]   = useState<Map<string, string>>(new Map()); // id → catSlug
 
-  // Collapsed category sections
-  const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
-
-  // Unified input
-  const [query, setQuery]           = useState('');
-  const [suggestions, setSuggestions] = useState<IngredientSuggestion[]>([]);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedIng, setSelectedIng] = useState<IngredientSuggestion | null>(null);
-  const [newQty, setNewQty]   = useState('');
-  const [newUnit, setNewUnit] = useState('');
-  const [adding, setAdding]   = useState(false);
+  const [activeRecipe,    setActiveRecipe]    = useState<string | null>(null);
+  const [collapsedCats,   setCollapsedCats]   = useState<Set<string>>(new Set());
+  const [query,           setQuery]           = useState('');
+  const [suggestions,     setSuggestions]     = useState<IngredientSuggestion[]>([]);
+  const [showDropdown,    setShowDropdown]    = useState(false);
+  const [selectedIng,     setSelectedIng]     = useState<IngredientSuggestion | null>(null);
+  const [newQty,          setNewQty]          = useState('');
+  const [newUnit,         setNewUnit]         = useState('');
+  const [adding,          setAdding]          = useState(false);
   const inputContainerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef          = useRef<HTMLInputElement>(null);
 
-  // ── On mount: fetch ingredient→category map ───────────────────────────────────
+  // ── Fetch ingredient→category maps on mount ───────────────────────────────────
 
   useEffect(() => {
     (async () => {
       const { data } = await supabase
         .from('ingredients')
         .select('id, name, daily_dozen_categories(slug)');
-      if (data) {
-        for (const ing of data as Array<{ id: string; name: Record<string, string>; daily_dozen_categories: unknown }>) {
-          const dc = ing.daily_dozen_categories;
-          const catSlug = Array.isArray(dc) ? (dc[0] as { slug?: string })?.slug : (dc as { slug?: string } | null)?.slug;
-          if (catSlug) {
-            const nameEn = localized(ing.name, 'en').toLowerCase().trim();
-            if (nameEn) ingMapRef.current.set(nameEn, catSlug);
-          }
+      if (!data) return;
+      const nameMap = new Map<string, string>();
+      const idMap   = new Map<string, string>();
+      for (const ing of data as Array<{ id: string; name: Record<string, string>; daily_dozen_categories: unknown }>) {
+        const dc  = ing.daily_dozen_categories;
+        const raw = Array.isArray(dc)
+          ? (dc[0] as { slug?: string })?.slug
+          : (dc as { slug?: string } | null)?.slug;
+        if (raw) {
+          const slug   = SLUG_ALIASES[raw] ?? raw;
+          const nameEn = localized(ing.name, 'en').toLowerCase().trim();
+          if (nameEn) nameMap.set(nameEn, slug);
+          idMap.set(ing.id, slug);
         }
       }
+      setIngNameMap(nameMap);
+      setIngIdMap(idMap);
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -451,16 +431,33 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     ).values()
   ), [items]);
 
-  const displayItems = useMemo(() =>
-    activeRecipe
-      ? items.filter((i) => !i.is_personal && i.recipe_id === activeRecipe)
-      : items,
-    [items, activeRecipe]
-  );
+  // Count of raw items per recipe (for filter pill badges)
+  const recipeItemCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of items) {
+      if (!item.is_personal && item.recipe_id) {
+        counts.set(item.recipe_id, (counts.get(item.recipe_id) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [items]);
 
-  const grouped = useMemo(() =>
-    groupItems(displayItems, ingMapRef.current),
-    [displayItems]
+  // Deduplicated display items for current filter
+  const displayItems = useMemo(() => {
+    const recipeItems   = items.filter((i) => !i.is_personal);
+    const personalItems = items.filter((i) => i.is_personal);
+    const filtered      = activeRecipe
+      ? recipeItems.filter((i) => i.recipe_id === activeRecipe)
+      : recipeItems;
+    const deduped       = deduplicateItems(filtered);
+    const personal      = activeRecipe ? [] : toDisplayItems(personalItems);
+    return [...deduped, ...personal];
+  }, [items, activeRecipe]);
+
+  // Grouped by DD category — now depends on state maps so re-renders when maps load
+  const grouped = useMemo(
+    () => groupItems(displayItems, ingNameMap, ingIdMap),
+    [displayItems, ingNameMap, ingIdMap]
   );
 
   const totalChecked = items.filter((i) => i.is_checked).length;
@@ -470,9 +467,8 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (inputContainerRef.current && !inputContainerRef.current.contains(e.target as Node)) {
+      if (inputContainerRef.current && !inputContainerRef.current.contains(e.target as Node))
         setShowDropdown(false);
-      }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -481,11 +477,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
   // ── Autocomplete ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (selectedIng || query.length < 2) {
-      setSuggestions([]);
-      setShowDropdown(false);
-      return;
-    }
+    if (selectedIng || query.length < 2) { setSuggestions([]); setShowDropdown(false); return; }
     let cancelled = false;
     (async () => {
       const { data } = await supabase
@@ -493,10 +485,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
         .select('id, name, daily_dozen_categories(slug, icon)')
         .filter(`name->>${lang}`, 'ilike', `%${query}%`)
         .limit(8);
-      if (!cancelled) {
-        setSuggestions((data as IngredientSuggestion[] | null) ?? []);
-        setShowDropdown(true);
-      }
+      if (!cancelled) { setSuggestions((data as IngredientSuggestion[] | null) ?? []); setShowDropdown(true); }
     })();
     return () => { cancelled = true; };
   }, [query, lang, selectedIng]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -518,11 +507,8 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
   const refreshItems = useCallback(async () => {
     if (!list) return;
     const { data } = await supabase
-      .from('shopping_list_items')
-      .select('*, recipes(title)')
-      .eq('list_id', list.id)
-      .order('sort_order')
-      .order('created_at');
+      .from('shopping_list_items').select('*, recipes(title)')
+      .eq('list_id', list.id).order('sort_order').order('created_at');
     if (data) {
       setItems(data.map((row) => ({
         ...row,
@@ -535,10 +521,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     if (list) return list;
     if (!userId) return null;
     const { data, error } = await supabase
-      .from('shopping_lists')
-      .insert({ user_id: userId, name: t.heading })
-      .select()
-      .single();
+      .from('shopping_lists').insert({ user_id: userId, name: t.heading }).select().single();
     if (error || !data) return null;
     setList(data);
     return data;
@@ -559,27 +542,22 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     const activeList = await ensureList();
     if (!activeList) { setAdding(false); return; }
     const maxOrder = items.length > 0 ? Math.max(...items.map((i) => i.sort_order)) + 1 : 0;
-    const catSlug = (selectedIng.daily_dozen_categories as { slug: string } | null)?.slug ?? null;
-    const { data } = await supabase
-      .from('shopping_list_items')
-      .insert({
-        list_id: activeList.id,
-        ingredient_name: selectedIng.name,
-        ingredient_id: selectedIng.id,
-        daily_dozen_category_slug: catSlug,
-        amount: newQty ? Number(newQty) : null,
-        unit: newUnit.trim() || null,
-        sort_order: maxOrder,
-        is_personal: false,
-      })
-      .select()
-      .single();
+    const dc = selectedIng.daily_dozen_categories as { slug: string } | null;
+    const catRaw  = dc?.slug ?? null;
+    const catSlug = catRaw ? (SLUG_ALIASES[catRaw] ?? catRaw) : null;
+    const { data } = await supabase.from('shopping_list_items').insert({
+      list_id: activeList.id,
+      ingredient_name: selectedIng.name,
+      ingredient_id: selectedIng.id,
+      daily_dozen_category_slug: catSlug,
+      amount: newQty ? Number(newQty) : null,
+      unit: newUnit.trim() || null,
+      sort_order: maxOrder,
+      is_personal: false,
+    }).select().single();
     if (data) {
       setItems((prev) => [...prev, { ...data, recipe_title: null }]);
-      setSelectedIng(null);
-      setQuery('');
-      setNewQty('');
-      setNewUnit('');
+      setSelectedIng(null); setQuery(''); setNewQty(''); setNewUnit('');
       inputRef.current?.focus();
     }
     setAdding(false);
@@ -591,36 +569,25 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     const activeList = await ensureList();
     if (!activeList) { setAdding(false); return; }
     const maxOrder = items.length > 0 ? Math.max(...items.map((i) => i.sort_order)) + 1 : 0;
-    const { data } = await supabase
-      .from('shopping_list_items')
-      .insert({
-        list_id: activeList.id,
-        ingredient_name: {},
-        personal_name: text.trim(),
-        is_personal: true,
-        amount: null,
-        unit: null,
-        sort_order: maxOrder,
-      })
-      .select()
-      .single();
-    if (data) {
-      setItems((prev) => [...prev, { ...data, recipe_title: null }]);
-      setQuery('');
-      inputRef.current?.focus();
-    }
+    const { data } = await supabase.from('shopping_list_items').insert({
+      list_id: activeList.id, ingredient_name: {}, personal_name: text.trim(),
+      is_personal: true, amount: null, unit: null, sort_order: maxOrder,
+    }).select().single();
+    if (data) { setItems((prev) => [...prev, { ...data, recipe_title: null }]); setQuery(''); inputRef.current?.focus(); }
     setAdding(false);
   };
 
-  const handleToggle = async (item: ShoppingListItem) => {
+  const handleToggle = async (item: DisplayItem) => {
     const newVal = !item.is_checked;
-    setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, is_checked: newVal } : i));
-    await supabase.from('shopping_list_items').update({ is_checked: newVal }).eq('id', item.id);
+    setItems((prev) => prev.map((i) => item.sourceIds.includes(i.id) ? { ...i, is_checked: newVal } : i));
+    await Promise.all(
+      item.sourceIds.map((id) => supabase.from('shopping_list_items').update({ is_checked: newVal }).eq('id', id))
+    );
   };
 
-  const handleDelete = async (id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    await supabase.from('shopping_list_items').delete().eq('id', id);
+  const handleDelete = async (item: DisplayItem) => {
+    setItems((prev) => prev.filter((i) => !item.sourceIds.includes(i.id)));
+    await supabase.from('shopping_list_items').delete().in('id', item.sourceIds);
   };
 
   const handleClearChecked = async () => {
@@ -631,27 +598,15 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Escape') {
-      setShowDropdown(false);
-      if (selectedIng) { setSelectedIng(null); setQuery(''); }
-      return;
-    }
+    if (e.key === 'Escape') { setShowDropdown(false); if (selectedIng) { setSelectedIng(null); setQuery(''); } return; }
     if (e.key === 'Enter') {
-      if (selectedIng) {
-        handleAddIngredient();
-      } else if (!showDropdown && query.trim()) {
-        handleAddPersonal(query);
-      }
+      if (selectedIng) handleAddIngredient();
+      else if (!showDropdown && query.trim()) handleAddPersonal(query);
     }
   };
 
   const toggleCollapse = (slug: string) => {
-    setCollapsedCats((prev) => {
-      const next = new Set(prev);
-      if (next.has(slug)) next.delete(slug);
-      else next.add(slug);
-      return next;
-    });
+    setCollapsedCats((prev) => { const next = new Set(prev); next.has(slug) ? next.delete(slug) : next.add(slug); return next; });
   };
 
   // ── Not logged in ─────────────────────────────────────────────────────────────
@@ -665,10 +620,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
           </div>
           <h2 className="font-serif text-2xl text-[#0e393d] mb-2">{t.heading}</h2>
           <p className="text-[#1c2a2b]/60 text-sm mb-6">{t.loginPrompt}</p>
-          <Link
-            href="/login"
-            className="inline-block bg-[#0e393d] text-white text-sm font-medium px-6 py-2.5 rounded-full hover:bg-[#0e393d]/90 transition"
-          >
+          <Link href="/login" className="inline-block bg-[#0e393d] text-white text-sm font-medium px-6 py-2.5 rounded-full hover:bg-[#0e393d]/90 transition">
             {t.loginBtn}
           </Link>
         </div>
@@ -695,68 +647,77 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
       {/* Recipe filter pills */}
       {uniqueRecipes.length > 0 && (
         <div className="flex gap-2 mb-5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+          {/* All pill */}
           <button
             onClick={() => setActiveRecipe(null)}
-            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition ${
               activeRecipe === null
                 ? 'bg-[#0e393d] text-white border-[#0e393d]'
-                : 'bg-white text-[#1c2a2b]/60 border-[#0e393d]/15 hover:border-[#0e393d]/30'
+                : 'bg-white text-[#1c2a2b]/60 border-[#0e393d]/12 hover:border-[#0e393d]/25'
             }`}
           >
             {t.allFilter}
+            <span className={`text-[10px] font-semibold rounded-full px-1.5 py-0.5 ${
+              activeRecipe === null ? 'bg-white/20 text-white' : 'bg-[#0e393d]/8 text-[#0e393d]/50'
+            }`}>
+              {items.filter((i) => !i.is_personal).length}
+            </span>
           </button>
-          {uniqueRecipes.map((r) => (
-            <button
-              key={r.id}
-              onClick={() => setActiveRecipe(activeRecipe === r.id ? null : r.id)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                activeRecipe === r.id
-                  ? 'bg-[#0e393d] text-white border-[#0e393d]'
-                  : 'bg-white text-[#1c2a2b]/60 border-[#0e393d]/15 hover:border-[#0e393d]/30'
-              }`}
-            >
-              {truncate(localized(r.title as Record<string, string>, lang) || '—', 28)}
-            </button>
-          ))}
+
+          {/* Recipe pills */}
+          {uniqueRecipes.map((r) => {
+            const name  = localized(r.title as Record<string, string>, lang) || '—';
+            const count = recipeItemCounts.get(r.id) ?? 0;
+            const active = activeRecipe === r.id;
+            return (
+              <button
+                key={r.id}
+                onClick={() => setActiveRecipe(active ? null : r.id)}
+                className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                  active
+                    ? 'bg-[#0e393d] text-white border-[#0e393d]'
+                    : 'bg-white text-[#1c2a2b]/60 border-[#0e393d]/12 hover:border-[#0e393d]/25'
+                }`}
+              >
+                {truncate(name, 25)}
+                <span className={`text-[10px] font-semibold rounded-full px-1.5 py-0.5 ${
+                  active ? 'bg-white/20 text-white' : 'bg-[#0e393d]/8 text-[#0e393d]/50'
+                }`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
 
       {/* Unified input */}
       <div ref={inputContainerRef} className="relative mb-1">
-        <svg
-          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#1c2a2b]/30 pointer-events-none"
+        <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#1c2a2b]/30 pointer-events-none"
           width="14" height="14" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-        >
+          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 5v14M5 12h14" />
         </svg>
         <input
-          ref={inputRef}
-          type="text"
-          value={query}
+          ref={inputRef} type="text" value={query}
           onChange={(e) => {
             setQuery(e.target.value);
-            if (selectedIng && e.target.value !== (localized(selectedIng.name, lang) || '')) {
-              setSelectedIng(null);
-            }
+            if (selectedIng && e.target.value !== (localized(selectedIng.name, lang) || '')) setSelectedIng(null);
           }}
           onKeyDown={handleInputKeyDown}
           placeholder={t.addItem}
           className="w-full rounded-xl border border-[#0e393d]/15 bg-white pl-10 pr-4 py-2.5 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
         />
-        {/* Autocomplete dropdown */}
         {showDropdown && suggestions.length > 0 && (
           <ul className="absolute z-20 left-0 right-0 top-full mt-1 bg-white rounded-xl border border-[#0e393d]/12 shadow-lg overflow-hidden">
             {suggestions.map((ing) => {
               const label = localized(ing.name, lang) || '—';
-              const cat = ing.daily_dozen_categories;
+              const cat   = ing.daily_dozen_categories;
               return (
                 <li key={ing.id}>
-                  <button
-                    type="button"
+                  <button type="button"
                     onMouseDown={(e) => { e.preventDefault(); handleSelectIngredient(ing); }}
-                    className="w-full text-left px-4 py-2.5 text-sm text-[#1c2a2b] hover:bg-[#0e393d]/5 transition flex items-center gap-2"
-                  >
+                    className="w-full text-left px-4 py-2.5 text-sm text-[#1c2a2b] hover:bg-[#0e393d]/5 transition flex items-center gap-2">
                     {cat?.icon && <span className="text-base leading-none">{cat.icon}</span>}
                     <span>{highlightMatch(label, query)}</span>
                   </button>
@@ -767,7 +728,6 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
         )}
       </div>
 
-      {/* Enter hint */}
       {showEnterHint && (
         <p className="text-xs text-[#1c2a2b]/30 mb-2 px-1">{t.enterHint}</p>
       )}
@@ -775,28 +735,16 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
       {/* Qty + Unit + Add */}
       {selectedIng && (
         <div className="flex gap-2 mt-2 mb-4">
-          <input
-            type="number"
-            value={newQty}
-            onChange={(e) => setNewQty(e.target.value)}
+          <input type="number" value={newQty} onChange={(e) => setNewQty(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleAddIngredient(); }}
-            placeholder={t.qty}
-            min={0} step={0.1}
-            className="w-20 rounded-xl border border-[#0e393d]/15 bg-white px-3 py-2.5 text-sm text-center text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
-          />
-          <input
-            type="text"
-            value={newUnit}
-            onChange={(e) => setNewUnit(e.target.value)}
+            placeholder={t.qty} min={0} step={0.1}
+            className="w-20 rounded-xl border border-[#0e393d]/15 bg-white px-3 py-2.5 text-sm text-center text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition" />
+          <input type="text" value={newUnit} onChange={(e) => setNewUnit(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleAddIngredient(); }}
             placeholder={t.unitLabel}
-            className="w-20 rounded-xl border border-[#0e393d]/15 bg-white px-3 py-2.5 text-sm text-center text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
-          />
-          <button
-            onClick={handleAddIngredient}
-            disabled={adding}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 disabled:opacity-40 transition"
-          >
+            className="w-20 rounded-xl border border-[#0e393d]/15 bg-white px-3 py-2.5 text-sm text-center text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition" />
+          <button onClick={handleAddIngredient} disabled={adding}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 disabled:opacity-40 transition">
             {adding ? '…' : t.add}
           </button>
         </div>
@@ -819,21 +767,15 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
           {grouped.map(({ slug, items: catItems }) => (
             <div key={slug} className="py-3">
               <CategorySection
-                slug={slug}
-                catItems={catItems}
-                lang={lang}
-                t={t}
-                onToggle={handleToggle}
-                onDelete={handleDelete}
-                collapsed={collapsedCats.has(slug)}
-                onCollapseToggle={() => toggleCollapse(slug)}
+                slug={slug} catItems={catItems} lang={lang} t={t}
+                onToggle={handleToggle} onDelete={handleDelete}
+                collapsed={collapsedCats.has(slug)} onCollapseToggle={() => toggleCollapse(slug)}
               />
             </div>
           ))}
         </div>
       )}
 
-      {/* Spacer */}
       <div className="flex-1 min-h-8" />
 
       {/* Footer */}
@@ -841,10 +783,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
         <div className="sticky bottom-0 bg-[#fafaf8] border-t border-[#0e393d]/8 py-3 flex items-center justify-between">
           <span className="text-xs text-[#1c2a2b]/40">{t.xOfY(totalChecked, totalItems)}</span>
           {totalChecked > 0 && (
-            <button
-              onClick={handleClearChecked}
-              className="text-xs text-red-500 hover:text-red-700 font-medium transition"
-            >
+            <button onClick={handleClearChecked} className="text-xs text-red-500 hover:text-red-700 font-medium transition">
               {t.clearChecked}
             </button>
           )}
