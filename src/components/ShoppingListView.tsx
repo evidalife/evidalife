@@ -22,6 +22,7 @@ export type ShoppingListItem = {
   personal_name?: string | null;
   ingredient_id?: string | null;
   daily_dozen_category_slug?: string | null;
+  notes?: string | null;
   sort_order: number;
   created_at: string;
   recipe_title?: Record<string, string> | null;
@@ -42,7 +43,10 @@ type IngredientSuggestion = {
   id: string;
   name: Record<string, string>;
   daily_dozen_categories: { slug: string; icon: string } | null;
+  default_unit_id?: string | null;
 };
+
+type MeasurementUnit = { id: string; code: string; abbreviation: Record<string, string> };
 
 // ─── Daily Dozen categories ────────────────────────────────────────────────────
 
@@ -263,15 +267,20 @@ function ItemRow({ item, lang, icon, onToggle, onDelete, removeAria }: {
         )}
       </button>
 
-      {/* Emoji + Name + amount */}
-      <div className="flex-1 min-w-0 flex items-baseline gap-2">
-        {icon && <span className="shrink-0 text-sm leading-none">{icon}</span>}
-        <span className={`text-sm font-medium text-[#1c2a2b] leading-snug ${item.is_checked ? 'line-through' : ''}`}>
-          {label}
-        </span>
+      {/* Emoji + Qty/Unit + Name + Notes */}
+      <div className="flex-1 min-w-0 flex items-center gap-2">
+        {icon && <span className="shrink-0 text-base leading-none">{icon}</span>}
         {amount && (
-          <span className="shrink-0 text-xs text-[#1c2a2b]/40">{amount}</span>
+          <span className="shrink-0 text-sm font-medium text-[#0e393d]">{amount}</span>
         )}
+        <div className="min-w-0 flex-1">
+          <span className={`text-sm text-[#1c2a2b] leading-snug ${item.is_checked ? 'line-through' : ''}`}>
+            {label}
+          </span>
+          {item.notes && (
+            <span className="ml-1 text-xs text-[#1c2a2b]/40">{item.notes}</span>
+          )}
+        </div>
       </div>
 
       {/* Delete */}
@@ -308,6 +317,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
   // Ingredient→category maps (useState so changes trigger useMemo recalc)
   const [ingNameMap, setIngNameMap] = useState<Map<string, string>>(new Map()); // nameEn → catSlug
   const [ingIdMap,   setIngIdMap]   = useState<Map<string, string>>(new Map()); // id → catSlug
+  const [units,      setUnits]      = useState<MeasurementUnit[]>([]);
 
   const [activeRecipe,    setActiveRecipe]    = useState<string | null>(null);
   const [query,           setQuery]           = useState('');
@@ -319,6 +329,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
   const [adding,          setAdding]          = useState(false);
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const inputRef          = useRef<HTMLInputElement>(null);
+  const qtyInputRef       = useRef<HTMLInputElement>(null);
 
   // ── Fetch ingredient→category maps on mount ───────────────────────────────────
 
@@ -344,6 +355,18 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
       }
       setIngNameMap(nameMap);
       setIngIdMap(idMap);
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Fetch measurement units on mount ─────────────────────────────────────────
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('measurement_units')
+        .select('id, code, abbreviation')
+        .order('sort_order');
+      if (data) setUnits(data as MeasurementUnit[]);
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -420,7 +443,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     (async () => {
       const { data } = await supabase
         .from('ingredients')
-        .select('id, name, daily_dozen_categories(slug, icon)')
+        .select('id, name, daily_dozen_categories(slug, icon), default_unit_id')
         .filter(`name->>${lang}`, 'ilike', `%${query}%`)
         .limit(8);
       if (!cancelled) { setSuggestions((data as IngredientSuggestion[] | null) ?? []); setShowDropdown(true); }
@@ -472,6 +495,11 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     setQuery(localized(ing.name, lang) || '');
     setShowDropdown(false);
     setSuggestions([]);
+    if (ing.default_unit_id) {
+      const defaultUnit = units.find((u) => u.id === ing.default_unit_id);
+      if (defaultUnit) setNewUnit(defaultUnit.code);
+    }
+    setTimeout(() => qtyInputRef.current?.focus(), 0);
   };
 
   const handleAddIngredient = async () => {
@@ -669,14 +697,19 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
       {/* Qty + Unit + Add */}
       {selectedIng && (
         <div className="flex gap-2 mt-2 mb-4">
-          <input type="number" value={newQty} onChange={(e) => setNewQty(e.target.value)}
+          <input ref={qtyInputRef} type="number" value={newQty} onChange={(e) => setNewQty(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleAddIngredient(); }}
             placeholder={t.qty} min={0} step={0.1}
             className="w-20 rounded-xl border border-[#0e393d]/15 bg-white px-3 py-2.5 text-sm text-center text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition" />
-          <input type="text" value={newUnit} onChange={(e) => setNewUnit(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleAddIngredient(); }}
-            placeholder={t.unitLabel}
-            className="w-20 rounded-xl border border-[#0e393d]/15 bg-white px-3 py-2.5 text-sm text-center text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition" />
+          <select value={newUnit} onChange={(e) => setNewUnit(e.target.value)}
+            className="w-28 rounded-xl border border-[#0e393d]/15 bg-white px-2 py-2.5 text-sm text-[#1c2a2b] focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition">
+            <option value="">—</option>
+            {units.map((u) => (
+              <option key={u.id} value={u.code}>
+                {(u.abbreviation as Record<string, string>)[lang] ?? u.code}
+              </option>
+            ))}
+          </select>
           <button onClick={handleAddIngredient} disabled={adding}
             className="flex-1 px-4 py-2.5 rounded-xl bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 disabled:opacity-40 transition">
             {adding ? '…' : t.add}

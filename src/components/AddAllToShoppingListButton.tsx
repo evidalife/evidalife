@@ -8,6 +8,7 @@ interface IngredientItem {
   ingredient_name: Record<string, string> | string | null;
   amount?: number | null;
   unit?: string | Record<string, string> | null;
+  notes?: Record<string, string> | string | null;
 }
 
 interface Props {
@@ -87,11 +88,20 @@ export default function AddAllToShoppingListButton({ ingredients, recipeId, lang
           (ing.unit as Record<string, string>)?.de ??
           null;
 
+      const rawNotes = ing.notes;
+      const notes = !rawNotes ? null
+        : typeof rawNotes === 'string' ? rawNotes
+        : (rawNotes as Record<string, string>)[lang]
+          ?? (rawNotes as Record<string, string>).en
+          ?? (rawNotes as Record<string, string>).de
+          ?? null;
+
       return {
         list_id: listId,
         ingredient_name: name,
         amount: ing.amount ?? null,
         unit,
+        notes,
         recipe_id: recipeId,
         sort_order: sortOrder++,
       };

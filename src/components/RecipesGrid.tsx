@@ -26,16 +26,16 @@ export type RecipeCard = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const GOAL_TAGS = [
-  { key: 'weight_loss',         label: { de: 'Gewicht',         en: 'Weight Loss' } },
-  { key: 'heart_health',        label: { de: 'Herz',            en: 'Heart Health' } },
-  { key: 'anti_inflammation',   label: { de: 'Anti-Entzündung', en: 'Anti-Inflammation' } },
-  { key: 'longevity',           label: { de: 'Langlebigkeit',   en: 'Longevity' } },
-  { key: 'gut_health',          label: { de: 'Darm',            en: 'Gut Health' } },
-  { key: 'energy',              label: { de: 'Energie',         en: 'Energy' } },
-  { key: 'immune',              label: { de: 'Immunsystem',     en: 'Immune' } },
-  { key: 'bone_health',         label: { de: 'Knochen',         en: 'Bone Health' } },
-  { key: 'brain_health',        label: { de: 'Gehirn',          en: 'Brain Health' } },
-  { key: 'diabetes_prevention', label: { de: 'Diabetes',        en: 'Diabetes Prev.' } },
+  { key: 'weight_loss',         label: { de: 'Gewicht',         en: 'Weight Loss',       fr: 'Perte de poids',      es: 'Pérdida de peso',    it: 'Perdita di peso'    } },
+  { key: 'heart_health',        label: { de: 'Herz',            en: 'Heart Health',      fr: 'Santé cardiaque',     es: 'Salud cardíaca',     it: 'Salute cardiaca'    } },
+  { key: 'anti_inflammation',   label: { de: 'Anti-Entzündung', en: 'Anti-Inflammation', fr: 'Anti-inflammatoire',  es: 'Anti-inflamación',   it: 'Anti-infiammazione' } },
+  { key: 'longevity',           label: { de: 'Langlebigkeit',   en: 'Longevity',         fr: 'Longévité',           es: 'Longevidad',         it: 'Longevità'          } },
+  { key: 'gut_health',          label: { de: 'Darm',            en: 'Gut Health',        fr: 'Santé intestinale',   es: 'Salud intestinal',   it: 'Salute intestinale' } },
+  { key: 'energy',              label: { de: 'Energie',         en: 'Energy',            fr: 'Énergie',             es: 'Energía',            it: 'Energia'            } },
+  { key: 'immune',              label: { de: 'Immunsystem',     en: 'Immune',            fr: 'Immunité',            es: 'Inmunidad',          it: 'Immunità'           } },
+  { key: 'bone_health',         label: { de: 'Knochen',         en: 'Bone Health',       fr: 'Santé osseuse',       es: 'Salud ósea',         it: 'Salute ossea'       } },
+  { key: 'brain_health',        label: { de: 'Gehirn',          en: 'Brain Health',      fr: 'Santé cérébrale',     es: 'Salud cerebral',     it: 'Salute cerebrale'   } },
+  { key: 'diabetes_prevention', label: { de: 'Diabetes',        en: 'Diabetes Prev.',    fr: 'Prévention diabète',  es: 'Prevención diabetes',it: 'Prevenzione diabete' } },
 ];
 
 const DIFF_CFG = {
@@ -277,7 +277,7 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
       const cfg = DIFF_CFG[d as 'easy' | 'medium' | 'hard'];
       chips.push({
         id: `diff-${d}`,
-        label: cfg?.label[lang as 'de' | 'en'] ?? cfg?.label.en ?? d,
+        label: (cfg?.label as Record<string, string>)?.[lang] ?? cfg?.label.en ?? d,
         remove: () => setDifficulties((p) => p.filter((x) => x !== d)),
       });
     });
@@ -309,7 +309,7 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
       const gt = GOAL_TAGS.find((x) => x.key === g);
       chips.push({
         id: `goal-${g}`,
-        label: gt?.label[lang as 'de' | 'en'] ?? gt?.label.en ?? g,
+        label: (gt?.label as Record<string, string>)?.[lang] ?? gt?.label.en ?? g,
         remove: () => setGoalKeys((p) => p.filter((x) => x !== g)),
       });
     });
@@ -455,7 +455,7 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
                   active={difficulties.includes(d)}
                   onClick={() => setDifficulties(toggle(difficulties, d))}
                 >
-                  {DIFF_CFG[d].label[lang as 'de' | 'en'] ?? DIFF_CFG[d].label.en}
+                  {(DIFF_CFG[d].label as Record<string, string>)[lang] ?? DIFF_CFG[d].label.en}
                 </Pill>
               ))}
             </FilterRow>
@@ -545,7 +545,7 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
                   active={goalKeys.includes(g.key)}
                   onClick={() => setGoalKeys(toggle(goalKeys, g.key))}
                 >
-                  {g.label[lang as 'de' | 'en'] ?? g.label.en}
+                  {(g.label as Record<string, string>)[lang] ?? g.label.en}
                 </Pill>
               ))}
             </FilterRow>
@@ -654,7 +654,7 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
                     )}
                     {diffCfg && (
                       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${diffCfg.cls}`}>
-                        {diffCfg.label[lang as 'de' | 'en'] ?? diffCfg.label.en}
+                        {(diffCfg.label as Record<string, string>)[lang] ?? diffCfg.label.en}
                       </span>
                     )}
                   </div>
