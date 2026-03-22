@@ -264,14 +264,11 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
       setError('Name (EN) is required.');
       return;
     }
-    if (!form.name_de.trim()) {
-      setError('Name (DE) is required.');
-      return;
-    }
     setSaving(true);
     setError(null);
 
-    const nameObj: Record<string, string> = { en: form.name_en.trim(), de: form.name_de.trim() };
+    const nameObj: Record<string, string> = { en: form.name_en.trim() };
+    if (form.name_de.trim()) nameObj.de = form.name_de.trim();
     if (form.name_fr.trim()) nameObj.fr = form.name_fr.trim();
     if (form.name_es.trim()) nameObj.es = form.name_es.trim();
     if (form.name_it.trim()) nameObj.it = form.name_it.trim();

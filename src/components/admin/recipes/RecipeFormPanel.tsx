@@ -713,7 +713,6 @@ function QuickAddIngredientModal({ units, categories, onSaved, onClose }: QuickA
   const [error, setError] = useState<string | null>(null);
 
   const handleSave = async () => {
-    if (!nameDe.trim()) { setError('Name (DE) is required.'); return; }
     if (!nameEn.trim()) { setError('Name (EN) is required.'); return; }
     setSaving(true);
     setError(null);
@@ -1567,11 +1566,8 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   const validate = (): string[] => {
     const errs: string[] = [];
     if (!form.title.en.trim())          errs.push('Title (EN) is required.');
-    if (!form.title.de.trim())          errs.push('Title (DE) is required.');
     if (!form.description.en.trim())    errs.push('Description (EN) is required.');
-    if (!form.description.de.trim())    errs.push('Description (DE) is required.');
     if (!form.instructions.en.trim())   errs.push('Instructions (EN) are required.');
-    if (!form.instructions.de.trim())   errs.push('Instructions (DE) are required.');
     if (!form.prep_time_min.trim())     errs.push('Prep time is required.');
     if (!form.cook_time_min.trim())     errs.push('Cook time is required.');
     if (!form.servings.trim())          errs.push('Servings is required.');
