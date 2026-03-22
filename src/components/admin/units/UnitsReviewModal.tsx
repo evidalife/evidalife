@@ -7,12 +7,16 @@ import type { MeasurementUnit } from './UnitsManager';
 
 export type UnitReviewSuggestion = {
   id: string;
+  name_de?: string;
   name_fr?: string;
   name_es?: string;
   name_it?: string;
+  abbrev_en?: string;
+  abbrev_de?: string;
   abbrev_fr?: string;
   abbrev_es?: string;
   abbrev_it?: string;
+  category?: string;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -29,6 +33,7 @@ interface Props {
 }
 
 const LANG_COLS = [
+  { key: 'de' as const, label: 'DE' },
   { key: 'fr' as const, label: 'FR' },
   { key: 'es' as const, label: 'ES' },
   { key: 'it' as const, label: 'IT' },
@@ -77,12 +82,16 @@ export default function UnitsReviewModal({
     const e = edits[s.id] ?? {};
     return {
       id: s.id,
+      name_de: (e.name_de ?? s.name_de) || undefined,
       name_fr: (e.name_fr ?? s.name_fr) || undefined,
       name_es: (e.name_es ?? s.name_es) || undefined,
       name_it: (e.name_it ?? s.name_it) || undefined,
+      abbrev_en: (e.abbrev_en ?? s.abbrev_en) || undefined,
+      abbrev_de: (e.abbrev_de ?? s.abbrev_de) || undefined,
       abbrev_fr: (e.abbrev_fr ?? s.abbrev_fr) || undefined,
       abbrev_es: (e.abbrev_es ?? s.abbrev_es) || undefined,
       abbrev_it: (e.abbrev_it ?? s.abbrev_it) || undefined,
+      category: (e.category ?? s.category) || undefined,
     };
   };
 
@@ -152,10 +161,11 @@ export default function UnitsReviewModal({
                     <th className="w-8 px-4 py-2.5" />
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Unit</th>
                     {LANG_COLS.map((col) => (
-                      <th key={col.key} className="px-3 py-2.5 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider w-40">
+                      <th key={col.key} className="px-3 py-2.5 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider w-36">
                         {col.label}
                       </th>
                     ))}
+                    <th className="px-3 py-2.5 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider w-28">Category</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#0e393d]/6">
@@ -163,7 +173,13 @@ export default function UnitsReviewModal({
                     const unit = getUnit(s.id);
                     const displayName = unit?.name.en || unit?.name.de || unit?.code || s.id;
                     const isSelected = selected.has(s.id);
-                    const hasAbbrev = !!(unit?.abbreviation.en || unit?.abbreviation.de);
+                    const hasAbbrev = !!(
+                      unit?.abbreviation.en || unit?.abbreviation.de ||
+                      unit?.abbreviation.fr || unit?.abbreviation.es || unit?.abbreviation.it ||
+                      'abbrev_en' in s
+                    );
+                    const needsAbbrevEn = 'abbrev_en' in s;
+                    const needsCategory = 'category' in s;
 
                     return (
                       <tr key={s.id} className={`transition-opacity ${!isSelected ? 'opacity-40' : ''}`}>
@@ -180,9 +196,20 @@ export default function UnitsReviewModal({
                           {unit?.code && (
                             <span className="text-[10px] text-[#1c2a2b]/30 ml-1.5 font-mono">{unit.code}</span>
                           )}
-                          {hasAbbrev && (
+                          {hasAbbrev && !needsAbbrevEn && (
                             <div className="text-[10px] text-[#1c2a2b]/40 mt-0.5">
                               abbrev: {unit?.abbreviation.en || unit?.abbreviation.de}
+                            </div>
+                          )}
+                          {needsAbbrevEn && (
+                            <div className="mt-1">
+                              <span className="text-[10px] text-[#1c2a2b]/40">abbrev EN: </span>
+                              <input
+                                value={getVal(s, 'abbrev_en')}
+                                onChange={(e) => setEdit(s.id, 'abbrev_en', e.target.value)}
+                                placeholder="abbrev…"
+                                className="inline-block w-20 rounded border border-[#0e393d]/15 bg-white px-1.5 py-0.5 text-[11px] text-[#1c2a2b] focus:outline-none focus:ring-1 focus:ring-[#0e393d]/30 transition font-mono"
+                              />
                             </div>
                           )}
                         </td>
@@ -221,6 +248,18 @@ export default function UnitsReviewModal({
                             </td>
                           );
                         })}
+                        <td className="px-3 py-2">
+                          {needsCategory ? (
+                            <input
+                              value={getVal(s, 'category')}
+                              onChange={(e) => setEdit(s.id, 'category', e.target.value)}
+                              placeholder="e.g. volume"
+                              className="w-full rounded border border-[#0e393d]/15 bg-white px-2 py-1 text-xs text-[#1c2a2b] focus:outline-none focus:ring-1 focus:ring-[#0e393d]/30 transition"
+                            />
+                          ) : (
+                            <span className="block text-xs text-[#1c2a2b]/25 px-2 py-1">—</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}

@@ -436,10 +436,14 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
   const handleReviewScan = async () => {
     setReviewScanStatus('scanning');
 
-    const toReview = units.filter(
-      (u) => !u.name.fr || !u.name.es || !u.name.it ||
-        (u.abbreviation.en && (!u.abbreviation.fr || !u.abbreviation.es || !u.abbreviation.it))
-    );
+    const toReview = units.filter((u) => {
+      const hasAnyAbbrev = u.abbreviation.en || u.abbreviation.de || u.abbreviation.fr || u.abbreviation.es || u.abbreviation.it;
+      return (
+        !u.name.de || !u.name.fr || !u.name.es || !u.name.it ||
+        !u.category ||
+        (hasAnyAbbrev && (!u.abbreviation.en || !u.abbreviation.de || !u.abbreviation.fr || !u.abbreviation.es || !u.abbreviation.it))
+      );
+    });
 
     if (toReview.length === 0) {
       setReviewSuggestions([]);
@@ -460,6 +464,8 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
           body: JSON.stringify({
             units: batch.map((u) => ({
               id: u.id,
+              code: u.code,
+              category: u.category ?? '',
               name_en: u.name.en ?? '',
               name_de: u.name.de ?? '',
               name_fr: u.name.fr ?? '',
@@ -497,6 +503,7 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
 
       const updatedName = {
         ...unit.name,
+        ...(s.name_de ? { de: s.name_de } : {}),
         ...(s.name_fr ? { fr: s.name_fr } : {}),
         ...(s.name_es ? { es: s.name_es } : {}),
         ...(s.name_it ? { it: s.name_it } : {}),
@@ -504,14 +511,19 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
 
       const updatedAbbrev = {
         ...unit.abbreviation,
+        ...(s.abbrev_en ? { en: s.abbrev_en } : {}),
+        ...(s.abbrev_de ? { de: s.abbrev_de } : {}),
         ...(s.abbrev_fr ? { fr: s.abbrev_fr } : {}),
         ...(s.abbrev_es ? { es: s.abbrev_es } : {}),
         ...(s.abbrev_it ? { it: s.abbrev_it } : {}),
       };
 
+      const updatePayload: Record<string, unknown> = { name: updatedName, abbreviation: updatedAbbrev };
+      if (s.category) updatePayload.category = s.category;
+
       await supabase
         .from('measurement_units')
-        .update({ name: updatedName, abbreviation: updatedAbbrev })
+        .update(updatePayload)
         .eq('id', s.id);
       onProgress(i + 1, accepted.length);
     }
