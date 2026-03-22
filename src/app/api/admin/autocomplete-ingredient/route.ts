@@ -14,6 +14,8 @@ export interface AutocompleteIngredientResult {
   fiber_per_100g: number | null;
   suggested_daily_dozen_slug: string | null;
   suggested_unit_code: string | null;
+  grams_per_unit: number | null;
+  is_common: boolean;
 }
 
 export async function POST(req: NextRequest) {
@@ -58,7 +60,9 @@ Return ONLY valid JSON matching this exact structure:
   "carbs_per_100g": number | null,
   "fiber_per_100g": number | null,
   "suggested_daily_dozen_slug": string | null,
-  "suggested_unit_code": string | null
+  "suggested_unit_code": string | null,
+  "grams_per_unit": number | null,
+  "is_common": boolean
 }
 
 Rules:
@@ -67,6 +71,8 @@ Rules:
 - Nutrition: values per 100g raw/uncooked (use cooked for pasta/rice/legumes which are always served cooked); use USDA or European BLS values; round to 1 decimal
 - suggested_daily_dozen_slug: MUST be exactly one of these values or null: beans, berries, fruits, cruciferous, greens, vegetables, flaxseeds, nuts, herbs-spices, whole-grains, beverages, exercise
 - suggested_unit_code: MUST be exactly one of these values or null: g, kg, ml, l, stk, tl, el, prise, bund, zehe — use "g" for most solid foods, "ml" for liquids, "stk" for countable items
+- grams_per_unit: if the suggested unit is NOT gram-based (not g/kg/mg), provide the average weight in grams of ONE unit. Examples: 1 jalapeño (stk) ≈ 14g, 1 garlic clove (zehe) ≈ 5g, 1 tbsp miso (el) ≈ 18g, 1 lemon (stk) ≈ 60g. If the unit IS gram-based (g/kg/ml/l), set grams_per_unit to null
+- is_common: true for everyday cooking ingredients (onions, garlic, olive oil, salt, common vegetables, grains, basic spices, etc.); false for rare or specialty items (truffle oil, saffron, exotic peppers, unusual spices, etc.)
 - Return ONLY the JSON object, no markdown, no explanation`;
 
   const client = new Anthropic({ apiKey });
