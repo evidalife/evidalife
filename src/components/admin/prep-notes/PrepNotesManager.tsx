@@ -7,23 +7,33 @@ import { createClient } from '@/lib/supabase/client';
 
 export type PrepNote = {
   id: string;
-  name: { de?: string; en?: string };
+  name: { en?: string; de?: string; fr?: string; es?: string; it?: string };
   slug: string;
   is_common: boolean;
   created_at: string;
 };
 
-type FormData = { name_de: string; name_en: string; slug: string; is_common: boolean };
+type FormData = {
+  name_en: string;
+  name_de: string;
+  name_fr: string;
+  name_es: string;
+  name_it: string;
+  slug: string;
+  is_common: boolean;
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const EMPTY_FORM: FormData = { name_de: '', name_en: '', slug: '', is_common: true };
+const EMPTY_FORM: FormData = { name_en: '', name_de: '', name_fr: '', name_es: '', name_it: '', slug: '', is_common: true };
 
 function toSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
-// ─── Inline form row ──────────────────────────────────────────────────────────
+const inputCls = 'w-full rounded border border-[#0e393d]/20 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#0e393d]/30';
+
+// ─── Inline form row (colSpan layout) ─────────────────────────────────────────
 
 function FormRow({
   form,
@@ -31,66 +41,136 @@ function FormRow({
   onSave,
   onCancel,
   saving,
-  autoFocusField = 'name_en',
 }: {
   form: FormData;
   onChange: (f: FormData) => void;
   onSave: () => void;
   onCancel: () => void;
   saving: boolean;
-  autoFocusField?: 'name_en';
 }) {
+  const [aiStatus, setAiStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+
+  const handleAI = async () => {
+    if (!form.name_en.trim()) return;
+    setAiStatus('running');
+    try {
+      const res = await fetch('/api/admin/translate-prep-note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name_en: form.name_en }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      onChange({
+        ...form,
+        name_de: form.name_de || data.name_de || '',
+        name_fr: form.name_fr || data.name_fr || '',
+        name_es: form.name_es || data.name_es || '',
+        name_it: form.name_it || data.name_it || '',
+      });
+      setAiStatus('done');
+    } catch (e) {
+      console.error('Translate prep note error:', e);
+      setAiStatus('error');
+    }
+  };
+
   return (
     <tr className="bg-amber-50/50">
-      <td className="px-4 py-2">
-        <input
-          autoFocus={autoFocusField === 'name_en'}
-          value={form.name_en}
-          onChange={(e) =>
-            onChange({ ...form, name_en: e.target.value, slug: form.slug || toSlug(e.target.value) })
-          }
-          placeholder="Name (EN)"
-          className="w-full rounded border border-[#0e393d]/20 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#0e393d]/30"
-        />
-      </td>
-      <td className="px-4 py-2">
-        <input
-          value={form.name_de}
-          onChange={(e) => onChange({ ...form, name_de: e.target.value })}
-          placeholder="Name (DE)"
-          className="w-full rounded border border-[#0e393d]/20 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#0e393d]/30"
-        />
-      </td>
-      <td className="px-4 py-2">
-        <input
-          value={form.slug}
-          onChange={(e) => onChange({ ...form, slug: e.target.value })}
-          placeholder="slug"
-          className="w-full rounded border border-[#0e393d]/20 px-2 py-1 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-[#0e393d]/30"
-        />
-      </td>
-      <td className="px-4 py-2 text-center">
-        <input
-          type="checkbox"
-          checked={form.is_common}
-          onChange={(e) => onChange({ ...form, is_common: e.target.checked })}
-          className="rounded"
-        />
-      </td>
-      <td className="px-4 py-2 text-right whitespace-nowrap space-x-2">
-        <button
-          onClick={onSave}
-          disabled={saving}
-          className="px-3 py-1 rounded-md text-xs font-medium bg-[#0e393d] text-white hover:bg-[#0e393d]/85 disabled:opacity-50 transition"
-        >
-          Save
-        </button>
-        <button
-          onClick={onCancel}
-          className="px-3 py-1 rounded-md text-xs font-medium text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition"
-        >
-          Cancel
-        </button>
+      <td colSpan={5} className="px-4 py-3">
+        <div className="space-y-2">
+          {/* EN + DE + AI button */}
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="block text-[10px] font-medium text-[#0e393d]/60 mb-0.5">Name EN *</label>
+              <input
+                autoFocus
+                value={form.name_en}
+                onChange={(e) =>
+                  onChange({ ...form, name_en: e.target.value, slug: form.slug || toSlug(e.target.value) })
+                }
+                placeholder="e.g. finely chopped"
+                className={inputCls}
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-[10px] font-medium text-[#0e393d]/60 mb-0.5">Name DE</label>
+              <input
+                value={form.name_de}
+                onChange={(e) => onChange({ ...form, name_de: e.target.value })}
+                placeholder="z.B. fein gehackt"
+                className={inputCls}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => { if (aiStatus !== 'running') handleAI(); }}
+              disabled={aiStatus === 'running' || !form.name_en.trim()}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded bg-violet-50 text-violet-700 text-[11px] font-medium hover:bg-violet-100 disabled:opacity-40 disabled:cursor-not-allowed transition whitespace-nowrap"
+              title="Translate EN name to DE/FR/ES/IT"
+            >
+              {aiStatus === 'running' ? (
+                <>
+                  <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>
+                  Translating…
+                </>
+              ) : aiStatus === 'done' ? <>✓ Done</> : aiStatus === 'error' ? <>⚠ Retry</> : <>✦ AI Translate</>}
+            </button>
+          </div>
+
+          {/* FR + ES + IT */}
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="block text-[10px] font-medium text-[#0e393d]/60 mb-0.5">Name FR</label>
+              <input value={form.name_fr} onChange={(e) => onChange({ ...form, name_fr: e.target.value })} placeholder="ex. finement haché" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-[#0e393d]/60 mb-0.5">Name ES</label>
+              <input value={form.name_es} onChange={(e) => onChange({ ...form, name_es: e.target.value })} placeholder="ej. finamente picado" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-[#0e393d]/60 mb-0.5">Name IT</label>
+              <input value={form.name_it} onChange={(e) => onChange({ ...form, name_it: e.target.value })} placeholder="es. finemente tritato" className={inputCls} />
+            </div>
+          </div>
+
+          {/* Slug + Common + Actions */}
+          <div className="flex items-center gap-3 pt-1">
+            <div className="flex-1 max-w-xs">
+              <label className="block text-[10px] font-medium text-[#0e393d]/60 mb-0.5">Slug</label>
+              <input
+                value={form.slug}
+                onChange={(e) => onChange({ ...form, slug: e.target.value })}
+                placeholder="finely-chopped"
+                className={inputCls + ' font-mono text-xs'}
+              />
+            </div>
+            <label className="flex items-center gap-1.5 text-sm text-[#1c2a2b]/70 mt-4 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.is_common}
+                onChange={(e) => onChange({ ...form, is_common: e.target.checked })}
+                className="rounded"
+              />
+              Common
+            </label>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={onSave}
+                disabled={saving}
+                className="px-3 py-1 rounded-md text-xs font-medium bg-[#0e393d] text-white hover:bg-[#0e393d]/85 disabled:opacity-50 transition"
+              >
+                Save
+              </button>
+              <button
+                onClick={onCancel}
+                className="px-3 py-1 rounded-md text-xs font-medium text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       </td>
     </tr>
   );
@@ -117,9 +197,26 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
     if (data) setNotes(data as PrepNote[]);
   }, [supabase]);
 
+  const buildName = (f: FormData) => {
+    const name: Record<string, string> = { en: f.name_en };
+    if (f.name_de.trim()) name.de = f.name_de.trim();
+    if (f.name_fr.trim()) name.fr = f.name_fr.trim();
+    if (f.name_es.trim()) name.es = f.name_es.trim();
+    if (f.name_it.trim()) name.it = f.name_it.trim();
+    return name;
+  };
+
   const startEdit = (note: PrepNote) => {
     setEditingId(note.id);
-    setEditForm({ name_en: note.name.en ?? '', name_de: note.name.de ?? '', slug: note.slug, is_common: note.is_common });
+    setEditForm({
+      name_en: note.name.en ?? '',
+      name_de: note.name.de ?? '',
+      name_fr: note.name.fr ?? '',
+      name_es: note.name.es ?? '',
+      name_it: note.name.it ?? '',
+      slug: note.slug,
+      is_common: note.is_common,
+    });
     setAdding(false);
     setError('');
   };
@@ -131,7 +228,7 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
     setSaving(true);
     const { error: err } = await supabase
       .from('preparation_notes')
-      .update({ name: { de: editForm.name_de, en: editForm.name_en }, slug: editForm.slug, is_common: editForm.is_common })
+      .update({ name: buildName(editForm), slug: editForm.slug, is_common: editForm.is_common })
       .eq('id', editingId);
     setSaving(false);
     if (err) { setError(err.message); return; }
@@ -145,7 +242,7 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
     setSaving(true);
     const { error: err } = await supabase
       .from('preparation_notes')
-      .insert({ name: { de: addForm.name_de, en: addForm.name_en }, slug, is_common: addForm.is_common });
+      .insert({ name: buildName(addForm), slug, is_common: addForm.is_common });
     setSaving(false);
     if (err) { setError(err.message); return; }
     setAdding(false);
@@ -167,7 +264,14 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
   const filtered = search
     ? notes.filter((n) => {
         const q = search.toLowerCase();
-        return (n.name.en ?? '').toLowerCase().includes(q) || (n.name.de ?? '').toLowerCase().includes(q) || n.slug.includes(q);
+        return (
+          (n.name.en ?? '').toLowerCase().includes(q) ||
+          (n.name.de ?? '').toLowerCase().includes(q) ||
+          (n.name.fr ?? '').toLowerCase().includes(q) ||
+          (n.name.es ?? '').toLowerCase().includes(q) ||
+          (n.name.it ?? '').toLowerCase().includes(q) ||
+          n.slug.includes(q)
+        );
       })
     : notes;
 
@@ -249,7 +353,14 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
                 />
               ) : (
                 <tr key={note.id} className="hover:bg-[#fafaf8] transition-colors">
-                  <td className="px-4 py-3 font-medium text-[#0e393d]">{note.name.en ?? '—'}</td>
+                  <td className="px-4 py-3">
+                    <div className="font-medium text-[#0e393d]">{note.name.en ?? '—'}</div>
+                    {(note.name.fr || note.name.es || note.name.it) && (
+                      <div className="text-[10px] text-[#1c2a2b]/30 mt-0.5">
+                        {[note.name.fr, note.name.es, note.name.it].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-[#1c2a2b]/60">{note.name.de ?? '—'}</td>
                   <td className="px-4 py-3 font-mono text-xs text-[#1c2a2b]/40">{note.slug}</td>
                   <td className="px-4 py-3">
