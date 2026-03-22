@@ -250,13 +250,13 @@ function ItemRow({ item, lang, icon, onToggle, onDelete, removeAria }: {
   const amount = formatAmount(item.amount, item.unit);
 
   return (
-    <li className={`group flex items-center gap-3 rounded-xl border border-[#0e393d]/8 bg-white px-3.5 py-2.5 hover:border-[#0e393d]/15 transition ${item.is_checked ? 'opacity-45' : ''}`}>
-      {/* Checkbox */}
+    <li className={`group grid grid-cols-[20px_1.2rem_3.5rem_1fr_auto] items-center gap-x-2 rounded-xl border border-[#0e393d]/8 bg-white px-3.5 py-2.5 hover:border-[#0e393d]/15 transition ${item.is_checked ? 'opacity-45' : ''}`}>
+      {/* Col 1: Checkbox */}
       <button
         type="button"
         onClick={() => onToggle(item)}
         aria-pressed={item.is_checked}
-        className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
+        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
           item.is_checked ? 'bg-[#0C9C6C] border-[#0C9C6C]' : 'border-[#0e393d]/25 hover:border-[#0e393d]/60'
         }`}
       >
@@ -267,27 +267,27 @@ function ItemRow({ item, lang, icon, onToggle, onDelete, removeAria }: {
         )}
       </button>
 
-      {/* Emoji + Qty/Unit + Name + Notes */}
-      <div className="flex-1 min-w-0 flex items-center gap-2">
-        {icon && <span className="shrink-0 text-base leading-none">{icon}</span>}
-        {amount && (
-          <span className="shrink-0 text-sm font-medium text-[#0e393d]">{amount}</span>
+      {/* Col 2: DD emoji (always present, empty if none) */}
+      <span className="text-base leading-none text-center">{icon ?? ''}</span>
+
+      {/* Col 3: Qty + unit (right-aligned, empty if none) */}
+      <span className="text-sm font-medium text-[#0e393d] text-right leading-snug">{amount}</span>
+
+      {/* Col 4: Name + notes */}
+      <div className="min-w-0">
+        <span className={`text-sm text-[#1c2a2b] leading-snug ${item.is_checked ? 'line-through' : ''}`}>
+          {label}
+        </span>
+        {item.notes && (
+          <span className="ml-1 text-xs text-[#1c2a2b]/40">{item.notes}</span>
         )}
-        <div className="min-w-0 flex-1">
-          <span className={`text-sm text-[#1c2a2b] leading-snug ${item.is_checked ? 'line-through' : ''}`}>
-            {label}
-          </span>
-          {item.notes && (
-            <span className="ml-1 text-xs text-[#1c2a2b]/40">{item.notes}</span>
-          )}
-        </div>
       </div>
 
-      {/* Delete */}
+      {/* Col 5: Delete */}
       <button
         type="button"
         onClick={() => onDelete(item)}
-        className="shrink-0 opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded-md text-[#1c2a2b]/30 hover:text-red-500 hover:bg-red-50 transition"
+        className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded-md text-[#1c2a2b]/30 hover:text-red-500 hover:bg-red-50 transition"
         aria-label={removeAria}
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
