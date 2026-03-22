@@ -1951,27 +1951,36 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
     }
   };
 
+  const [styleProgress, setStyleProgress] = useState<string>('');
+
   const handleStyle = async () => {
-    if (!form.instructions[lang]) return;
+    const langsWithContent = ALL_LANGS.filter((l) => !!form.instructions[l]);
+    if (langsWithContent.length === 0) return;
     setStyleStatus('loading');
+    setStyleProgress(`0/${langsWithContent.length}`);
     try {
-      const res = await fetch('/api/admin/style-recipe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          instructions: form.instructions[lang],
-          language: lang,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'Style failed');
+      const updates: Partial<Record<Lang, string>> = {};
+      for (let i = 0; i < langsWithContent.length; i++) {
+        const l = langsWithContent[i];
+        setStyleProgress(`${i + 1}/${langsWithContent.length}`);
+        const res = await fetch('/api/admin/style-recipe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ instructions: form.instructions[l], language: l }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? 'Style failed');
+        if (json.instructions) updates[l] = json.instructions;
+      }
       setForm((f) => ({
         ...f,
-        instructions: { ...f.instructions, [lang]: json.instructions ?? f.instructions[lang] },
+        instructions: { ...f.instructions, ...updates },
       }));
       setStyleStatus('done');
     } catch {
       setStyleStatus('error');
+    } finally {
+      setStyleProgress('');
     }
   };
 
@@ -2192,7 +2201,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                       <button
                         type="button"
                         onClick={() => { setStyleStatus('idle'); handleStyle(); }}
-                        disabled={styleStatus === 'loading' || !form.instructions[lang]}
+                        disabled={styleStatus === 'loading' || ALL_LANGS.every((l) => !form.instructions[l])}
                         className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
                           styleStatus === 'done'
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
@@ -2205,7 +2214,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                           </svg>
                         )}
-                        {styleStatus === 'loading' ? 'Styling…' : styleStatus === 'done' ? '✓ Styled' : '✦ AI Style'}
+                        {styleStatus === 'loading' ? `Styling ${styleProgress}…` : styleStatus === 'done' ? '✓ Styled' : '✦ AI Style all'}
                       </button>
                       {/* Translate to all */}
                       <button
