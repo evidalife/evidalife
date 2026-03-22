@@ -2,6 +2,22 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import SimpleCropModal from '@/components/admin/shared/SimpleCropModal';
+
+async function compressImage(file: File, maxWidth = 800, quality = 0.85): Promise<{ blob: Blob; sizeKb: number }> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxWidth / bitmap.width);
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  const mimeType = file.type === 'image/png' ? 'image/png' : 'image/webp';
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => { resolve({ blob: blob!, sizeKb: Math.round(blob!.size / 1024) }); }, mimeType, quality);
+  });
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -131,6 +147,8 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageCompressedKb, setImageCompressedKb] = useState<number | null>(null);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [imageRemoved, setImageRemoved] = useState(false);
   const pendingDeleteRef = useRef<string | null>(null);
@@ -166,6 +184,8 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     setForm(EMPTY_FORM);
     setImageFile(null);
     setImagePreview(null);
+    setImageCompressedKb(null);
+    setCropModalOpen(false);
     setCurrentImageUrl(null);
     setImageRemoved(false);
     pendingDeleteRef.current = null;
@@ -191,6 +211,8 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     });
     setImageFile(null);
     setImagePreview(null);
+    setImageCompressedKb(null);
+    setCropModalOpen(false);
     setCurrentImageUrl(p.image_url);
     setImageRemoved(false);
     pendingDeleteRef.current = null;
@@ -211,11 +233,16 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
   // ── Image picker ─────────────────────────────────────────────────────────────
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+    e.target.value = '';
+    const { blob, sizeKb } = await compressImage(file);
+    const compressed = new File([blob], file.name, { type: blob.type });
+    setImageFile(compressed);
+    setImageCompressedKb(sizeKb);
+    setImagePreview(URL.createObjectURL(compressed));
+    setCropModalOpen(true);
   };
 
   const uploadImage = async (_productId: string): Promise<string | null> => {
@@ -664,18 +691,21 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                   </div>
                 )}
 
+                {imageCompressedKb && (
+                  <p className="text-[11px] text-[#1c2a2b]/40">Auto-compressed · {imageCompressedKb} KB</p>
+                )}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="w-full rounded-lg border border-dashed border-[#0e393d]/20 py-4 text-sm text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d]/70 hover:bg-[#0e393d]/3 transition"
                 >
                   {imagePreview || currentImageUrl ? 'Replace image' : 'Upload image'}
-                  <span className="block text-xs mt-0.5 text-[#1c2a2b]/30">PNG, JPG, WebP · max 5 MB</span>
+                  <span className="block text-xs mt-0.5 text-[#1c2a2b]/30">JPEG, PNG, WebP · max 5 MB</span>
                 </button>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   className="hidden"
                   onChange={handleImageChange}
                 />
@@ -707,6 +737,25 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
           </div>
         </>
+      )}
+
+      {/* Crop Modal */}
+      {cropModalOpen && imagePreview && (
+        <SimpleCropModal
+          imageUrl={imagePreview}
+          aspect={1}
+          outputWidth={800}
+          outputHeight={800}
+          title="Crop Product Image (1:1)"
+          onConfirm={(blob, sizeKb) => {
+            const file = new File([blob], 'product.jpg', { type: 'image/jpeg' });
+            setImageFile(file);
+            setImageCompressedKb(sizeKb);
+            setImagePreview(URL.createObjectURL(blob));
+            setCropModalOpen(false);
+          }}
+          onClose={() => setCropModalOpen(false)}
+        />
       )}
 
     </div>
