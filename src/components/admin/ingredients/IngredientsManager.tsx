@@ -508,7 +508,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
             }`}
           >
             {cat.icon && <span>{cat.icon}</span>}
-            <span>{cat.name?.de ?? cat.slug}</span>
+            <span>{cat.name?.en ?? cat.name?.de ?? cat.slug}</span>
           </button>
         ))}
         <button
@@ -567,7 +567,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                   {/* Default Unit */}
                   <td className="px-4 py-3 text-[#1c2a2b]/70">
                     {unit ? (
-                      <span className="font-mono text-xs">{unit.abbreviation?.de ?? unit.code}</span>
+                      <span className="font-mono text-xs">{unit.abbreviation?.en ?? unit.abbreviation?.de ?? unit.code}</span>
                     ) : (
                       <span className="text-[#1c2a2b]/30">—</span>
                     )}
@@ -578,7 +578,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                     {cat ? (
                       <Badge color="teal">
                         {cat.icon && <span className="mr-1">{cat.icon}</span>}
-                        {cat.name?.de ?? cat.slug}
+                        {cat.name?.en ?? cat.name?.de ?? cat.slug}
                       </Badge>
                     ) : (
                       <span className="text-[#1c2a2b]/30">—</span>
@@ -722,7 +722,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                     <option value="">— No default unit</option>
                     {units.map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.abbreviation?.de ?? u.code} — {u.name?.de ?? u.code}
+                        {u.abbreviation?.en ?? u.abbreviation?.de ?? u.code} — {u.name?.en ?? u.name?.de ?? u.code}
                       </option>
                     ))}
                   </select>
@@ -737,7 +737,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                     <option value="">— None</option>
                     {categories.map((cat) => (
                       <option key={cat.id} value={cat.id}>
-                        {cat.icon ? `${cat.icon} ` : ''}{cat.name?.de ?? cat.slug}
+                        {cat.icon ? `${cat.icon} ` : ''}{cat.name?.en ?? cat.name?.de ?? cat.slug}
                       </option>
                     ))}
                   </select>

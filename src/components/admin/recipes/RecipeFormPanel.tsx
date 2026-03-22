@@ -489,7 +489,7 @@ function IngredientCombobox({ value, displayValue, ingredientOptions, onSelect, 
   const filtered = query.length > 0
     ? ingredientOptions.filter((ing) => {
         const q = query.toLowerCase();
-        return ing.name?.de?.toLowerCase().includes(q) || ing.name?.en?.toLowerCase().includes(q);
+        return ing.name?.en?.toLowerCase().includes(q) || ing.name?.de?.toLowerCase().includes(q);
       }).slice(0, 30)
     : ingredientOptions.slice(0, 30);
 
@@ -513,15 +513,15 @@ function IngredientCombobox({ value, displayValue, ingredientOptions, onSelect, 
                 onMouseDown={(e) => {
                   e.preventDefault();
                   onSelect(ing);
-                  const label = [ing.name?.de, ing.name?.en].filter(Boolean).join(' / ');
+                  const label = [ing.name?.en, ing.name?.de].filter(Boolean).join(' / ');
                   setInputVal(label);
                   setQuery('');
                   setOpen(false);
                 }}
                 className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#0e393d]/5 transition ${value === ing.id ? 'bg-[#0e393d]/8 font-medium' : ''}`}
               >
-                <span className="text-[#0e393d]">{ing.name?.de}</span>
-                {ing.name?.en && <span className="text-[#1c2a2b]/40"> / {ing.name.en}</span>}
+                <span className="text-[#0e393d]">{ing.name?.en ?? ing.name?.de}</span>
+                {ing.name?.en && ing.name?.de && <span className="text-[#1c2a2b]/40"> / {ing.name.de}</span>}
               </button>
             ))}
           </div>
@@ -574,7 +574,7 @@ function PrepNotesCombobox({ value, displayValue, noteOptions, onSelect, onClear
   const filtered = query.length > 0
     ? noteOptions.filter((n) => {
         const q = query.toLowerCase();
-        return n.name?.de?.toLowerCase().includes(q) || n.name?.en?.toLowerCase().includes(q);
+        return n.name?.en?.toLowerCase().includes(q) || n.name?.de?.toLowerCase().includes(q);
       }).slice(0, 20)
     : noteOptions.slice(0, 20);
 
@@ -608,15 +608,15 @@ function PrepNotesCombobox({ value, displayValue, noteOptions, onSelect, onClear
                 onMouseDown={(e) => {
                   e.preventDefault();
                   onSelect(note);
-                  const label = [note.name?.de, note.name?.en].filter(Boolean).join(' / ');
+                  const label = [note.name?.en, note.name?.de].filter(Boolean).join(' / ');
                   setInputVal(label);
                   setQuery('');
                   setOpen(false);
                 }}
                 className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#0e393d]/5 transition ${value === note.id ? 'bg-[#0e393d]/8 font-medium' : ''}`}
               >
-                <span className="text-[#0e393d]">{note.name?.de}</span>
-                {note.name?.en && <span className="text-[#1c2a2b]/40"> / {note.name.en}</span>}
+                <span className="text-[#0e393d]">{note.name?.en ?? note.name?.de}</span>
+                {note.name?.en && note.name?.de && <span className="text-[#1c2a2b]/40"> / {note.name.de}</span>}
               </button>
             ))}
           </div>
@@ -754,7 +754,7 @@ function QuickAddIngredientModal({ units, categories, onSaved, onClose }: QuickA
               <select className={inputCls + ' cursor-pointer'} value={defaultUnitId} onChange={(e) => setDefaultUnitId(e.target.value)}>
                 <option value="">— No default unit</option>
                 {units.map((u) => (
-                  <option key={u.id} value={u.id}>{u.abbreviation?.de ?? u.code} — {u.name?.de ?? u.code}</option>
+                  <option key={u.id} value={u.id}>{u.abbreviation?.en ?? u.abbreviation?.de ?? u.code} — {u.name?.en ?? u.name?.de ?? u.code}</option>
                 ))}
               </select>
             </Field>
@@ -762,7 +762,7 @@ function QuickAddIngredientModal({ units, categories, onSaved, onClose }: QuickA
               <select className={inputCls + ' cursor-pointer'} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
                 <option value="">— None</option>
                 {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.icon ? `${cat.icon} ` : ''}{cat.name?.de ?? cat.slug}</option>
+                  <option key={cat.id} value={cat.id}>{cat.icon ? `${cat.icon} ` : ''}{cat.name?.en ?? cat.name?.de ?? cat.slug}</option>
                 ))}
               </select>
             </Field>
@@ -1123,7 +1123,7 @@ function MissingIngredientsModal({
                     >
                       <option value="">— No default</option>
                       {units.map((u) => (
-                        <option key={u.id} value={u.id}>{u.abbreviation?.de ?? u.code} — {u.name?.de ?? u.code}</option>
+                        <option key={u.id} value={u.id}>{u.abbreviation?.en ?? u.abbreviation?.de ?? u.code} — {u.name?.en ?? u.name?.de ?? u.code}</option>
                       ))}
                     </select>
                   </div>
@@ -1136,7 +1136,7 @@ function MissingIngredientsModal({
                     >
                       <option value="">— None</option>
                       {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>{cat.icon ? `${cat.icon} ` : ''}{cat.name?.de ?? cat.slug}</option>
+                        <option key={cat.id} value={cat.id}>{cat.icon ? `${cat.icon} ` : ''}{cat.name?.en ?? cat.name?.de ?? cat.slug}</option>
                       ))}
                     </select>
                   </div>
@@ -1456,7 +1456,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   const selectNote = (key: string, note: PrepNoteOption) =>
     updateIngredient(key, {
       note_id: note.id,
-      note_display: [note.name?.de, note.name?.en].filter(Boolean).join(' / '),
+      note_display: [note.name?.en, note.name?.de].filter(Boolean).join(' / '),
       notes: { de: note.name?.de ?? '', en: note.name?.en ?? '' },
     });
 
@@ -1659,7 +1659,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
             if (!hasName && !ing.ingredient_id) return null;
             const unitOpt = unitOptions.find((u) => u.id === ing.unit_id);
             const unitStr = unitOpt
-              ? (unitOpt.abbreviation?.de ?? unitOpt.abbreviation?.en ?? unitOpt.code)
+              ? (unitOpt.abbreviation?.en ?? unitOpt.abbreviation?.de ?? unitOpt.code)
               : ing.unit.trim() || null;
             return {
               recipe_id:        id!,
@@ -2422,7 +2422,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                       >
                         <option value="">Unit</option>
                         {unitOptions.map((u) => (
-                          <option key={u.id} value={u.id}>{u.abbreviation?.de ?? u.code}</option>
+                          <option key={u.id} value={u.id}>{u.abbreviation?.en ?? u.abbreviation?.de ?? u.code}</option>
                         ))}
                       </select>
                       {/* Optional toggle */}
