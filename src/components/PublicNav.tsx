@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthProvider';
 import { createClient } from '@/lib/supabase/client';
 import Image from 'next/image';
 
-type Locale = 'de' | 'en';
+type Locale = 'de' | 'en' | 'fr' | 'es' | 'it';
 
 // URL slugs for each section's dropdown items, matching nav.dropdowns.* order in translations
 const NAV_SLUG_MAP: Record<string, (string | null)[]> = {
@@ -51,7 +51,7 @@ export default function PublicNav() {
 
   const closeAllMenus = () => { setMobileOpen(false); setLangOpen(false); setUserOpen(false); };
 
-  const login = locale === 'de' ? 'Anmelden' : 'Login';
+  const login = locale === 'de' ? 'Anmelden' : locale === 'fr' ? 'Connexion' : locale === 'es' ? 'Entrar' : locale === 'it' ? 'Accedi' : 'Login';
   const dropdowns = t.raw('dropdowns') as Record<string, (string | null)[]>;
 
   return (
@@ -176,7 +176,7 @@ export default function PublicNav() {
                   className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.14)] border border-[#0e393d]/8 min-w-[140px] py-1.5"
                   style={{ animation: 'dropdownIn 0.15s ease-out' }}
                 >
-                  {([['de', 'Deutsch'], ['en', 'English']] as [Locale, string][]).map(([l, label]) => (
+                  {([['de', 'Deutsch'], ['en', 'English'], ['fr', 'Français'], ['es', 'Español'], ['it', 'Italiano']] as [Locale, string][]).map(([l, label]) => (
                     <button
                       key={l}
                       onClick={() => changeLang(l)}
@@ -237,7 +237,7 @@ export default function PublicNav() {
                       href="/profile"
                       className="block px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
                     >
-                      {locale === 'de' ? 'Profil' : 'Profile'}
+                      {locale === 'de' || locale === 'fr' ? 'Profil' : locale === 'es' ? 'Perfil' : locale === 'it' ? 'Profilo' : 'Profile'}
                     </Link>
                     {profile?.is_admin && (
                       <Link
@@ -250,10 +250,10 @@ export default function PublicNav() {
                     <div className="h-px bg-[#0e393d]/10 mx-4 my-1.5" />
                     <button
                       onClick={handleSignOut}
-                      aria-label={locale === 'de' ? 'Abmelden' : 'Sign out'}
+                      aria-label={locale === 'de' ? 'Abmelden' : locale === 'fr' ? 'Se déconnecter' : locale === 'es' ? 'Cerrar sesión' : locale === 'it' ? 'Esci' : 'Sign out'}
                       className="w-full text-left px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-red-600 transition-colors"
                     >
-                      {locale === 'de' ? 'Abmelden' : 'Sign out'}
+                      {locale === 'de' ? 'Abmelden' : locale === 'fr' ? 'Se déconnecter' : locale === 'es' ? 'Cerrar sesión' : locale === 'it' ? 'Esci' : 'Sign out'}
                     </button>
                   </div>
                 </div>

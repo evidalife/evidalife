@@ -5,13 +5,11 @@ import { Link } from '@/i18n/navigation';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Lang = 'de' | 'en';
-
 export type RecipeCard = {
   id: string;
   slug: string | null;
-  title: { de?: string; en?: string } | null;
-  description: { de?: string; en?: string } | null;
+  title: Record<string, string> | null;
+  description: Record<string, string> | null;
   image_url: string | null;
   prep_time_min: number | null;
   cook_time_min: number | null;
@@ -84,10 +82,10 @@ const T = {
 
 interface Props {
   recipes: RecipeCard[];
-  lang: Lang;
-  courseTypes: { id: string; name: { en?: string; de?: string } }[];
-  mealTypes: { id: string; name: { en?: string; de?: string } }[];
-  ddCategories: { slug: string; name: { en?: string; de?: string }; icon: string }[];
+  lang: string;
+  courseTypes: { id: string; name: Record<string, string> }[];
+  mealTypes: { id: string; name: Record<string, string> }[];
+  ddCategories: { slug: string; name: Record<string, string>; icon: string }[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -133,7 +131,7 @@ function FilterRow({ label, children }: { label: string; children: React.ReactNo
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddCategories }: Props) {
-  const t = T[lang];
+  const t = (T as Record<string, typeof T.en>)[lang] ?? T.en;
 
   const [search, setSearch] = useState('');
   const [difficulties, setDifficulties] = useState<string[]>([]);
@@ -221,7 +219,7 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
                 active={difficulties.includes(d)}
                 onClick={() => setDifficulties(toggle(difficulties, d))}
               >
-                {DIFF_CFG[d].label[lang]}
+                {DIFF_CFG[d].label[lang as 'de' | 'en'] ?? DIFF_CFG[d].label.en}
               </Pill>
             ))}
           </FilterRow>
@@ -279,7 +277,7 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
                 active={goalKeys.includes(g.key)}
                 onClick={() => setGoalKeys(toggle(goalKeys, g.key))}
               >
-                {g.label[lang]}
+                {g.label[lang as 'de' | 'en'] ?? g.label.en}
               </Pill>
             ))}
           </FilterRow>
@@ -370,7 +368,7 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
                     )}
                     {diffCfg && (
                       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${diffCfg.cls}`}>
-                        {diffCfg.label[lang]}
+                        {diffCfg.label[lang as 'de' | 'en'] ?? diffCfg.label.en}
                       </span>
                     )}
                   </div>

@@ -4,13 +4,11 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthProvider';
 
-type Lang = 'de' | 'en';
-
 interface Props {
   recipeId: string;
   initialAvg: number | null;
   initialCount: number;
-  lang?: Lang;
+  lang?: string;
 }
 
 const T = {
@@ -21,7 +19,7 @@ const T = {
 export default function RecipeRating({ recipeId, initialAvg, initialCount, lang = 'de' }: Props) {
   const { user } = useAuth();
   const supabase = createClient();
-  const t = T[lang];
+  const t = (T as Record<string, typeof T.en>)[lang] ?? T.en;
 
   const [avg, setAvg] = useState(initialAvg);
   const [count, setCount] = useState(initialCount);

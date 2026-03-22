@@ -7,11 +7,9 @@ import { buildMeta, PAGE_META } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const lang = locale === 'en' ? 'en' : 'de';
-  return buildMeta({ ...PAGE_META.courses[lang], path: '/courses', locale: lang });
+  const metaLang = locale === 'en' ? 'en' : 'de';
+  return buildMeta({ ...PAGE_META.courses[metaLang], path: '/courses', locale });
 }
-
-type Lang = 'de' | 'en';
 
 const T = {
   de: {
@@ -37,8 +35,8 @@ const T = {
 };
 
 export default async function CoursesPage() {
-  const locale = (await getLocale()) as Lang;
-  const t = T[locale];
+  const locale = await getLocale();
+  const t = (T as Record<string, typeof T.en>)[locale] ?? T.en;
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -89,7 +87,7 @@ export default async function CoursesPage() {
         {/* Hero */}
         <div className="mb-10">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-2">
-            {locale === 'de' ? 'Wissen' : 'Knowledge'}
+            {locale === 'de' ? 'Wissen' : 'Knowledge'/* fr/es/it use EN */}
           </p>
           <h1 className="font-serif text-4xl text-[#0e393d] mb-3">{t.heading}</h1>
           <p className="text-[#1c2a2b]/60 text-base max-w-xl">{t.sub}</p>
@@ -132,7 +130,7 @@ export default async function CoursesPage() {
                   )}
                   {isDone && (
                     <div className="absolute top-3 right-3 bg-emerald-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                      ✓ {locale === 'de' ? 'Fertig' : 'Done'}
+                      ✓ {locale === 'de' ? 'Fertig' : 'Done'/* fr/es/it use EN */}
                     </div>
                   )}
                 </div>

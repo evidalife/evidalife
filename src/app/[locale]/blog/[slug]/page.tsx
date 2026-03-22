@@ -5,7 +5,6 @@ import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import { createClient } from '@/lib/supabase/server';
 
-type Lang = 'de' | 'en';
 
 function supabaseTransform(url: string | null, width: number, height?: number): string | null {
   if (!url || !url.includes('/storage/v1/object/public/')) return url;
@@ -150,8 +149,12 @@ function renderMarkdown(md: string): React.ReactNode[] {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatDate(iso: string, lang: Lang): string {
-  return new Date(iso).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', {
+const DATE_LOCALE: Record<string, string> = {
+  de: 'de-DE', en: 'en-US', fr: 'fr-FR', es: 'es-ES', it: 'it-IT',
+};
+
+function formatDate(iso: string, lang: string): string {
+  return new Date(iso).toLocaleDateString(DATE_LOCALE[lang] ?? 'en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
   });
 }
@@ -164,8 +167,8 @@ export default async function BlogDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const locale = (await getLocale()) as Lang;
-  const t = T[locale];
+  const locale = await getLocale();
+  const t = (T as Record<string, typeof T.en>)[locale] ?? T.en;
   const supabase = await createClient();
 
   // Fetch article
@@ -184,14 +187,17 @@ export default async function BlogDetailPage({
 
   if (!article) notFound();
 
-  const title   = article.title?.[locale] || article.title?.de || article.title?.en || '';
-  const excerpt = article.excerpt?.[locale] || article.excerpt?.de || '';
-  const content = article.content?.[locale] || article.content?.de || '';
+  const titleObj   = article.title as Record<string, string> | null;
+  const excerptObj = article.excerpt as Record<string, string> | null;
+  const contentObj = article.content as Record<string, string> | null;
+  const title   = titleObj?.[locale] || titleObj?.de || titleObj?.en || '';
+  const excerpt = excerptObj?.[locale] || excerptObj?.de || '';
+  const content = contentObj?.[locale] || contentObj?.de || '';
   const tags    = Array.isArray(article.article_tags)
     ? (article.article_tags as { tag: string }[]).map((t) => t.tag)
     : [];
 
-  const catLabel = article.category ? (CAT_LABELS[article.category]?.[locale] ?? article.category) : null;
+  const catLabel = article.category ? (CAT_LABELS[article.category]?.[locale as 'de' | 'en'] ?? CAT_LABELS[article.category]?.en ?? article.category) : null;
   const catCls   = article.category ? CAT_CLS[article.category] : '';
 
   // Related articles: same category, excluding current
@@ -208,8 +214,8 @@ export default async function BlogDetailPage({
   const related = (relatedRows ?? []).map((r) => ({
     id: r.id,
     slug: r.slug as string | null,
-    title: r.title as { de?: string; en?: string } | null,
-    excerpt: r.excerpt as { de?: string; en?: string } | null,
+    title: r.title as Record<string, string> | null,
+    excerpt: r.excerpt as Record<string, string> | null,
     featured_image_url: r.featured_image_url as string | null,
     category: r.category as string | null,
     reading_time_min: r.reading_time_min as number | null,
@@ -301,10 +307,10 @@ export default async function BlogDetailPage({
             <h2 className="font-serif text-xl text-[#0e393d] mb-5">{t.related}</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {related.map((r) => {
-                const rTitle   = r.title?.[locale] || r.title?.de || '';
-                const rExcerpt = r.excerpt?.[locale] || r.excerpt?.de || '';
+                const rTitle   = r.title?.[locale] || r.title?.['de'] || '';
+                const rExcerpt = r.excerpt?.[locale] || r.excerpt?.['de'] || '';
                 const rHref    = `/blog/${r.slug ?? r.id}`;
-                const rCatLabel = r.category ? (CAT_LABELS[r.category]?.[locale] ?? r.category) : null;
+                const rCatLabel = r.category ? (CAT_LABELS[r.category]?.[locale as 'de' | 'en'] ?? CAT_LABELS[r.category]?.en ?? r.category) : null;
                 const rCatCls  = r.category ? CAT_CLS[r.category] : '';
 
                 return (

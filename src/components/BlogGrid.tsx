@@ -5,13 +5,11 @@ import { Link } from '@/i18n/navigation';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Lang = 'de' | 'en';
-
 export type ArticleCard = {
   id: string;
   slug: string | null;
-  title: { de?: string; en?: string } | null;
-  excerpt: { de?: string; en?: string } | null;
+  title: Record<string, string> | null;
+  excerpt: Record<string, string> | null;
   featured_image_url: string | null;
   category: string | null;
   author_name: string | null;
@@ -70,16 +68,20 @@ const T = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatDate(iso: string, lang: Lang): string {
-  return new Date(iso).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', {
+const DATE_LOCALE: Record<string, string> = {
+  de: 'de-DE', en: 'en-US', fr: 'fr-FR', es: 'es-ES', it: 'it-IT',
+};
+
+function formatDate(iso: string, lang: string): string {
+  return new Date(iso).toLocaleDateString(DATE_LOCALE[lang] ?? 'en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
   });
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function BlogGrid({ articles, lang }: { articles: ArticleCard[]; lang: Lang }) {
-  const t = T[lang];
+export default function BlogGrid({ articles, lang }: { articles: ArticleCard[]; lang: string }) {
+  const t = (T as Record<string, typeof T.en>)[lang] ?? T.en;
 
   const [search, setSearch]   = useState('');
   const [catFilter, setCat]   = useState<string>('all');
@@ -125,7 +127,7 @@ export default function BlogGrid({ articles, lang }: { articles: ArticleCard[]; 
               onClick={() => setCat(cat)}
               className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition ${catFilter === cat ? 'bg-[#0e393d] text-white' : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'}`}
             >
-              {CAT_LABELS[cat]?.[lang] ?? cat}
+              {CAT_LABELS[cat]?.[lang as 'de' | 'en'] ?? CAT_LABELS[cat]?.en ?? cat}
             </button>
           ))}
         </div>
@@ -149,7 +151,7 @@ export default function BlogGrid({ articles, lang }: { articles: ArticleCard[]; 
             const excerpt = article.excerpt?.[lang] || article.excerpt?.de || '';
             const href    = `/blog/${article.slug ?? article.id}`;
             const catCls  = article.category ? CAT_CLS[article.category] : '';
-            const catLabel = article.category ? (CAT_LABELS[article.category]?.[lang] ?? article.category) : '';
+            const catLabel = article.category ? (CAT_LABELS[article.category]?.[lang as 'de' | 'en'] ?? CAT_LABELS[article.category]?.en ?? article.category) : '';
 
             return (
               <article
@@ -203,7 +205,7 @@ export default function BlogGrid({ articles, lang }: { articles: ArticleCard[]; 
             const excerpt = article.excerpt?.[lang] || article.excerpt?.de || '';
             const href    = `/blog/${article.slug ?? article.id}`;
             const catCls  = article.category ? CAT_CLS[article.category] : '';
-            const catLabel = article.category ? (CAT_LABELS[article.category]?.[lang] ?? article.category) : '';
+            const catLabel = article.category ? (CAT_LABELS[article.category]?.[lang as 'de' | 'en'] ?? CAT_LABELS[article.category]?.en ?? article.category) : '';
 
             return (
               <article

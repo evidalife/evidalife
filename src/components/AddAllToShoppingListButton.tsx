@@ -4,18 +4,16 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthProvider';
 
-type Lang = 'de' | 'en';
-
 interface IngredientItem {
-  ingredient_name: { de?: string; en?: string } | string | null;
+  ingredient_name: Record<string, string> | string | null;
   amount?: number | null;
-  unit?: string | { de?: string; en?: string } | null;
+  unit?: string | Record<string, string> | null;
 }
 
 interface Props {
   ingredients: IngredientItem[];
   recipeId: string;
-  lang?: Lang;
+  lang?: string;
 }
 
 const T = {
@@ -26,7 +24,7 @@ const T = {
 export default function AddAllToShoppingListButton({ ingredients, recipeId, lang = 'de' }: Props) {
   const { user } = useAuth();
   const supabase = createClient();
-  const t = T[lang];
+  const t = (T as Record<string, typeof T.en>)[lang] ?? T.en;
 
   const [state, setState] = useState<'idle' | 'adding' | 'added'>('idle');
 
@@ -52,7 +50,7 @@ export default function AddAllToShoppingListButton({ ingredients, recipeId, lang
     } else {
       const { data: created } = await supabase
         .from('shopping_lists')
-        .insert({ user_id: user.id, name: lang === 'de' ? 'Einkaufsliste' : 'Shopping List' })
+        .insert({ user_id: user.id, name: lang === 'de' ? 'Einkaufsliste' : 'Shopping List' /* fr/es/it use EN default */ })
         .select('id')
         .single();
       listId = created?.id ?? null;
@@ -78,14 +76,14 @@ export default function AddAllToShoppingListButton({ ingredients, recipeId, lang
         ? { de: '', en: '' }
         : typeof rawName === 'string'
         ? { de: rawName, en: rawName }
-        : { de: rawName.de ?? '', en: rawName.en ?? '' };
+        : { de: (rawName as Record<string, string>).de ?? '', en: (rawName as Record<string, string>).en ?? '' };
 
       const unit = !ing.unit
         ? null
         : typeof ing.unit === 'string'
         ? ing.unit
-        : (ing.unit as { de?: string; en?: string })?.[lang] ??
-          (ing.unit as { de?: string; en?: string })?.de ??
+        : (ing.unit as Record<string, string>)?.[lang] ??
+          (ing.unit as Record<string, string>)?.de ??
           null;
 
       return {

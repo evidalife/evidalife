@@ -7,11 +7,9 @@ import { buildMeta, PAGE_META } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const lang = locale === 'en' ? 'en' : 'de';
-  return buildMeta({ ...PAGE_META.blog[lang], path: '/blog', locale: lang });
+  const metaLang = locale === 'en' ? 'en' : 'de';
+  return buildMeta({ ...PAGE_META.blog[metaLang], path: '/blog', locale });
 }
-
-type Lang = 'de' | 'en';
 
 const T = {
   de: { eyebrow: 'Wissen', heading: 'Blog', sub: 'Evidenzbasierte Artikel zu Gesundheit, Ernährung und Langlebigkeit.' },
@@ -19,8 +17,8 @@ const T = {
 };
 
 export default async function BlogPage() {
-  const locale = (await getLocale()) as Lang;
-  const t = T[locale];
+  const locale = await getLocale();
+  const t = (T as Record<string, typeof T.en>)[locale] ?? T.en;
   const supabase = await createClient();
 
   const { data: rows } = await supabase

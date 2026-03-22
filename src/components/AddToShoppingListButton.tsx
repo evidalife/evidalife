@@ -6,14 +6,12 @@ import { useAuth } from '@/context/AuthProvider';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Lang = 'de' | 'en';
-
 interface Props {
-  ingredientName: { de: string; en: string } | string;
+  ingredientName: Record<string, string> | string;
   amount?: number | null;
   unit?: string | null;
   recipeId?: string | null;
-  lang?: Lang;
+  lang?: string;
   /** Optional class overrides for the button */
   className?: string;
   /** Render as icon-only (compact) or full label */
@@ -38,7 +36,7 @@ export default function AddToShoppingListButton({
 }: Props) {
   const { user } = useAuth();
   const supabase = createClient();
-  const t = T[lang];
+  const t = (T as Record<string, typeof T.en>)[lang] ?? T.en;
 
   const [state, setState] = useState<'idle' | 'adding' | 'added'>('idle');
 
@@ -63,7 +61,7 @@ export default function AddToShoppingListButton({
     } else {
       const { data: created } = await supabase
         .from('shopping_lists')
-        .insert({ user_id: user.id, name: lang === 'de' ? 'Einkaufsliste' : 'Shopping List' })
+        .insert({ user_id: user.id, name: lang === 'de' ? 'Einkaufsliste' : 'Shopping List' /* fr/es/it use EN default */ })
         .select('id')
         .single();
       listId = created?.id ?? null;

@@ -7,11 +7,9 @@ import { buildMeta, PAGE_META } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const lang = locale === 'en' ? 'en' : 'de';
-  return buildMeta({ ...PAGE_META.recipes[lang], path: '/recipes', locale: lang });
+  const metaLang = locale === 'en' ? 'en' : 'de';
+  return buildMeta({ ...PAGE_META.recipes[metaLang], path: '/recipes', locale });
 }
-
-type Lang = 'de' | 'en';
 
 const T = {
   de: { eyebrow: 'Küche', heading: 'Gesund kochen', sub: 'Vollwertige Rezepte passend zu deinen Gesundheitszielen.' },
@@ -19,8 +17,8 @@ const T = {
 };
 
 export default async function RecipesPage() {
-  const locale = (await getLocale()) as Lang;
-  const t = T[locale];
+  const locale = await getLocale();
+  const t = (T as Record<string, typeof T.en>)[locale] ?? T.en;
   const supabase = await createClient();
 
   // 1. Fetch recipes
@@ -112,9 +110,9 @@ export default async function RecipesPage() {
     goals: goalsByRecipe[r.id] ?? [],
   }));
 
-  const courseTypes = (courseTypesRaw ?? []) as { id: string; name: { en?: string; de?: string } }[];
-  const mealTypes   = (mealTypesRaw ?? []) as { id: string; name: { en?: string; de?: string } }[];
-  const ddCategories = (ddCategoriesRaw ?? []) as { slug: string; name: { en?: string; de?: string }; icon: string }[];
+  const courseTypes = (courseTypesRaw ?? []) as { id: string; name: Record<string, string> }[];
+  const mealTypes   = (mealTypesRaw ?? []) as { id: string; name: Record<string, string> }[];
+  const ddCategories = (ddCategoriesRaw ?? []) as { slug: string; name: Record<string, string>; icon: string }[];
 
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">

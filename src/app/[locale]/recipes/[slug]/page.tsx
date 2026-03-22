@@ -16,7 +16,6 @@ function supabaseTransform(url: string | null, width: number, height?: number): 
 }
 import { createClient } from '@/lib/supabase/server';
 
-type Lang = 'de' | 'en';
 
 // ─── Copy ─────────────────────────────────────────────────────────────────────
 
@@ -178,8 +177,8 @@ export default async function RecipeDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const locale = (await getLocale()) as Lang;
-  const t = T[locale];
+  const locale = await getLocale();
+  const t = (T as Record<string, typeof T.en>)[locale] ?? T.en;
   const supabase = await createClient();
 
   // Fetch recipe
@@ -344,12 +343,12 @@ export default async function RecipeDetailPage({
                       );
                     }
                     const ingName = typeof ing.ingredient_name === 'object' && ing.ingredient_name !== null
-                      ? (ing.ingredient_name as { de?: string; en?: string })?.[locale] || (ing.ingredient_name as { de?: string; en?: string })?.de || ''
+                      ? (ing.ingredient_name as Record<string, string>)?.[locale] || (ing.ingredient_name as Record<string, string>)?.de || ''
                       : String(ing.ingredient_name || '');
                     const rawNotes = ing.notes;
                     const notesText = !rawNotes ? '' :
                       typeof rawNotes === 'object'
-                        ? ((rawNotes as { de?: string; en?: string })?.[locale] || (rawNotes as { de?: string; en?: string })?.de || '')
+                        ? ((rawNotes as Record<string, string>)?.[locale] || (rawNotes as Record<string, string>)?.de || '')
                         : String(rawNotes);
                     const displayAmount = ing.amount != null ? ing.amount : null;
                     return (
@@ -417,7 +416,7 @@ export default async function RecipeDetailPage({
                   <div className="flex flex-wrap gap-1.5">
                     {ddTags.map((tag) => (
                       <span key={tag.category_slug} className="text-sm text-[#1c2a2b]">
-                        {tag.category_icon} {DD_LABELS[tag.category_slug]?.[locale] ?? tag.category_slug}
+                        {tag.category_icon} {DD_LABELS[tag.category_slug]?.[locale as 'de' | 'en'] ?? DD_LABELS[tag.category_slug]?.en ?? tag.category_slug}
                       </span>
                     ))}
                   </div>
@@ -431,7 +430,7 @@ export default async function RecipeDetailPage({
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
                     {goals.map((g) => (
                       <span key={g.goal} className="text-sm text-[#1c2a2b]">
-                        {GOAL_LABELS[g.goal]?.[locale] ?? g.goal}
+                        {GOAL_LABELS[g.goal]?.[locale as 'de' | 'en'] ?? GOAL_LABELS[g.goal]?.en ?? g.goal}
                       </span>
                     ))}
                   </div>
@@ -503,7 +502,7 @@ export default async function RecipeDetailPage({
                       key={tag.category_slug}
                       className="rounded-full bg-[#ceab84]/12 px-2.5 py-1 text-xs font-medium text-[#8a6a3e]"
                     >
-                      {tag.category_icon} {DD_LABELS[tag.category_slug]?.[locale] ?? tag.category_slug}
+                      {tag.category_icon} {DD_LABELS[tag.category_slug]?.[locale as 'de' | 'en'] ?? DD_LABELS[tag.category_slug]?.en ?? tag.category_slug}
                     </span>
                   ))}
                 </div>
@@ -520,7 +519,7 @@ export default async function RecipeDetailPage({
                       key={g.goal}
                       className="rounded-full bg-[#0e393d]/6 px-2.5 py-1 text-xs font-medium text-[#0e393d]/70"
                     >
-                      {GOAL_LABELS[g.goal]?.[locale] ?? g.goal}
+                      {GOAL_LABELS[g.goal]?.[locale as 'de' | 'en'] ?? GOAL_LABELS[g.goal]?.en ?? g.goal}
                     </span>
                   ))}
                 </div>

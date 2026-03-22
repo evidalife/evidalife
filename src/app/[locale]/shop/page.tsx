@@ -4,8 +4,8 @@ import { buildMeta, PAGE_META } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const lang = locale === 'en' ? 'en' : 'de';
-  return buildMeta({ ...PAGE_META.shop[lang], path: '/shop', locale: lang });
+  const metaLang = locale === 'en' ? 'en' : 'de';
+  return buildMeta({ ...PAGE_META.shop[metaLang], path: '/shop', locale });
 }
 
 type LocalizedString = string | Record<string, string>;
