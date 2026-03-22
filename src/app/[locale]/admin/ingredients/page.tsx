@@ -7,7 +7,7 @@ export default async function IngredientsPage() {
   const [{ data: ingredients }, { data: units }, { data: categories }] = await Promise.all([
     supabase
       .from('ingredients')
-      .select('id, name, slug, default_unit_id, daily_dozen_category_id, is_common, created_at, kcal_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g, fiber_per_100g')
+      .select('id, name, slug, default_unit_id, daily_dozen_category_id, is_common, created_at, kcal_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g, fiber_per_100g, grams_per_unit')
       .order('created_at', { ascending: false }),
     supabase
       .from('measurement_units')

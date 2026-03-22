@@ -20,6 +20,7 @@ export type Ingredient = {
   fat_per_100g: number | null;
   carbs_per_100g: number | null;
   fiber_per_100g: number | null;
+  grams_per_unit: number | null;
 };
 
 export type MeasurementUnit = {
@@ -54,6 +55,7 @@ type FormState = {
   fat_per_100g: string;
   carbs_per_100g: string;
   fiber_per_100g: string;
+  grams_per_unit: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -71,6 +73,7 @@ const EMPTY_FORM: FormState = {
   fat_per_100g: '',
   carbs_per_100g: '',
   fiber_per_100g: '',
+  grams_per_unit: '',
 };
 
 function slugify(text: string): string {
@@ -152,6 +155,13 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
   // AI autocomplete (per-ingredient in panel)
   const [autocompleteStatus, setAutocompleteStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
 
+  // AI calc grams per unit
+  const [calcGramsStatus, setCalcGramsStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+
+  // Bulk common + grams
+  const [bulkCommonGramsStatus, setBulkCommonGramsStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [bulkCommonGramsProgress, setBulkCommonGramsProgress] = useState({ done: 0, total: 0 });
+
   // Duplicate detection + search suggestions (create mode only)
   const [nameSearchResults, setNameSearchResults] = useState<Ingredient[]>([]);
   const nameSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -179,7 +189,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
   const refresh = useCallback(async () => {
     const { data } = await supabase
       .from('ingredients')
-      .select('id, name, slug, default_unit_id, daily_dozen_category_id, is_common, created_at, kcal_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g, fiber_per_100g')
+      .select('id, name, slug, default_unit_id, daily_dozen_category_id, is_common, created_at, kcal_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g, fiber_per_100g, grams_per_unit')
       .order('created_at', { ascending: false });
     if (data) setIngredients(data);
   }, [supabase]);
@@ -212,6 +222,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
     setSlugManuallyEdited(false);
     setError(null);
     setAutocompleteStatus('idle');
+    setCalcGramsStatus('idle');
     setNameSearchResults([]);
     setPanelOpen(true);
   };
@@ -233,10 +244,12 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
       fat_per_100g: ing.fat_per_100g != null ? String(ing.fat_per_100g) : '',
       carbs_per_100g: ing.carbs_per_100g != null ? String(ing.carbs_per_100g) : '',
       fiber_per_100g: ing.fiber_per_100g != null ? String(ing.fiber_per_100g) : '',
+      grams_per_unit: ing.grams_per_unit != null ? String(ing.grams_per_unit) : '',
     });
     setSlugManuallyEdited(true); // treat as manually edited when editing existing
     setError(null);
     setAutocompleteStatus('idle');
+    setCalcGramsStatus('idle');
     setNameSearchResults([]);
     setPanelOpen(true);
   };
@@ -279,6 +292,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
       fat_per_100g: form.fat_per_100g !== '' ? Number(form.fat_per_100g) : null,
       carbs_per_100g: form.carbs_per_100g !== '' ? Number(form.carbs_per_100g) : null,
       fiber_per_100g: form.fiber_per_100g !== '' ? Number(form.fiber_per_100g) : null,
+      grams_per_unit: form.grams_per_unit !== '' ? Number(form.grams_per_unit) : null,
     };
 
     try {
@@ -369,11 +383,42 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
           if (!code) return '';
           return units.find(u => u.code.toLowerCase() === code.toLowerCase())?.id ?? '';
         })(),
+        // Grams per unit (only when unit is not gram-based)
+        grams_per_unit: prev.grams_per_unit || (() => {
+          const code = data.suggested_unit_code?.toLowerCase() ?? '';
+          if (['g', 'kg', 'mg', 'ml', 'l'].includes(code)) return '';
+          return data.grams_per_unit != null ? String(data.grams_per_unit) : '';
+        })(),
+        // is_common suggestion
+        is_common: prev.is_common || data.is_common || false,
       }));
       setAutocompleteStatus('done');
     } catch (e) {
       console.error('Autocomplete error:', e);
       setAutocompleteStatus('error');
+    }
+  };
+
+  // ── AI Calc Grams Per Unit ────────────────────────────────────────────────────
+
+  const handleCalcGrams = async () => {
+    const nameEn = form.name_en.trim() || form.name_de.trim();
+    const selectedUnit = units.find(u => u.id === form.default_unit_id);
+    if (!nameEn || !selectedUnit) return;
+    setCalcGramsStatus('running');
+    try {
+      const res = await fetch('/api/admin/calc-grams-per-unit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name_en: nameEn, unit_code: selectedUnit.code }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setField('grams_per_unit', data.grams_per_unit != null ? String(data.grams_per_unit) : '');
+      setCalcGramsStatus('done');
+    } catch (e) {
+      console.error('Calc grams error:', e);
+      setCalcGramsStatus('error');
     }
   };
 
@@ -481,6 +526,63 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
     }
   };
 
+  // ── Bulk common + grams ───────────────────────────────────────────────────────
+
+  const handleBulkCommonGrams = async () => {
+    const GRAM_CODES = ['g', 'kg', 'mg', 'ml', 'l'];
+    // Only process ingredients where grams_per_unit is null and unit is not gram-based
+    const toProcess = ingredients.filter(ing => {
+      const unit = units.find(u => u.id === ing.default_unit_id);
+      const unitCode = unit?.code?.toLowerCase() ?? '';
+      const needsGrams = !GRAM_CODES.includes(unitCode) && ing.grams_per_unit == null;
+      return needsGrams; // always re-evaluate is_common for these
+    });
+    if (toProcess.length === 0) {
+      setBulkCommonGramsStatus('done');
+      return;
+    }
+    setBulkCommonGramsStatus('running');
+    setBulkCommonGramsProgress({ done: 0, total: toProcess.length });
+
+    const BATCH = 20;
+    let done = 0;
+    try {
+      for (let i = 0; i < toProcess.length; i += BATCH) {
+        const batch = toProcess.slice(i, i + BATCH);
+        const res = await fetch('/api/admin/bulk-common-grams', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ingredients: batch.map(ing => {
+              const unit = units.find(u => u.id === ing.default_unit_id);
+              return {
+                id: ing.id,
+                name_en: ing.name?.en ?? '',
+                name_de: ing.name?.de ?? '',
+                unit_code: unit?.code ?? null,
+              };
+            }),
+          }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const { results } = await res.json();
+        for (const r of results) {
+          await supabase.from('ingredients').update({
+            grams_per_unit: r.grams_per_unit,
+            is_common: r.is_common,
+          }).eq('id', r.id);
+        }
+        done += batch.length;
+        setBulkCommonGramsProgress({ done, total: toProcess.length });
+      }
+      await refresh();
+      setBulkCommonGramsStatus('done');
+    } catch (e) {
+      console.error('Bulk common+grams error:', e);
+      setBulkCommonGramsStatus('error');
+    }
+  };
+
   // ── Helpers ───────────────────────────────────────────────────────────────────
 
   const getUnit = (unitId: string | null) => units.find((u) => u.id === unitId);
@@ -523,6 +625,27 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Bulk common + grams button */}
+          <button
+            onClick={() => { if (bulkCommonGramsStatus !== 'running') handleBulkCommonGrams(); }}
+            disabled={bulkCommonGramsStatus === 'running'}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#0e393d]/20 text-[#0e393d] text-xs font-medium hover:bg-[#0e393d]/5 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            title="Set is_common and grams_per_unit for ingredients with non-gram units"
+          >
+            {bulkCommonGramsStatus === 'running' ? (
+              <>
+                <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>
+                {bulkCommonGramsProgress.done}/{bulkCommonGramsProgress.total} updating…
+              </>
+            ) : bulkCommonGramsStatus === 'done' ? (
+              <>✓ Common & grams updated</>
+            ) : bulkCommonGramsStatus === 'error' ? (
+              <>⚠ Retry common & grams</>
+            ) : (
+              <>✦ Update common & grams</>
+            )}
+          </button>
+
           {/* Bulk translate button */}
           <button
             onClick={() => { if (bulkTranslateStatus !== 'running') handleBulkTranslate(); }}
@@ -868,7 +991,10 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                   <select
                     className={selectCls}
                     value={form.default_unit_id}
-                    onChange={(e) => setField('default_unit_id', e.target.value)}
+                    onChange={(e) => {
+                      setField('default_unit_id', e.target.value);
+                      setCalcGramsStatus('idle');
+                    }}
                   >
                     <option value="">— No default unit</option>
                     {units.map((u) => (
@@ -878,6 +1004,45 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                     ))}
                   </select>
                 </Field>
+
+                {/* Grams per unit — only shown for non-gram-based units */}
+                {(() => {
+                  const selectedUnit = units.find(u => u.id === form.default_unit_id);
+                  const isGramBased = !selectedUnit || ['g', 'kg', 'mg', 'ml', 'l'].includes(selectedUnit.code?.toLowerCase() ?? '');
+                  if (isGramBased) return null;
+                  return (
+                    <div>
+                      <label className="block text-xs font-medium text-[#0e393d]/70 mb-1">Grams per unit</label>
+                      <div className="flex gap-2 items-center">
+                        <div className="relative flex-1">
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.1}
+                            value={form.grams_per_unit}
+                            onChange={(e) => setField('grams_per_unit', e.target.value)}
+                            placeholder="e.g. 14"
+                            className="w-full rounded-lg border border-[#0e393d]/15 bg-white pl-3 pr-7 py-2 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
+                          />
+                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-[#1c2a2b]/40 pointer-events-none">g</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { if (calcGramsStatus !== 'running') handleCalcGrams(); }}
+                          disabled={calcGramsStatus === 'running' || !form.default_unit_id || (!form.name_en.trim() && !form.name_de.trim())}
+                          className="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-violet-50 text-violet-700 text-[11px] font-medium hover:bg-violet-100 disabled:opacity-40 disabled:cursor-not-allowed transition whitespace-nowrap"
+                          title="Calculate average grams per unit using AI"
+                        >
+                          {calcGramsStatus === 'running' ? (
+                            <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>
+                          ) : calcGramsStatus === 'done' ? '✓' : calcGramsStatus === 'error' ? '⚠' : '✦'}
+                          {calcGramsStatus === 'running' ? '' : calcGramsStatus === 'done' ? ' Done' : calcGramsStatus === 'error' ? ' Retry' : ' AI calc'}
+                        </button>
+                      </div>
+                      <p className="mt-1 text-[11px] text-[#1c2a2b]/40">Avg weight of 1 {selectedUnit.name?.en ?? selectedUnit.code} in grams</p>
+                    </div>
+                  );
+                })()}
 
                 <Field label="Daily Dozen Category">
                   <select
