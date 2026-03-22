@@ -29,7 +29,7 @@ type FormData = {
 const EMPTY_FORM: FormData = { name_en: '', name_de: '', name_fr: '', name_es: '', name_it: '', slug: '', is_common: true };
 
 function toSlug(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return s.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
 }
 
 const inputCls = 'w-full rounded border border-[#0e393d]/20 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#0e393d]/30';
@@ -54,6 +54,8 @@ function FormRow({
   onEditExisting?: (note: PrepNote) => void;
 }) {
   const [aiStatus, setAiStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  // Track whether slug was auto-generated from name_en (so it should keep updating) vs manually set
+  const [slugAutoGen, setSlugAutoGen] = useState(() => !form.slug);
 
   const hasAnyName = !!(form.name_en.trim() || form.name_de.trim() || form.name_fr.trim() || form.name_es.trim() || form.name_it.trim());
 
@@ -81,9 +83,10 @@ function FormRow({
         name_fr: form.name_fr || data.name_fr || '',
         name_es: form.name_es || data.name_es || '',
         name_it: form.name_it || data.name_it || '',
-        slug: form.slug || data.slug || '',
+        slug: data.slug || form.slug || '',
         is_common: form.is_common !== undefined ? form.is_common : (data.is_common ?? true),
       });
+      if (data.slug) setSlugAutoGen(false);
       setAiStatus('done');
     } catch (e) {
       console.error('Autocomplete prep note error:', e);
@@ -102,9 +105,10 @@ function FormRow({
               <input
                 autoFocus
                 value={form.name_en}
-                onChange={(e) =>
-                  onChange({ ...form, name_en: e.target.value, slug: form.slug || toSlug(e.target.value) })
-                }
+                onChange={(e) => {
+                  const slug = slugAutoGen ? toSlug(e.target.value) : form.slug;
+                  onChange({ ...form, name_en: e.target.value, slug });
+                }}
                 placeholder="e.g. finely chopped"
                 className={inputCls}
               />
@@ -180,7 +184,7 @@ function FormRow({
               <label className="block text-[10px] font-medium text-[#0e393d]/60 mb-0.5">Slug</label>
               <input
                 value={form.slug}
-                onChange={(e) => onChange({ ...form, slug: e.target.value })}
+                onChange={(e) => { setSlugAutoGen(false); onChange({ ...form, slug: e.target.value }); }}
                 placeholder="finely-chopped"
                 className={inputCls + ' font-mono text-xs'}
               />

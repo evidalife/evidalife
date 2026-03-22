@@ -42,7 +42,7 @@ Provided names: ${nameParts.join(', ')}
 Return ONLY a compact JSON object:
 {"name_en":"...","name_de":"...","name_fr":"...","name_es":"...","name_it":"...","slug":"...","is_common":true}
 
-slug: lowercase hyphenated URL-safe version of the EN name (e.g. "finely-chopped").
+slug: the English name lowercased with spaces replaced by hyphens and special characters removed. Formula: name_en.toLowerCase().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-').trim() — e.g. "frozen-or-fresh", "finely-chopped", "room-temperature".
 is_common: true if this is a commonly used preparation note in everyday recipes, false otherwise.
 Use natural culinary language — not literal word-for-word translations.
 No markdown, no explanation.`;
