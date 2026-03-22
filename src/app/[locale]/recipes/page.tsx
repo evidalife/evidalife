@@ -24,6 +24,10 @@ export default async function RecipesPage() {
   const t = (T as Record<string, typeof T.en>)[locale] ?? T.en;
   const supabase = await createClient();
 
+  // 0. Auth
+  const { data: { user } } = await supabase.auth.getUser();
+  const userId = user?.id ?? null;
+
   // 1. Fetch recipes
   const { data: rows } = await supabase
     .from('recipes')
@@ -43,6 +47,7 @@ export default async function RecipesPage() {
     { data: courseTypesRaw },
     { data: mealTypesRaw },
     { data: ddCategoriesRaw },
+    { data: favouriteRows },
   ] = await Promise.all([
     recipeIds.length > 0
       ? supabase
@@ -74,6 +79,9 @@ export default async function RecipesPage() {
       .from('daily_dozen_categories')
       .select('id, slug, name, icon')
       .order('sort_order'),
+    userId
+      ? supabase.from('recipe_favourites').select('recipe_id').eq('user_id', userId)
+      : Promise.resolve({ data: [] as { recipe_id: string }[] }),
   ]);
 
   // 3. Build maps
@@ -116,6 +124,7 @@ export default async function RecipesPage() {
   const courseTypes = (courseTypesRaw ?? []) as { id: string; name: Record<string, string> }[];
   const mealTypes   = (mealTypesRaw ?? []) as { id: string; name: Record<string, string> }[];
   const ddCategories = (ddCategoriesRaw ?? []) as { slug: string; name: Record<string, string>; icon: string }[];
+  const initialFavouriteIds = (favouriteRows ?? []).map((f) => f.recipe_id);
 
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
@@ -135,6 +144,8 @@ export default async function RecipesPage() {
           courseTypes={courseTypes}
           mealTypes={mealTypes}
           ddCategories={ddCategories}
+          userId={userId}
+          initialFavouriteIds={initialFavouriteIds}
         />
       </main>
 

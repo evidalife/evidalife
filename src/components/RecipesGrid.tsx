@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { Link } from '@/i18n/navigation';
+import FavouriteButton from '@/components/FavouriteButton';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,6 +52,8 @@ const T = {
     viewRecipe: 'Rezept ansehen',
     noResults: 'Keine Rezepte gefunden.',
     noResultsHint: 'Versuche eine andere Suche oder Filter.',
+    noFavourites: 'Keine gespeicherten Rezepte.',
+    noFavouritesHint: 'Tippe auf das Herz bei einem Rezept, um es zu speichern.',
     featured: 'Empfohlen',
     total: (n: number) => `${n} Rezept${n !== 1 ? 'e' : ''}`,
     clearAll: 'Filter zurücksetzen',
@@ -59,6 +62,8 @@ const T = {
     course: 'Mahlzeit-Typ',
     mealType: 'Tageszeit',
     goals: 'Gesundheitsziele',
+    saved: 'Gespeichert',
+    favourites: 'Favoriten',
   },
   en: {
     searchPlaceholder: 'Search recipes…',
@@ -67,6 +72,8 @@ const T = {
     viewRecipe: 'View recipe',
     noResults: 'No recipes found.',
     noResultsHint: 'Try a different search or filter.',
+    noFavourites: 'No saved recipes.',
+    noFavouritesHint: 'Tap the heart on a recipe to save it.',
     featured: 'Featured',
     total: (n: number) => `${n} recipe${n !== 1 ? 's' : ''}`,
     clearAll: 'Clear all',
@@ -75,6 +82,8 @@ const T = {
     course: 'Course',
     mealType: 'Meal',
     goals: 'Health Goals',
+    saved: 'Saved',
+    favourites: 'Favourites',
   },
 };
 
@@ -86,6 +95,8 @@ interface Props {
   courseTypes: { id: string; name: Record<string, string> }[];
   mealTypes: { id: string; name: Record<string, string> }[];
   ddCategories: { slug: string; name: Record<string, string>; icon: string }[];
+  userId: string | null;
+  initialFavouriteIds: string[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -130,7 +141,7 @@ function FilterRow({ label, children }: { label: string; children: React.ReactNo
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddCategories }: Props) {
+export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddCategories, userId, initialFavouriteIds }: Props) {
   const t = (T as Record<string, typeof T.en>)[lang] ?? T.en;
 
   const [search, setSearch] = useState('');
@@ -139,9 +150,21 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
   const [courseIds, setCourseIds] = useState<string[]>([]);
   const [mealTypeIds, setMealTypeIds] = useState<string[]>([]);
   const [goalKeys, setGoalKeys] = useState<string[]>([]);
+  const [showFavourites, setShowFavourites] = useState(false);
+  const [favouriteIds, setFavouriteIds] = useState<Set<string>>(() => new Set(initialFavouriteIds));
+
+  const handleFavouriteToggle = (recipeId: string, isFavourited: boolean) => {
+    setFavouriteIds((prev) => {
+      const next = new Set(prev);
+      if (isFavourited) next.add(recipeId);
+      else next.delete(recipeId);
+      return next;
+    });
+  };
 
   const activeCount =
-    difficulties.length + ddSlugs.length + courseIds.length + mealTypeIds.length + goalKeys.length;
+    difficulties.length + ddSlugs.length + courseIds.length + mealTypeIds.length + goalKeys.length +
+    (showFavourites ? 1 : 0);
 
   const clearAll = () => {
     setDifficulties([]);
@@ -149,12 +172,14 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
     setCourseIds([]);
     setMealTypeIds([]);
     setGoalKeys([]);
+    setShowFavourites(false);
     setSearch('');
   };
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return recipes.filter((r) => {
+      if (showFavourites && !favouriteIds.has(r.id)) return false;
       if (difficulties.length && !difficulties.includes(r.difficulty ?? '')) return false;
       if (ddSlugs.length && !ddSlugs.every((s) => r.daily_dozen_categories.some((c) => c.slug === s))) return false;
       if (courseIds.length && !courseIds.includes(r.course_type_id ?? '')) return false;
@@ -167,7 +192,7 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
       }
       return true;
     });
-  }, [recipes, search, difficulties, ddSlugs, courseIds, mealTypeIds, goalKeys]);
+  }, [recipes, search, difficulties, ddSlugs, courseIds, mealTypeIds, goalKeys, showFavourites, favouriteIds]);
 
   return (
     <div>
@@ -211,6 +236,15 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
 
         {/* Filter rows */}
         <div className="px-5 py-1">
+          {/* Saved / Favourites */}
+          {userId && (
+            <FilterRow label={t.saved}>
+              <Pill active={showFavourites} onClick={() => setShowFavourites(!showFavourites)}>
+                ♡ {t.favourites}
+              </Pill>
+            </FilterRow>
+          )}
+
           {/* Difficulty */}
           <FilterRow label={t.difficulty}>
             {(['easy', 'medium', 'hard'] as const).map((d) => (
@@ -287,8 +321,8 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
       {/* ── Grid ─────────────────────────────────────────────────────────────── */}
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-[#0e393d]/10 bg-white py-20 text-center">
-          <p className="text-sm text-[#1c2a2b]/50">{t.noResults}</p>
-          <p className="text-xs text-[#1c2a2b]/30 mt-1">{t.noResultsHint}</p>
+          <p className="text-sm text-[#1c2a2b]/50">{showFavourites ? t.noFavourites : t.noResults}</p>
+          <p className="text-xs text-[#1c2a2b]/30 mt-1">{showFavourites ? t.noFavouritesHint : t.noResultsHint}</p>
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -305,38 +339,48 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
                 className="group flex flex-col rounded-2xl border border-[#0e393d]/10 bg-white overflow-hidden hover:border-[#0e393d]/25 hover:shadow-md transition-all duration-200"
               >
                 {/* Image */}
-                <Link href={href} className="block relative h-48 bg-[#0e393d]/6 overflow-hidden">
-                  {recipe.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={recipe.image_url.includes('/storage/v1/object/public/')
-                        ? recipe.image_url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=400&height=300&resize=cover'
-                        : recipe.image_url}
-                      alt={title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <svg
-                        width="40"
-                        height="40"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1"
-                        className="text-[#0e393d]/20"
-                      >
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M8 12h8M12 8v8" />
-                      </svg>
-                    </div>
-                  )}
+                <div className="relative h-48 bg-[#0e393d]/6 overflow-hidden">
+                  <Link href={href} className="block w-full h-full">
+                    {recipe.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={recipe.image_url.includes('/storage/v1/object/public/')
+                          ? recipe.image_url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=400&height=300&resize=cover'
+                          : recipe.image_url}
+                        alt={title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <svg
+                          width="40"
+                          height="40"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1"
+                          className="text-[#0e393d]/20"
+                        >
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M8 12h8M12 8v8" />
+                        </svg>
+                      </div>
+                    )}
+                  </Link>
                   {recipe.is_featured && (
-                    <span className="absolute top-3 left-3 bg-[#ceab84] text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                    <span className="absolute top-3 left-3 bg-[#ceab84] text-white text-[10px] font-semibold px-2 py-0.5 rounded-full pointer-events-none">
                       ★ {t.featured}
                     </span>
                   )}
-                </Link>
+                  <FavouriteButton
+                    recipeId={recipe.id}
+                    userId={userId}
+                    initialIsFavourited={favouriteIds.has(recipe.id)}
+                    size="sm"
+                    onToggle={handleFavouriteToggle}
+                    className="absolute top-2 right-2 bg-white/85 backdrop-blur-sm shadow-sm"
+                  />
+                </div>
 
                 {/* Body */}
                 <div className="flex flex-col flex-1 p-5">
