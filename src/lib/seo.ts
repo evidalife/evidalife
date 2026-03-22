@@ -4,6 +4,12 @@ const DOMAIN  = 'https://evidalife.com';
 const DEFAULT_IMAGE = `${DOMAIN}/evida-logo.png`;
 const SITE_NAME = 'Evida Life';
 
+const OG_LOCALE_MAP: Record<string, string> = {
+  de: 'de_DE', en: 'en_US', fr: 'fr_FR', es: 'es_ES', it: 'it_IT',
+};
+
+const ALL_LOCALES = ['de', 'en', 'fr', 'es', 'it'] as const;
+
 export function buildMeta({
   title,
   description,
@@ -19,10 +25,12 @@ export function buildMeta({
   locale?: string;
   type?: 'website' | 'article';
 }): Metadata {
-  const url          = `${DOMAIN}/${locale}${path}`;
-  const altLocale    = locale === 'de' ? 'en' : 'de';
-  const altUrl       = `${DOMAIN}/${altLocale}${path}`;
-  const fullTitle    = title.includes(SITE_NAME) ? title : `${title} – ${SITE_NAME}`;
+  const url       = `${DOMAIN}/${locale}${path}`;
+  const fullTitle = title.includes(SITE_NAME) ? title : `${title} – ${SITE_NAME}`;
+
+  const altLanguages = Object.fromEntries(
+    ALL_LOCALES.filter((l) => l !== locale).map((l) => [l, `${DOMAIN}/${l}${path}`])
+  );
 
   return {
     title: fullTitle,
@@ -30,8 +38,8 @@ export function buildMeta({
     alternates: {
       canonical: url,
       languages: {
-        de: `${DOMAIN}/de${path}`,
-        en: `${DOMAIN}/en${path}`,
+        [locale]: url,
+        ...altLanguages,
       },
     },
     openGraph: {
@@ -39,8 +47,8 @@ export function buildMeta({
       description,
       url,
       siteName: SITE_NAME,
-      locale: locale === 'de' ? 'de_DE' : 'en_US',
-      alternateLocale: altLocale === 'de' ? 'de_DE' : 'en_US',
+      locale: OG_LOCALE_MAP[locale] ?? 'en_US',
+      alternateLocale: ALL_LOCALES.filter((l) => l !== locale).map((l) => OG_LOCALE_MAP[l] ?? 'en_US'),
       type,
       images: [{ url: image, width: 1200, height: 630, alt: fullTitle }],
     },
