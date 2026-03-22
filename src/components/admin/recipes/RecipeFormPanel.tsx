@@ -1245,6 +1245,8 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
   // AI action states
   const [translateStatus, setTranslateStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [rewriteStatus, setRewriteStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [styleStatus, setStyleStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [suggestGoalsStatus, setSuggestGoalsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
 
   // Quick Import state
@@ -1892,30 +1894,84 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   };
 
   const handleTranslate = async () => {
-    if (!form.title.en && !form.instructions.en) return;
+    if (!form.title[lang] && !form.instructions[lang]) return;
     setTranslateStatus('loading');
     try {
       const res = await fetch('/api/admin/translate-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: form.title.en,
-          description: form.description.en,
-          instructions: form.instructions.en,
+          title: form.title[lang],
+          description: form.description[lang],
+          instructions: form.instructions[lang],
+          source_language: lang,
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Translation failed');
       const t = json.translations as Record<string, { title: string; description: string; instructions: string }>;
+      const targets = ALL_LANGS.filter(l => l !== lang);
       setForm((f) => ({
         ...f,
-        title:        { ...f.title,        de: t.de?.title        ?? f.title.de,        fr: t.fr?.title        ?? f.title.fr,        es: t.es?.title        ?? f.title.es,        it: t.it?.title        ?? f.title.it },
-        description:  { ...f.description,  de: t.de?.description  ?? f.description.de,  fr: t.fr?.description  ?? f.description.fr,  es: t.es?.description  ?? f.description.es,  it: t.it?.description  ?? f.description.it },
-        instructions: { ...f.instructions, de: t.de?.instructions ?? f.instructions.de, fr: t.fr?.instructions ?? f.instructions.fr, es: t.es?.instructions ?? f.instructions.es, it: t.it?.instructions ?? f.instructions.it },
+        title:        { ...f.title,        ...Object.fromEntries(targets.map(l => [l, t[l]?.title        ?? f.title[l]])) },
+        description:  { ...f.description,  ...Object.fromEntries(targets.map(l => [l, t[l]?.description  ?? f.description[l]])) },
+        instructions: { ...f.instructions, ...Object.fromEntries(targets.map(l => [l, t[l]?.instructions ?? f.instructions[l]])) },
       }));
       setTranslateStatus('done');
     } catch {
       setTranslateStatus('error');
+    }
+  };
+
+  const handleRewrite = async () => {
+    if (!form.title[lang] && !form.instructions[lang]) return;
+    setRewriteStatus('loading');
+    try {
+      const res = await fetch('/api/admin/rewrite-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: form.title[lang],
+          description: form.description[lang],
+          instructions: form.instructions[lang],
+          language: lang,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Rewrite failed');
+      setForm((f) => ({
+        ...f,
+        title:        { ...f.title,        [lang]: json.title        ?? f.title[lang] },
+        description:  { ...f.description,  [lang]: json.description  ?? f.description[lang] },
+        instructions: { ...f.instructions, [lang]: json.instructions ?? f.instructions[lang] },
+      }));
+      setRewriteStatus('done');
+    } catch {
+      setRewriteStatus('error');
+    }
+  };
+
+  const handleStyle = async () => {
+    if (!form.instructions[lang]) return;
+    setStyleStatus('loading');
+    try {
+      const res = await fetch('/api/admin/style-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instructions: form.instructions[lang],
+          language: lang,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Style failed');
+      setForm((f) => ({
+        ...f,
+        instructions: { ...f.instructions, [lang]: json.instructions ?? f.instructions[lang] },
+      }));
+      setStyleStatus('done');
+    } catch {
+      setStyleStatus('error');
     }
   };
 
@@ -2112,28 +2168,65 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                         placeholder={LANG_PLACEHOLDERS[lang].instructions}
                       />
                     </div>
-                    {lang === 'en' && (
-                      <div className="flex justify-end mt-1.5">
-                        <button
-                          type="button"
-                          onClick={() => { setTranslateStatus('idle'); handleTranslate(); }}
-                          disabled={translateStatus === 'loading' || (!form.title.en && !form.instructions.en)}
-                          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
-                            translateStatus === 'done'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100'
-                          }`}
-                        >
-                          {translateStatus === 'loading' && (
-                            <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                            </svg>
-                          )}
-                          {translateStatus === 'loading' ? 'Translating…' : translateStatus === 'done' ? '✓ All languages ready' : '✨ Translate to all'}
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex justify-end gap-2 mt-1.5 flex-wrap">
+                      {/* Rewrite & Proofread */}
+                      <button
+                        type="button"
+                        onClick={() => { setRewriteStatus('idle'); handleRewrite(); }}
+                        disabled={rewriteStatus === 'loading' || (!form.title[lang] && !form.instructions[lang])}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
+                          rewriteStatus === 'done'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
+                        }`}
+                      >
+                        {rewriteStatus === 'loading' && (
+                          <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          </svg>
+                        )}
+                        {rewriteStatus === 'loading' ? 'Rewriting…' : rewriteStatus === 'done' ? '✓ Rewritten' : '✦ Rewrite & Proofread'}
+                      </button>
+                      {/* AI Style */}
+                      <button
+                        type="button"
+                        onClick={() => { setStyleStatus('idle'); handleStyle(); }}
+                        disabled={styleStatus === 'loading' || !form.instructions[lang]}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
+                          styleStatus === 'done'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100'
+                        }`}
+                      >
+                        {styleStatus === 'loading' && (
+                          <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          </svg>
+                        )}
+                        {styleStatus === 'loading' ? 'Styling…' : styleStatus === 'done' ? '✓ Styled' : '✦ AI Style'}
+                      </button>
+                      {/* Translate to all */}
+                      <button
+                        type="button"
+                        onClick={() => { setTranslateStatus('idle'); handleTranslate(); }}
+                        disabled={translateStatus === 'loading' || (!form.title[lang] && !form.instructions[lang])}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
+                          translateStatus === 'done'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100'
+                        }`}
+                      >
+                        {translateStatus === 'loading' && (
+                          <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          </svg>
+                        )}
+                        {translateStatus === 'loading' ? 'Translating…' : translateStatus === 'done' ? '✓ All languages ready' : '✨ Translate to all'}
+                      </button>
+                    </div>
                   </Field>
                 </div>
               )}

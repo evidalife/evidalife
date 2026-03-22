@@ -1,27 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
+const LANG_NAMES: Record<string, string> = {
+  de: 'German', en: 'English', fr: 'French', es: 'Spanish', it: 'Italian',
+};
+
 export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 });
   }
 
-  let body: { title?: string; description?: string; instructions?: string };
+  let body: { title?: string; description?: string; instructions?: string; source_language?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { title = '', description = '', instructions = '' } = body;
+  const { title = '', description = '', instructions = '', source_language = 'en' } = body;
   if (!title && !description && !instructions) {
     return NextResponse.json({ error: 'At least one field is required' }, { status: 400 });
   }
 
+  const sourceName = LANG_NAMES[source_language] ?? 'English';
+  const targetLangs = (['de', 'en', 'fr', 'es', 'it'] as const).filter(l => l !== source_language);
+  const targetNames = targetLangs.map(l => `${LANG_NAMES[l]} (${l})`).join(', ');
+
   const client = new Anthropic({ apiKey });
 
-  const prompt = `Translate this recipe content from English to German (de), French (fr), Spanish (es), and Italian (it).
+  const prompt = `Translate this recipe content from ${sourceName} to: ${targetNames}.
 For German, use Swiss/DACH conventions and culinary terms. For all languages, use natural phrasing.
 Convert any remaining US/imperial measurements to metric (°F→°C, cups→g/ml, oz→g, lb→g).
 
@@ -41,10 +49,7 @@ ${instructions}
 Return ONLY valid JSON:
 {
   "translations": {
-    "de": { "title": string, "description": string, "instructions": string },
-    "fr": { "title": string, "description": string, "instructions": string },
-    "es": { "title": string, "description": string, "instructions": string },
-    "it": { "title": string, "description": string, "instructions": string }
+${targetLangs.map(l => `    "${l}": { "title": string, "description": string, "instructions": string }`).join(',\n')}
   }
 }
 
@@ -52,7 +57,7 @@ Return ONLY the JSON object, no markdown, no explanation.`;
 
   try {
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-6',
       max_tokens: 8192,
       messages: [{ role: 'user', content: prompt }],
     });
