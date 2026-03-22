@@ -5,7 +5,7 @@ import { buildMeta, PAGE_META } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const lang = locale === 'en' ? 'en' : 'de';
+  const lang = locale === 'de' ? 'de' : 'en';
   return buildMeta({ ...PAGE_META.about[lang], path: '/about', locale: lang });
 }
 
@@ -79,8 +79,9 @@ const T = {
 };
 
 export default async function AboutPage() {
-  const locale = (await getLocale()) as Lang;
-  const t = T[locale];
+  const locale = await getLocale();
+  const lang: Lang = locale === 'de' ? 'de' : 'en';
+  const t = T[lang];
 
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">

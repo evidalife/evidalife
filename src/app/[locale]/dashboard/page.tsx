@@ -244,8 +244,9 @@ function DomainCard({ domain, score, label, lang }: {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function DashboardPage() {
-  const locale = (await getLocale()) as Lang;
-  const t = T[locale];
+  const locale = await getLocale();
+  const lang: Lang = locale === 'de' ? 'de' : 'en';
+  const t = T[lang];
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -379,7 +380,7 @@ export default async function DashboardPage() {
           <div className="rounded-2xl border border-[#0e393d]/10 bg-white p-6 flex flex-col items-center min-w-[200px]">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84] mb-4">{t.score}</p>
             {heScore ? (
-              <ScoreGauge score={heScore.score} lang={locale} />
+              <ScoreGauge score={heScore.score} lang={lang} />
             ) : (
               <div className="flex flex-col items-center py-4 text-center">
                 {/* Empty gauge */}
@@ -425,7 +426,7 @@ export default async function DashboardPage() {
                 </span>
               </div>
               <p className="text-xs text-[#1c2a2b]/45">
-                {ddCategories.length > 0 ? t.ddOf(ddDone, ddTotalServings) : (locale === 'de' ? 'Keine Kategorien gefunden' : 'No categories found')}
+                {ddCategories.length > 0 ? t.ddOf(ddDone, ddTotalServings) : (lang === 'de' ? 'Keine Kategorien gefunden' : 'No categories found')}
                 {ddAllDone && ' 🎉'}
               </p>
             </div>
@@ -456,7 +457,7 @@ export default async function DashboardPage() {
                 domain={domain}
                 score={domainMap[domain] ?? null}
                 label={t.domainLabels[domain]}
-                lang={locale}
+                lang={lang}
               />
             ))}
           </div>
@@ -502,7 +503,7 @@ export default async function DashboardPage() {
                               <p className="text-sm font-medium text-[#1c2a2b] truncate">{name}</p>
                               {r.collected_at && (
                                 <p className="text-[11px] text-[#1c2a2b]/35">
-                                  {t.collected} {fmtDate(r.collected_at, locale)}
+                                  {t.collected} {fmtDate(r.collected_at, lang)}
                                 </p>
                               )}
                             </div>

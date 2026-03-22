@@ -7,7 +7,7 @@ import { buildMeta, PAGE_META } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const metaLang = locale === 'en' ? 'en' : 'de';
+  const metaLang = locale === 'de' ? 'de' : 'en';
   return buildMeta({ ...PAGE_META.courses[metaLang], path: '/courses', locale });
 }
 

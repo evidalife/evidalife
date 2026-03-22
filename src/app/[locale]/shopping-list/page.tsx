@@ -7,12 +7,13 @@ import { buildMeta, PAGE_META } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const lang = locale === 'en' ? 'en' : 'de';
+  const lang = locale === 'de' ? 'de' : 'en';
   return buildMeta({ ...PAGE_META.shoppingList[lang], path: '/shopping-list', locale: lang });
 }
 
 export default async function ShoppingListPage() {
-  const locale = await getLocale() as 'de' | 'en';
+  const locale = await getLocale();
+  const lang: 'de' | 'en' = locale === 'de' ? 'de' : 'en';
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -51,7 +52,7 @@ export default async function ShoppingListPage() {
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
       <ShoppingListView
-        lang={locale}
+        lang={lang}
         initialList={list}
         initialItems={items}
         userId={user?.id ?? null}

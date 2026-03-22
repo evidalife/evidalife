@@ -5,7 +5,7 @@ import { buildMeta, PAGE_META } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const lang = locale === 'en' ? 'en' : 'de';
+  const lang = locale === 'de' ? 'de' : 'en';
   return buildMeta({ ...PAGE_META.science[lang], path: '/science', locale: lang });
 }
 
@@ -156,8 +156,9 @@ const T = {
 };
 
 export default async function SciencePage() {
-  const locale = (await getLocale()) as Lang;
-  const t = T[locale];
+  const locale = await getLocale();
+  const lang: Lang = locale === 'de' ? 'de' : 'en';
+  const t = T[lang];
 
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
@@ -181,8 +182,8 @@ export default async function SciencePage() {
             {PRINCIPLES.map((p) => (
               <div key={p.title.en} className="rounded-2xl border border-[#0e393d]/10 bg-white p-6">
                 <span className="text-2xl mb-3 block">{p.icon}</span>
-                <h3 className="font-serif text-lg text-[#0e393d] mb-2">{p.title[locale]}</h3>
-                <p className="text-sm text-[#1c2a2b]/60 leading-relaxed">{p.body[locale]}</p>
+                <h3 className="font-serif text-lg text-[#0e393d] mb-2">{p.title[lang]}</h3>
+                <p className="text-sm text-[#1c2a2b]/60 leading-relaxed">{p.body[lang]}</p>
               </div>
             ))}
           </div>
@@ -198,7 +199,7 @@ export default async function SciencePage() {
                 <div key={ref.link} className="rounded-xl border border-[#0e393d]/10 bg-[#fafaf8] px-5 py-4 flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-[#0e393d] leading-snug mb-1">
-                      {ref.title[locale]}
+                      {ref.title[lang]}
                     </p>
                     <p className="text-xs text-[#1c2a2b]/45">
                       {ref.authors} · <span className="italic">{ref.journal}</span> · {ref.year}
@@ -243,7 +244,7 @@ export default async function SciencePage() {
                     <line x1="10" y1="14" x2="21" y2="3"/>
                   </svg>
                 </div>
-                <p className="text-xs text-[#1c2a2b]/50 leading-relaxed">{s.desc[locale]}</p>
+                <p className="text-xs text-[#1c2a2b]/50 leading-relaxed">{s.desc[lang]}</p>
               </a>
             ))}
           </div>

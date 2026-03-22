@@ -14,7 +14,8 @@ export default async function CourseDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const locale = (await getLocale()) as Lang;
+  const locale = await getLocale();
+  const lang: Lang = locale === 'de' ? 'de' : 'en';
   const supabase = await createClient();
 
   // Fetch course — try slug first, fall back to id
@@ -114,7 +115,7 @@ export default async function CourseDetailPage({
 
         {/* Interactive lesson list */}
         <CourseDetail
-          lang={locale}
+          lang={lang}
           lessons={lessons}
           userId={user?.id ?? null}
         />

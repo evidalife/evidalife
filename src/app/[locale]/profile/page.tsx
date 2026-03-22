@@ -15,8 +15,9 @@ const T = {
 };
 
 export default async function ProfilePage() {
-  const locale = (await getLocale()) as Lang;
-  const t = T[locale];
+  const locale = await getLocale();
+  const lang: Lang = locale === 'de' ? 'de' : 'en';
+  const t = T[lang];
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -63,7 +64,7 @@ export default async function ProfilePage() {
           <h1 className="font-serif text-3xl text-[#0e393d]">{t.heading}</h1>
         </div>
 
-        <ProfileEditor profile={profile} lang={locale} />
+        <ProfileEditor profile={profile} lang={lang} />
       </main>
 
       <PublicFooter />

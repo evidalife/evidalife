@@ -8,7 +8,7 @@ import { buildMeta, PAGE_META } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const lang = locale === 'en' ? 'en' : 'de';
+  const lang = locale === 'de' ? 'de' : 'en';
   return buildMeta({ ...PAGE_META.dailyDozen[lang], path: '/daily-dozen', locale: lang });
 }
 
@@ -28,8 +28,9 @@ const T = {
 };
 
 export default async function DailyDozenPage() {
-  const locale = (await getLocale()) as Lang;
-  const t = T[locale];
+  const locale = await getLocale();
+  const lang: Lang = locale === 'de' ? 'de' : 'en';
+  const t = T[lang];
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -133,7 +134,7 @@ export default async function DailyDozenPage() {
             categories={categories}
             entries={entries}
             streak={streak}
-            lang={locale}
+            lang={lang}
             today={today}
             historicalEntries={historicalEntries}
           />

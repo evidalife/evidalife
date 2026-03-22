@@ -6,7 +6,7 @@ import { buildMeta, PAGE_META } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const lang = locale === 'en' ? 'en' : 'de';
+  const lang = locale === 'de' ? 'de' : 'en';
   return buildMeta({ ...PAGE_META.contact[lang], path: '/contact', locale: lang });
 }
 
@@ -34,8 +34,9 @@ const T = {
 };
 
 export default async function ContactPage() {
-  const locale = (await getLocale()) as Lang;
-  const t = T[locale];
+  const locale = await getLocale();
+  const lang: Lang = locale === 'de' ? 'de' : 'en';
+  const t = T[lang];
 
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
@@ -98,7 +99,7 @@ export default async function ContactPage() {
           {/* Contact form */}
           <div className="rounded-2xl border border-[#0e393d]/10 bg-white p-6 sm:p-8">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84] mb-6">{t.formHead}</p>
-            <ContactForm lang={locale} />
+            <ContactForm lang={lang} />
           </div>
 
         </div>

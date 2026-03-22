@@ -5,7 +5,7 @@ import { buildMeta, PAGE_META } from '@/lib/seo';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const lang = locale === 'en' ? 'en' : 'de';
+  const lang = locale === 'de' ? 'de' : 'en';
   return buildMeta({ ...PAGE_META.team[lang], path: '/team', locale: lang });
 }
 
@@ -117,8 +117,9 @@ function AvatarPlaceholder({ initials, color }: { initials: string; color: strin
 }
 
 export default async function TeamPage() {
-  const locale = (await getLocale()) as Lang;
-  const t = T[locale];
+  const locale = await getLocale();
+  const lang: Lang = locale === 'de' ? 'de' : 'en';
+  const t = T[lang];
 
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
@@ -145,14 +146,14 @@ export default async function TeamPage() {
               >
                 <AvatarPlaceholder initials={member.initials} color={member.color} />
                 <h3 className="font-serif text-lg text-[#0e393d] leading-snug mb-0.5">
-                  {member.name[locale]}
+                  {member.name[lang]}
                 </h3>
                 <p className="text-xs font-semibold text-[#ceab84] uppercase tracking-wide mb-3">
-                  {member.role[locale]}
+                  {member.role[lang]}
                 </p>
                 <div className="w-8 h-0.5 bg-[#0e393d]/10 mx-auto mb-3" />
                 <p className="text-sm text-[#1c2a2b]/55 leading-relaxed">
-                  {member.bio[locale]}
+                  {member.bio[lang]}
                 </p>
               </div>
             ))}
