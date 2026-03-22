@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
   const client = new Anthropic({ apiKey });
 
-  const prompt = `You are translating recipe content from English to German for a Swiss/DACH audience. Maintain cooking terminology accurately. Use natural German phrasing.
+  const prompt = `You are translating recipe content from English to German for a Swiss/DACH audience. Maintain cooking terminology accurately. Use natural German phrasing. Convert any remaining US/imperial measurements to metric (e.g. °F→°C, cups→g/ml, oz→g).
 
 Translate the following recipe fields from English to German:
 

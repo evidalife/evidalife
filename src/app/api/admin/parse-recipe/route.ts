@@ -56,6 +56,23 @@ export async function POST(req: NextRequest) {
 
   const prompt = `You are a recipe parser. Parse the following recipe text into structured JSON.
 
+CRITICAL UNIT CONVERSION RULES — The target audience is European (DACH market):
+- Convert ALL US/imperial measurements to metric:
+  - Cups → grams (solids) or ml (liquids): 1 cup flour = 120g, 1 cup sugar = 200g, 1 cup rice = 185g, 1 cup liquid = 240ml, 1 cup butter = 227g
+  - Tablespoons → ml (1 tbsp = 15ml) or grams for solids
+  - Teaspoons → ml (1 tsp = 5ml) or grams for spices
+  - Ounces → grams (1 oz = 28g)
+  - Pounds → grams (1 lb = 454g)
+  - Fahrenheit → Celsius in instructions (subtract 32, × 5/9, round to nearest 5)
+  - Fluid ounces → ml (1 fl oz = 30ml)
+  - Quarts → liters (1 qt = 0.95L)
+  - Pints → ml (1 pint = 473ml)
+  - Sticks of butter → grams (1 stick = 113g)
+- In instructions text, replace ALL US measurements with metric
+- Use European recipe units: g, kg, ml, L, EL, TL, Stk., Prise
+- NEVER output cups, oz, lb, °F
+- "Preheat to 350°F" → "Preheat to 175°C"
+
 EXISTING INGREDIENTS DATABASE:
 ${ingredientList || '(empty)'}
 
@@ -77,7 +94,7 @@ Return ONLY valid JSON matching this exact TypeScript interface:
     {
       "name_en": string,
       "quantity": number | null,
-      "unit": string (e.g. "g", "ml", "piece", "tbsp", "tsp", "cup"),
+      "unit": string (metric only: "g", "kg", "mg", "ml", "l", "piece", "tsp", "tbsp" or empty),
       "notes": string (e.g. "finely chopped", ""),
       "optional": boolean,
       "matched_ingredient_id": string | null (match to existing ingredient ID if found, else null),
