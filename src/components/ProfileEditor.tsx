@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthProvider';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Lang = 'de' | 'en';
+type Lang = 'de' | 'en' | 'fr' | 'es' | 'it';
 
 export type ProfileData = {
   id: string;
@@ -131,6 +131,147 @@ const T = {
     deleteInfo:          'If you want to delete your account, please contact our support team.',
     deleteContact:       'Contact support',
   },
+  fr: {
+    avatar:              'Photo de profil',
+    changeAvatar:        'Changer la photo',
+    removeAvatar:        'Supprimer la photo',
+    uploading:           'Téléchargement…',
+    avatarTooBig:        'L\'image doit être inférieure à 5 Mo.',
+    avatarWrongType:     'Veuillez télécharger une image JPEG, PNG ou WebP.',
+    avatarUploadFailed:  'Échec du téléchargement. Veuillez réessayer.',
+    cropTitle:           'Recadrer la photo',
+    cropSave:            'Enregistrer',
+    cropCancel:          'Annuler',
+    cropZoom:            'Zoom',
+    personalInfo:        'Informations personnelles',
+    displayName:         'Nom d\'affichage',
+    displayNameHint:     'Surnom optionnel affiché dans l\'en-tête.',
+    firstName:           'Prénom',
+    lastName:            'Nom de famille',
+    email:               'E-mail',
+    emailHint:           'Votre adresse e-mail ne peut pas être modifiée.',
+    dateOfBirth:         'Date de naissance',
+    sex:                 'Sexe / Genre',
+    sexOptions:          ['Homme', 'Femme', 'Autre', 'Préfère ne pas dire'] as string[],
+    phone:               'Téléphone',
+    heightCm:            'Taille (cm)',
+    address:             'Adresse',
+    streetAddress:       'Adresse postale',
+    city:                'Ville',
+    postalCode:          'Code postal',
+    country:             'Pays',
+    preferences:         'Préférences',
+    language:            'Langue',
+    langDe:              'Deutsch',
+    langEn:              'English',
+    account:             'Compte',
+    memberSince:         'Membre depuis',
+    adminBadge:          'Admin',
+    onboarding:          'Onboarding',
+    onboardingDone:      'Terminé',
+    onboardingPending:   'En attente',
+    save:                'Enregistrer les modifications',
+    saving:              'Enregistrement…',
+    saved:               'Enregistré ✓',
+    saveError:           'Échec de l\'enregistrement.',
+    deleteSection:       'Supprimer le compte',
+    deleteInfo:          'Si vous souhaitez supprimer votre compte, veuillez contacter notre support.',
+    deleteContact:       'Contacter le support',
+  },
+  es: {
+    avatar:              'Foto de perfil',
+    changeAvatar:        'Cambiar foto',
+    removeAvatar:        'Eliminar foto',
+    uploading:           'Subiendo…',
+    avatarTooBig:        'La imagen debe ser menor de 5 MB.',
+    avatarWrongType:     'Por favor sube una imagen JPEG, PNG o WebP.',
+    avatarUploadFailed:  'Error al subir. Por favor inténtalo de nuevo.',
+    cropTitle:           'Recortar foto',
+    cropSave:            'Guardar',
+    cropCancel:          'Cancelar',
+    cropZoom:            'Zoom',
+    personalInfo:        'Información personal',
+    displayName:         'Nombre para mostrar',
+    displayNameHint:     'Apodo opcional mostrado en el encabezado.',
+    firstName:           'Nombre',
+    lastName:            'Apellido',
+    email:               'Correo electrónico',
+    emailHint:           'Tu dirección de correo no puede cambiarse.',
+    dateOfBirth:         'Fecha de nacimiento',
+    sex:                 'Sexo / Género',
+    sexOptions:          ['Masculino', 'Femenino', 'Otro', 'Prefiero no decir'] as string[],
+    phone:               'Teléfono',
+    heightCm:            'Altura (cm)',
+    address:             'Dirección',
+    streetAddress:       'Dirección postal',
+    city:                'Ciudad',
+    postalCode:          'Código postal',
+    country:             'País',
+    preferences:         'Preferencias',
+    language:            'Idioma',
+    langDe:              'Deutsch',
+    langEn:              'English',
+    account:             'Cuenta',
+    memberSince:         'Miembro desde',
+    adminBadge:          'Admin',
+    onboarding:          'Incorporación',
+    onboardingDone:      'Completado',
+    onboardingPending:   'Pendiente',
+    save:                'Guardar cambios',
+    saving:              'Guardando…',
+    saved:               'Guardado ✓',
+    saveError:           'Error al guardar.',
+    deleteSection:       'Eliminar cuenta',
+    deleteInfo:          'Si deseas eliminar tu cuenta, por favor contacta a nuestro soporte.',
+    deleteContact:       'Contactar soporte',
+  },
+  it: {
+    avatar:              'Foto del profilo',
+    changeAvatar:        'Cambia foto',
+    removeAvatar:        'Rimuovi foto',
+    uploading:           'Caricamento…',
+    avatarTooBig:        'L\'immagine deve essere inferiore a 5 MB.',
+    avatarWrongType:     'Per favore carica un\'immagine JPEG, PNG o WebP.',
+    avatarUploadFailed:  'Caricamento fallito. Riprova.',
+    cropTitle:           'Ritaglia foto',
+    cropSave:            'Salva',
+    cropCancel:          'Annulla',
+    cropZoom:            'Zoom',
+    personalInfo:        'Informazioni personali',
+    displayName:         'Nome visualizzato',
+    displayNameHint:     'Soprannome opzionale mostrato nell\'intestazione.',
+    firstName:           'Nome',
+    lastName:            'Cognome',
+    email:               'E-mail',
+    emailHint:           'Il tuo indirizzo e-mail non può essere modificato.',
+    dateOfBirth:         'Data di nascita',
+    sex:                 'Sesso / Genere',
+    sexOptions:          ['Maschio', 'Femmina', 'Altro', 'Preferisco non dirlo'] as string[],
+    phone:               'Telefono',
+    heightCm:            'Altezza (cm)',
+    address:             'Indirizzo',
+    streetAddress:       'Indirizzo postale',
+    city:                'Città',
+    postalCode:          'Codice postale',
+    country:             'Paese',
+    preferences:         'Preferenze',
+    language:            'Lingua',
+    langDe:              'Deutsch',
+    langEn:              'English',
+    account:             'Account',
+    memberSince:         'Membro dal',
+    adminBadge:          'Admin',
+    onboarding:          'Onboarding',
+    onboardingDone:      'Completato',
+    onboardingPending:   'In attesa',
+    save:                'Salva modifiche',
+    saving:              'Salvataggio…',
+    saved:               'Salvato ✓',
+    saveError:           'Salvataggio fallito.',
+    deleteSection:       'Elimina account',
+    deleteInfo:          'Se vuoi eliminare il tuo account, contatta il nostro supporto.',
+    deleteContact:       'Contatta il supporto',
+  },
 };
 
 const SEX_VALUES = ['male', 'female', 'other', 'prefer_not_to_say'] as const;
@@ -250,7 +391,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
   const [country,       setCountry]       = useState(profile.country ?? '');
 
   // UI state
-  const [langPref,   setLangPref]   = useState<'de' | 'en'>(lang);
+  const [langPref,   setLangPref]   = useState<'de' | 'en'>(lang === 'de' ? 'de' : 'en');
   const [saveState,  setSaveState]  = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   useEffect(() => {
@@ -400,8 +541,9 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
     profile.email[0]      ?? '?'
   ).toUpperCase();
 
+  const LOCALE_MAP: Record<Lang, string> = { de: 'de-DE', en: 'en-US', fr: 'fr-FR', es: 'es-ES', it: 'it-IT' };
   const memberSince = new Date(profile.created_at).toLocaleDateString(
-    lang === 'de' ? 'de-DE' : 'en-US',
+    LOCALE_MAP[lang],
     { year: 'numeric', month: 'long' }
   );
 
@@ -553,7 +695,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder={lang === 'de' ? 'z.B. Max' : 'e.g. Max'}
+                placeholder={lang === 'de' ? 'z.B. Max' : lang === 'fr' ? 'ex. Max' : lang === 'es' ? 'ej. Max' : lang === 'it' ? 'es. Max' : 'e.g. Max'}
                 className={inputCls}
               />
             </div>
@@ -566,7 +708,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                   type="text"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  placeholder={lang === 'de' ? 'Vorname' : 'First name'}
+                  placeholder={t.firstName}
                   className={inputCls}
                 />
               </div>
@@ -576,7 +718,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                   type="text"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  placeholder={lang === 'de' ? 'Nachname' : 'Last name'}
+                  placeholder={t.lastName}
                   className={inputCls}
                 />
               </div>
@@ -650,7 +792,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                 type="text"
                 value={streetAddress}
                 onChange={(e) => setStreetAddress(e.target.value)}
-                placeholder={lang === 'de' ? 'Musterstrasse 1' : '123 Main St'}
+                placeholder={lang === 'de' ? 'Musterstrasse 1' : lang === 'fr' ? '1 rue Principale' : lang === 'es' ? 'Calle Principal 1' : lang === 'it' ? 'Via Principale 1' : '123 Main St'}
                 className={inputCls}
               />
             </div>
@@ -672,7 +814,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder={lang === 'de' ? 'Zürich' : 'Zurich'}
+                  placeholder="Zurich"
                   className={inputCls}
                 />
               </div>

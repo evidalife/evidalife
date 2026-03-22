@@ -6,7 +6,7 @@ import { Link } from '@/i18n/navigation';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Lang = 'de' | 'en';
+type Lang = 'de' | 'en' | 'fr' | 'es' | 'it';
 
 type IngredientName = { de?: string; en?: string } | string;
 
@@ -21,7 +21,7 @@ export type ShoppingListItem = {
   sort_order: number;
   created_at: string;
   // joined from recipes
-  recipe_title?: { de?: string; en?: string } | null;
+  recipe_title?: { de?: string; en?: string; fr?: string; es?: string; it?: string } | null;
 };
 
 export type ShoppingList = {
@@ -36,7 +36,7 @@ export type ShoppingList = {
 
 function getIngredientLabel(name: IngredientName, lang: Lang): string {
   if (typeof name === 'string') return name;
-  return name?.[lang] || name?.de || name?.en || '—';
+  return (name as Record<string, string>)?.[lang] || name?.en || name?.de || '—';
 }
 
 function formatAmount(amount: number | null, unit: string | null): string {
@@ -77,6 +77,51 @@ const T = {
     loginBtn: 'Sign in',
     loading: 'Loading list…',
     itemsCount: (n: number) => `${n} item${n !== 1 ? 's' : ''}`,
+  },
+  fr: {
+    title: 'Liste de courses',
+    empty: 'Votre liste est vide.',
+    emptyHint: 'Ajoutez des ingrédients ou commencez par une recette.',
+    addPlaceholder: 'Ajouter un ingrédient…',
+    addAmountPlaceholder: 'Qté',
+    addUnitPlaceholder: 'Unité',
+    add: 'Ajouter',
+    checkedSection: 'Terminé',
+    clearChecked: 'Supprimer les éléments terminés',
+    loginPrompt: 'Connectez-vous pour voir votre liste de courses.',
+    loginBtn: 'Se connecter',
+    loading: 'Chargement…',
+    itemsCount: (n: number) => `${n} article${n !== 1 ? 's' : ''}`,
+  },
+  es: {
+    title: 'Lista de compras',
+    empty: 'Tu lista está vacía.',
+    emptyHint: 'Agrega ingredientes o empieza desde una receta.',
+    addPlaceholder: 'Agregar un ingrediente…',
+    addAmountPlaceholder: 'Cant.',
+    addUnitPlaceholder: 'Unidad',
+    add: 'Agregar',
+    checkedSection: 'Hecho',
+    clearChecked: 'Eliminar elementos hechos',
+    loginPrompt: 'Por favor inicia sesión para ver tu lista de compras.',
+    loginBtn: 'Iniciar sesión',
+    loading: 'Cargando…',
+    itemsCount: (n: number) => `${n} artículo${n !== 1 ? 's' : ''}`,
+  },
+  it: {
+    title: 'Lista della spesa',
+    empty: 'La tua lista è vuota.',
+    emptyHint: 'Aggiungi ingredienti o inizia da una ricetta.',
+    addPlaceholder: 'Aggiungi un ingrediente…',
+    addAmountPlaceholder: 'Qtà',
+    addUnitPlaceholder: 'Unità',
+    add: 'Aggiungi',
+    checkedSection: 'Fatto',
+    clearChecked: 'Rimuovi elementi completati',
+    loginPrompt: 'Accedi per vedere la tua lista della spesa.',
+    loginBtn: 'Accedi',
+    loading: 'Caricamento…',
+    itemsCount: (n: number) => `${n} articolo${n !== 1 ? 'i' : ''}`,
   },
 };
 
@@ -134,7 +179,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
       .order('sort_order')
       .order('created_at');
     if (data) {
-      setItems(data.map((row) => ({ ...row, recipe_title: (row.recipes as { title?: { de?: string; en?: string } } | null)?.title ?? null })));
+      setItems(data.map((row) => ({ ...row, recipe_title: (row.recipes as { title?: { de?: string; en?: string; fr?: string; es?: string; it?: string } } | null)?.title ?? null })));
     }
   }, [list, supabase]);
 
@@ -143,7 +188,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     if (!userId) return null;
     const { data, error } = await supabase
       .from('shopping_lists')
-      .insert({ user_id: userId, name: lang === 'de' ? 'Einkaufsliste' : 'Shopping List' })
+      .insert({ user_id: userId, name: t.title })
       .select()
       .single();
     if (error || !data) return null;
@@ -248,7 +293,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
           <h1 className="font-serif text-3xl text-[#0e393d]">{t.title}</h1>
           {items.length > 0 && (
             <p className="mt-0.5 text-sm text-[#1c2a2b]/40">
-              {t.itemsCount(unchecked.length)} {lang === 'de' ? 'offen' : 'remaining'}
+              {t.itemsCount(unchecked.length)} {lang === 'de' ? 'offen' : lang === 'fr' ? 'restant' : lang === 'es' ? 'pendiente' : lang === 'it' ? 'rimanente' : 'remaining'}
             </p>
           )}
         </div>
@@ -370,7 +415,7 @@ function ItemRow({
   const label  = getIngredientLabel(item.ingredient_name, lang);
   const amount = formatAmount(item.amount, item.unit);
   const recipe = item.recipe_title
-    ? (item.recipe_title as { de?: string; en?: string })[lang] || (item.recipe_title as { de?: string; en?: string }).de
+    ? (item.recipe_title as Record<string, string>)[lang] || item.recipe_title.en || item.recipe_title.de
     : null;
 
   return (

@@ -14,6 +14,9 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 const T = {
   de: { eyebrow: 'Küche', heading: 'Gesund kochen', sub: 'Vollwertige Rezepte passend zu deinen Gesundheitszielen.' },
   en: { eyebrow: 'Kitchen', heading: 'Eat well', sub: 'Whole-food recipes matched to your health goals.' },
+  fr: { eyebrow: 'Cuisine', heading: 'Bien manger', sub: 'Recettes à base d\'aliments complets adaptées à vos objectifs de santé.' },
+  es: { eyebrow: 'Cocina', heading: 'Come bien', sub: 'Recetas de alimentos integrales adaptadas a tus objetivos de salud.' },
+  it: { eyebrow: 'Cucina', heading: 'Mangia bene', sub: 'Ricette di alimenti integrali adattate ai tuoi obiettivi di salute.' },
 };
 
 export default async function RecipesPage() {

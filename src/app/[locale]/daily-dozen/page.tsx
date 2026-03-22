@@ -12,7 +12,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return buildMeta({ ...PAGE_META.dailyDozen[lang], path: '/daily-dozen', locale: lang });
 }
 
-type Lang = 'de' | 'en';
+const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
+type Lang = typeof VALID_LANGS[number];
 
 const T = {
   de: {
@@ -25,11 +26,26 @@ const T = {
     heading: 'Daily Dozen',
     sub: "Dr. Michael Greger's 12 daily food groups – hit all 12 every day for optimal health.",
   },
+  fr: {
+    eyebrow: 'Santé',
+    heading: 'Daily Dozen',
+    sub: 'Les 12 groupes alimentaires du Dr Michael Greger – atteindre les 12 chaque jour pour une santé optimale.',
+  },
+  es: {
+    eyebrow: 'Salud',
+    heading: 'Daily Dozen',
+    sub: 'Los 12 grupos alimentarios del Dr. Michael Greger – alcanza los 12 cada día para una salud óptima.',
+  },
+  it: {
+    eyebrow: 'Salute',
+    heading: 'Daily Dozen',
+    sub: 'I 12 gruppi alimentari del Dr. Michael Greger – raggiungi tutti i 12 ogni giorno per una salute ottimale.',
+  },
 };
 
 export default async function DailyDozenPage() {
   const locale = await getLocale();
-  const lang: Lang = locale === 'de' ? 'de' : 'en';
+  const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const t = T[lang];
   const supabase = await createClient();
 

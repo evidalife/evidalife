@@ -9,14 +9,15 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return buildMeta({ ...PAGE_META.team[lang], path: '/team', locale: lang });
 }
 
-type Lang = 'de' | 'en';
+const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
+type Lang = typeof VALID_LANGS[number];
 
 type Member = {
   initials: string;
   color: string;
-  name: { de: string; en: string };
-  role: { de: string; en: string };
-  bio: { de: string; en: string };
+  name: { de: string; en: string; fr?: string; es?: string; it?: string };
+  role: { de: string; en: string; fr?: string; es?: string; it?: string };
+  bio: { de: string; en: string; fr?: string; es?: string; it?: string };
 };
 
 const TEAM: Member[] = [
@@ -101,6 +102,33 @@ const T = {
     joinBody: "We're looking for passionate people who want to rethink health. Write to us at hello@evidalife.com.",
     joinCta: 'Apply now',
   },
+  fr: {
+    eyebrow: 'Notre équipe',
+    heading: 'Les personnes derrière Evida Life',
+    sub: 'Une équipe interdisciplinaire de médecine, science des données, nutrition et développement de produits — unie par la mission d\'une santé préventive accessible.',
+    joinEyebrow: 'Carrières',
+    joinHead: 'Rejoignez l\'équipe.',
+    joinBody: 'Nous cherchons des personnes passionnées qui veulent repenser la santé. Écrivez-nous à hello@evidalife.com.',
+    joinCta: 'Postuler maintenant',
+  },
+  es: {
+    eyebrow: 'Nuestro equipo',
+    heading: 'Las personas detrás de Evida Life',
+    sub: 'Un equipo interdisciplinario de medicina, ciencia de datos, nutrición y desarrollo de productos — unido por la misión de una salud preventiva accesible.',
+    joinEyebrow: 'Carreras',
+    joinHead: 'Únete al equipo.',
+    joinBody: 'Buscamos personas apasionadas que quieran repensar la salud. Escríbenos a hello@evidalife.com.',
+    joinCta: 'Aplicar ahora',
+  },
+  it: {
+    eyebrow: 'Il nostro team',
+    heading: 'Le persone dietro Evida Life',
+    sub: 'Un team interdisciplinare di medicina, scienza dei dati, nutrizione e sviluppo di prodotti — unito dalla missione di una salute preventiva accessibile.',
+    joinEyebrow: 'Carriere',
+    joinHead: 'Unisciti al team.',
+    joinBody: 'Cerchiamo persone appassionate che vogliono ripensare la salute. Scrivici a hello@evidalife.com.',
+    joinCta: 'Candidati ora',
+  },
 };
 
 function AvatarPlaceholder({ initials, color }: { initials: string; color: string }) {
@@ -118,7 +146,7 @@ function AvatarPlaceholder({ initials, color }: { initials: string; color: strin
 
 export default async function TeamPage() {
   const locale = await getLocale();
-  const lang: Lang = locale === 'de' ? 'de' : 'en';
+  const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const t = T[lang];
 
   return (
@@ -146,14 +174,14 @@ export default async function TeamPage() {
               >
                 <AvatarPlaceholder initials={member.initials} color={member.color} />
                 <h3 className="font-serif text-lg text-[#0e393d] leading-snug mb-0.5">
-                  {member.name[lang]}
+                  {member.name[lang] ?? member.name.en}
                 </h3>
                 <p className="text-xs font-semibold text-[#ceab84] uppercase tracking-wide mb-3">
-                  {member.role[lang]}
+                  {member.role[lang] ?? member.role.en}
                 </p>
                 <div className="w-8 h-0.5 bg-[#0e393d]/10 mx-auto mb-3" />
                 <p className="text-sm text-[#1c2a2b]/55 leading-relaxed">
-                  {member.bio[lang]}
+                  {member.bio[lang] ?? member.bio.en}
                 </p>
               </div>
             ))}

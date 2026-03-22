@@ -7,16 +7,20 @@ import { createClient } from '@/lib/supabase/server';
 
 export const metadata = { title: 'Profil – Evida Life' };
 
-type Lang = 'de' | 'en';
+const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
+type Lang = typeof VALID_LANGS[number];
 
 const T = {
   de: { eyebrow: 'Konto', heading: 'Mein Profil' },
   en: { eyebrow: 'Account', heading: 'My Profile' },
+  fr: { eyebrow: 'Compte', heading: 'Mon profil' },
+  es: { eyebrow: 'Cuenta', heading: 'Mi perfil' },
+  it: { eyebrow: 'Account', heading: 'Il mio profilo' },
 };
 
 export default async function ProfilePage() {
   const locale = await getLocale();
-  const lang: Lang = locale === 'de' ? 'de' : 'en';
+  const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const t = T[lang];
   const supabase = await createClient();
 

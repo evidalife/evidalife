@@ -14,6 +14,9 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 const T = {
   de: { eyebrow: 'Wissen', heading: 'Blog', sub: 'Evidenzbasierte Artikel zu Gesundheit, Ernährung und Langlebigkeit.' },
   en: { eyebrow: 'Knowledge', heading: 'Blog', sub: 'Evidence-based articles on health, nutrition, and longevity.' },
+  fr: { eyebrow: 'Savoir', heading: 'Blog', sub: 'Articles fondés sur des preuves sur la santé, la nutrition et la longévité.' },
+  es: { eyebrow: 'Conocimiento', heading: 'Blog', sub: 'Artículos basados en evidencia sobre salud, nutrición y longevidad.' },
+  it: { eyebrow: 'Conoscenza', heading: 'Blog', sub: 'Articoli basati su evidenze scientifiche su salute, nutrizione e longevità.' },
 };
 
 export default async function BlogPage() {

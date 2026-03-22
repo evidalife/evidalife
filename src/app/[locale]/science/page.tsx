@@ -9,11 +9,12 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return buildMeta({ ...PAGE_META.science[lang], path: '/science', locale: lang });
 }
 
-type Lang = 'de' | 'en';
+const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
+type Lang = typeof VALID_LANGS[number];
 
 type Reference = {
   authors: string;
-  title: { de: string; en: string };
+  title: { de: string; en: string; fr?: string; es?: string; it?: string };
   journal: string;
   year: number;
   link: string;
@@ -153,11 +154,50 @@ const T = {
     viewStudy: 'View study',
     visitSite: 'Visit site',
   },
+  fr: {
+    eyebrow: 'Science',
+    heading: 'Science & Sources',
+    heroSub: 'Tout ce que nous faisons repose sur les meilleures preuves scientifiques disponibles. Vous trouverez ici nos principes fondamentaux et les sources clés sur lesquelles nous nous appuyons.',
+    principlesHead: 'Nos principes de preuve',
+    refsHead: 'Références clés',
+    refsBody: 'Une sélection des études et travaux les plus importants qui façonnent nos recommandations.',
+    sourcesHead: 'Nos sources clés',
+    disclaimer: 'Avertissement',
+    disclaimerBody: 'Le contenu d\'Evida Life est à des fins d\'information générale et ne remplace pas les conseils médicaux. Pour des problèmes de santé, consultez un professionnel de santé qualifié.',
+    viewStudy: 'Voir l\'étude',
+    visitSite: 'Visiter le site',
+  },
+  es: {
+    eyebrow: 'Ciencia',
+    heading: 'Ciencia & Fuentes',
+    heroSub: 'Todo lo que hacemos se basa en la mejor evidencia científica disponible. Aquí encontrarás nuestros principios fundamentales y las fuentes clave en las que nos apoyamos.',
+    principlesHead: 'Nuestros principios de evidencia',
+    refsHead: 'Referencias clave',
+    refsBody: 'Una selección de los estudios y obras más importantes que dan forma a nuestras recomendaciones.',
+    sourcesHead: 'Nuestras fuentes clave',
+    disclaimer: 'Aviso legal',
+    disclaimerBody: 'El contenido de Evida Life es para información general y no reemplaza el consejo médico. Para problemas de salud, consulta a un profesional de la salud cualificado.',
+    viewStudy: 'Ver estudio',
+    visitSite: 'Visitar sitio',
+  },
+  it: {
+    eyebrow: 'Scienza',
+    heading: 'Scienza & Fonti',
+    heroSub: 'Tutto ciò che facciamo si basa sulle migliori prove scientifiche disponibili. Qui trovi i nostri principi fondamentali e le fonti chiave su cui ci basiamo.',
+    principlesHead: 'I nostri principi di evidenza',
+    refsHead: 'Riferimenti chiave',
+    refsBody: 'Una selezione degli studi e delle opere più importanti che plasmano le nostre raccomandazioni.',
+    sourcesHead: 'Le nostre fonti chiave',
+    disclaimer: 'Avvertenza',
+    disclaimerBody: 'Il contenuto di Evida Life è a scopo informativo generale e non sostituisce il parere medico. Per problemi di salute, consulta un professionista sanitario qualificato.',
+    viewStudy: 'Vedi studio',
+    visitSite: 'Visita il sito',
+  },
 };
 
 export default async function SciencePage() {
   const locale = await getLocale();
-  const lang: Lang = locale === 'de' ? 'de' : 'en';
+  const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const t = T[lang];
 
   return (
@@ -182,8 +222,8 @@ export default async function SciencePage() {
             {PRINCIPLES.map((p) => (
               <div key={p.title.en} className="rounded-2xl border border-[#0e393d]/10 bg-white p-6">
                 <span className="text-2xl mb-3 block">{p.icon}</span>
-                <h3 className="font-serif text-lg text-[#0e393d] mb-2">{p.title[lang]}</h3>
-                <p className="text-sm text-[#1c2a2b]/60 leading-relaxed">{p.body[lang]}</p>
+                <h3 className="font-serif text-lg text-[#0e393d] mb-2">{(p.title as Record<string, string>)[lang] ?? p.title.en}</h3>
+                <p className="text-sm text-[#1c2a2b]/60 leading-relaxed">{(p.body as Record<string, string>)[lang] ?? p.body.en}</p>
               </div>
             ))}
           </div>
@@ -199,7 +239,7 @@ export default async function SciencePage() {
                 <div key={ref.link} className="rounded-xl border border-[#0e393d]/10 bg-[#fafaf8] px-5 py-4 flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-[#0e393d] leading-snug mb-1">
-                      {ref.title[lang]}
+                      {(ref.title as Record<string, string>)[lang] ?? ref.title.en}
                     </p>
                     <p className="text-xs text-[#1c2a2b]/45">
                       {ref.authors} · <span className="italic">{ref.journal}</span> · {ref.year}
@@ -244,7 +284,7 @@ export default async function SciencePage() {
                     <line x1="10" y1="14" x2="21" y2="3"/>
                   </svg>
                 </div>
-                <p className="text-xs text-[#1c2a2b]/50 leading-relaxed">{s.desc[lang]}</p>
+                <p className="text-xs text-[#1c2a2b]/50 leading-relaxed">{(s.desc as Record<string, string>)[lang] ?? s.desc.en}</p>
               </a>
             ))}
           </div>

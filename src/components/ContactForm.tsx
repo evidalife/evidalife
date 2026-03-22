@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-type Lang = 'de' | 'en';
+type Lang = 'de' | 'en' | 'fr' | 'es' | 'it';
 
 const T = {
   de: {
@@ -37,6 +37,54 @@ const T = {
     errorBody:   'Please try again or email us at hello@evidalife.com.',
     required:    'Please fill in all fields.',
     another:     'Send another message',
+  },
+  fr: {
+    name:        'Nom',
+    namePh:      'Votre nom',
+    email:       'E-mail',
+    emailPh:     'vous@email.com',
+    message:     'Message',
+    messagePh:   'Comment pouvons-nous vous aider ?',
+    send:        'Envoyer le message',
+    sending:     'Envoi en cours…',
+    successHead: 'Message reçu !',
+    successBody: 'Nous vous répondrons dans les plus brefs délais.',
+    errorHead:   'Une erreur est survenue',
+    errorBody:   'Veuillez réessayer ou nous écrire directement à hello@evidalife.com.',
+    required:    'Veuillez remplir tous les champs.',
+    another:     'Envoyer un autre message',
+  },
+  es: {
+    name:        'Nombre',
+    namePh:      'Tu nombre',
+    email:       'Correo electrónico',
+    emailPh:     'tu@email.com',
+    message:     'Mensaje',
+    messagePh:   '¿Cómo podemos ayudarte?',
+    send:        'Enviar mensaje',
+    sending:     'Enviando…',
+    successHead: '¡Mensaje recibido!',
+    successBody: 'Te responderemos lo antes posible.',
+    errorHead:   'Algo salió mal',
+    errorBody:   'Por favor inténtalo de nuevo o escríbenos a hello@evidalife.com.',
+    required:    'Por favor completa todos los campos.',
+    another:     'Enviar otro mensaje',
+  },
+  it: {
+    name:        'Nome',
+    namePh:      'Il tuo nome',
+    email:       'E-mail',
+    emailPh:     'tu@email.com',
+    message:     'Messaggio',
+    messagePh:   'Come possiamo aiutarti?',
+    send:        'Invia messaggio',
+    sending:     'Invio in corso…',
+    successHead: 'Messaggio ricevuto!',
+    successBody: 'Ti risponderemo il prima possibile.',
+    errorHead:   'Qualcosa è andato storto',
+    errorBody:   'Riprova o scrivici direttamente a hello@evidalife.com.',
+    required:    'Per favore compila tutti i campi.',
+    another:     'Invia un altro messaggio',
   },
 };
 

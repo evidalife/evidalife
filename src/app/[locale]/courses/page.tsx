@@ -11,8 +11,12 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return buildMeta({ ...PAGE_META.courses[metaLang], path: '/courses', locale });
 }
 
+const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
+type Lang = typeof VALID_LANGS[number];
+
 const T = {
   de: {
+    eyebrow: 'Wissen',
     heading: 'Kurse',
     sub: 'Fundiertes Wissen für ein längeres, gesünderes Leben.',
     lessons: (n: number) => `${n} ${n === 1 ? 'Lektion' : 'Lektionen'}`,
@@ -20,9 +24,11 @@ const T = {
     start: 'Kurs starten',
     continue: 'Fortfahren',
     done: 'Abgeschlossen ✓',
+    doneBadge: 'Fertig',
     empty: 'Noch keine Kurse verfügbar.',
   },
   en: {
+    eyebrow: 'Knowledge',
     heading: 'Courses',
     sub: 'Evidence-based learning for a longer, healthier life.',
     lessons: (n: number) => `${n} ${n === 1 ? 'lesson' : 'lessons'}`,
@@ -30,13 +36,51 @@ const T = {
     start: 'Start course',
     continue: 'Continue',
     done: 'Completed ✓',
+    doneBadge: 'Done',
     empty: 'No courses available yet.',
+  },
+  fr: {
+    eyebrow: 'Savoir',
+    heading: 'Cours',
+    sub: 'Apprentissage fondé sur des preuves pour une vie plus longue et plus saine.',
+    lessons: (n: number) => `${n} ${n === 1 ? 'leçon' : 'leçons'}`,
+    progress: (pct: number) => `${pct}% terminé`,
+    start: 'Commencer le cours',
+    continue: 'Continuer',
+    done: 'Terminé ✓',
+    doneBadge: 'Terminé',
+    empty: 'Aucun cours disponible pour le moment.',
+  },
+  es: {
+    eyebrow: 'Conocimiento',
+    heading: 'Cursos',
+    sub: 'Aprendizaje basado en evidencia para una vida más larga y saludable.',
+    lessons: (n: number) => `${n} ${n === 1 ? 'lección' : 'lecciones'}`,
+    progress: (pct: number) => `${pct}% completado`,
+    start: 'Iniciar curso',
+    continue: 'Continuar',
+    done: 'Completado ✓',
+    doneBadge: 'Hecho',
+    empty: 'Aún no hay cursos disponibles.',
+  },
+  it: {
+    eyebrow: 'Conoscenza',
+    heading: 'Corsi',
+    sub: 'Apprendimento basato su evidenze per una vita più lunga e sana.',
+    lessons: (n: number) => `${n} ${n === 1 ? 'lezione' : 'lezioni'}`,
+    progress: (pct: number) => `${pct}% completato`,
+    start: 'Inizia il corso',
+    continue: 'Continua',
+    done: 'Completato ✓',
+    doneBadge: 'Fatto',
+    empty: 'Nessun corso disponibile ancora.',
   },
 };
 
 export default async function CoursesPage() {
   const locale = await getLocale();
-  const t = (T as Record<string, typeof T.en>)[locale] ?? T.en;
+  const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
+  const t = T[lang];
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -87,7 +131,7 @@ export default async function CoursesPage() {
         {/* Hero */}
         <div className="mb-10">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-2">
-            {locale === 'de' ? 'Wissen' : 'Knowledge'/* fr/es/it use EN */}
+            {t.eyebrow}
           </p>
           <h1 className="font-serif text-4xl text-[#0e393d] mb-3">{t.heading}</h1>
           <p className="text-[#1c2a2b]/60 text-base max-w-xl">{t.sub}</p>
@@ -103,8 +147,8 @@ export default async function CoursesPage() {
         {/* Grid */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((course) => {
-            const title = course.title?.[locale] || course.title?.de || course.title?.en || '';
-            const desc  = course.description?.[locale] || course.description?.de || '';
+            const title = course.title?.[lang] || course.title?.en || course.title?.de || '';
+            const desc  = course.description?.[lang] || course.description?.en || course.description?.de || '';
             const isDone = user && course.pct === 100;
             const hasStarted = user && course.completed > 0 && course.pct < 100;
 
@@ -130,7 +174,7 @@ export default async function CoursesPage() {
                   )}
                   {isDone && (
                     <div className="absolute top-3 right-3 bg-emerald-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                      ✓ {locale === 'de' ? 'Fertig' : 'Done'/* fr/es/it use EN */}
+                      ✓ {t.doneBadge}
                     </div>
                   )}
                 </div>

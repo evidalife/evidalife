@@ -10,7 +10,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return buildMeta({ ...PAGE_META.contact[lang], path: '/contact', locale: lang });
 }
 
-type Lang = 'de' | 'en';
+const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
+type Lang = typeof VALID_LANGS[number];
 
 const T = {
   de: {
@@ -31,11 +32,38 @@ const T = {
     emailLabel: 'Email',
     formHead: 'Send a message',
   },
+  fr: {
+    eyebrow:  'Contact',
+    heading:  'Contactez-nous',
+    sub:      "Questions, retours ou demandes de partenariat – nous serions ravis d'avoir de vos nouvelles.",
+    infoHead: 'Evida Life AG',
+    address:  ['Zurich', 'Suisse'],
+    emailLabel: 'E-mail',
+    formHead: 'Envoyer un message',
+  },
+  es: {
+    eyebrow:  'Contacto',
+    heading:  'Contáctanos',
+    sub:      'Preguntas, comentarios o consultas de asociación – nos encantaría saber de ti.',
+    infoHead: 'Evida Life AG',
+    address:  ['Zúrich', 'Suiza'],
+    emailLabel: 'Correo electrónico',
+    formHead: 'Enviar un mensaje',
+  },
+  it: {
+    eyebrow:  'Contatto',
+    heading:  'Contattaci',
+    sub:      'Domande, feedback o richieste di partnership – ci farebbe piacere sentirti.',
+    infoHead: 'Evida Life AG',
+    address:  ['Zurigo', 'Svizzera'],
+    emailLabel: 'E-mail',
+    formHead: 'Invia un messaggio',
+  },
 };
 
 export default async function ContactPage() {
   const locale = await getLocale();
-  const lang: Lang = locale === 'de' ? 'de' : 'en';
+  const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const t = T[lang];
 
   return (

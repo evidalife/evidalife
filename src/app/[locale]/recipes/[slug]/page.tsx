@@ -19,6 +19,9 @@ import { createClient } from '@/lib/supabase/server';
 
 // ─── Copy ─────────────────────────────────────────────────────────────────────
 
+const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
+type Lang = typeof VALID_LANGS[number];
+
 const T = {
   de: {
     back: 'Rezepte',
@@ -64,34 +67,100 @@ const T = {
     daily_dozen: 'Daily Dozen',
     print: 'Print',
   },
+  fr: {
+    back: 'Recettes',
+    prep: 'Préparation',
+    cook: 'Cuisson',
+    total: 'Total',
+    servings: (n: number) => `${n} portion${n !== 1 ? 's' : ''}`,
+    minutes: 'min',
+    difficulty: { easy: 'Facile', medium: 'Moyen', hard: 'Difficile' },
+    ingredients: 'Ingrédients',
+    instructions: 'Instructions',
+    nutrition: 'Nutrition',
+    per_serving: 'par portion',
+    calories: 'Calories',
+    protein: 'Protéines',
+    fat: 'Lipides',
+    carbs: 'Glucides',
+    fiber: 'Fibres',
+    featured: 'À la une',
+    goals: 'Objectifs santé',
+    daily_dozen: 'Daily Dozen',
+    print: 'Imprimer',
+  },
+  es: {
+    back: 'Recetas',
+    prep: 'Preparación',
+    cook: 'Cocción',
+    total: 'Total',
+    servings: (n: number) => `${n} porción${n !== 1 ? 'es' : ''}`,
+    minutes: 'min',
+    difficulty: { easy: 'Fácil', medium: 'Medio', hard: 'Difícil' },
+    ingredients: 'Ingredientes',
+    instructions: 'Instrucciones',
+    nutrition: 'Nutrición',
+    per_serving: 'por porción',
+    calories: 'Calorías',
+    protein: 'Proteínas',
+    fat: 'Grasas',
+    carbs: 'Carbohidratos',
+    fiber: 'Fibra',
+    featured: 'Destacado',
+    goals: 'Objetivos de salud',
+    daily_dozen: 'Daily Dozen',
+    print: 'Imprimir',
+  },
+  it: {
+    back: 'Ricette',
+    prep: 'Preparazione',
+    cook: 'Cottura',
+    total: 'Totale',
+    servings: (n: number) => `${n} porzione${n !== 1 ? 'i' : ''}`,
+    minutes: 'min',
+    difficulty: { easy: 'Facile', medium: 'Medio', hard: 'Difficile' },
+    ingredients: 'Ingredienti',
+    instructions: 'Istruzioni',
+    nutrition: 'Nutrizione',
+    per_serving: 'per porzione',
+    calories: 'Calorie',
+    protein: 'Proteine',
+    fat: 'Grassi',
+    carbs: 'Carboidrati',
+    fiber: 'Fibre',
+    featured: 'In evidenza',
+    goals: 'Obiettivi di salute',
+    daily_dozen: 'Daily Dozen',
+    print: 'Stampa',
+  },
 };
 
-const DD_LABELS: Record<string, { de: string; en: string }> = {
-  beans:        { de: 'Hülsenfrüchte',     en: 'Beans' },
-  berries:      { de: 'Beeren',            en: 'Berries' },
-  fruits:       { de: 'Früchte',           en: 'Other Fruits' },
-  cruciferous:  { de: 'Kreuzblütler',      en: 'Cruciferous' },
-  greens:       { de: 'Grüns',             en: 'Greens' },
-  vegetables:   { de: 'Gemüse',            en: 'Other Vegetables' },
-  flaxseeds:    { de: 'Leinsamen',         en: 'Flaxseeds' },
-  nuts:         { de: 'Nüsse & Samen',     en: 'Nuts & Seeds' },
-  herbs_spices: { de: 'Kräuter & Gewürze', en: 'Herbs & Spices' },
-  whole_grains:           { de: 'Vollkorn',       en: 'Whole Grains' },
-  beverages:              { de: 'Getränke',       en: 'Beverages' },
-  exercise:               { de: 'Bewegung',       en: 'Exercise' },
+const DD_LABELS: Record<string, Record<Lang, string>> = {
+  beans:        { de: 'Hülsenfrüchte',     en: 'Beans',           fr: 'Légumineuses',  es: 'Legumbres',        it: 'Legumi' },
+  berries:      { de: 'Beeren',            en: 'Berries',         fr: 'Baies',         es: 'Bayas',            it: 'Bacche' },
+  fruits:       { de: 'Früchte',           en: 'Other Fruits',    fr: 'Autres fruits', es: 'Otras frutas',     it: 'Altra frutta' },
+  cruciferous:  { de: 'Kreuzblütler',      en: 'Cruciferous',     fr: 'Crucifères',    es: 'Crucíferas',       it: 'Crucifere' },
+  greens:       { de: 'Grüns',             en: 'Greens',          fr: 'Légumes verts', es: 'Verduras de hoja', it: 'Verdure a foglia' },
+  vegetables:   { de: 'Gemüse',            en: 'Other Vegetables',fr: 'Autres légumes',es: 'Otras verduras',   it: 'Altre verdure' },
+  flaxseeds:    { de: 'Leinsamen',         en: 'Flaxseeds',       fr: 'Graines de lin',es: 'Semillas de lino', it: 'Semi di lino' },
+  nuts:         { de: 'Nüsse & Samen',     en: 'Nuts & Seeds',    fr: 'Noix & graines',es: 'Nueces & semillas',it: 'Noci & semi' },
+  herbs_spices: { de: 'Kräuter & Gewürze', en: 'Herbs & Spices',  fr: 'Herbes & épices',es: 'Hierbas & especias',it: 'Erbe & spezie' },
+  whole_grains: { de: 'Vollkorn',          en: 'Whole Grains',    fr: 'Céréales complètes',es: 'Cereales integrales',it: 'Cereali integrali' },
+  beverages:    { de: 'Getränke',          en: 'Beverages',       fr: 'Boissons',      es: 'Bebidas',          it: 'Bevande' },
+  exercise:     { de: 'Bewegung',          en: 'Exercise',        fr: 'Exercice',      es: 'Ejercicio',        it: 'Esercizio' },
 };
 
-const GOAL_LABELS: Record<string, { de: string; en: string }> = {
-  weight_loss:         { de: 'Gewichtsverlust',     en: 'Weight Loss' },
-  heart_health:        { de: 'Herzgesundheit',       en: 'Heart Health' },
-  anti_inflammation:   { de: 'Anti-Entzündung',      en: 'Anti-Inflammation' },
-  longevity:           { de: 'Langlebigkeit',        en: 'Longevity' },
-  gut_health:          { de: 'Darmgesundheit',       en: 'Gut Health' },
-  energy:              { de: 'Energie',              en: 'Energy' },
-  immune:              { de: 'Immunsystem',          en: 'Immune Support' },
-  bone_health:         { de: 'Knochengesundheit',    en: 'Bone Health' },
-  brain_health:        { de: 'Gehirngesundheit',     en: 'Brain Health' },
-  diabetes_prevention: { de: 'Diabetesprävention',  en: 'Diabetes Prevention' },
+const GOAL_LABELS: Record<string, Record<Lang, string>> = {
+  weight_loss:         { de: 'Gewichtsverlust',    en: 'Weight Loss',         fr: 'Perte de poids',       es: 'Pérdida de peso',     it: 'Perdita di peso' },
+  heart_health:        { de: 'Herzgesundheit',      en: 'Heart Health',        fr: 'Santé cardiaque',      es: 'Salud cardíaca',       it: 'Salute cardiaca' },
+  anti_inflammation:   { de: 'Anti-Entzündung',     en: 'Anti-Inflammation',   fr: 'Anti-inflammation',    es: 'Anti-inflamación',     it: 'Anti-infiammazione' },
+  longevity:           { de: 'Langlebigkeit',       en: 'Longevity',           fr: 'Longévité',            es: 'Longevidad',           it: 'Longevità' },
+  gut_health:          { de: 'Darmgesundheit',      en: 'Gut Health',          fr: 'Santé intestinale',    es: 'Salud intestinal',     it: 'Salute intestinale' },
+  energy:              { de: 'Energie',             en: 'Energy',              fr: 'Énergie',              es: 'Energía',              it: 'Energia' },
+  immune:              { de: 'Immunsystem',         en: 'Immune Support',      fr: 'Soutien immunitaire',  es: 'Apoyo inmune',         it: 'Supporto immunitario' },
+  bone_health:         { de: 'Knochengesundheit',   en: 'Bone Health',         fr: 'Santé osseuse',        es: 'Salud ósea',           it: 'Salute ossea' },
+  brain_health:        { de: 'Gehirngesundheit',    en: 'Brain Health',        fr: 'Santé cérébrale',      es: 'Salud cerebral',       it: 'Salute cerebrale' },
+  diabetes_prevention: { de: 'Diabetesprävention', en: 'Diabetes Prevention', fr: 'Prévention du diabète',es: 'Prevención de diabetes',it: 'Prevenzione del diabete' },
 };
 
 const DIFF_CLS = {
@@ -178,7 +247,8 @@ export default async function RecipeDetailPage({
 }) {
   const { slug } = await params;
   const locale = await getLocale();
-  const t = (T as Record<string, typeof T.en>)[locale] ?? T.en;
+  const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
+  const t = T[lang];
   const supabase = await createClient();
 
   // Fetch recipe
@@ -214,9 +284,9 @@ export default async function RecipeDetailPage({
     ? (ratingsData!.reduce((sum, r) => sum + (r.rating as number), 0) / ratingCount)
     : null;
 
-  const title       = recipe.title?.[locale] || recipe.title?.de || recipe.title?.en || '';
-  const description = recipe.description?.[locale] || recipe.description?.de || '';
-  const instructions = recipe.instructions?.[locale] || recipe.instructions?.de || '';
+  const title       = recipe.title?.[lang] || recipe.title?.en || recipe.title?.de || '';
+  const description = recipe.description?.[lang] || recipe.description?.en || recipe.description?.de || '';
+  const instructions = recipe.instructions?.[lang] || recipe.instructions?.en || recipe.instructions?.de || '';
 
   const ingredients = [...(recipe.recipe_ingredients ?? [])].sort(
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
@@ -343,12 +413,12 @@ export default async function RecipeDetailPage({
                       );
                     }
                     const ingName = typeof ing.ingredient_name === 'object' && ing.ingredient_name !== null
-                      ? (ing.ingredient_name as Record<string, string>)?.[locale] || (ing.ingredient_name as Record<string, string>)?.de || ''
+                      ? (ing.ingredient_name as Record<string, string>)?.[lang] || (ing.ingredient_name as Record<string, string>)?.en || (ing.ingredient_name as Record<string, string>)?.de || ''
                       : String(ing.ingredient_name || '');
                     const rawNotes = ing.notes;
                     const notesText = !rawNotes ? '' :
                       typeof rawNotes === 'object'
-                        ? ((rawNotes as Record<string, string>)?.[locale] || (rawNotes as Record<string, string>)?.de || '')
+                        ? ((rawNotes as Record<string, string>)?.[lang] || (rawNotes as Record<string, string>)?.en || (rawNotes as Record<string, string>)?.de || '')
                         : String(rawNotes);
                     const displayAmount = ing.amount != null ? ing.amount : null;
                     return (
@@ -416,7 +486,7 @@ export default async function RecipeDetailPage({
                   <div className="flex flex-wrap gap-1.5">
                     {ddTags.map((tag) => (
                       <span key={tag.category_slug} className="text-sm text-[#1c2a2b]">
-                        {tag.category_icon} {DD_LABELS[tag.category_slug]?.[locale as 'de' | 'en'] ?? DD_LABELS[tag.category_slug]?.en ?? tag.category_slug}
+                        {tag.category_icon} {DD_LABELS[tag.category_slug]?.[lang] ?? DD_LABELS[tag.category_slug]?.en ?? tag.category_slug}
                       </span>
                     ))}
                   </div>
@@ -430,7 +500,7 @@ export default async function RecipeDetailPage({
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
                     {goals.map((g) => (
                       <span key={g.goal} className="text-sm text-[#1c2a2b]">
-                        {GOAL_LABELS[g.goal]?.[locale as 'de' | 'en'] ?? GOAL_LABELS[g.goal]?.en ?? g.goal}
+                        {GOAL_LABELS[g.goal]?.[lang] ?? GOAL_LABELS[g.goal]?.en ?? g.goal}
                       </span>
                     ))}
                   </div>
@@ -502,7 +572,7 @@ export default async function RecipeDetailPage({
                       key={tag.category_slug}
                       className="rounded-full bg-[#ceab84]/12 px-2.5 py-1 text-xs font-medium text-[#8a6a3e]"
                     >
-                      {tag.category_icon} {DD_LABELS[tag.category_slug]?.[locale as 'de' | 'en'] ?? DD_LABELS[tag.category_slug]?.en ?? tag.category_slug}
+                      {tag.category_icon} {DD_LABELS[tag.category_slug]?.[lang] ?? DD_LABELS[tag.category_slug]?.en ?? tag.category_slug}
                     </span>
                   ))}
                 </div>
@@ -519,7 +589,7 @@ export default async function RecipeDetailPage({
                       key={g.goal}
                       className="rounded-full bg-[#0e393d]/6 px-2.5 py-1 text-xs font-medium text-[#0e393d]/70"
                     >
-                      {GOAL_LABELS[g.goal]?.[locale as 'de' | 'en'] ?? GOAL_LABELS[g.goal]?.en ?? g.goal}
+                      {GOAL_LABELS[g.goal]?.[lang] ?? GOAL_LABELS[g.goal]?.en ?? g.goal}
                     </span>
                   ))}
                 </div>

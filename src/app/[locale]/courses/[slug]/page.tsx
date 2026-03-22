@@ -6,7 +6,8 @@ import PublicFooter from '@/components/PublicFooter';
 import CourseDetail, { type LessonWithProgress } from '@/components/CourseDetail';
 import { createClient } from '@/lib/supabase/server';
 
-type Lang = 'de' | 'en';
+const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
+type Lang = typeof VALID_LANGS[number];
 
 export default async function CourseDetailPage({
   params,
@@ -15,7 +16,7 @@ export default async function CourseDetailPage({
 }) {
   const { slug } = await params;
   const locale = await getLocale();
-  const lang: Lang = locale === 'de' ? 'de' : 'en';
+  const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const supabase = await createClient();
 
   // Fetch course — try slug first, fall back to id
@@ -67,8 +68,8 @@ export default async function CourseDetailPage({
     };
   });
 
-  const title       = course.title?.[locale] || course.title?.de || course.title?.en || '';
-  const description = course.description?.[locale] || course.description?.de || '';
+  const title       = course.title?.[lang] || course.title?.en || course.title?.de || '';
+  const description = course.description?.[lang] || course.description?.en || course.description?.de || '';
   const totalCount  = lessons.length;
   const doneCount   = lessons.filter((l) => l.is_completed).length;
 
@@ -81,7 +82,7 @@ export default async function CourseDetailPage({
         {/* Breadcrumb */}
         <nav className="mb-8 text-xs text-[#1c2a2b]/40">
           <Link href="/courses" className="hover:text-[#0e393d] transition">
-            {locale === 'de' ? 'Kurse' : 'Courses'}
+            {lang === 'de' ? 'Kurse' : lang === 'fr' ? 'Cours' : lang === 'es' ? 'Cursos' : lang === 'it' ? 'Corsi' : 'Courses'}
           </Link>
           <span className="mx-2">›</span>
           <span className="text-[#1c2a2b]/60">{title}</span>
@@ -96,7 +97,7 @@ export default async function CourseDetailPage({
           )}
 
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-2">
-            {locale === 'de' ? 'Kurs' : 'Course'} · {totalCount} {locale === 'de' ? (totalCount === 1 ? 'Lektion' : 'Lektionen') : (totalCount === 1 ? 'lesson' : 'lessons')}
+            {lang === 'de' ? 'Kurs' : lang === 'fr' ? 'Cours' : lang === 'es' ? 'Curso' : lang === 'it' ? 'Corso' : 'Course'} · {totalCount} {lang === 'de' ? (totalCount === 1 ? 'Lektion' : 'Lektionen') : lang === 'fr' ? (totalCount === 1 ? 'leçon' : 'leçons') : lang === 'es' ? (totalCount === 1 ? 'lección' : 'lecciones') : lang === 'it' ? (totalCount === 1 ? 'lezione' : 'lezioni') : (totalCount === 1 ? 'lesson' : 'lessons')}
           </p>
           <h1 className="font-serif text-3xl text-[#0e393d] mb-3">{title}</h1>
           {description && (

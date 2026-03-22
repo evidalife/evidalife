@@ -8,7 +8,8 @@ export const metadata = { title: 'Dashboard – Evida Life' };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Lang = 'de' | 'en';
+const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
+type Lang = typeof VALID_LANGS[number];
 type StatusFlag = 'optimal' | 'good' | 'moderate' | 'risk';
 
 // ─── Copy ─────────────────────────────────────────────────────────────────────
@@ -92,6 +93,123 @@ const T = {
       profile:    'Profile',
     },
   },
+  fr: {
+    eyebrow:       'Aperçu',
+    heading:       'Tableau de bord',
+    sub:           'Votre aperçu personnel de santé.',
+    score:         'Score Health Engine',
+    scoreNone:     'Pas encore de score',
+    scoreNoneHint: 'Commandez votre premier test pour calculer votre score.',
+    domains:       'Domaines de santé',
+    domainNone:    '—',
+    biomarkers:    'Derniers biomarqueurs',
+    bioNone:       'Pas encore de résultats',
+    bioNoneHint:   'Commandez votre premier test sanguin pour voir vos biomarqueurs.',
+    orderCta:      'Commander un test',
+    dailyDozen:    'Daily Dozen – Aujourd\'hui',
+    ddOf:          (done: number, total: number) => `${done} sur ${total} portions`,
+    quickLinks:    'Accès rapides',
+    collected:     'Prélevé',
+    streak:        (n: number) => `🔥 ${n} jours de suite`,
+    flagLabels: {
+      optimal:  'Optimal',
+      good:     'Bien',
+      moderate: 'Modéré',
+      risk:     'Risque',
+    },
+    domainLabels: {
+      metabolic:         'Métabolique',
+      cardiovascular:    'Cardiovasculaire',
+      inflammation:      'Inflammation',
+      hormonal:          'Hormonal',
+      nutritional:       'Nutritionnel',
+      body_composition:  'Composition corporelle',
+    },
+    quickLinkLabels: {
+      shop:       'Commander un test',
+      dailyDozen: 'Daily Dozen',
+      recipes:    'Recettes',
+      profile:    'Profil',
+    },
+  },
+  es: {
+    eyebrow:       'Resumen',
+    heading:       'Panel',
+    sub:           'Tu resumen personal de salud.',
+    score:         'Puntuación Health Engine',
+    scoreNone:     'Sin puntuación aún',
+    scoreNoneHint: 'Pide tu primer test para calcular tu puntuación.',
+    domains:       'Dominios de salud',
+    domainNone:    '—',
+    biomarkers:    'Últimos biomarcadores',
+    bioNone:       'Aún no hay resultados',
+    bioNoneHint:   'Pide tu primer análisis de sangre para ver tus biomarcadores.',
+    orderCta:      'Pedir un test',
+    dailyDozen:    'Daily Dozen – Hoy',
+    ddOf:          (done: number, total: number) => `${done} de ${total} porciones`,
+    quickLinks:    'Acceso rápido',
+    collected:     'Recogido',
+    streak:        (n: number) => `🔥 ${n} días seguidos`,
+    flagLabels: {
+      optimal:  'Óptimo',
+      good:     'Bien',
+      moderate: 'Moderado',
+      risk:     'Riesgo',
+    },
+    domainLabels: {
+      metabolic:         'Metabólico',
+      cardiovascular:    'Cardiovascular',
+      inflammation:      'Inflamación',
+      hormonal:          'Hormonal',
+      nutritional:       'Nutricional',
+      body_composition:  'Composición corporal',
+    },
+    quickLinkLabels: {
+      shop:       'Pedir un test',
+      dailyDozen: 'Daily Dozen',
+      recipes:    'Recetas',
+      profile:    'Perfil',
+    },
+  },
+  it: {
+    eyebrow:       'Panoramica',
+    heading:       'Dashboard',
+    sub:           'La tua panoramica personale sulla salute.',
+    score:         'Punteggio Health Engine',
+    scoreNone:     'Nessun punteggio ancora',
+    scoreNoneHint: 'Ordina il tuo primo test per calcolare il tuo punteggio.',
+    domains:       'Domini di salute',
+    domainNone:    '—',
+    biomarkers:    'Ultimi biomarcatori',
+    bioNone:       'Nessun risultato ancora',
+    bioNoneHint:   'Ordina il tuo primo esame del sangue per vedere i tuoi biomarcatori.',
+    orderCta:      'Ordina un test',
+    dailyDozen:    'Daily Dozen – Oggi',
+    ddOf:          (done: number, total: number) => `${done} di ${total} porzioni`,
+    quickLinks:    'Accesso rapido',
+    collected:     'Raccolto',
+    streak:        (n: number) => `🔥 ${n} giorni consecutivi`,
+    flagLabels: {
+      optimal:  'Ottimale',
+      good:     'Buono',
+      moderate: 'Moderato',
+      risk:     'Rischio',
+    },
+    domainLabels: {
+      metabolic:         'Metabolico',
+      cardiovascular:    'Cardiovascolare',
+      inflammation:      'Infiammazione',
+      hormonal:          'Ormonale',
+      nutritional:       'Nutrizionale',
+      body_composition:  'Composizione corporea',
+    },
+    quickLinkLabels: {
+      shop:       'Ordina un test',
+      dailyDozen: 'Daily Dozen',
+      recipes:    'Ricette',
+      profile:    'Profilo',
+    },
+  },
 };
 
 const DOMAIN_KEYS = ['metabolic', 'cardiovascular', 'inflammation', 'hormonal', 'nutritional', 'body_composition'] as const;
@@ -114,17 +232,20 @@ function scoreColor(score: number): string {
   return '#ef4444';                  // red
 }
 
+const SCORE_LABELS: Record<Lang, [string, string, string, string]> = {
+  de: ['Ausgezeichnet', 'Gut', 'Mäßig', 'Verbesserungsbedarf'],
+  en: ['Excellent', 'Good', 'Fair', 'Needs attention'],
+  fr: ['Excellent', 'Bien', 'Passable', 'À améliorer'],
+  es: ['Excelente', 'Bien', 'Regular', 'Necesita atención'],
+  it: ['Eccellente', 'Buono', 'Discreto', 'Da migliorare'],
+};
+
 function scoreLabel(score: number, lang: Lang): string {
-  if (lang === 'de') {
-    if (score >= 85) return 'Ausgezeichnet';
-    if (score >= 70) return 'Gut';
-    if (score >= 55) return 'Mäßig';
-    return 'Verbesserungsbedarf';
-  }
-  if (score >= 85) return 'Excellent';
-  if (score >= 70) return 'Good';
-  if (score >= 55) return 'Fair';
-  return 'Needs attention';
+  const [l1, l2, l3, l4] = SCORE_LABELS[lang];
+  if (score >= 85) return l1;
+  if (score >= 70) return l2;
+  if (score >= 55) return l3;
+  return l4;
 }
 
 function flagCls(flag: StatusFlag | null): string {
@@ -144,9 +265,11 @@ function locName(field: unknown): string {
   return f.de || f.en || '';
 }
 
+const LOCALE_MAP: Record<Lang, string> = { de: 'de-DE', en: 'en-US', fr: 'fr-FR', es: 'es-ES', it: 'it-IT' };
+
 function fmtDate(iso: string | null, lang: Lang): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', {
+  return new Date(iso).toLocaleDateString(LOCALE_MAP[lang], {
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
 }
@@ -234,7 +357,7 @@ function DomainCard({ domain, score, label, lang }: {
       </div>
       {!hasScore && (
         <p className="mt-1.5 text-[10px] text-[#1c2a2b]/35">
-          {lang === 'de' ? 'Kein Wert' : 'No data'}
+          {lang === 'de' ? 'Kein Wert' : lang === 'fr' ? 'Aucune donnée' : lang === 'es' ? 'Sin datos' : lang === 'it' ? 'Nessun dato' : 'No data'}
         </p>
       )}
     </div>
@@ -245,7 +368,7 @@ function DomainCard({ domain, score, label, lang }: {
 
 export default async function DashboardPage() {
   const locale = await getLocale();
-  const lang: Lang = locale === 'de' ? 'de' : 'en';
+  const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const t = T[lang];
   const supabase = await createClient();
 
@@ -426,7 +549,7 @@ export default async function DashboardPage() {
                 </span>
               </div>
               <p className="text-xs text-[#1c2a2b]/45">
-                {ddCategories.length > 0 ? t.ddOf(ddDone, ddTotalServings) : (lang === 'de' ? 'Keine Kategorien gefunden' : 'No categories found')}
+                {ddCategories.length > 0 ? t.ddOf(ddDone, ddTotalServings) : (lang === 'de' ? 'Keine Kategorien gefunden' : lang === 'fr' ? 'Aucune catégorie trouvée' : lang === 'es' ? 'No se encontraron categorías' : lang === 'it' ? 'Nessuna categoria trovata' : 'No categories found')}
                 {ddAllDone && ' 🎉'}
               </p>
             </div>

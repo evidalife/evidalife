@@ -10,7 +10,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return buildMeta({ ...PAGE_META.partnerLabs[lang], path: '/partner-labs', locale: lang });
 }
 
-type Lang = 'de' | 'en';
+const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
+type Lang = typeof VALID_LANGS[number];
 
 type LabPartner = {
   id: string;
@@ -71,6 +72,69 @@ const T = {
     ctaBody: 'Choose your test package and select a partner lab near you.',
     ctaBtn: 'Go to shop',
   },
+  fr: {
+    eyebrow: 'Laboratoires partenaires',
+    heading: 'Notre réseau de laboratoires',
+    heroSub: 'Evida Life travaille exclusivement avec des laboratoires partenaires accrédités ISO. La plus haute qualité analytique — pour des résultats de biomarqueurs fiables sur lesquels vous pouvez compter.',
+    statsTitle: 'Notre réseau en un coup d\'œil',
+    statLabs: 'Laboratoires partenaires',
+    statCountries: 'Pays',
+    statCert: 'Accrédité ISO',
+    whyHead: 'Pourquoi l\'accréditation ISO ?',
+    whyBody: 'ISO 15189 est la norme de qualité internationale pour les laboratoires médicaux. Les laboratoires accrédités sont régulièrement audités par des organismes indépendants — une garantie de résultats précis et reproductibles.',
+    labsHead: 'Nos laboratoires partenaires',
+    noLabs: 'Aucun laboratoire partenaire disponible pour le moment.',
+    isoLabel: 'Accréditation',
+    mapLink: 'Voir sur Google Maps',
+    websiteLink: 'Visiter le site',
+    addressLabel: 'Adresse',
+    ctaEyebrow: 'Réserver une prise de sang',
+    ctaHead: 'Faites analyser vos biomarqueurs.',
+    ctaBody: 'Choisissez votre pack de tests et sélectionnez un laboratoire partenaire près de chez vous.',
+    ctaBtn: 'Aller à la boutique',
+  },
+  es: {
+    eyebrow: 'Laboratorios asociados',
+    heading: 'Nuestra red de laboratorios',
+    heroSub: 'Evida Life trabaja exclusivamente con laboratorios asociados acreditados por ISO. La más alta calidad analítica — para resultados de biomarcadores fiables en los que puedes confiar.',
+    statsTitle: 'Nuestra red de un vistazo',
+    statLabs: 'Laboratorios asociados',
+    statCountries: 'Países',
+    statCert: 'Acreditado ISO',
+    whyHead: '¿Por qué la acreditación ISO?',
+    whyBody: 'ISO 15189 es el estándar de calidad internacional para laboratorios médicos. Los laboratorios acreditados son auditados regularmente por organismos independientes — una garantía de resultados precisos y reproducibles.',
+    labsHead: 'Nuestros laboratorios asociados',
+    noLabs: 'Aún no hay laboratorios asociados disponibles.',
+    isoLabel: 'Acreditación',
+    mapLink: 'Ver en Google Maps',
+    websiteLink: 'Visitar sitio web',
+    addressLabel: 'Dirección',
+    ctaEyebrow: 'Reservar análisis de sangre',
+    ctaHead: 'Analiza tus biomarcadores.',
+    ctaBody: 'Elige tu paquete de pruebas y selecciona un laboratorio asociado cerca de ti.',
+    ctaBtn: 'Ir a la tienda',
+  },
+  it: {
+    eyebrow: 'Laboratori partner',
+    heading: 'La nostra rete di laboratori',
+    heroSub: 'Evida Life lavora esclusivamente con laboratori partner accreditati ISO. La massima qualità analitica — per risultati di biomarcatori affidabili su cui puoi fare affidamento.',
+    statsTitle: 'La nostra rete in sintesi',
+    statLabs: 'Laboratori partner',
+    statCountries: 'Paesi',
+    statCert: 'Accreditato ISO',
+    whyHead: 'Perché l\'accreditamento ISO?',
+    whyBody: 'ISO 15189 è lo standard di qualità internazionale per i laboratori medici. I laboratori accreditati vengono regolarmente controllati da organismi indipendenti — una garanzia di risultati precisi e riproducibili.',
+    labsHead: 'I nostri laboratori partner',
+    noLabs: 'Nessun laboratorio partner disponibile ancora.',
+    isoLabel: 'Accreditamento',
+    mapLink: 'Visualizza su Google Maps',
+    websiteLink: 'Visita il sito',
+    addressLabel: 'Indirizzo',
+    ctaEyebrow: 'Prenota un esame del sangue',
+    ctaHead: 'Fai analizzare i tuoi biomarcatori.',
+    ctaBody: 'Scegli il tuo pacchetto di test e seleziona un laboratorio partner vicino a te.',
+    ctaBtn: 'Vai al negozio',
+  },
 };
 
 function IsoBadge({ value }: { value: string }) {
@@ -86,7 +150,7 @@ function IsoBadge({ value }: { value: string }) {
 
 export default async function PartnerLabsPage() {
   const locale = await getLocale();
-  const lang: Lang = locale === 'de' ? 'de' : 'en';
+  const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const t = T[lang];
 
   const supabase = await createClient();

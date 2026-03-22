@@ -1,6 +1,6 @@
 'use client';
 
-type Lang = 'de' | 'en';
+type Lang = 'de' | 'en' | 'fr' | 'es' | 'it';
 
 interface Props {
   current:             number;
@@ -89,7 +89,7 @@ export default function DDGauge({
   const todD          = new Date(today + 'T12:00:00');
   const daysDiff      = Math.round((todD.getTime() - selD.getTime()) / 86400000);
   const isToday       = daysDiff === 0;
-  const locale        = lang === 'de' ? 'de-CH' : 'en-GB';
+  const locale        = lang === 'de' ? 'de-CH' : lang === 'fr' ? 'fr-FR' : lang === 'es' ? 'es-ES' : lang === 'it' ? 'it-IT' : 'en-GB';
 
   const T = {
     de: {
@@ -113,6 +113,39 @@ export default function DDGauge({
       scoreLabel:  '% score',
       streakLabel: 'streak',
       days:        (n: number) => `${n} day${n !== 1 ? 's' : ''}`,
+    },
+    fr: {
+      label:       'Portions aujourd\'hui',
+      yesterday:   'Hier',
+      lastWeekday: (w: string) => `${w} dernier`,
+      allDone:     'Tout accompli !',
+      oneAway:     'Plus qu\'une portion pour une journée parfaite',
+      catLabel:    'catégories',
+      scoreLabel:  '% score',
+      streakLabel: 'série',
+      days:        (n: number) => `${n} jour${n !== 1 ? 's' : ''}`,
+    },
+    es: {
+      label:       'Porciones hoy',
+      yesterday:   'Ayer',
+      lastWeekday: (w: string) => `El ${w} pasado`,
+      allDone:     '¡Todo listo!',
+      oneAway:     '1 porción para un día perfecto',
+      catLabel:    'categorías',
+      scoreLabel:  '% puntuación',
+      streakLabel: 'racha',
+      days:        (n: number) => `${n} día${n !== 1 ? 's' : ''}`,
+    },
+    it: {
+      label:       'Porzioni oggi',
+      yesterday:   'Ieri',
+      lastWeekday: (w: string) => `${w} scorso`,
+      allDone:     'Tutto fatto!',
+      oneAway:     '1 porzione per una giornata perfetta',
+      catLabel:    'categorie',
+      scoreLabel:  '% punteggio',
+      streakLabel: 'serie',
+      days:        (n: number) => `${n} giorno${n !== 1 ? 'i' : ''}`,
     },
   }[lang];
 

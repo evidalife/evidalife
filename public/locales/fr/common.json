@@ -1,359 +1,359 @@
 {
   "nav": {
     "brand": "EVIDA LIFE",
-    "cta": "Waitlist",
-    "login": "Login",
+    "cta": "Liste d'attente",
+    "login": "Connexion",
     "dropdowns": {
-      "Kitchen": ["How to start", "Daily Dozen", "Recipes", "Restaurant", null, "Blog", "Shopping List", "Courses"],
-      "Health": ["Health Engine", "Blood Values & Biomarkers", "BioAge", "Interventions", null, "Dashboard", "Science"],
-      "Fit": ["Sleep", "Exercise", "Stress & Recovery", null, "Coaching"],
-      "Shop": ["Test Packages", "Food", "Eat@Home Subscription", null, "Cart & Checkout", "My Orders"]
+      "Kitchen": ["Comment commencer", "Daily Dozen", "Recettes", "Restaurant", null, "Blog", "Liste de courses", "Cours"],
+      "Health": ["Health Engine", "Valeurs sanguines & biomarqueurs", "BioAge", "Interventions", null, "Tableau de bord", "Science"],
+      "Fit": ["Sommeil", "Exercice", "Stress & Récupération", null, "Coaching"],
+      "Shop": ["Forfaits de test", "Alimentation", "Abonnement Eat@Home", null, "Panier & Paiement", "Mes commandes"]
     }
   },
   "hero": {
-    "h1": "Live well.",
-    "h1em": "Scientifically grounded.",
-    "sub": "Evidence-based, whole-food, plant-based nutrition – combined with measurable health markers. Quality health, made affordable for everyone.",
-    "cta1": "Join the waitlist",
-    "cta2": "How it works",
-    "ctaFull": "Sign up now"
+    "h1": "Vivez bien.",
+    "h1em": "Fondé sur la science.",
+    "sub": "Nutrition végétale à base d'aliments complets et fondée sur des preuves – combinée à des marqueurs de santé mesurables. Une santé de qualité, accessible à tous.",
+    "cta1": "Rejoindre la liste d'attente",
+    "cta2": "Comment ça marche",
+    "ctaFull": "S'inscrire maintenant"
   },
   "split": {
-    "heading": "More than just",
-    "headingEm": "information.",
-    "desc": "We don't just provide knowledge – we make positive change measurable. With partner labs, daily tracking and your personal Longevity Score, you see exactly how your nutrition affects your health."
+    "heading": "Plus que de simples",
+    "headingEm": "informations.",
+    "desc": "Nous ne fournissons pas seulement des connaissances – nous rendons le changement positif mesurable. Avec des laboratoires partenaires, un suivi quotidien et votre score de longévité personnel, vous voyez exactement comment votre alimentation affecte votre santé."
   },
   "cards": [
-    { "title": "Lab results & score", "desc": "All biomarkers in one dashboard. Your Longevity Score tracks your progress in real time." },
-    { "title": "Daily Dozen tracker", "desc": "Dr. Michael Greger's 12 food groups – track daily, simple to implement." },
-    { "title": "Recipe database", "desc": "Delicious whole-food dishes matched to your health goals and the Daily Dozen." },
-    { "title": "Shop & packages", "desc": "Lab test packages and more – quality health made affordable. Easy to book." }
+    { "title": "Résultats de labo & score", "desc": "Tous les biomarqueurs dans un tableau de bord. Votre score de longévité suit votre progression en temps réel." },
+    { "title": "Tracker Daily Dozen", "desc": "Les 12 groupes alimentaires du Dr Michael Greger – suivi quotidien, simple à mettre en œuvre." },
+    { "title": "Base de données de recettes", "desc": "De délicieux plats à base d'aliments complets adaptés à vos objectifs de santé et au Daily Dozen." },
+    { "title": "Boutique & forfaits", "desc": "Forfaits de tests de laboratoire et plus – une santé de qualité rendue abordable. Facile à réserver." }
   ],
   "steps": {
-    "tag": "How it works",
-    "heading": "Three steps to",
-    "headingEm": "measurable health",
+    "tag": "Comment ça marche",
+    "heading": "Trois étapes vers",
+    "headingEm": "une santé mesurable",
     "items": [
-      { "n": "01", "title": "Measure", "desc": "Partner labs analyse your most important health and longevity markers. All results clearly visible in your personal dashboard." },
-      { "n": "02", "title": "Nourish", "desc": "Whole-food, plant-based nutrition following Dr. Greger's Daily Dozen. With recipes, tips, and daily tracking built into the app." },
-      { "n": "03", "title": "Improve", "desc": "Your Longevity Score shows measurably how your nutrition affects your biomarkers. Clear. Understandable. Motivating." }
+      { "n": "01", "title": "Mesurer", "desc": "Les laboratoires partenaires analysent vos marqueurs de santé et de longévité les plus importants. Tous les résultats clairement visibles dans votre tableau de bord personnel." },
+      { "n": "02", "title": "Nourrir", "desc": "Nutrition végétale à base d'aliments complets selon le Daily Dozen du Dr Greger. Avec des recettes, des conseils et un suivi quotidien intégrés dans l'application." },
+      { "n": "03", "title": "Améliorer", "desc": "Votre score de longévité montre de manière mesurable comment votre alimentation affecte vos biomarqueurs. Clair. Compréhensible. Motivant." }
     ]
   },
   "waitlist": {
-    "tag": "Early access",
-    "heading": "Be there",
-    "headingEm": "from the beginning.",
-    "desc": "Sign up and be among the first to access the platform – including an exclusive early access discount.",
-    "placeholder": "your@email.com",
-    "footnote": "No spam. Unsubscribe anytime.",
-    "success": "You're on the waitlist – thank you! We'll be in touch soon.",
-    "cta": "Sign up now"
+    "tag": "Accès anticipé",
+    "heading": "Soyez là",
+    "headingEm": "dès le début.",
+    "desc": "Inscrivez-vous et faites partie des premiers à accéder à la plateforme – avec une remise exclusive pour les premiers utilisateurs.",
+    "placeholder": "votre@email.com",
+    "footnote": "Pas de spam. Désabonnement à tout moment.",
+    "success": "Vous êtes sur la liste d'attente – merci ! Nous vous contacterons bientôt.",
+    "cta": "S'inscrire maintenant"
   },
   "footer": {
     "co": {
-      "label": "Company",
-      "items": ["About us", "Team", "Partner Labs", "Contact"]
+      "label": "Entreprise",
+      "items": ["À propos", "Équipe", "Laboratoires partenaires", "Contact"]
     },
     "legal": {
-      "privacy": "Privacy policy",
-      "terms": "Terms",
-      "imprint": "Imprint"
+      "privacy": "Politique de confidentialité",
+      "terms": "Conditions",
+      "imprint": "Mentions légales"
     },
-    "copy": "© 2026 Evida Life AG · Switzerland · All rights reserved"
+    "copy": "© 2026 Evida Life AG · Suisse · Tous droits réservés"
   },
   "cookie": {
-    "text": "This site uses Plausible Analytics — privacy-friendly, cookieless, no personal data collected.",
-    "link": "Privacy Policy",
-    "button": "Got it"
+    "text": "Ce site utilise Plausible Analytics — respectueux de la vie privée, sans cookies, aucune donnée personnelle collectée.",
+    "link": "Politique de confidentialité",
+    "button": "Compris"
   },
   "layout": {
-    "back": "← Back",
-    "lastUpdated": "Last updated: {date}",
+    "back": "← Retour",
+    "lastUpdated": "Dernière mise à jour : {date}",
     "footer": {
-      "imprint": "Imprint",
-      "privacy": "Privacy",
-      "terms": "Terms"
+      "imprint": "Mentions légales",
+      "privacy": "Confidentialité",
+      "terms": "Conditions"
     }
   },
   "shop": {
-    "back": "← Back",
-    "checkoutComingSoon": "Coming soon — join the waitlist to be notified when checkout is available.",
-    "tag": "Longevity Testing",
-    "h1": "Know where you stand.",
-    "sub": "Professional blood tests via partner labs – including a free vitality check and personal Longevity Dashboard.",
+    "back": "← Retour",
+    "checkoutComingSoon": "Bientôt disponible — rejoignez la liste d'attente pour être notifié quand le paiement sera disponible.",
+    "tag": "Tests de longévité",
+    "h1": "Sachez où vous en êtes.",
+    "sub": "Tests sanguins professionnels via des laboratoires partenaires – avec un bilan de vitalité gratuit et un tableau de bord de longévité personnel.",
     "packages": {
-      "heading": "Test Packages",
-      "featured": "RECOMMENDED",
-      "biomarkers": "{count} biomarkers analysed",
-      "vitalcheck": "Free vitality check incl.",
-      "cta": "Choose package"
+      "heading": "Forfaits de test",
+      "featured": "RECOMMANDÉ",
+      "biomarkers": "{count} biomarqueurs analysés",
+      "vitalcheck": "Bilan de vitalité gratuit inclus",
+      "cta": "Choisir le forfait"
     },
     "addons": {
-      "heading": "Add-ons",
-      "combo": "Combinable with any package",
-      "cta": "Choose add-on"
+      "heading": "Compléments",
+      "combo": "Combinable avec n'importe quel forfait",
+      "cta": "Choisir le complément"
     },
     "trust": [
-      { "title": "Certified partner labs", "body": "ISO-accredited laboratories in Switzerland and Germany." },
-      { "title": "Automatic dashboard", "body": "All results directly in your Evida Life profile." },
-      { "title": "Privacy first", "body": "Swiss data storage, fully GDPR- & nDSG-compliant." }
+      { "title": "Laboratoires partenaires certifiés", "body": "Laboratoires accrédités ISO en Suisse et en Allemagne." },
+      { "title": "Tableau de bord automatique", "body": "Tous les résultats directement dans votre profil Evida Life." },
+      { "title": "Confidentialité d'abord", "body": "Stockage des données en Suisse, entièrement conforme au RGPD et au nLPD." }
     ],
     "footer": {
-      "imprint": "Imprint",
-      "privacy": "Privacy",
-      "terms": "Terms"
+      "imprint": "Mentions légales",
+      "privacy": "Confidentialité",
+      "terms": "Conditions"
     }
   },
   "privacy": {
-    "title": "Privacy Policy",
-    "subtitle": "How we handle your data",
-    "lastUpdated": "March 2026",
+    "title": "Politique de confidentialité",
+    "subtitle": "Comment nous traitons vos données",
+    "lastUpdated": "Mars 2026",
     "s1": {
-      "heading": "1. Controller",
-      "intro": "The controller within the meaning of the GDPR and the Swiss Data Protection Act (nDSG) is:",
+      "heading": "1. Responsable du traitement",
+      "intro": "Le responsable du traitement au sens du RGPD et de la loi suisse sur la protection des données (nLPD) est :",
       "company": "Evida Life AG",
-      "address": "[Address], Zurich, Switzerland",
-      "emailLabel": "Email:"
+      "address": "[Adresse], Zurich, Suisse",
+      "emailLabel": "E-mail :"
     },
     "s2": {
-      "heading": "2. Data we collect",
+      "heading": "2. Données que nous collectons",
       "waitlist": {
-        "heading": "Waitlist",
-        "body": "When you sign up for our waitlist, we store your email address to inform you about the platform launch. The storage is based on your consent (Art. 6(1)(a) GDPR / Art. 31 nDSG)."
+        "heading": "Liste d'attente",
+        "body": "Lorsque vous vous inscrivez à notre liste d'attente, nous stockons votre adresse e-mail pour vous informer du lancement de la plateforme. Le stockage est basé sur votre consentement (Art. 6(1)(a) RGPD / Art. 31 nLPD)."
       },
       "account": {
-        "heading": "User account",
-        "body": "During registration we collect your email address and a password. Additional profile details (e.g. name, date of birth) can be added voluntarily. The legal basis is contract performance (Art. 6(1)(b) GDPR)."
+        "heading": "Compte utilisateur",
+        "body": "Lors de l'inscription, nous collectons votre adresse e-mail et un mot de passe. Des informations de profil supplémentaires (p. ex. nom, date de naissance) peuvent être ajoutées volontairement. La base juridique est l'exécution du contrat (Art. 6(1)(b) RGPD)."
       },
       "health": {
-        "heading": "Health data",
-        "placeholder": "[Placeholder: Description of lab values, biomarkers and Daily Dozen data that users can upload or enter. Legal basis: explicit consent pursuant to Art. 9(2)(a) GDPR.]"
+        "heading": "Données de santé",
+        "placeholder": "[Espace réservé : Description des valeurs de laboratoire, biomarqueurs et données Daily Dozen que les utilisateurs peuvent télécharger ou saisir. Base juridique : consentement explicite conformément à l'Art. 9(2)(a) RGPD.]"
       },
       "auto": {
-        "heading": "Automatically collected data",
-        "body": "When you visit our website, technically necessary data (IP address, browser, referrer) are stored in server logs for a very short time. This data is not linked to other data."
+        "heading": "Données collectées automatiquement",
+        "body": "Lorsque vous visitez notre site web, les données techniquement nécessaires (adresse IP, navigateur, référent) sont stockées dans les journaux du serveur pendant une très courte durée. Ces données ne sont pas liées à d'autres données."
       }
     },
     "s3": {
-      "heading": "3. Analytics (Plausible)",
-      "body": "We use Plausible Analytics, a privacy-friendly, cookieless analytics solution based in the EU. Plausible sets no cookies, stores no personal data, and is fully GDPR-compliant. No data is shared with third parties."
+      "heading": "3. Analytique (Plausible)",
+      "body": "Nous utilisons Plausible Analytics, une solution d'analyse respectueuse de la vie privée, sans cookies, basée dans l'UE. Plausible ne définit aucun cookie, ne stocke aucune donnée personnelle et est entièrement conforme au RGPD. Aucune donnée n'est partagée avec des tiers."
     },
     "s4": {
-      "heading": "4. Data storage (Supabase)",
-      "body": "Your data is stored in Supabase infrastructure. Our database server is located in the EU (Zurich) region. Supabase processes data according to its privacy policy and acts as a data processor."
+      "heading": "4. Stockage des données (Supabase)",
+      "body": "Vos données sont stockées dans l'infrastructure Supabase. Notre serveur de base de données est situé dans la région UE (Zurich). Supabase traite les données conformément à sa politique de confidentialité et agit en tant que sous-traitant."
     },
     "s5": {
-      "heading": "5. Cookies & Local Storage",
-      "body": "We use strictly necessary cookies to maintain your login session after you sign in. These cookies are essential for the authentication service to function and do not require consent under EU law (Art. 5(3) ePrivacy Directive). We do not use any tracking, advertising, or third-party cookies. Our website analytics are provided by Plausible Analytics, which is fully cookieless and does not collect personal data."
+      "heading": "5. Cookies & Stockage local",
+      "body": "Nous utilisons des cookies strictement nécessaires pour maintenir votre session de connexion après que vous vous êtes connecté. Ces cookies sont essentiels au fonctionnement du service d'authentification et ne nécessitent pas de consentement en vertu du droit de l'UE (Art. 5(3) de la directive ePrivacy). Nous n'utilisons aucun cookie de suivi, publicitaire ou tiers. Notre analyse du site web est fournie par Plausible Analytics, qui est entièrement sans cookies et ne collecte pas de données personnelles."
     },
     "s6": {
-      "heading": "6. Your rights",
-      "intro": "You have the right to:",
+      "heading": "6. Vos droits",
+      "intro": "Vous avez le droit de :",
       "rights": [
-        "Access your stored data (Art. 15 GDPR / Art. 25 nDSG)",
-        "Correction of inaccurate data (Art. 16 GDPR)",
-        "Deletion of your data (Art. 17 GDPR / Art. 32 nDSG)",
-        "Restriction of processing (Art. 18 GDPR)",
-        "Data portability (Art. 20 GDPR)",
-        "Withdrawal of consent at any time without giving reasons",
-        "Lodge a complaint with a supervisory authority (FDPIC, Switzerland)"
+        "Accéder à vos données stockées (Art. 15 RGPD / Art. 25 nLPD)",
+        "Corriger les données inexactes (Art. 16 RGPD)",
+        "Supprimer vos données (Art. 17 RGPD / Art. 32 nLPD)",
+        "Limiter le traitement (Art. 18 RGPD)",
+        "Portabilité des données (Art. 20 RGPD)",
+        "Retirer votre consentement à tout moment sans donner de raisons",
+        "Déposer une plainte auprès d'une autorité de contrôle (PFPDT, Suisse)"
       ],
-      "contact": "Send requests to:"
+      "contact": "Envoyez vos demandes à :"
     },
     "s7": {
-      "heading": "7. Third parties and data sharing",
-      "placeholder": "[Placeholder: Partner labs, payment providers, and other processors will be listed here once partnerships are established.]"
+      "heading": "7. Tiers et partage de données",
+      "placeholder": "[Espace réservé : Les laboratoires partenaires, les prestataires de paiement et autres sous-traitants seront répertoriés ici une fois les partenariats établis.]"
     },
     "s8": {
-      "heading": "8. Changes to this policy",
-      "body": "We reserve the right to update this privacy policy as needed. The current version is always available on this page. For material changes, registered users will be notified by email."
+      "heading": "8. Modifications de cette politique",
+      "body": "Nous nous réservons le droit de mettre à jour cette politique de confidentialité si nécessaire. La version actuelle est toujours disponible sur cette page. Pour les modifications importantes, les utilisateurs enregistrés seront informés par e-mail."
     },
     "s9": {
       "heading": "9. Contact",
-      "body": "For privacy-related questions, reach us at"
+      "body": "Pour les questions relatives à la protection des données, contactez-nous à"
     }
   },
   "terms": {
-    "title": "Terms of Service",
-    "subtitle": "General Terms and Conditions",
-    "lastUpdated": "March 2026",
+    "title": "Conditions d'utilisation",
+    "subtitle": "Conditions générales",
+    "lastUpdated": "Mars 2026",
     "s1": {
-      "heading": "1. Scope",
-      "body": "These Terms of Service apply to the use of the Evida Life platform, operated by Evida Life AG, Zurich, Switzerland ('Evida Life', 'we', 'us'). By registering or using the platform, you accept these terms."
+      "heading": "1. Champ d'application",
+      "body": "Ces conditions d'utilisation s'appliquent à l'utilisation de la plateforme Evida Life, exploitée par Evida Life AG, Zurich, Suisse ('Evida Life', 'nous'). En vous inscrivant ou en utilisant la plateforme, vous acceptez ces conditions."
     },
     "s2": {
-      "heading": "2. Service description",
-      "intro": "Evida Life is a digital health platform offering the following features:",
+      "heading": "2. Description du service",
+      "intro": "Evida Life est une plateforme de santé numérique offrant les fonctionnalités suivantes :",
       "items": [
-        "Recording and analysis of lab values and biomarkers",
-        "Daily Dozen tracker for plant-based nutrition",
-        "Recipe database with evidence-based nutritional recommendations",
-        "Evidence-based health articles"
+        "Enregistrement et analyse des valeurs de laboratoire et des biomarqueurs",
+        "Tracker Daily Dozen pour la nutrition végétale",
+        "Base de données de recettes avec des recommandations nutritionnelles fondées sur des preuves",
+        "Articles de santé fondés sur des preuves"
       ],
-      "placeholder": "[Placeholder: Full service description will be added at app launch.]"
+      "placeholder": "[Espace réservé : La description complète du service sera ajoutée lors du lancement de l'application.]"
     },
     "s3": {
-      "heading": "3. User accounts",
-      "body": "Use of the platform requires registration with a valid email address. You are responsible for the security of your account and the confidentiality of your password. Please notify us immediately of any signs of unauthorised use.",
+      "heading": "3. Comptes utilisateurs",
+      "body": "L'utilisation de la plateforme nécessite une inscription avec une adresse e-mail valide. Vous êtes responsable de la sécurité de votre compte et de la confidentialité de votre mot de passe. Veuillez nous informer immédiatement de tout signe d'utilisation non autorisée.",
       "age": {
-        "heading": "Minimum age",
-        "body": "The platform is restricted to persons aged 18 and over. By registering, you confirm that you have reached the minimum age."
+        "heading": "Âge minimum",
+        "body": "La plateforme est réservée aux personnes âgées de 18 ans et plus. En vous inscrivant, vous confirmez avoir atteint l'âge minimum."
       }
     },
     "s4": {
-      "heading": "4. Health disclaimer",
-      "body": "The information, lab evaluations, and nutritional recommendations provided on Evida Life are for informational purposes only and do not replace medical or nutritional advice. Please always consult a specialist for health questions or complaints."
+      "heading": "4. Avertissement médical",
+      "body": "Les informations, évaluations de laboratoire et recommandations nutritionnelles fournies sur Evida Life sont à des fins informatives uniquement et ne remplacent pas les conseils médicaux ou nutritionnels. Veuillez toujours consulter un spécialiste pour les questions ou plaintes de santé."
     },
     "s5": {
-      "heading": "5. Content and intellectual property",
-      "body1": "All content created by Evida Life (texts, graphics, recipes, articles) is protected by copyright. Reproduction or distribution without express permission is prohibited.",
-      "body2": "Content you upload yourself (e.g. lab reports) remains your property. You grant us the right to process it solely to provide our services."
+      "heading": "5. Contenu et propriété intellectuelle",
+      "body1": "Tout le contenu créé par Evida Life (textes, graphiques, recettes, articles) est protégé par le droit d'auteur. La reproduction ou la distribution sans autorisation expresse est interdite.",
+      "body2": "Le contenu que vous téléchargez vous-même (p. ex. rapports de laboratoire) reste votre propriété. Vous nous accordez le droit de le traiter uniquement pour fournir nos services."
     },
     "s6": {
-      "heading": "6. Prohibited use",
-      "intro": "It is prohibited to use the platform to:",
+      "heading": "6. Utilisation interdite",
+      "intro": "Il est interdit d'utiliser la plateforme pour :",
       "items": [
-        "distribute illegal content",
-        "harass or harm other users",
-        "compromise the security or integrity of the platform",
-        "conduct automated queries without written permission"
+        "diffuser du contenu illégal",
+        "harceler ou nuire à d'autres utilisateurs",
+        "compromettre la sécurité ou l'intégrité de la plateforme",
+        "effectuer des requêtes automatisées sans autorisation écrite"
       ]
     },
     "s7": {
-      "heading": "7. Availability and liability",
-      "body": "We strive to keep the platform available at all times but provide no guarantee of uninterrupted availability. Liability for data loss or damage due to outages is excluded to the extent permitted by law.",
-      "placeholder": "[Placeholder: Full liability provisions under Swiss law will be added after legal review.]"
+      "heading": "7. Disponibilité et responsabilité",
+      "body": "Nous nous efforçons de maintenir la plateforme disponible en tout temps, mais ne garantissons pas une disponibilité ininterrompue. La responsabilité pour la perte de données ou les dommages dus à des pannes est exclue dans la mesure permise par la loi.",
+      "placeholder": "[Espace réservé : Les dispositions complètes en matière de responsabilité en vertu du droit suisse seront ajoutées après examen juridique.]"
     },
     "s8": {
-      "heading": "8. Pricing and subscriptions",
-      "placeholder": "[Placeholder: Pricing model, subscription periods, cancellation terms, and refund rules will be added before launch.]"
+      "heading": "8. Tarification et abonnements",
+      "placeholder": "[Espace réservé : Le modèle de tarification, les périodes d'abonnement, les conditions d'annulation et les règles de remboursement seront ajoutés avant le lancement.]"
     },
     "s9": {
-      "heading": "9. Termination",
-      "body": "You may delete your account at any time without giving reasons. We reserve the right to suspend or delete accounts in cases of serious violations of these terms."
+      "heading": "9. Résiliation",
+      "body": "Vous pouvez supprimer votre compte à tout moment sans donner de raisons. Nous nous réservons le droit de suspendre ou de supprimer des comptes en cas de violations graves de ces conditions."
     },
     "s10": {
-      "heading": "10. Changes to terms",
-      "body": "We reserve the right to update these Terms of Service. We will notify registered users of material changes by email at least 30 days in advance."
+      "heading": "10. Modifications des conditions",
+      "body": "Nous nous réservons le droit de mettre à jour ces conditions d'utilisation. Nous informerons les utilisateurs enregistrés des modifications importantes par e-mail au moins 30 jours à l'avance."
     },
     "s11": {
-      "heading": "11. Governing law and jurisdiction",
-      "body": "Swiss law applies, excluding the UN Convention on Contracts for the International Sale of Goods. Jurisdiction is Zurich, Switzerland."
+      "heading": "11. Droit applicable et juridiction",
+      "body": "Le droit suisse s'applique, à l'exclusion de la Convention des Nations Unies sur les contrats de vente internationale de marchandises. La juridiction compétente est Zurich, Suisse."
     },
     "s12": {
       "heading": "12. Contact",
-      "body": "For questions about these Terms of Service, reach us at"
+      "body": "Pour les questions relatives à ces conditions d'utilisation, contactez-nous à"
     }
   },
   "auth": {
     "hero": {
-      "h1": "Live well.",
-      "h1em": "Scientifically grounded.",
-      "sub": "Evidence-based, whole-food, plant-based nutrition — combined with measurable health markers."
+      "h1": "Vivez bien.",
+      "h1em": "Fondé sur la science.",
+      "sub": "Nutrition végétale à base d'aliments complets et fondée sur des preuves — combinée à des marqueurs de santé mesurables."
     },
     "login": {
-      "heading": "Welcome back",
-      "subtext": "Sign in to your account",
-      "email": "Email",
-      "password": "Password",
-      "forgotPassword": "Forgot password?",
-      "signIn": "Sign in",
-      "orWith": "or continue with",
-      "noAccount": "Don't have an account?",
-      "createAccount": "Create account",
-      "show": "Show",
-      "hide": "Hide",
-      "errInvalid": "Invalid email or password. Please try again.",
-      "errGeneric": "An error occurred. Please try again.",
-      "errDeactivated": "This account has been deactivated. Please contact support."
+      "heading": "Bon retour",
+      "subtext": "Connectez-vous à votre compte",
+      "email": "E-mail",
+      "password": "Mot de passe",
+      "forgotPassword": "Mot de passe oublié ?",
+      "signIn": "Se connecter",
+      "orWith": "ou continuer avec",
+      "noAccount": "Vous n'avez pas de compte ?",
+      "createAccount": "Créer un compte",
+      "show": "Afficher",
+      "hide": "Masquer",
+      "errInvalid": "E-mail ou mot de passe invalide. Veuillez réessayer.",
+      "errGeneric": "Une erreur s'est produite. Veuillez réessayer.",
+      "errDeactivated": "Ce compte a été désactivé. Veuillez contacter le support."
     },
     "verify": {
-      "heading": "Two-factor authentication",
-      "subtext": "Enter the 6-digit code from your authenticator app",
-      "verify": "Verify",
-      "didntReceive": "Didn't receive a code?",
-      "resend": "Resend",
-      "backupCode": "Use backup code",
-      "backupCodeLabel": "Backup code",
-      "backToCode": "Back to code",
-      "errInvalid": "Invalid code. Please try again."
+      "heading": "Authentification à deux facteurs",
+      "subtext": "Entrez le code à 6 chiffres de votre application d'authentification",
+      "verify": "Vérifier",
+      "didntReceive": "Vous n'avez pas reçu de code ?",
+      "resend": "Renvoyer",
+      "backupCode": "Utiliser un code de sauvegarde",
+      "backupCodeLabel": "Code de sauvegarde",
+      "backToCode": "Retour au code",
+      "errInvalid": "Code invalide. Veuillez réessayer."
     },
     "signup": {
-      "heading": "Create your account",
-      "subtext": "Start your evidence-based health journey",
-      "firstName": "First name",
-      "lastName": "Last name",
-      "firstNamePlaceholder": "Max",
-      "lastNamePlaceholder": "Mustermann",
-      "email": "Email",
-      "password": "Password",
-      "passwordPlaceholder": "Min. 8 characters",
-      "tcAgree": "I agree to the",
-      "tcTerms": "Terms & Conditions",
-      "tcAnd": "and",
-      "tcPrivacy": "Privacy Policy",
-      "createAccount": "Create account",
-      "alreadyHaveAccount": "Already have an account?",
-      "signIn": "Sign in",
-      "orWith": "or with email",
-      "signUpGoogle": "Sign up with Google",
-      "signUpApple": "Sign up with Apple",
-      "confirmHeading": "Check your email",
-      "confirmSubtext": "We've sent a confirmation link to",
-      "backToLogin": "Back to sign in",
-      "show": "Show",
-      "hide": "Hide",
-      "errPasswordShort": "Password must be at least 8 characters",
-      "errTcRequired": "Please accept the Terms & Conditions"
+      "heading": "Créez votre compte",
+      "subtext": "Commencez votre parcours de santé fondé sur des preuves",
+      "firstName": "Prénom",
+      "lastName": "Nom de famille",
+      "firstNamePlaceholder": "Marie",
+      "lastNamePlaceholder": "Dupont",
+      "email": "E-mail",
+      "password": "Mot de passe",
+      "passwordPlaceholder": "Min. 8 caractères",
+      "tcAgree": "J'accepte les",
+      "tcTerms": "Conditions générales",
+      "tcAnd": "et la",
+      "tcPrivacy": "Politique de confidentialité",
+      "createAccount": "Créer un compte",
+      "alreadyHaveAccount": "Vous avez déjà un compte ?",
+      "signIn": "Se connecter",
+      "orWith": "ou avec e-mail",
+      "signUpGoogle": "S'inscrire avec Google",
+      "signUpApple": "S'inscrire avec Apple",
+      "confirmHeading": "Vérifiez votre e-mail",
+      "confirmSubtext": "Nous avons envoyé un lien de confirmation à",
+      "backToLogin": "Retour à la connexion",
+      "show": "Afficher",
+      "hide": "Masquer",
+      "errPasswordShort": "Le mot de passe doit comporter au moins 8 caractères",
+      "errTcRequired": "Veuillez accepter les conditions générales"
     },
     "forgot": {
-      "heading": "Reset your password",
-      "subtext": "Enter your email and we'll send you a reset link",
-      "email": "Email",
-      "sendLink": "Send reset link",
-      "rememberPassword": "Remember your password?",
-      "signIn": "Sign in",
-      "successHeading": "Check your email",
-      "successSubtext": "We've sent a password reset link to",
-      "resend": "Resend"
+      "heading": "Réinitialisez votre mot de passe",
+      "subtext": "Entrez votre e-mail et nous vous enverrons un lien de réinitialisation",
+      "email": "E-mail",
+      "sendLink": "Envoyer le lien de réinitialisation",
+      "rememberPassword": "Vous vous souvenez de votre mot de passe ?",
+      "signIn": "Se connecter",
+      "successHeading": "Vérifiez votre e-mail",
+      "successSubtext": "Nous avons envoyé un lien de réinitialisation de mot de passe à",
+      "resend": "Renvoyer"
     },
     "social": {
       "google": "Google",
       "apple": "Apple",
-      "errGoogle": "Google sign-in failed. Please try again.",
-      "errApple": "Apple sign-in failed. Please try again."
+      "errGoogle": "La connexion Google a échoué. Veuillez réessayer.",
+      "errApple": "La connexion Apple a échoué. Veuillez réessayer."
     }
   },
   "imprint": {
-    "title": "Imprint",
+    "title": "Mentions légales",
     "s1": {
-      "heading": "Information pursuant to Art. 3 UCA (Switzerland)",
+      "heading": "Informations conformément à l'art. 3 LCD (Suisse)",
       "company": "Evida Life AG",
-      "addressLine1": "[Street and number]",
-      "addressLine2": "[Postcode] Zurich",
-      "country": "Switzerland",
-      "emailLabel": "Email:",
-      "registryLabel": "Commercial register:",
-      "registryValue": "Commercial Register of the Canton of Zurich",
-      "uidLabel": "UID:",
+      "addressLine1": "[Rue et numéro]",
+      "addressLine2": "[Code postal] Zurich",
+      "country": "Suisse",
+      "emailLabel": "E-mail :",
+      "registryLabel": "Registre du commerce :",
+      "registryValue": "Registre du commerce du canton de Zurich",
+      "uidLabel": "UID :",
       "uidValue": "CHE-[xxx.xxx.xxx]"
     },
     "s2": {
-      "heading": "Responsible for content",
-      "name": "[First Last]",
+      "heading": "Responsable du contenu",
+      "name": "[Prénom Nom]",
       "company": "Evida Life AG, Zurich"
     },
     "s3": {
-      "heading": "Disclaimer",
-      "body": "The contents of this website have been compiled with the utmost care. However, we cannot guarantee the accuracy, completeness, or timeliness of the content. The information provided on this website does not replace medical or nutritional advice."
+      "heading": "Avertissement",
+      "body": "Le contenu de ce site web a été compilé avec le plus grand soin. Cependant, nous ne pouvons pas garantir l'exactitude, l'exhaustivité ou l'actualité du contenu. Les informations fournies sur ce site web ne remplacent pas les conseils médicaux ou nutritionnels."
     },
     "s4": {
-      "heading": "Copyright",
-      "body": "The content and works created by the site operators on these pages are subject to Swiss copyright law. Contributions from third parties are identified as such. Reproduction, processing, distribution, and any form of use beyond the limits of copyright law require the written consent of Evida Life AG."
+      "heading": "Droits d'auteur",
+      "body": "Le contenu et les œuvres créés par les exploitants du site sur ces pages sont soumis au droit d'auteur suisse. Les contributions de tiers sont identifiées comme telles. La reproduction, le traitement, la distribution et toute forme d'utilisation au-delà des limites du droit d'auteur nécessitent le consentement écrit d'Evida Life AG."
     },
     "s5": {
-      "heading": "External links",
-      "body": "This website contains links to external third-party websites over whose content we have no influence. The respective provider is always responsible for the content of linked pages. No legal violations were apparent at the time of linking."
+      "heading": "Liens externes",
+      "body": "Ce site web contient des liens vers des sites web tiers sur le contenu desquels nous n'avons aucune influence. Le fournisseur respectif est toujours responsable du contenu des pages liées. Aucune violation légale n'était apparente au moment de la mise en lien."
     }
   }
 }

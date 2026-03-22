@@ -6,7 +6,7 @@ import { Link } from '@/i18n/navigation';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Lang = 'de' | 'en';
+type Lang = 'de' | 'en' | 'fr' | 'es' | 'it';
 
 export type LessonWithProgress = {
   id: string;           // course_lesson id
@@ -43,6 +43,39 @@ const T = {
     loginPrompt: 'Sign in to save your progress.',
     login: 'Sign in',
     noLessons: 'This course has no lessons yet.',
+  },
+  fr: {
+    progress: (done: number, total: number) => `${done} sur ${total} terminé`,
+    complete: 'Terminé',
+    markDone: 'Marquer comme terminé',
+    free: 'Gratuit',
+    read: 'Lire',
+    locked: 'Premium',
+    loginPrompt: 'Connectez-vous pour sauvegarder votre progression.',
+    login: 'Se connecter',
+    noLessons: 'Ce cours n\'a pas encore de leçons.',
+  },
+  es: {
+    progress: (done: number, total: number) => `${done} de ${total} completado`,
+    complete: 'Completado',
+    markDone: 'Marcar como hecho',
+    free: 'Gratis',
+    read: 'Leer',
+    locked: 'Premium',
+    loginPrompt: 'Inicia sesión para guardar tu progreso.',
+    login: 'Iniciar sesión',
+    noLessons: 'Este curso aún no tiene lecciones.',
+  },
+  it: {
+    progress: (done: number, total: number) => `${done} di ${total} completato`,
+    complete: 'Completato',
+    markDone: 'Segna come fatto',
+    free: 'Gratuito',
+    read: 'Leggi',
+    locked: 'Premium',
+    loginPrompt: 'Accedi per salvare i tuoi progressi.',
+    login: 'Accedi',
+    noLessons: 'Questo corso non ha ancora lezioni.',
   },
 };
 
@@ -111,7 +144,7 @@ export default function CourseDetail({ lang, lessons: initialLessons, userId }: 
           </div>
           {allDone && (
             <p className="mt-2 text-xs text-emerald-600 font-medium">
-              {lang === 'de' ? '🎉 Kurs abgeschlossen!' : '🎉 Course completed!'}
+              {lang === 'de' ? '🎉 Kurs abgeschlossen!' : lang === 'fr' ? '🎉 Cours terminé !' : lang === 'es' ? '🎉 ¡Curso completado!' : lang === 'it' ? '🎉 Corso completato!' : '🎉 Course completed!'}
             </p>
           )}
         </div>
@@ -131,7 +164,7 @@ export default function CourseDetail({ lang, lessons: initialLessons, userId }: 
       {/* Lesson list */}
       <ol className="space-y-2">
         {lessons.map((lesson, idx) => {
-          const title = lesson.article_title?.[lang] || lesson.article_title?.de || '';
+          const title = (lesson.article_title as Record<string, string> | null)?.[lang] || lesson.article_title?.en || lesson.article_title?.de || '';
           const href  = lesson.article_slug ? `/articles/${lesson.article_slug}` : null;
           const isToggling = toggling === lesson.id;
 

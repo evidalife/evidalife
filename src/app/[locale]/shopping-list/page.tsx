@@ -12,8 +12,10 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 }
 
 export default async function ShoppingListPage() {
+  const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
+  type Lang = typeof VALID_LANGS[number];
   const locale = await getLocale();
-  const lang: 'de' | 'en' = locale === 'de' ? 'de' : 'en';
+  const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -43,7 +45,7 @@ export default async function ShoppingListPage() {
 
       items = (rows ?? []).map((row) => ({
         ...row,
-        recipe_title: (row.recipes as { title?: { de?: string; en?: string } } | null)?.title ?? null,
+        recipe_title: (row.recipes as { title?: { de?: string; en?: string; fr?: string; es?: string; it?: string } } | null)?.title ?? null,
       }));
     }
   }

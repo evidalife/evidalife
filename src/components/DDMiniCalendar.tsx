@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-type Lang = 'de' | 'en';
+type Lang = 'de' | 'en' | 'fr' | 'es' | 'it';
 type Completion = 'full' | 'partial' | 'empty';
 
 interface Props {
@@ -95,7 +95,7 @@ export default function DDMiniCalendar({
   const midDate = dates[Math.floor(visibleCount / 2)];
   const [my, mm] = midDate.split('-').map(Number);
   const monthLabel = new Date(my, mm - 1, 1).toLocaleDateString(
-    lang === 'de' ? 'de-CH' : 'en-GB',
+    lang === 'de' ? 'de-CH' : lang === 'fr' ? 'fr-FR' : lang === 'es' ? 'es-ES' : lang === 'it' ? 'it-IT' : 'en-GB',
     { month: 'short', year: 'numeric' }
   );
 
@@ -146,7 +146,7 @@ export default function DDMiniCalendar({
       {/* Title row: "CALENDAR" + "Today" pill */}
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84]">
-          {lang === 'de' ? 'Kalender' : 'Calendar'}
+          {lang === 'de' ? 'Kalender' : lang === 'fr' ? 'Calendrier' : lang === 'es' ? 'Calendario' : lang === 'it' ? 'Calendario' : 'Calendar'}
         </p>
         <div className="flex rounded-full bg-[#0e393d]/6 p-0.5">
           <button
@@ -157,7 +157,7 @@ export default function DDMiniCalendar({
                 : 'text-[#1c2a2b]/50 hover:text-[#0e393d]'
             }`}
           >
-            {lang === 'de' ? 'Heute' : 'Today'}
+            {lang === 'de' ? 'Heute' : lang === 'fr' ? 'Aujourd\'hui' : lang === 'es' ? 'Hoy' : lang === 'it' ? 'Oggi' : 'Today'}
           </button>
         </div>
       </div>
@@ -169,7 +169,7 @@ export default function DDMiniCalendar({
         <button
           onClick={prevWindow}
           className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-[#0e393d]/6 text-[#0e393d]/50 hover:text-[#0e393d] transition"
-          aria-label={lang === 'de' ? 'Vorherige Woche' : 'Previous week'}
+          aria-label={lang === 'de' ? 'Vorherige Woche' : lang === 'fr' ? 'Semaine précédente' : lang === 'es' ? 'Semana anterior' : lang === 'it' ? 'Settimana precedente' : 'Previous week'}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="15 18 9 12 15 6"/>
@@ -191,7 +191,7 @@ export default function DDMiniCalendar({
           onClick={nextWindow}
           disabled={!canGoNext}
           className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-[#0e393d]/6 text-[#0e393d]/50 hover:text-[#0e393d] transition disabled:opacity-25 disabled:cursor-default"
-          aria-label={lang === 'de' ? 'Nächste Woche' : 'Next week'}
+          aria-label={lang === 'de' ? 'Nächste Woche' : lang === 'fr' ? 'Semaine suivante' : lang === 'es' ? 'Semana siguiente' : lang === 'it' ? 'Settimana successiva' : 'Next week'}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="9 18 15 12 9 6"/>

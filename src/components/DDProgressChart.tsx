@@ -17,7 +17,7 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Period = 'week' | 'month' | 'year';
-type Lang = 'de' | 'en';
+type Lang = 'de' | 'en' | 'fr' | 'es' | 'it';
 
 type RawEntry = { category_id: string; entry_date: string; servings_completed: number };
 type ChartBar = { x: number; label: string; date: string; servings: number; catsDone: number; total: number; totalCats: number };
@@ -115,6 +115,12 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
       }
       const monthNames = lang === 'de'
         ? ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez']
+        : lang === 'fr'
+        ? ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
+        : lang === 'es'
+        ? ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+        : lang === 'it'
+        ? ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic']
         : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       return Object.entries(months).map(([key, { sumServings, sumCatsDone, days }], i) => {
         const mo       = Number(key.split('-')[1]);
@@ -135,15 +141,18 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
     // Week — day names
     return dailyData.map(({ date, i, servings, catsDone }) => {
       const label = new Date(date + 'T12:00:00').toLocaleDateString(
-        lang === 'de' ? 'de-DE' : 'en-US', { weekday: 'short' }
+        lang === 'de' ? 'de-DE' : lang === 'fr' ? 'fr-FR' : lang === 'es' ? 'es-ES' : lang === 'it' ? 'it-IT' : 'en-US', { weekday: 'short' }
       );
       return { x: i, label, date, servings, catsDone, total: totalTarget, totalCats };
     });
   }, [entries, categories, period, today, lang]);
 
   const T = {
-    de: { week: 'Woche', month: 'Monat', year: 'Jahr', heading: 'Verlauf', empty: 'Noch keine Daten', servings: 'Portionen',  categories: 'Kategorien' },
-    en: { week: 'Week',  month: 'Month', year: 'Year',  heading: 'Progress', empty: 'No data yet',    servings: 'Servings',   categories: 'Categories' },
+    de: { week: 'Woche', month: 'Monat', year: 'Jahr', heading: 'Verlauf',   empty: 'Noch keine Daten', servings: 'Portionen',  categories: 'Kategorien' },
+    en: { week: 'Week',  month: 'Month', year: 'Year',  heading: 'Progress', empty: 'No data yet',       servings: 'Servings',   categories: 'Categories' },
+    fr: { week: 'Sem.',  month: 'Mois',  year: 'An',    heading: 'Progrès',  empty: 'Pas encore de données', servings: 'Portions', categories: 'Catégories' },
+    es: { week: 'Sem.',  month: 'Mes',   year: 'Año',   heading: 'Progreso', empty: 'Sin datos aún',     servings: 'Porciones',  categories: 'Categorías' },
+    it: { week: 'Sett.', month: 'Mese',  year: 'Anno',  heading: 'Progresso',empty: 'Nessun dato ancora',servings: 'Porzioni',   categories: 'Categorie' },
   };
   const t = T[lang];
 

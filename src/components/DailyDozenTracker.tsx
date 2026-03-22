@@ -17,11 +17,11 @@ const DDProgressChart = dynamic(() => import('./DDProgressChart'), {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Lang = 'de' | 'en';
+type Lang = 'de' | 'en' | 'fr' | 'es' | 'it';
 
 type DDCategoryDetails = {
-  servings: { de: string[]; en: string[] };
-  types:    { de: string[]; en: string[] };
+  servings: { de: string[]; en: string[]; fr?: string[]; es?: string[]; it?: string[] };
+  types:    { de: string[]; en: string[]; fr?: string[]; es?: string[]; it?: string[] };
 };
 
 export type DDCategory = {
@@ -67,6 +67,27 @@ const T = {
     servingSizes:    'Serving Sizes (one serving)',
     qualifyingFoods: 'Qualifying Foods',
     loading:         'Loading…',
+  },
+  fr: {
+    complete:        'Terminé !',
+    servings:        (cur: number, tgt: number) => `${cur} / ${tgt}`,
+    servingSizes:    'Tailles de portion (une portion)',
+    qualifyingFoods: 'Aliments éligibles',
+    loading:         'Chargement…',
+  },
+  es: {
+    complete:        '¡Completado!',
+    servings:        (cur: number, tgt: number) => `${cur} / ${tgt}`,
+    servingSizes:    'Tamaños de porción (una porción)',
+    qualifyingFoods: 'Alimentos válidos',
+    loading:         'Cargando…',
+  },
+  it: {
+    complete:        'Completato!',
+    servings:        (cur: number, tgt: number) => `${cur} / ${tgt}`,
+    servingSizes:    'Dimensioni della porzione (una porzione)',
+    qualifyingFoods: 'Alimenti idonei',
+    loading:         'Caricamento…',
   },
 };
 
@@ -119,7 +140,7 @@ function ProgressRing({ progress, done, icon }: { progress: number; done: boolea
 function InfoModal({ category, lang, onClose }: { category: DDCategory; lang: Lang; onClose: () => void }) {
   const t       = T[lang];
   const details = category.details;
-  const name    = category.name[lang] || category.name.de || category.slug;
+  const name    = (category.name as Record<string, string>)[lang] || category.name.en || category.name.de || category.slug;
 
   return (
     <>
@@ -142,11 +163,11 @@ function InfoModal({ category, lang, onClose }: { category: DDCategory; lang: La
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
-          {details && details.servings[lang].length > 0 && (
+          {details && ((details.servings as Record<string, string[]>)[lang] ?? details.servings.en).length > 0 && (
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-3">{t.servingSizes}</p>
               <ul className="space-y-2">
-                {details.servings[lang].map((s, i) => (
+                {((details.servings as Record<string, string[]>)[lang] ?? details.servings.en).map((s, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <span className="shrink-0 w-5 h-5 rounded-full bg-[#0e393d]/8 flex items-center justify-center text-[10px] font-semibold text-[#0e393d]/60 mt-0.5">
                       {i + 1}
@@ -157,14 +178,14 @@ function InfoModal({ category, lang, onClose }: { category: DDCategory; lang: La
               </ul>
             </div>
           )}
-          {details && details.servings[lang].length > 0 && details.types[lang].length > 0 && (
+          {details && ((details.servings as Record<string, string[]>)[lang] ?? details.servings.en).length > 0 && ((details.types as Record<string, string[]>)[lang] ?? details.types.en).length > 0 && (
             <div className="h-px bg-[#0e393d]/8" />
           )}
-          {details && details.types[lang].length > 0 && (
+          {details && ((details.types as Record<string, string[]>)[lang] ?? details.types.en).length > 0 && (
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-3">{t.qualifyingFoods}</p>
               <div className="flex flex-wrap gap-2">
-                {details.types[lang].map((type) => (
+                {((details.types as Record<string, string[]>)[lang] ?? details.types.en).map((type) => (
                   <span key={type} className="rounded-full bg-[#0e393d]/6 px-3 py-1 text-xs font-medium text-[#0e393d]/70">
                     {type}
                   </span>
@@ -200,7 +221,7 @@ function CategoryCard({
   const done     = servings >= target;
   const partial  = servings > 0 && !done;
   const progress = target > 0 ? servings / target : 0;
-  const name     = category.name[lang] || category.name.de || category.slug;
+  const name     = (category.name as Record<string, string>)[lang] || category.name.de || category.slug;
 
   // ── Color tokens per state ─────────────────────────────────────────────────
   const cardCls   = done

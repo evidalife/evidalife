@@ -14,6 +14,9 @@ function supabaseTransform(url: string | null, width: number, height?: number): 
 
 // ─── Copy ─────────────────────────────────────────────────────────────────────
 
+const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
+type Lang = typeof VALID_LANGS[number];
+
 const T = {
   de: {
     back: 'Blog',
@@ -35,15 +38,45 @@ const T = {
     readMore: 'Read →',
     featured: 'Featured',
   },
+  fr: {
+    back: 'Blog',
+    by: 'par',
+    minutes: 'min de lecture',
+    published: 'Publié le',
+    tags: 'Tags',
+    related: 'Plus d\'articles',
+    readMore: 'Lire →',
+    featured: 'À la une',
+  },
+  es: {
+    back: 'Blog',
+    by: 'por',
+    minutes: 'min de lectura',
+    published: 'Publicado el',
+    tags: 'Etiquetas',
+    related: 'Más artículos',
+    readMore: 'Leer →',
+    featured: 'Destacado',
+  },
+  it: {
+    back: 'Blog',
+    by: 'di',
+    minutes: 'min di lettura',
+    published: 'Pubblicato il',
+    tags: 'Tag',
+    related: 'Altri articoli',
+    readMore: 'Leggi →',
+    featured: 'In evidenza',
+  },
 };
 
-const CAT_LABELS: Record<string, { de: string; en: string }> = {
-  kitchen:   { de: 'Küche',          en: 'Kitchen' },
-  health:    { de: 'Gesundheit',     en: 'Health' },
-  fit:       { de: 'Fitness',        en: 'Fitness' },
-  longevity: { de: 'Langlebigkeit',  en: 'Longevity' },
-  science:   { de: 'Wissenschaft',   en: 'Science' },
-  news:      { de: 'Neuigkeiten',    en: 'News' },
+const CAT_LABELS: Record<string, Record<Lang, string>> = {
+  kitchen:   { de: 'Küche',          en: 'Kitchen',    fr: 'Cuisine',     es: 'Cocina',     it: 'Cucina' },
+  health:    { de: 'Gesundheit',     en: 'Health',     fr: 'Santé',       es: 'Salud',      it: 'Salute' },
+  fit:       { de: 'Fitness',        en: 'Fitness',    fr: 'Fitness',     es: 'Fitness',    it: 'Fitness' },
+  longevity: { de: 'Langlebigkeit',  en: 'Longevity',  fr: 'Longévité',   es: 'Longevidad', it: 'Longevità' },
+  science:   { de: 'Wissenschaft',   en: 'Science',    fr: 'Science',     es: 'Ciencia',    it: 'Scienza' },
+  news:      { de: 'Neuigkeiten',    en: 'News',       fr: 'Actualités',  es: 'Noticias',   it: 'Notizie' },
 };
 
 const CAT_CLS: Record<string, string> = {
@@ -168,7 +201,8 @@ export default async function BlogDetailPage({
 }) {
   const { slug } = await params;
   const locale = await getLocale();
-  const t = (T as Record<string, typeof T.en>)[locale] ?? T.en;
+  const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
+  const t = T[lang];
   const supabase = await createClient();
 
   // Fetch article
@@ -190,14 +224,14 @@ export default async function BlogDetailPage({
   const titleObj   = article.title as Record<string, string> | null;
   const excerptObj = article.excerpt as Record<string, string> | null;
   const contentObj = article.content as Record<string, string> | null;
-  const title   = titleObj?.[locale] || titleObj?.de || titleObj?.en || '';
-  const excerpt = excerptObj?.[locale] || excerptObj?.de || '';
-  const content = contentObj?.[locale] || contentObj?.de || '';
+  const title   = titleObj?.[lang] || titleObj?.en || titleObj?.de || '';
+  const excerpt = excerptObj?.[lang] || excerptObj?.en || excerptObj?.de || '';
+  const content = contentObj?.[lang] || contentObj?.en || contentObj?.de || '';
   const tags    = Array.isArray(article.article_tags)
     ? (article.article_tags as { tag: string }[]).map((t) => t.tag)
     : [];
 
-  const catLabel = article.category ? (CAT_LABELS[article.category]?.[locale as 'de' | 'en'] ?? CAT_LABELS[article.category]?.en ?? article.category) : null;
+  const catLabel = article.category ? (CAT_LABELS[article.category]?.[lang] ?? CAT_LABELS[article.category]?.en ?? article.category) : null;
   const catCls   = article.category ? CAT_CLS[article.category] : '';
 
   // Related articles: same category, excluding current
@@ -307,10 +341,10 @@ export default async function BlogDetailPage({
             <h2 className="font-serif text-xl text-[#0e393d] mb-5">{t.related}</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {related.map((r) => {
-                const rTitle   = r.title?.[locale] || r.title?.['de'] || '';
-                const rExcerpt = r.excerpt?.[locale] || r.excerpt?.['de'] || '';
+                const rTitle   = r.title?.[lang] || r.title?.en || r.title?.de || '';
+                const rExcerpt = r.excerpt?.[lang] || r.excerpt?.en || r.excerpt?.de || '';
                 const rHref    = `/blog/${r.slug ?? r.id}`;
-                const rCatLabel = r.category ? (CAT_LABELS[r.category]?.[locale as 'de' | 'en'] ?? CAT_LABELS[r.category]?.en ?? r.category) : null;
+                const rCatLabel = r.category ? (CAT_LABELS[r.category]?.[lang] ?? CAT_LABELS[r.category]?.en ?? r.category) : null;
                 const rCatCls  = r.category ? CAT_CLS[r.category] : '';
 
                 return (
