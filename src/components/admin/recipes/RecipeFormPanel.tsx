@@ -6,6 +6,7 @@ import type CropperType from 'react-easy-crop';
 const Cropper = dynamic(() => import('react-easy-crop').then((m) => m.default), { ssr: false }) as unknown as typeof CropperType;
 import { createClient } from '@/lib/supabase/client';
 import GalleryUpload, { type GalleryItem } from './GalleryUpload';
+import type { ParsedRecipe, ParsedIngredient } from '@/app/api/admin/parse-recipe/route';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -832,6 +833,315 @@ function QuickAddNoteModal({ onSaved, onClose }: QuickAddNoteModalProps) {
   );
 }
 
+// ─── Quick Import Components ──────────────────────────────────────────────────
+
+function QuickImportZone({ onPaste, disabled }: { onPaste: (text: string) => void; disabled: boolean }) {
+  const [text, setText] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const handlePaste = async (e?: React.ClipboardEvent) => {
+    if (e) {
+      const t = e.clipboardData.getData('text');
+      if (t) { onPaste(t); return; }
+    }
+    // Clipboard API
+    try {
+      const t = await navigator.clipboard.readText();
+      if (t) { onPaste(t); return; }
+    } catch { /* permission denied */ }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const t = e.dataTransfer.getData('text');
+    if (t) onPaste(t);
+  };
+
+  return (
+    <div
+      className="rounded-xl border-2 border-dashed border-violet-200 bg-violet-50/40 p-4 space-y-3"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleDrop}
+    >
+      <div className="flex flex-col items-center gap-2 py-2 text-center">
+        <span className="text-2xl">📋</span>
+        <p className="text-sm font-medium text-violet-800">Paste a recipe from any website</p>
+        <p className="text-xs text-violet-500">Copy the recipe text, then paste here or use the button below</p>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => handlePaste()}
+          className="mt-1 flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50 transition"
+        >
+          📋 Paste from clipboard
+        </button>
+      </div>
+      <div className="relative">
+        <span className="absolute inset-x-0 top-0 flex justify-center -translate-y-1/2">
+          <span className="bg-violet-50 px-2 text-[10px] text-violet-400">or type / paste below</span>
+        </span>
+        <textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onPaste={(e) => {
+            const t = e.clipboardData.getData('text');
+            if (t) { e.preventDefault(); onPaste(t); }
+          }}
+          rows={4}
+          placeholder="Paste recipe text here…"
+          className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-200 transition resize-none mt-2"
+        />
+        {text.trim() && (
+          <div className="flex justify-end mt-1">
+            <button
+              type="button"
+              onClick={() => { onPaste(text); setText(''); }}
+              disabled={disabled}
+              className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50 transition"
+            >
+              Parse recipe
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ParsedResultCard({
+  result,
+  onApply,
+  onDiscard,
+}: {
+  result: ParsedRecipe;
+  onApply: () => void;
+  onDiscard: () => void;
+}) {
+  const matched = result.ingredients.filter((i) => !i.is_missing).length;
+  const missing = result.ingredients.filter((i) => i.is_missing).length;
+  const stepCount = (result.instructions_en.match(/^\d+\./gm) ?? []).length;
+
+  return (
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50/40">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-emerald-200/60">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">✓</span>
+          <span className="text-sm font-medium text-emerald-800">Recipe parsed successfully</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onDiscard}
+            className="rounded-lg border border-[#0e393d]/15 px-3 py-1.5 text-xs font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition"
+          >
+            Discard
+          </button>
+          <button
+            type="button"
+            onClick={onApply}
+            className="rounded-lg bg-[#0e393d] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0e393d]/90 transition"
+          >
+            Apply to form
+          </button>
+        </div>
+      </div>
+      <div className="px-4 py-3 space-y-1.5 text-xs">
+        {[
+          ['Title', result.title_en],
+          ['Description', result.description_en ? result.description_en.slice(0, 80) + (result.description_en.length > 80 ? '…' : '') : '—'],
+          ['Prep time', result.prep_minutes != null ? `${result.prep_minutes} min` : '—'],
+          ['Cook time', result.cook_minutes != null ? `${result.cook_minutes} min` : '—'],
+          ['Servings', result.servings != null ? String(result.servings) : '—'],
+          ['Ingredients', `${result.ingredients.length} found (${matched} matched${missing > 0 ? `, ${missing} missing` : ''})`],
+          ['Instructions', stepCount > 0 ? `${stepCount} steps parsed` : 'Parsed'],
+          ['Health goals', `AI suggests: ${result.health_goals.join(', ') || 'none'}`],
+        ].map(([label, value]) => (
+          <div key={label} className="flex gap-2">
+            <span className="w-24 shrink-0 font-medium text-[#1c2a2b]/50">{label}</span>
+            <span className="text-[#1c2a2b]/80">{value}</span>
+          </div>
+        ))}
+        {missing > 0 && (
+          <p className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 text-amber-700">
+            {missing} ingredient{missing > 1 ? 's' : ''} not in your database — you&apos;ll be asked to add them.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface NewIngredientEntry {
+  name_en: string;
+  name_de: string;
+  default_unit_id: string;
+  daily_dozen_category_id: string;
+  kcal_per_100g: string;
+  protein_per_100g: string;
+  fat_per_100g: string;
+  carbs_per_100g: string;
+  fiber_per_100g: string;
+}
+
+function MissingIngredientsModal({
+  missing,
+  units,
+  categories,
+  onSkip,
+  onAdd,
+  onClose,
+}: {
+  missing: ParsedIngredient[];
+  units: UnitOption[];
+  categories: DailyDozenCategoryOption[];
+  onSkip: () => void;
+  onAdd: (newIngredients: NewIngredientEntry[]) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [entries, setEntries] = useState<NewIngredientEntry[]>(
+    missing.map((m) => ({
+      name_en: m.name_en,
+      name_de: m.name_en, // user can edit
+      default_unit_id: '',
+      daily_dozen_category_id: '',
+      kcal_per_100g: '',
+      protein_per_100g: '',
+      fat_per_100g: '',
+      carbs_per_100g: '',
+      fiber_per_100g: '',
+    }))
+  );
+  const [saving, setSaving] = useState(false);
+
+  const update = (i: number, patch: Partial<NewIngredientEntry>) =>
+    setEntries((prev) => prev.map((e, idx) => idx === i ? { ...e, ...patch } : e));
+
+  const handleAdd = async () => {
+    setSaving(true);
+    await onAdd(entries);
+    setSaving(false);
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/40 z-[60]" onClick={onClose} />
+      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl border border-[#0e393d]/10 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-[#0e393d]/10 px-5 py-4 shrink-0">
+            <div>
+              <h3 className="font-serif text-base text-[#0e393d]">{missing.length} Missing Ingredient{missing.length > 1 ? 's' : ''}</h3>
+              <p className="text-xs text-[#1c2a2b]/50 mt-0.5">These ingredients aren&apos;t in your database. Add them now or skip.</p>
+            </div>
+            <button onClick={onClose} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/></svg>
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+            {entries.map((entry, i) => (
+              <div key={i} className="rounded-xl border border-[#0e393d]/10 bg-[#fafaf8] p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-[#0e393d]">{missing[i].name_en}</span>
+                  <span className="text-[10px] text-violet-500 bg-violet-50 rounded-full px-2 py-0.5">auto-detected</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-[#0e393d]/60 mb-1">Name DE *</label>
+                    <input
+                      className={inputCls}
+                      value={entry.name_de}
+                      onChange={(e) => update(i, { name_de: e.target.value })}
+                      placeholder="Deutsch…"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[#0e393d]/60 mb-1">Name EN *</label>
+                    <input
+                      className={inputCls}
+                      value={entry.name_en}
+                      onChange={(e) => update(i, { name_en: e.target.value })}
+                      placeholder="English…"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-[#0e393d]/60 mb-1">Default Unit</label>
+                    <select
+                      className={inputCls + ' cursor-pointer'}
+                      value={entry.default_unit_id}
+                      onChange={(e) => update(i, { default_unit_id: e.target.value })}
+                    >
+                      <option value="">— No default</option>
+                      {units.map((u) => (
+                        <option key={u.id} value={u.id}>{u.abbreviation?.de ?? u.code} — {u.name?.de ?? u.code}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[#0e393d]/60 mb-1">Category</label>
+                    <select
+                      className={inputCls + ' cursor-pointer'}
+                      value={entry.daily_dozen_category_id}
+                      onChange={(e) => update(i, { daily_dozen_category_id: e.target.value })}
+                    >
+                      <option value="">— None</option>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>{cat.icon ? `${cat.icon} ` : ''}{cat.name?.de ?? cat.slug}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                {/* Nutrition */}
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84] mb-2">Nutrition (per 100g)</p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {([
+                      ['kcal_per_100g',    'kcal'],
+                      ['protein_per_100g', 'g Prot'],
+                      ['fat_per_100g',     'g Fat'],
+                      ['carbs_per_100g',   'g Carb'],
+                      ['fiber_per_100g',   'g Fib'],
+                    ] as [keyof NewIngredientEntry, string][]).map(([key, label]) => (
+                      <div key={key}>
+                        <input
+                          type="number" min={0} step={0.1}
+                          value={entry[key] as string}
+                          onChange={(e) => update(i, { [key]: e.target.value } as Partial<NewIngredientEntry>)}
+                          placeholder="—"
+                          className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
+                        />
+                        <span className="block text-[10px] text-[#1c2a2b]/40 text-center mt-0.5">{label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Footer */}
+          <div className="flex gap-3 border-t border-[#0e393d]/10 px-5 py-4 shrink-0">
+            <button onClick={onSkip} className="rounded-lg border border-[#0e393d]/15 px-4 py-2.5 text-sm font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition">
+              Skip for now
+            </button>
+            <button
+              onClick={handleAdd}
+              disabled={saving}
+              className="flex-1 rounded-lg bg-[#0e393d] py-2.5 text-sm font-medium text-white hover:bg-[#0e393d]/90 disabled:opacity-50 transition"
+            >
+              {saving ? 'Adding…' : `Add ${missing.length} ingredient${missing.length > 1 ? 's' : ''}`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface Props {
@@ -877,6 +1187,18 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
   // Gallery
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+
+  // AI action states
+  const [translateStatus, setTranslateStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [suggestGoalsStatus, setSuggestGoalsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+
+  // Quick Import state
+  const [quickImportOpen, setQuickImportOpen] = useState(!recipeId);
+  const [quickImportParsing, setQuickImportParsing] = useState(false);
+  const [quickImportResult, setQuickImportResult] = useState<ParsedRecipe | null>(null);
+  const [quickImportError, setQuickImportError] = useState<string | null>(null);
+  const [missingIngredientsModalOpen, setMissingIngredientsModalOpen] = useState(false);
+  const [pendingApplyResult, setPendingApplyResult] = useState<ParsedRecipe | null>(null);
 
   // Nutrition auto-calc mode
   const [nutritionAutoMode, setNutritionAutoMode] = useState(true);
@@ -1409,6 +1731,184 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
     setQuickAddNoteTargetKey(null);
   };
 
+  // ── Quick Import ──────────────────────────────────────────────────────────────
+
+  const handleQuickParse = async (text: string) => {
+    if (!text.trim()) return;
+    setQuickImportParsing(true);
+    setQuickImportError(null);
+    setQuickImportResult(null);
+    try {
+      const res = await fetch('/api/admin/parse-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          existingIngredients: ingredientOptions.map((i) => ({
+            id: i.id,
+            name_en: i.name?.en ?? '',
+            name_de: i.name?.de ?? '',
+          })),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Parse failed');
+      setQuickImportResult(json as ParsedRecipe);
+    } catch (e: unknown) {
+      setQuickImportError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setQuickImportParsing(false);
+    }
+  };
+
+  const applyParsedRecipe = (result: ParsedRecipe, newIngredientIds: Map<string, string>) => {
+    // Map parsed ingredients to IngredientRow format
+    const mappedIngredients: IngredientRow[] = result.ingredients.map((ing) => {
+      // Find matched ingredient in options
+      let ingredientId = ing.matched_ingredient_id;
+      // If was missing but now added, look up by name
+      if (!ingredientId && newIngredientIds.has(ing.name_en.toLowerCase())) {
+        ingredientId = newIngredientIds.get(ing.name_en.toLowerCase()) ?? null;
+      }
+      const ingOpt = ingredientId ? ingredientOptions.find((o) => o.id === ingredientId) : null;
+
+      // Find unit
+      const unitOpt = unitOptions.find((u) =>
+        u.code === ing.unit ||
+        u.abbreviation?.en?.toLowerCase() === ing.unit.toLowerCase() ||
+        u.abbreviation?.de?.toLowerCase() === ing.unit.toLowerCase()
+      );
+
+      return {
+        _key: newKey(),
+        ingredient_id: ingredientId ?? null,
+        ingredient_name: {
+          de: ingOpt?.name?.de ?? ing.name_en,
+          en: ingOpt?.name?.en ?? ing.name_en,
+        },
+        amount: ing.quantity != null ? String(ing.quantity) : '',
+        unit_id: unitOpt?.id ?? null,
+        unit: ing.unit,
+        note_id: null,
+        note_display: ing.notes,
+        notes: ing.notes ? { de: ing.notes, en: ing.notes } : null,
+        is_optional: ing.optional,
+        section_header: null,
+      };
+    });
+
+    // Map meal types
+    const mappedMealTypeIds = mealTypeOptions
+      .filter((mt) => result.meal_types.some((m) => m.toLowerCase() === (mt.name?.en ?? mt.slug).toLowerCase()))
+      .map((mt) => mt.id);
+
+    // Map course type
+    const matchedCourse = courseTypeOptions.find((ct) =>
+      (ct.name?.en ?? ct.slug).toLowerCase() === (result.course_type ?? '').toLowerCase()
+    );
+
+    setForm((f) => ({
+      ...f,
+      title: { ...f.title, en: result.title_en },
+      description: { ...f.description, en: result.description_en },
+      instructions: { ...f.instructions, en: result.instructions_en },
+      prep_time_min: result.prep_minutes != null ? String(result.prep_minutes) : f.prep_time_min,
+      cook_time_min: result.cook_minutes != null ? String(result.cook_minutes) : f.cook_time_min,
+      servings: result.servings != null ? String(result.servings) : f.servings,
+      difficulty: result.difficulty ?? f.difficulty,
+      course_type_id: matchedCourse?.id ?? f.course_type_id,
+      meal_type_ids: mappedMealTypeIds.length > 0 ? mappedMealTypeIds : f.meal_type_ids,
+      ingredients: mappedIngredients,
+      goals: result.health_goals.length > 0 ? result.health_goals : f.goals,
+      nutrition: result.nutrition_per_serving ? {
+        calories: String(result.nutrition_per_serving.kcal),
+        protein_g: String(result.nutrition_per_serving.protein_g),
+        fat_g: String(result.nutrition_per_serving.fat_g),
+        carbs_g: String(result.nutrition_per_serving.carbs_g),
+        fiber_g: String(result.nutrition_per_serving.fiber_g),
+      } : f.nutrition,
+    }));
+
+    setQuickImportResult(null);
+    setQuickImportOpen(false);
+    // Open key sections
+    setOpenSections((prev) => ({ ...prev, content: true, basics: true, ingredients: true }));
+    setLang('en');
+  };
+
+  const handleTranslate = async () => {
+    if (!form.title.en && !form.instructions.en) return;
+    setTranslateStatus('loading');
+    try {
+      const res = await fetch('/api/admin/translate-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: form.title.en,
+          description: form.description.en,
+          instructions: form.instructions.en,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Translation failed');
+      setForm((f) => ({
+        ...f,
+        title: { ...f.title, de: json.title_de ?? f.title.de },
+        description: { ...f.description, de: json.description_de ?? f.description.de },
+        instructions: { ...f.instructions, de: json.instructions_de ?? f.instructions.de },
+      }));
+      setTranslateStatus('done');
+    } catch {
+      setTranslateStatus('error');
+    }
+  };
+
+  const handleSuggestGoals = async () => {
+    const ingNames = form.ingredients
+      .filter((i) => i.section_header === null)
+      .map((i) => i.ingredient_name.en || i.ingredient_name.de)
+      .filter(Boolean);
+    if (ingNames.length === 0) return;
+    setSuggestGoalsStatus('loading');
+    try {
+      const nutri = autoCalc ?? form.nutrition;
+      const res = await fetch('/api/admin/suggest-health-goals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ingredients: ingNames,
+          nutrition: {
+            kcal: nutri.calories ? Number(nutri.calories) : undefined,
+            protein: nutri.protein_g ? Number(nutri.protein_g) : undefined,
+            fat: nutri.fat_g ? Number(nutri.fat_g) : undefined,
+            carbs: nutri.carbs_g ? Number(nutri.carbs_g) : undefined,
+            fiber: nutri.fiber_g ? Number(nutri.fiber_g) : undefined,
+          },
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Suggest failed');
+      const newGoals: string[] = json.goals ?? [];
+      setForm((f) => {
+        const merged = [...new Set([...f.goals, ...newGoals])].slice(0, 5);
+        return { ...f, goals: merged };
+      });
+      setSuggestGoalsStatus('done');
+    } catch {
+      setSuggestGoalsStatus('error');
+    }
+  };
+
+  const handleApplyParsed = (result: ParsedRecipe) => {
+    const missingOnes = result.ingredients.filter((i) => i.is_missing);
+    if (missingOnes.length > 0) {
+      setPendingApplyResult(result);
+      setMissingIngredientsModalOpen(true);
+    } else {
+      applyParsedRecipe(result, new Map());
+    }
+  };
+
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
@@ -1449,6 +1949,59 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
           <div className="flex-1 flex items-center justify-center text-sm text-[#1c2a2b]/40">Loading…</div>
         ) : (
           <div className="flex-1 overflow-y-auto px-6 py-5">
+
+            {/* ── Quick Import ──────────────────────────────────────────── */}
+            <div className="mb-5">
+              <button
+                type="button"
+                onClick={() => setQuickImportOpen((v) => !v)}
+                className="flex w-full items-center justify-between group"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Quick Import</span>
+                  <span className="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-600">AI-powered</span>
+                </div>
+                <svg
+                  width="14" height="14" viewBox="0 0 14 14" fill="none"
+                  className={`text-[#0e393d]/30 group-hover:text-[#0e393d]/60 transition-transform ${quickImportOpen ? 'rotate-180' : ''}`}
+                >
+                  <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+
+              {quickImportOpen && (
+                <div className="mt-3 space-y-3">
+                  {!quickImportResult && !quickImportParsing && (
+                    <QuickImportZone
+                      onPaste={handleQuickParse}
+                      disabled={quickImportParsing}
+                    />
+                  )}
+                  {quickImportParsing && (
+                    <div className="flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-4">
+                      <svg className="animate-spin h-4 w-4 text-violet-500 shrink-0" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                      </svg>
+                      <p className="text-sm text-violet-700">Parsing recipe with AI…</p>
+                    </div>
+                  )}
+                  {quickImportError && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {quickImportError}
+                      <button type="button" onClick={() => setQuickImportError(null)} className="ml-2 text-xs underline">Dismiss</button>
+                    </div>
+                  )}
+                  {quickImportResult && (
+                    <ParsedResultCard
+                      result={quickImportResult}
+                      onApply={() => handleApplyParsed(quickImportResult)}
+                      onDiscard={() => setQuickImportResult(null)}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* ── Content ───────────────────────────────────────────────── */}
             <div className="space-y-4">
@@ -1501,6 +2054,28 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                       onChange={(e) => setLangField('instructions', lang, e.target.value)}
                       placeholder={lang === 'de' ? '1. Spinat waschen…\n2. Alle Zutaten…' : '1. Wash spinach…\n2. Blend all…'}
                     />
+                    {lang === 'en' && (
+                      <div className="flex justify-end mt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => { setTranslateStatus('idle'); handleTranslate(); }}
+                          disabled={translateStatus === 'loading' || (!form.title.en && !form.instructions.en)}
+                          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
+                            translateStatus === 'done'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100'
+                          }`}
+                        >
+                          {translateStatus === 'loading' && (
+                            <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                            </svg>
+                          )}
+                          {translateStatus === 'loading' ? 'Translating…' : translateStatus === 'done' ? '✓ DE ready — switch to review' : '✨ Translate to DE'}
+                        </button>
+                      </div>
+                    )}
                   </Field>
                 </div>
               )}
@@ -1835,6 +2410,26 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
               badge={form.goals.length > 0 ? <SectionBadge>{form.goals.length} / 5</SectionBadge> : undefined}
             >
               <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={handleSuggestGoals}
+                    disabled={suggestGoalsStatus === 'loading' || form.ingredients.filter((i) => i.section_header === null).length === 0}
+                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
+                      suggestGoalsStatus === 'done'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100'
+                    }`}
+                  >
+                    {suggestGoalsStatus === 'loading' && (
+                      <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                      </svg>
+                    )}
+                    {suggestGoalsStatus === 'loading' ? 'Suggesting…' : suggestGoalsStatus === 'done' ? '✓ Goals suggested' : '✨ Suggest from ingredients'}
+                  </button>
+                </div>
                 {goalLimitWarning && (
                   <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
                     Maximum 5 health goals allowed.
@@ -2028,6 +2623,53 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
             setCropModalOpen(false);
           }}
           onClose={() => setCropModalOpen(false)}
+        />
+      )}
+
+      {/* Missing Ingredients Modal */}
+      {missingIngredientsModalOpen && pendingApplyResult && (
+        <MissingIngredientsModal
+          missing={pendingApplyResult.ingredients.filter((i) => i.is_missing)}
+          units={unitOptions}
+          categories={categoryOptions}
+          onSkip={() => {
+            applyParsedRecipe(pendingApplyResult, new Map());
+            setMissingIngredientsModalOpen(false);
+            setPendingApplyResult(null);
+          }}
+          onAdd={async (newIngredients) => {
+            const supabase = createClient();
+            const idMap = new Map<string, string>();
+            for (const ni of newIngredients) {
+              const { data } = await supabase
+                .from('ingredients')
+                .insert({
+                  name: { de: ni.name_de, en: ni.name_en },
+                  slug: ni.name_en.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'ingredient',
+                  default_unit_id: ni.default_unit_id || null,
+                  daily_dozen_category_id: ni.daily_dozen_category_id || null,
+                  is_common: false,
+                  kcal_per_100g: ni.kcal_per_100g || null,
+                  protein_per_100g: ni.protein_per_100g || null,
+                  fat_per_100g: ni.fat_per_100g || null,
+                  carbs_per_100g: ni.carbs_per_100g || null,
+                  fiber_per_100g: ni.fiber_per_100g || null,
+                })
+                .select('id, name, slug, default_unit_id, kcal_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g, fiber_per_100g')
+                .single();
+              if (data) {
+                setIngredientOptions((prev) => [...prev, { ...data, name: data.name as { de?: string; en?: string } }]);
+                idMap.set(ni.name_en.toLowerCase(), data.id);
+              }
+            }
+            applyParsedRecipe(pendingApplyResult, idMap);
+            setMissingIngredientsModalOpen(false);
+            setPendingApplyResult(null);
+          }}
+          onClose={() => {
+            setMissingIngredientsModalOpen(false);
+            setPendingApplyResult(null);
+          }}
         />
       )}
     </>
