@@ -7,6 +7,12 @@ import { createClient } from '@/lib/supabase/server';
 
 type Lang = 'de' | 'en';
 
+function supabaseTransform(url: string | null, width: number, height?: number): string | null {
+  if (!url || !url.includes('/storage/v1/object/public/')) return url;
+  const rendered = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
+  return height ? `${rendered}?width=${width}&height=${height}&resize=cover` : `${rendered}?width=${width}&resize=cover`;
+}
+
 // ─── Copy ─────────────────────────────────────────────────────────────────────
 
 const T = {
@@ -227,7 +233,7 @@ export default async function BlogDetailPage({
         {article.featured_image_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={article.featured_image_url}
+            src={supabaseTransform(article.featured_image_url, 1200) ?? article.featured_image_url}
             alt={title}
             className="w-full h-64 object-cover rounded-2xl border border-[#0e393d]/10 mb-8"
           />
@@ -310,7 +316,7 @@ export default async function BlogDetailPage({
                     {r.featured_image_url && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={r.featured_image_url}
+                        src={supabaseTransform(r.featured_image_url, 400, 200) ?? r.featured_image_url}
                         alt={rTitle}
                         className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
                       />

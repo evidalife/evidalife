@@ -8,6 +8,12 @@ import AddAllToShoppingListButton from '@/components/AddAllToShoppingListButton'
 import RecipeRating from '@/components/RecipeRating';
 import PrintButton from '@/components/PrintButton';
 import RecipeGallery, { type GalleryPhoto } from '@/components/RecipeGallery';
+
+function supabaseTransform(url: string | null, width: number, height?: number): string | null {
+  if (!url || !url.includes('/storage/v1/object/public/')) return url;
+  const rendered = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
+  return height ? `${rendered}?width=${width}&height=${height}&resize=cover` : `${rendered}?width=${width}&resize=cover`;
+}
 import { createClient } from '@/lib/supabase/server';
 
 type Lang = 'de' | 'en';
@@ -247,7 +253,7 @@ export default async function RecipeDetailPage({
         {recipe.image_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={recipe.image_url}
+            src={supabaseTransform(recipe.image_url, 1200) ?? recipe.image_url}
             alt={title}
             className="w-full h-64 object-cover rounded-2xl border border-[#0e393d]/10 mb-8"
           />
