@@ -49,6 +49,7 @@ type IngredientOption = {
   fat_per_100g: number | null;
   carbs_per_100g: number | null;
   fiber_per_100g: number | null;
+  grams_per_unit: number | null;
 };
 
 type UnitOption = {
@@ -729,7 +730,7 @@ function QuickAddIngredientModal({ units, categories, onSaved, onClose }: QuickA
       .single();
     setSaving(false);
     if (err) { setError(err.message); return; }
-    onSaved({ id: data.id, name: data.name, slug: data.slug, default_unit_id: data.default_unit_id, kcal_per_100g: null, protein_per_100g: null, fat_per_100g: null, carbs_per_100g: null, fiber_per_100g: null });
+    onSaved({ id: data.id, name: data.name, slug: data.slug, default_unit_id: data.default_unit_id, kcal_per_100g: null, protein_per_100g: null, fat_per_100g: null, carbs_per_100g: null, fiber_per_100g: null, grams_per_unit: null });
   };
 
   return (
@@ -1279,7 +1280,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
   useEffect(() => {
     Promise.all([
-      supabase.from('ingredients').select('id, name, slug, default_unit_id, kcal_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g, fiber_per_100g').order('name->de'),
+      supabase.from('ingredients').select('id, name, slug, default_unit_id, kcal_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g, fiber_per_100g, grams_per_unit').order('name->de'),
       supabase.from('measurement_units').select('id, code, name, abbreviation, sort_order').order('sort_order'),
       supabase.from('daily_dozen_categories').select('id, slug, name, icon').order('sort_order'),
       supabase.from('preparation_notes').select('id, name, slug').order('slug'),
@@ -1400,8 +1401,11 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
       const unitOpt = unitOptions.find((u) => u.id === row.unit_id);
       const unitCode = unitOpt?.code ?? '';
-      const gramsPerUnit = GRAM_UNITS[unitCode];
-      if (!gramsPerUnit) continue; // non-gram unit — skip
+      let gramsPerUnit = GRAM_UNITS[unitCode];
+      if (!gramsPerUnit && ing.grams_per_unit) {
+        gramsPerUnit = ing.grams_per_unit;
+      }
+      if (!gramsPerUnit) continue; // still can't convert — skip
 
       const qty = Number(row.amount) || 0;
       const totalGrams = qty * gramsPerUnit;
@@ -2708,7 +2712,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                   carbs_per_100g: ni.carbs_per_100g || null,
                   fiber_per_100g: ni.fiber_per_100g || null,
                 })
-                .select('id, name, slug, default_unit_id, kcal_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g, fiber_per_100g')
+                .select('id, name, slug, default_unit_id, kcal_per_100g, protein_per_100g, fat_per_100g, carbs_per_100g, fiber_per_100g, grams_per_unit')
                 .single();
               if (data) {
                 setIngredientOptions((prev) => [...prev, { ...data, name: data.name as { de?: string; en?: string } }]);
