@@ -974,9 +974,18 @@ function ParsedResultCard({
           </div>
         ))}
         {missing > 0 && (
-          <p className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 text-amber-700">
-            {missing} ingredient{missing > 1 ? 's' : ''} not in your database — you&apos;ll be asked to add them.
-          </p>
+          <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-amber-700">
+            <p className="text-xs font-medium mb-1">{missing} ingredient{missing > 1 ? 's' : ''} not in your database:</p>
+            <ul className="space-y-0.5 mb-1">
+              {result.ingredients.filter((i) => i.is_missing).map((i, idx) => (
+                <li key={idx} className="text-xs">
+                  • <span className="font-medium">{i.name_en}</span>
+                  {i.unit && <span className="text-amber-600"> ({i.unit})</span>}
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-amber-600">You&apos;ll be asked to review them before adding.</p>
+          </div>
         )}
       </div>
     </div>
