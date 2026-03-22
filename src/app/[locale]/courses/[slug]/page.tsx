@@ -77,7 +77,7 @@ export default async function CourseDetailPage({
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
-      <main className="flex-1 w-full max-w-2xl mx-auto px-6 py-12">
+      <main className="flex-1 w-full max-w-2xl mx-auto px-6 pt-28 pb-12">
 
         {/* Breadcrumb */}
         <nav className="mb-8 text-xs text-[#1c2a2b]/40">
