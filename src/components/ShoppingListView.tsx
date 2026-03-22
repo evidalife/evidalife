@@ -68,11 +68,9 @@ const SLUG_ALIASES: Record<string, string> = {
   nuts:       'nuts_seeds',
 };
 
-const OTHER_CAT    = { icon: '📦', label: { en: 'Other',    de: 'Sonstiges',  fr: 'Autres',    es: 'Otros',    it: 'Altri'     } };
-const PERSONAL_CAT = { icon: '🛒', label: { en: 'Personal', de: 'Persönlich', fr: 'Personnel', es: 'Personal', it: 'Personale' } };
-
 const DD_ORDER = DD_CATEGORIES.map((c) => c.slug);
-const DD_MAP = new Map<string, (typeof DD_CATEGORIES)[number]>(DD_CATEGORIES.map((c) => [c.slug, c]));
+const DD_MAP   = new Map<string, (typeof DD_CATEGORIES)[number]>(DD_CATEGORIES.map((c) => [c.slug, c]));
+const DD_INDEX = new Map<string, number>(DD_CATEGORIES.map((c, i) => [c.slug, i]));
 
 // ─── Translations ──────────────────────────────────────────────────────────────
 
@@ -214,27 +212,6 @@ function toDisplayItems(items: ShoppingListItem[]): DisplayItem[] {
   return items.map((i) => ({ ...i, sourceIds: [i.id] }));
 }
 
-// Group display items by DD category
-function groupItems(
-  items: DisplayItem[],
-  nameMap: Map<string, string>,
-  idMap: Map<string, string>,
-): { slug: string; items: DisplayItem[] }[] {
-  const groups: Record<string, DisplayItem[]> = {};
-  for (const item of items) {
-    const cat = resolveCategory(item, nameMap, idMap);
-    if (!groups[cat]) groups[cat] = [];
-    groups[cat].push(item);
-  }
-  const result: { slug: string; items: DisplayItem[] }[] = [];
-  for (const slug of DD_ORDER) {
-    if (groups[slug as string]) result.push({ slug: slug as string, items: groups[slug as string] });
-  }
-  if (groups['other'])    result.push({ slug: 'other',    items: groups['other'] });
-  if (groups['personal']) result.push({ slug: 'personal', items: groups['personal'] });
-  return result;
-}
-
 // ─── ProgressRing ──────────────────────────────────────────────────────────────
 
 function ProgressRing({ checked, total }: { checked: number; total: number }) {
@@ -255,9 +232,10 @@ function ProgressRing({ checked, total }: { checked: number; total: number }) {
 
 // ─── ItemRow ───────────────────────────────────────────────────────────────────
 
-function ItemRow({ item, lang, onToggle, onDelete, removeAria }: {
+function ItemRow({ item, lang, icon, onToggle, onDelete, removeAria }: {
   item: DisplayItem;
   lang: Lang;
+  icon: string | null;
   onToggle: (item: DisplayItem) => void;
   onDelete: (item: DisplayItem) => void;
   removeAria: string;
@@ -285,8 +263,9 @@ function ItemRow({ item, lang, onToggle, onDelete, removeAria }: {
         )}
       </button>
 
-      {/* Name + amount */}
+      {/* Emoji + Name + amount */}
       <div className="flex-1 min-w-0 flex items-baseline gap-2">
+        {icon && <span className="shrink-0 text-sm leading-none">{icon}</span>}
         <span className={`text-sm font-medium text-[#1c2a2b] leading-snug ${item.is_checked ? 'line-through' : ''}`}>
           {label}
         </span>
@@ -307,58 +286,6 @@ function ItemRow({ item, lang, onToggle, onDelete, removeAria }: {
         </svg>
       </button>
     </li>
-  );
-}
-
-// ─── CategorySection ───────────────────────────────────────────────────────────
-
-function CategorySection({ slug, catItems, lang, t, onToggle, onDelete, collapsed, onCollapseToggle }: {
-  slug: string;
-  catItems: DisplayItem[];
-  lang: Lang;
-  t: typeof T.en;
-  onToggle: (item: DisplayItem) => void;
-  onDelete: (item: DisplayItem) => void;
-  collapsed: boolean;
-  onCollapseToggle: () => void;
-}) {
-  const ddCat = DD_MAP.get(slug);
-  const icon  = ddCat?.icon ?? (slug === 'personal' ? PERSONAL_CAT.icon : OTHER_CAT.icon);
-  const label = ddCat
-    ? (ddCat.label[lang] ?? ddCat.label.en)
-    : slug === 'personal'
-      ? (PERSONAL_CAT.label[lang] ?? PERSONAL_CAT.label.en)
-      : (OTHER_CAT.label[lang] ?? OTHER_CAT.label.en);
-
-  const unchecked = catItems.filter((i) => !i.is_checked);
-  const checked   = catItems.filter((i) => i.is_checked);
-  const display   = [...unchecked, ...checked];
-
-  return (
-    <div>
-      <button type="button" onClick={onCollapseToggle}
-        className="w-full flex items-center gap-2 py-2 text-left group/header">
-        <span className="text-base leading-none">{icon}</span>
-        <span className="text-[11px] font-semibold uppercase tracking-widest text-[#1c2a2b]/40 group-hover/header:text-[#1c2a2b]/60 transition">
-          {label}
-        </span>
-        <span className="flex-1" />
-        <span className="text-[11px] text-[#1c2a2b]/30 mr-1">{t.items(unchecked.length)}</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          className={`text-[#1c2a2b]/25 transition-transform duration-200 ${collapsed ? '-rotate-90' : ''}`}>
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
-      {!collapsed && (
-        <ul className="grid grid-cols-1 md:grid-cols-2 gap-1.5 mb-1">
-          {display.map((item) => (
-            <ItemRow key={item.id} item={item} lang={lang}
-              onToggle={onToggle} onDelete={onDelete} removeAria={t.removeAria} />
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
 
@@ -383,7 +310,6 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
   const [ingIdMap,   setIngIdMap]   = useState<Map<string, string>>(new Map()); // id → catSlug
 
   const [activeRecipe,    setActiveRecipe]    = useState<string | null>(null);
-  const [collapsedCats,   setCollapsedCats]   = useState<Set<string>>(new Set());
   const [query,           setQuery]           = useState('');
   const [suggestions,     setSuggestions]     = useState<IngredientSuggestion[]>([]);
   const [showDropdown,    setShowDropdown]    = useState(false);
@@ -454,11 +380,23 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     return [...deduped, ...personal];
   }, [items, activeRecipe]);
 
-  // Grouped by DD category — now depends on state maps so re-renders when maps load
-  const grouped = useMemo(
-    () => groupItems(displayItems, ingNameMap, ingIdMap),
-    [displayItems, ingNameMap, ingIdMap]
-  );
+  // Flat sorted list: by DD category order → unchecked before checked → name alphabetically
+  const sortedItems = useMemo(() => {
+    return displayItems.map((item) => {
+      const slug = resolveCategory(item, ingNameMap, ingIdMap);
+      const catIdx = slug === 'personal' ? DD_INDEX.size + 1
+        : slug === 'other' ? DD_INDEX.size
+        : (DD_INDEX.get(slug) ?? DD_INDEX.size);
+      const icon = item.is_personal ? '🛒' : (DD_MAP.get(slug)?.icon ?? null);
+      return { ...item, _catIdx: catIdx, _icon: icon };
+    }).sort((a, b) => {
+      if (a._catIdx !== b._catIdx) return a._catIdx - b._catIdx;
+      if (a.is_checked !== b.is_checked) return a.is_checked ? 1 : -1;
+      const nameA = a.is_personal && a.personal_name ? a.personal_name : getIngredientLabel(a.ingredient_name, 'en');
+      const nameB = b.is_personal && b.personal_name ? b.personal_name : getIngredientLabel(b.ingredient_name, 'en');
+      return nameA.localeCompare(nameB);
+    });
+  }, [displayItems, ingNameMap, ingIdMap]);
 
   const totalChecked = items.filter((i) => i.is_checked).length;
   const totalItems   = items.length;
@@ -603,10 +541,6 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
       if (selectedIng) handleAddIngredient();
       else if (!showDropdown && query.trim()) handleAddPersonal(query);
     }
-  };
-
-  const toggleCollapse = (slug: string) => {
-    setCollapsedCats((prev) => { const next = new Set(prev); next.has(slug) ? next.delete(slug) : next.add(slug); return next; });
   };
 
   // ── Not logged in ─────────────────────────────────────────────────────────────
@@ -761,19 +695,14 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
         </div>
       )}
 
-      {/* Grouped category sections */}
-      {grouped.length > 0 && (
-        <div className="mt-4 divide-y divide-[#0e393d]/6">
-          {grouped.map(({ slug, items: catItems }) => (
-            <div key={slug} className="py-3">
-              <CategorySection
-                slug={slug} catItems={catItems} lang={lang} t={t}
-                onToggle={handleToggle} onDelete={handleDelete}
-                collapsed={collapsedCats.has(slug)} onCollapseToggle={() => toggleCollapse(slug)}
-              />
-            </div>
+      {/* Flat sorted grid */}
+      {sortedItems.length > 0 && (
+        <ul className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-1.5">
+          {sortedItems.map((item) => (
+            <ItemRow key={item.id} item={item} lang={lang} icon={item._icon}
+              onToggle={handleToggle} onDelete={handleDelete} removeAria={t.removeAria} />
           ))}
-        </div>
+        </ul>
       )}
 
       <div className="flex-1 min-h-8" />
