@@ -83,6 +83,7 @@ export default function AddAllToShoppingListButton({ ingredients, recipeId, lang
         : typeof ing.unit === 'string'
         ? ing.unit
         : (ing.unit as Record<string, string>)?.[lang] ??
+          (ing.unit as Record<string, string>)?.en ??
           (ing.unit as Record<string, string>)?.de ??
           null;
 

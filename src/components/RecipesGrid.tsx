@@ -293,8 +293,8 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((recipe) => {
-            const title    = recipe.title?.[lang] || recipe.title?.de || recipe.title?.en || '';
-            const desc     = recipe.description?.[lang] || recipe.description?.de || '';
+            const title    = recipe.title?.[lang] || recipe.title?.en || recipe.title?.de || '';
+            const desc     = recipe.description?.[lang] || recipe.description?.en || recipe.description?.de || '';
             const time     = totalTime(recipe.prep_time_min, recipe.cook_time_min);
             const href     = `/recipes/${recipe.slug ?? recipe.id}`;
             const diffCfg  = recipe.difficulty ? DIFF_CFG[recipe.difficulty] : null;

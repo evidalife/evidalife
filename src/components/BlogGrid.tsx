@@ -147,8 +147,8 @@ export default function BlogGrid({ articles, lang }: { articles: ArticleCard[]; 
       {featured.length > 0 && (
         <div className="mb-8 space-y-4">
           {featured.map((article) => {
-            const title   = article.title?.[lang] || article.title?.de || '';
-            const excerpt = article.excerpt?.[lang] || article.excerpt?.de || '';
+            const title   = article.title?.[lang] || article.title?.en || article.title?.de || '';
+            const excerpt = article.excerpt?.[lang] || article.excerpt?.en || article.excerpt?.de || '';
             const href    = `/blog/${article.slug ?? article.id}`;
             const catCls  = article.category ? CAT_CLS[article.category] : '';
             const catLabel = article.category ? (CAT_LABELS[article.category]?.[lang as 'de' | 'en'] ?? CAT_LABELS[article.category]?.en ?? article.category) : '';
@@ -201,8 +201,8 @@ export default function BlogGrid({ articles, lang }: { articles: ArticleCard[]; 
       {rest.length > 0 && (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {rest.map((article) => {
-            const title   = article.title?.[lang] || article.title?.de || '';
-            const excerpt = article.excerpt?.[lang] || article.excerpt?.de || '';
+            const title   = article.title?.[lang] || article.title?.en || article.title?.de || '';
+            const excerpt = article.excerpt?.[lang] || article.excerpt?.en || article.excerpt?.de || '';
             const href    = `/blog/${article.slug ?? article.id}`;
             const catCls  = article.category ? CAT_CLS[article.category] : '';
             const catLabel = article.category ? (CAT_LABELS[article.category]?.[lang as 'de' | 'en'] ?? CAT_LABELS[article.category]?.en ?? article.category) : '';

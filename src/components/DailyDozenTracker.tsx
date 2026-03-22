@@ -221,7 +221,7 @@ function CategoryCard({
   const done     = servings >= target;
   const partial  = servings > 0 && !done;
   const progress = target > 0 ? servings / target : 0;
-  const name     = (category.name as Record<string, string>)[lang] || category.name.de || category.slug;
+  const name     = (category.name as Record<string, string>)[lang] || category.name.en || category.name.de || category.slug;
 
   // ── Color tokens per state ─────────────────────────────────────────────────
   const cardCls   = done
