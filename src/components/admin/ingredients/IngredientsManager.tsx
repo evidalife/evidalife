@@ -288,16 +288,26 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
   // ── AI Autocomplete (panel) ───────────────────────────────────────────────────
 
   const handleAutocomplete = async () => {
-    if (!form.name_en.trim() && !form.name_de.trim()) return;
+    const hasAny = form.name_en.trim() || form.name_de.trim() || form.name_fr.trim() || form.name_es.trim() || form.name_it.trim();
+    if (!hasAny) return;
     setAutocompleteStatus('running');
     try {
       const res = await fetch('/api/admin/autocomplete-ingredient', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name_en: form.name_en, name_de: form.name_de }),
+        body: JSON.stringify({
+          name_en: form.name_en,
+          name_de: form.name_de,
+          name_fr: form.name_fr,
+          name_es: form.name_es,
+          name_it: form.name_it,
+        }),
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
+
+      // Normalize for slug/code matching: lowercase, hyphens/underscores → ''
+      const norm = (s: string) => s.toLowerCase().replace(/[-_\s]/g, '');
 
       setForm((prev) => ({
         ...prev,
@@ -311,14 +321,27 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
         fat_per_100g: prev.fat_per_100g || (data.fat_per_100g != null ? String(data.fat_per_100g) : ''),
         carbs_per_100g: prev.carbs_per_100g || (data.carbs_per_100g != null ? String(data.carbs_per_100g) : ''),
         fiber_per_100g: prev.fiber_per_100g || (data.fiber_per_100g != null ? String(data.fiber_per_100g) : ''),
-        // Only set category/unit if not already set
+        // Category: exact slug → normalized slug → name match
         daily_dozen_category_id: prev.daily_dozen_category_id || (() => {
-          if (!data.suggested_daily_dozen_slug) return '';
-          return categories.find((c) => c.slug === data.suggested_daily_dozen_slug)?.id ?? '';
+          const slug = data.suggested_daily_dozen_slug;
+          if (!slug) return '';
+          const normSlug = norm(slug);
+          return (
+            categories.find(c => c.slug === slug)?.id ??
+            categories.find(c => norm(c.slug) === normSlug)?.id ??
+            categories.find(c => norm(c.slug).includes(normSlug) || normSlug.includes(norm(c.slug)))?.id ??
+            categories.find(c => {
+              const en = norm(c.name?.en ?? '');
+              return en && (en.includes(normSlug) || normSlug.includes(en));
+            })?.id ??
+            ''
+          );
         })(),
+        // Unit: case-insensitive code match
         default_unit_id: prev.default_unit_id || (() => {
-          if (!data.suggested_unit_code) return '';
-          return units.find((u) => u.code === data.suggested_unit_code)?.id ?? '';
+          const code = data.suggested_unit_code;
+          if (!code) return '';
+          return units.find(u => u.code.toLowerCase() === code.toLowerCase())?.id ?? '';
         })(),
       }));
       setAutocompleteStatus('done');
@@ -705,7 +728,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                   <button
                     type="button"
                     onClick={() => { if (autocompleteStatus !== 'running') handleAutocomplete(); }}
-                    disabled={autocompleteStatus === 'running' || (!form.name_en.trim() && !form.name_de.trim())}
+                    disabled={autocompleteStatus === 'running' || (!form.name_en.trim() && !form.name_de.trim() && !form.name_fr.trim() && !form.name_es.trim() && !form.name_it.trim())}
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-violet-50 text-violet-700 text-[11px] font-medium hover:bg-violet-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
                     title="Fill all fields with AI based on the ingredient name"
                   >

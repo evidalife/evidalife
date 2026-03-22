@@ -22,21 +22,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 });
   }
 
-  let body: { name_en?: string; name_de?: string };
+  let body: { name_en?: string; name_de?: string; name_fr?: string; name_es?: string; name_it?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { name_en = '', name_de = '' } = body;
-  if (!name_en.trim() && !name_de.trim()) {
-    return NextResponse.json({ error: 'name_en or name_de is required' }, { status: 400 });
+  const { name_en = '', name_de = '', name_fr = '', name_es = '', name_it = '' } = body;
+  const hasAny = [name_en, name_de, name_fr, name_es, name_it].some(n => n.trim());
+  if (!hasAny) {
+    return NextResponse.json({ error: 'At least one name is required' }, { status: 400 });
   }
 
-  const nameHint = [name_en.trim(), name_de.trim()].filter(Boolean).join(' / ');
+  const nameParts = [
+    name_en && `EN: "${name_en}"`,
+    name_de && `DE: "${name_de}"`,
+    name_fr && `FR: "${name_fr}"`,
+    name_es && `ES: "${name_es}"`,
+    name_it && `IT: "${name_it}"`,
+  ].filter(Boolean).join(', ');
 
-  const prompt = `You are a nutrition and culinary database expert. Given the ingredient name "${nameHint}", provide complete data.
+  const prompt = `You are a nutrition and culinary database expert. Given an ingredient name in one or more languages (${nameParts}), identify the ingredient and provide complete data.
 
 Return ONLY valid JSON matching this exact structure:
 {
@@ -55,10 +62,11 @@ Return ONLY valid JSON matching this exact structure:
 }
 
 Rules:
+- First identify the ingredient from whichever language(s) are provided
 - Translations: use the most common culinary term in each language (not literal translations)
 - Nutrition: values per 100g raw/uncooked (use cooked for pasta/rice/legumes which are always served cooked); use USDA or European BLS values; round to 1 decimal
-- suggested_daily_dozen_slug: pick one from [beans, berries, fruits, cruciferous, greens, vegetables, flaxseeds, nuts, herbs-spices, whole-grains, beverages, exercise] or null if none fits
-- suggested_unit_code: pick the most natural default unit from [g, kg, ml, l, stk, tl, el, prise, bund, zehe] — use "g" for most solid foods, "ml" for liquids, "stk" for countable items
+- suggested_daily_dozen_slug: MUST be exactly one of these values or null: beans, berries, fruits, cruciferous, greens, vegetables, flaxseeds, nuts, herbs-spices, whole-grains, beverages, exercise
+- suggested_unit_code: MUST be exactly one of these values or null: g, kg, ml, l, stk, tl, el, prise, bund, zehe — use "g" for most solid foods, "ml" for liquids, "stk" for countable items
 - Return ONLY the JSON object, no markdown, no explanation`;
 
   const client = new Anthropic({ apiKey });
