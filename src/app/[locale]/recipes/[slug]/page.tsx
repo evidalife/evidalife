@@ -258,7 +258,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ s
           <img
             src={supabaseTransform(recipe.image_url, 1400, 560) ?? recipe.image_url}
             alt={title}
-            className="w-full h-72 sm:h-96 object-cover rounded-2xl border border-[#0e393d]/10 mb-8"
+            className="w-full h-56 sm:h-72 max-h-[400px] object-cover rounded-2xl border border-[#0e393d]/10 mb-8"
           />
         )}
 
@@ -321,18 +321,18 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ s
           )}
         </div>
 
-        {/* Gallery — full width */}
-        {gallery.length > 0 && (
-          <div className="mb-8">
-            <RecipeGallery photos={gallery} />
-          </div>
-        )}
-
         {/* Main two-column layout */}
         <div className="grid gap-10 lg:grid-cols-[1fr_300px]">
 
-          {/* LEFT: Ingredients + Instructions */}
+          {/* LEFT: Gallery + Ingredients + Instructions */}
           <div>
+
+            {/* Gallery — inside left column, same width as ingredients */}
+            {gallery.length > 0 && (
+              <div className="mb-8">
+                <RecipeGallery photos={gallery} />
+              </div>
+            )}
 
             {/* Ingredients */}
             {ingredients.length > 0 && (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export type GalleryPhoto = { url: string; order: number };
 
@@ -11,6 +11,7 @@ interface Props {
 export default function RecipeGallery({ photos }: Props) {
   const [current, setCurrent] = useState(0);
   const [lightbox, setLightbox] = useState(false);
+  const touchStartX = useRef<number | null>(null);
 
   const prev = useCallback(
     () => setCurrent((c) => (c - 1 + photos.length) % photos.length),
@@ -20,6 +21,19 @@ export default function RecipeGallery({ photos }: Props) {
     () => setCurrent((c) => (c + 1) % photos.length),
     [photos.length]
   );
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) > 40) {
+      if (dx < 0) next();
+      else prev();
+    }
+  };
 
   useEffect(() => {
     if (!lightbox) return;
@@ -41,6 +55,8 @@ export default function RecipeGallery({ photos }: Props) {
       <div
         className="relative rounded-2xl overflow-hidden bg-[#0e393d]/5 cursor-zoom-in group"
         onClick={() => setLightbox(true)}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
