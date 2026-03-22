@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import ReviewModal, { type ReviewSuggestion } from './ReviewModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -158,21 +159,15 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
   // AI calc grams per unit
   const [calcGramsStatus, setCalcGramsStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
 
-  // Bulk common + grams
-  const [bulkCommonGramsStatus, setBulkCommonGramsStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
-  const [bulkCommonGramsProgress, setBulkCommonGramsProgress] = useState({ done: 0, total: 0 });
+  // AI Review & Complete
+  const [reviewScanStatus, setReviewScanStatus] = useState<'idle' | 'scanning' | 'ready' | 'error'>('idle');
+  const [reviewScanProgress, setReviewScanProgress] = useState({ done: 0, total: 0 });
+  const [reviewSuggestions, setReviewSuggestions] = useState<ReviewSuggestion[]>([]);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
 
   // Duplicate detection + search suggestions (create mode only)
   const [nameSearchResults, setNameSearchResults] = useState<Ingredient[]>([]);
   const nameSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Bulk nutrition fill
-  const [bulkNutritionStatus, setBulkNutritionStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
-  const [bulkNutritionProgress, setBulkNutritionProgress] = useState({ done: 0, total: 0 });
-
-  // Bulk translate FR/ES/IT
-  const [bulkTranslateStatus, setBulkTranslateStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
-  const [bulkTranslateProgress, setBulkTranslateProgress] = useState({ done: 0, total: 0 });
 
   // Auto-generate slug from EN name (only when creating and slug not manually edited)
   useEffect(() => {
@@ -422,165 +417,109 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
     }
   };
 
-  // ── Bulk nutrition fill ───────────────────────────────────────────────────────
+  // ── AI Review & Complete ──────────────────────────────────────────────────────
 
-  const handleBulkNutrition = async () => {
-    const missing = ingredients.filter(
-      (i) => i.kcal_per_100g == null && i.protein_per_100g == null && i.fat_per_100g == null && i.carbs_per_100g == null && i.fiber_per_100g == null
-    );
-    if (missing.length === 0) {
-      setBulkNutritionStatus('done');
-      return;
-    }
-    setBulkNutritionStatus('running');
-    setBulkNutritionProgress({ done: 0, total: missing.length });
+  const GRAM_CODES = ['g', 'kg', 'mg', 'ml', 'l'];
 
-    const BATCH = 20;
-    let done = 0;
-    try {
-      for (let i = 0; i < missing.length; i += BATCH) {
-        const batch = missing.slice(i, i + BATCH);
-        const res = await fetch('/api/admin/bulk-nutrition', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ingredients: batch.map((ing) => ({
-              id: ing.id,
-              name_en: ing.name?.en ?? '',
-              name_de: ing.name?.de ?? '',
-            })),
-          }),
-        });
-        if (!res.ok) throw new Error(await res.text());
-        const { results } = await res.json();
-        for (const r of results) {
-          await supabase.from('ingredients').update({
-            kcal_per_100g: r.kcal_per_100g,
-            protein_per_100g: r.protein_per_100g,
-            fat_per_100g: r.fat_per_100g,
-            carbs_per_100g: r.carbs_per_100g,
-            fiber_per_100g: r.fiber_per_100g,
-          }).eq('id', r.id);
-        }
-        done += batch.length;
-        setBulkNutritionProgress({ done, total: missing.length });
-      }
-      await refresh();
-      setBulkNutritionStatus('done');
-    } catch (e) {
-      console.error('Bulk nutrition error:', e);
-      setBulkNutritionStatus('error');
-    }
-  };
+  const handleReviewScan = async () => {
+    setReviewScanStatus('scanning');
 
-  // ── Bulk translate FR/ES/IT ───────────────────────────────────────────────────
-
-  const handleBulkTranslate = async () => {
-    const missing = ingredients.filter(
-      (i) => !i.name?.fr || !i.name?.es || !i.name?.it
-    );
-    if (missing.length === 0) {
-      setBulkTranslateStatus('done');
-      return;
-    }
-    setBulkTranslateStatus('running');
-    setBulkTranslateProgress({ done: 0, total: missing.length });
-
-    const BATCH = 30;
-    let done = 0;
-    try {
-      for (let i = 0; i < missing.length; i += BATCH) {
-        const batch = missing.slice(i, i + BATCH);
-        const res = await fetch('/api/admin/bulk-translate-ingredients', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ingredients: batch.map((ing) => ({
-              id: ing.id,
-              name_en: ing.name?.en ?? '',
-              name_de: ing.name?.de ?? '',
-            })),
-          }),
-        });
-        if (!res.ok) throw new Error(await res.text());
-        const { results } = await res.json();
-        for (const r of results) {
-          const ing = ingredients.find((x) => x.id === r.id);
-          if (!ing) continue;
-          const updatedName = {
-            ...(ing.name ?? {}),
-            ...(r.name_fr ? { fr: r.name_fr } : {}),
-            ...(r.name_es ? { es: r.name_es } : {}),
-            ...(r.name_it ? { it: r.name_it } : {}),
-          };
-          await supabase.from('ingredients').update({ name: updatedName }).eq('id', r.id);
-        }
-        done += batch.length;
-        setBulkTranslateProgress({ done, total: missing.length });
-      }
-      await refresh();
-      setBulkTranslateStatus('done');
-    } catch (e) {
-      console.error('Bulk translate error:', e);
-      setBulkTranslateStatus('error');
-    }
-  };
-
-  // ── Bulk common + grams ───────────────────────────────────────────────────────
-
-  const handleBulkCommonGrams = async () => {
-    const GRAM_CODES = ['g', 'kg', 'mg', 'ml', 'l'];
-    // Only process ingredients where grams_per_unit is null and unit is not gram-based
-    const toProcess = ingredients.filter(ing => {
-      const unit = units.find(u => u.id === ing.default_unit_id);
-      const unitCode = unit?.code?.toLowerCase() ?? '';
-      const needsGrams = !GRAM_CODES.includes(unitCode) && ing.grams_per_unit == null;
-      return needsGrams; // always re-evaluate is_common for these
+    const ingData = ingredients.map((ing) => {
+      const unit = units.find((u) => u.id === ing.default_unit_id);
+      return {
+        id: ing.id,
+        name_en: ing.name?.en ?? '',
+        name_de: ing.name?.de ?? '',
+        name_fr: ing.name?.fr ?? '',
+        name_es: ing.name?.es ?? '',
+        name_it: ing.name?.it ?? '',
+        kcal_per_100g: ing.kcal_per_100g,
+        protein_per_100g: ing.protein_per_100g,
+        fat_per_100g: ing.fat_per_100g,
+        carbs_per_100g: ing.carbs_per_100g,
+        fiber_per_100g: ing.fiber_per_100g,
+        unit_code: unit?.code ?? null,
+        grams_per_unit: ing.grams_per_unit,
+      };
     });
-    if (toProcess.length === 0) {
-      setBulkCommonGramsStatus('done');
-      return;
-    }
-    setBulkCommonGramsStatus('running');
-    setBulkCommonGramsProgress({ done: 0, total: toProcess.length });
 
-    const BATCH = 20;
-    let done = 0;
+    // Pre-filter client-side: only send ingredients that are missing something
+    const toReview = ingData.filter((ing) => {
+      const isGramBased = GRAM_CODES.includes((ing.unit_code ?? '').toLowerCase());
+      return (
+        !ing.name_fr || !ing.name_es || !ing.name_it || !ing.name_de ||
+        ing.kcal_per_100g == null ||
+        (!isGramBased && ing.grams_per_unit == null && ing.unit_code)
+      );
+    });
+
+    setReviewScanProgress({ done: 0, total: toReview.length });
+
+    const BATCH = 15;
+    const allSuggestions: ReviewSuggestion[] = [];
+
     try {
-      for (let i = 0; i < toProcess.length; i += BATCH) {
-        const batch = toProcess.slice(i, i + BATCH);
-        const res = await fetch('/api/admin/bulk-common-grams', {
+      for (let i = 0; i < toReview.length; i += BATCH) {
+        const batch = toReview.slice(i, i + BATCH);
+        const res = await fetch('/api/admin/review-ingredients', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ingredients: batch.map(ing => {
-              const unit = units.find(u => u.id === ing.default_unit_id);
-              return {
-                id: ing.id,
-                name_en: ing.name?.en ?? '',
-                name_de: ing.name?.de ?? '',
-                unit_code: unit?.code ?? null,
-              };
-            }),
-          }),
+          body: JSON.stringify({ ingredients: batch }),
         });
         if (!res.ok) throw new Error(await res.text());
-        const { results } = await res.json();
-        for (const r of results) {
-          await supabase.from('ingredients').update({
-            grams_per_unit: r.grams_per_unit,
-            is_common: r.is_common,
-          }).eq('id', r.id);
-        }
-        done += batch.length;
-        setBulkCommonGramsProgress({ done, total: toProcess.length });
+        const { suggestions } = await res.json();
+        allSuggestions.push(...suggestions);
+        setReviewScanProgress({ done: Math.min(i + BATCH, toReview.length), total: toReview.length });
       }
-      await refresh();
-      setBulkCommonGramsStatus('done');
+      setReviewSuggestions(allSuggestions);
+      setReviewScanStatus('ready');
+      setReviewModalOpen(true);
     } catch (e) {
-      console.error('Bulk common+grams error:', e);
-      setBulkCommonGramsStatus('error');
+      console.error('Review scan error:', e);
+      setReviewScanStatus('error');
     }
+  };
+
+  const handleReviewApply = async (
+    accepted: ReviewSuggestion[],
+    onProgress: (done: number, total: number) => void
+  ) => {
+    for (let i = 0; i < accepted.length; i++) {
+      const s = accepted[i];
+      const ing = ingredients.find((x) => x.id === s.id);
+      if (!ing) continue;
+
+      const { name_de, name_fr, name_es, name_it, ...numericChanges } = s.changes;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const update: Record<string, any> = {};
+
+      if (name_de !== undefined || name_fr !== undefined || name_es !== undefined || name_it !== undefined) {
+        update.name = {
+          ...(ing.name ?? {}),
+          ...(name_de !== undefined ? { de: name_de } : {}),
+          ...(name_fr !== undefined ? { fr: name_fr } : {}),
+          ...(name_es !== undefined ? { es: name_es } : {}),
+          ...(name_it !== undefined ? { it: name_it } : {}),
+        };
+      }
+
+      if (numericChanges.kcal_per_100g !== undefined) update.kcal_per_100g = numericChanges.kcal_per_100g;
+      if (numericChanges.protein_per_100g !== undefined) update.protein_per_100g = numericChanges.protein_per_100g;
+      if (numericChanges.fat_per_100g !== undefined) update.fat_per_100g = numericChanges.fat_per_100g;
+      if (numericChanges.carbs_per_100g !== undefined) update.carbs_per_100g = numericChanges.carbs_per_100g;
+      if (numericChanges.fiber_per_100g !== undefined) update.fiber_per_100g = numericChanges.fiber_per_100g;
+      if (numericChanges.grams_per_unit !== undefined) update.grams_per_unit = numericChanges.grams_per_unit;
+
+      if (Object.keys(update).length > 0) {
+        await supabase.from('ingredients').update(update).eq('id', s.id);
+      }
+
+      onProgress(i + 1, accepted.length);
+    }
+
+    await refresh();
+    setReviewModalOpen(false);
+    setReviewScanStatus('idle');
   };
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -625,66 +564,22 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Bulk common + grams button */}
+          {/* AI Review & Complete */}
           <button
-            onClick={() => { if (bulkCommonGramsStatus !== 'running') handleBulkCommonGrams(); }}
-            disabled={bulkCommonGramsStatus === 'running'}
+            onClick={() => { if (reviewScanStatus !== 'scanning') handleReviewScan(); }}
+            disabled={reviewScanStatus === 'scanning'}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#0e393d]/20 text-[#0e393d] text-xs font-medium hover:bg-[#0e393d]/5 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            title="Set is_common and grams_per_unit for ingredients with non-gram units"
+            title="Scan all ingredients for missing data and review AI suggestions"
           >
-            {bulkCommonGramsStatus === 'running' ? (
+            {reviewScanStatus === 'scanning' ? (
               <>
                 <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>
-                {bulkCommonGramsProgress.done}/{bulkCommonGramsProgress.total} updating…
+                Scanning {reviewScanProgress.done}/{reviewScanProgress.total}…
               </>
-            ) : bulkCommonGramsStatus === 'done' ? (
-              <>✓ Common & grams updated</>
-            ) : bulkCommonGramsStatus === 'error' ? (
-              <>⚠ Retry common & grams</>
+            ) : reviewScanStatus === 'error' ? (
+              <>⚠ Retry Review</>
             ) : (
-              <>✦ Update common & grams</>
-            )}
-          </button>
-
-          {/* Bulk translate button */}
-          <button
-            onClick={() => { if (bulkTranslateStatus !== 'running') handleBulkTranslate(); }}
-            disabled={bulkTranslateStatus === 'running'}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#0e393d]/20 text-[#0e393d] text-xs font-medium hover:bg-[#0e393d]/5 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            title="Translate missing FR/ES/IT names for all ingredients"
-          >
-            {bulkTranslateStatus === 'running' ? (
-              <>
-                <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>
-                {bulkTranslateProgress.done}/{bulkTranslateProgress.total} translating…
-              </>
-            ) : bulkTranslateStatus === 'done' ? (
-              <>✓ Names translated</>
-            ) : bulkTranslateStatus === 'error' ? (
-              <>⚠ Retry translate</>
-            ) : (
-              <>✦ Translate missing names</>
-            )}
-          </button>
-
-          {/* Bulk nutrition button */}
-          <button
-            onClick={() => { if (bulkNutritionStatus !== 'running') handleBulkNutrition(); }}
-            disabled={bulkNutritionStatus === 'running'}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#0e393d]/20 text-[#0e393d] text-xs font-medium hover:bg-[#0e393d]/5 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            title="Fill nutrition values for ingredients missing all nutrition data"
-          >
-            {bulkNutritionStatus === 'running' ? (
-              <>
-                <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>
-                {bulkNutritionProgress.done}/{bulkNutritionProgress.total} nutrition…
-              </>
-            ) : bulkNutritionStatus === 'done' ? (
-              <>✓ Nutrition filled</>
-            ) : bulkNutritionStatus === 'error' ? (
-              <>⚠ Retry nutrition</>
-            ) : (
-              <>✦ Fill missing nutrition</>
+              <>✦ AI Review &amp; Complete</>
             )}
           </button>
           <button
@@ -1141,6 +1036,18 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
 
           </div>
         </>
+      )}
+
+      {/* AI Review Modal */}
+      {reviewModalOpen && (
+        <ReviewModal
+          suggestions={reviewSuggestions}
+          totalScanned={ingredients.length}
+          ingredients={ingredients}
+          units={units}
+          onApply={handleReviewApply}
+          onClose={() => { setReviewModalOpen(false); setReviewScanStatus('idle'); }}
+        />
       )}
 
     </div>
