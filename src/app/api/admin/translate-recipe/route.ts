@@ -25,6 +25,12 @@ export async function POST(req: NextRequest) {
 For German, use Swiss/DACH conventions and culinary terms. For all languages, use natural phrasing.
 Convert any remaining US/imperial measurements to metric (°F→°C, cups→g/ml, oz→g, lb→g).
 
+IMPORTANT formatting rules:
+- Preserve ALL markdown formatting exactly: **bold**, *italic*, ## headings, - bullet lists, 1. numbered lists, > blockquotes, --- horizontal rules
+- Preserve ALL photo references exactly as written, character for character: ![photo:1], ![photo:2], etc.
+- Do NOT translate, modify, or remove any markdown syntax or photo references
+- Translate only the human-readable text content
+
 TITLE: ${title}
 
 DESCRIPTION: ${description}
