@@ -443,9 +443,11 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
     // Pre-filter client-side: only send ingredients that are missing something
     const toReview = ingData.filter((ing) => {
       const isGramBased = GRAM_CODES.includes((ing.unit_code ?? '').toLowerCase());
+      const missingNutrition = ing.kcal_per_100g == null || ing.protein_per_100g == null ||
+        ing.fat_per_100g == null || ing.carbs_per_100g == null || ing.fiber_per_100g == null;
       return (
         !ing.name_fr || !ing.name_es || !ing.name_it || !ing.name_de ||
-        ing.kcal_per_100g == null ||
+        missingNutrition ||
         (!isGramBased && ing.grams_per_unit == null && ing.unit_code)
       );
     });
@@ -801,7 +803,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                       autoFocus
                     />
                   </Field>
-                  <Field label="Name DE *">
+                  <Field label="Name DE">
                     <input
                       className={inputCls}
                       value={form.name_de}

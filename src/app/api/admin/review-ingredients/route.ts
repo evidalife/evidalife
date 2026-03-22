@@ -50,7 +50,10 @@ export async function POST(req: NextRequest) {
       if (!ing.name_es) item.need_es = true;
       if (!ing.name_it) item.need_it = true;
 
-      if (ing.kcal_per_100g == null) item.need_nutrition = true;
+      if (ing.kcal_per_100g == null || ing.protein_per_100g == null ||
+          ing.fat_per_100g == null || ing.carbs_per_100g == null || ing.fiber_per_100g == null) {
+        item.need_nutrition = true;
+      }
 
       const isGramBased = GRAM_CODES.includes((ing.unit_code ?? '').toLowerCase());
       if (!isGramBased && ing.grams_per_unit == null && ing.unit_code) {
