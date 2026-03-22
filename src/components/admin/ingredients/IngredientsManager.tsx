@@ -191,23 +191,20 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
 
   // ── Panel helpers ─────────────────────────────────────────────────────────────
 
-  const findNameMatches = (nameEn: string, nameDe: string): Ingredient[] => {
-    const q1 = nameEn.trim().toLowerCase();
-    const q2 = nameDe.trim().toLowerCase();
-    if (!q1 && !q2) return [];
+  const findNameMatches = (names: string[]): Ingredient[] => {
+    const queries = names.map((v) => v.trim().toLowerCase()).filter((v) => v.length > 0);
+    if (queries.length === 0) return [];
     return ingredients.filter(ing => {
-      const en = (ing.name?.en ?? '').toLowerCase();
-      const de = (ing.name?.de ?? '').toLowerCase();
-      if (q1 && en && (en.includes(q1) || q1.includes(en))) return true;
-      if (q2 && de && (de.includes(q2) || q2.includes(de))) return true;
-      return false;
+      const allNames = [ing.name?.en, ing.name?.de, ing.name?.fr, ing.name?.es, ing.name?.it]
+        .filter(Boolean).map((s) => s!.toLowerCase());
+      return queries.some((q) => allNames.some((n) => n.includes(q) || q.includes(n)));
     }).slice(0, 5);
   };
 
-  const triggerNameSearch = (nameEn: string, nameDe: string) => {
+  const triggerNameSearch = (...names: string[]) => {
     if (nameSearchTimerRef.current) clearTimeout(nameSearchTimerRef.current);
     nameSearchTimerRef.current = setTimeout(() => {
-      setNameSearchResults(findNameMatches(nameEn, nameDe));
+      setNameSearchResults(findNameMatches(names));
     }, 300);
   };
 
@@ -797,7 +794,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                       value={form.name_en}
                       onChange={(e) => {
                         setField('name_en', e.target.value);
-                        if (!editingId) triggerNameSearch(e.target.value, form.name_de);
+                        if (!editingId) triggerNameSearch(e.target.value, form.name_de, form.name_fr, form.name_es, form.name_it);
                       }}
                       placeholder="e.g. Spinach"
                       autoFocus
@@ -809,7 +806,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                       value={form.name_de}
                       onChange={(e) => {
                         setField('name_de', e.target.value);
-                        if (!editingId) triggerNameSearch(form.name_en, e.target.value);
+                        if (!editingId) triggerNameSearch(form.name_en, e.target.value, form.name_fr, form.name_es, form.name_it);
                       }}
                       placeholder="z.B. Spinat"
                     />
@@ -818,7 +815,10 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                     <input
                       className={inputCls}
                       value={form.name_fr}
-                      onChange={(e) => setField('name_fr', e.target.value)}
+                      onChange={(e) => {
+                        setField('name_fr', e.target.value);
+                        if (!editingId) triggerNameSearch(form.name_en, form.name_de, e.target.value, form.name_es, form.name_it);
+                      }}
                       placeholder="ex. Épinard"
                     />
                   </Field>
@@ -826,7 +826,10 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                     <input
                       className={inputCls}
                       value={form.name_es}
-                      onChange={(e) => setField('name_es', e.target.value)}
+                      onChange={(e) => {
+                        setField('name_es', e.target.value);
+                        if (!editingId) triggerNameSearch(form.name_en, form.name_de, form.name_fr, e.target.value, form.name_it);
+                      }}
                       placeholder="ej. Espinaca"
                     />
                   </Field>
@@ -834,7 +837,10 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                     <input
                       className={inputCls}
                       value={form.name_it}
-                      onChange={(e) => setField('name_it', e.target.value)}
+                      onChange={(e) => {
+                        setField('name_it', e.target.value);
+                        if (!editingId) triggerNameSearch(form.name_en, form.name_de, form.name_fr, form.name_es, e.target.value);
+                      }}
                       placeholder="es. Spinacio"
                     />
                   </Field>

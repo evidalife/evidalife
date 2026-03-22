@@ -238,24 +238,27 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
   const [reviewSuggestions, setReviewSuggestions] = useState<PrepNoteReviewSuggestion[]>([]);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
 
-  // Debounced duplicate search on addForm.name_en
+  // Debounced duplicate search — triggers from any of the 5 name fields
   useEffect(() => {
     if (!adding) { setAddDuplicates([]); return; }
     if (addDupTimerRef.current) clearTimeout(addDupTimerRef.current);
     addDupTimerRef.current = setTimeout(() => {
-      const q = addForm.name_en.trim().toLowerCase();
+      const q = [addForm.name_en, addForm.name_de, addForm.name_fr, addForm.name_es, addForm.name_it]
+        .map((v) => v.trim().toLowerCase())
+        .find((v) => v.length > 0);
       if (!q) { setAddDuplicates([]); return; }
       setAddDuplicates(
         notes
           .filter((n) => {
-            const en = (n.name.en ?? '').toLowerCase();
-            const de = (n.name.de ?? '').toLowerCase();
-            return (en && (en.includes(q) || q.includes(en))) || (de && (de.includes(q) || q.includes(de)));
+            const allNames = [n.name.en, n.name.de, n.name.fr, n.name.es, n.name.it]
+              .filter(Boolean)
+              .map((s) => s!.toLowerCase());
+            return allNames.some((name) => name.includes(q) || q.includes(name));
           })
           .slice(0, 3)
       );
     }, 300);
-  }, [addForm.name_en, adding]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [addForm.name_en, addForm.name_de, addForm.name_fr, addForm.name_es, addForm.name_it, adding]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = useCallback(async () => {
     const { data } = await supabase

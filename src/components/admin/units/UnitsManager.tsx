@@ -324,19 +324,21 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
     }, 300);
   }, [addForm.code, adding]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Debounced duplicate detection on name_en field
+  // Debounced duplicate detection on any name/abbrev field
   useEffect(() => {
     if (!adding) { setNameDuplicate(false); return; }
     if (addNameDupTimerRef.current) clearTimeout(addNameDupTimerRef.current);
     addNameDupTimerRef.current = setTimeout(() => {
-      const name = addForm.name_en.trim().toLowerCase();
-      if (!name) { setNameDuplicate(false); return; }
+      const query = [addForm.name_en, addForm.name_de, addForm.name_fr, addForm.name_es, addForm.name_it]
+        .map((v) => v.trim().toLowerCase())
+        .find((v) => v.length > 0);
+      if (!query) { setNameDuplicate(false); return; }
       setNameDuplicate(units.some((u) =>
-        (u.name.en ?? '').toLowerCase() === name ||
-        (u.name.de ?? '').toLowerCase() === name
+        Object.values(u.name).some((v) => v && v.toLowerCase() === query) ||
+        Object.values(u.abbreviation).some((v) => v && v.toLowerCase() === query)
       ));
     }, 300);
-  }, [addForm.name_en, adding]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [addForm.name_en, addForm.name_de, addForm.name_fr, addForm.name_es, addForm.name_it, adding]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = useCallback(async () => {
     const { data } = await supabase
