@@ -1478,8 +1478,8 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
   const getIngredientDisplay = (row: IngredientRow): string => {
     const { de, en } = row.ingredient_name;
-    if (de && en) return `${de} / ${en}`;
-    return de || en || '';
+    if (de && en) return `${en} / ${de}`;
+    return en || de || '';
   };
 
   // ── Goal tags ────────────────────────────────────────────────────────────────
@@ -2189,7 +2189,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                 </div>
 
                 {/* Meal Type pills */}
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 mb-4">
                   <span className="text-xs font-medium text-[#0e393d]/60 w-[70px] shrink-0 pt-1">Meal</span>
                   <div className="flex flex-wrap gap-1.5">
                     {mealTypeOptions.map((mt) => {
