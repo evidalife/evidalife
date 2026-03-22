@@ -462,15 +462,34 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
 
             {/* Rating */}
             <FilterRow label={t.rating}>
-              {([3, 4, 5] as const).map((n) => (
-                <Pill
-                  key={n}
-                  active={minRating === n}
-                  onClick={() => setMinRating(minRating === n ? null : n)}
-                >
-                  {n === 5 ? '★ 5 only' : `★ ${n}+`}
-                </Pill>
-              ))}
+              <div className="flex items-center gap-0.5">
+                {[1, 2, 3, 4, 5].map((n) => {
+                  const filled = minRating != null && n <= minRating;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setMinRating(minRating === n ? null : n)}
+                      aria-label={`Minimum ${n} star${n !== 1 ? 's' : ''}`}
+                      className="w-7 h-7 flex items-center justify-center transition-transform hover:scale-110"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24"
+                        fill={filled ? '#ceab84' : 'none'}
+                        stroke={filled ? '#ceab84' : '#0e393d'}
+                        strokeOpacity={filled ? 1 : 0.25}
+                        strokeWidth="1.5"
+                      >
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                      </svg>
+                    </button>
+                  );
+                })}
+                {minRating != null && (
+                  <span className="ml-1 text-xs text-[#1c2a2b]/40">
+                    {minRating === 5 ? '5 ★' : `${minRating}+ ★`}
+                  </span>
+                )}
+              </div>
             </FilterRow>
 
             {/* Daily Dozen */}

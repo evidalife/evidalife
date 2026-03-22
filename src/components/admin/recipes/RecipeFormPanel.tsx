@@ -381,7 +381,7 @@ function CoverCropModal({ imageUrl, initialDetail, initialGrid, onConfirm, onClo
                 image={imageUrl}
                 crop={detailCrop}
                 zoom={detailZoom}
-                aspect={16 / 9}
+                aspect={5 / 2}
                 onCropChange={setDetailCrop}
                 onZoomChange={setDetailZoom}
                 onCropComplete={onDetailCropComplete}
@@ -421,8 +421,8 @@ function CoverCropModal({ imageUrl, initialDetail, initialGrid, onConfirm, onClo
           {/* Previews */}
           <div className="flex gap-4 px-5 pb-4">
             <div className="flex-1">
-              <p className="text-[10px] text-[#1c2a2b]/40 mb-1">Detail page (16:9)</p>
-              <div className="rounded-lg overflow-hidden bg-[#f5f4f0] border border-[#0e393d]/8" style={{ aspectRatio: '16/9' }}>
+              <p className="text-[10px] text-[#1c2a2b]/40 mb-1">Detail page (5:2)</p>
+              <div className="rounded-lg overflow-hidden bg-[#f5f4f0] border border-[#0e393d]/8" style={{ aspectRatio: '5/2' }}>
                 {detailPreview
                   // eslint-disable-next-line @next/next/no-img-element
                   ? <img src={detailPreview} alt="" className="w-full h-full object-cover" />
@@ -2660,7 +2660,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                   <p className="text-[11px] text-[#1c2a2b]/40">Auto-compressed · {imageCompressedKb} KB</p>
                 )}
                 {(cropDetail || cropGrid) && (
-                  <p className="text-[11px] text-emerald-600">✓ Crops set: {[cropDetail && '16:9', cropGrid && '4:3'].filter(Boolean).join(', ')}</p>
+                  <p className="text-[11px] text-emerald-600">✓ Crops set: {[cropDetail && '5:2', cropGrid && '4:3'].filter(Boolean).join(', ')}</p>
                 )}
                 <button
                   type="button"
