@@ -48,6 +48,7 @@ export default async function RecipesPage() {
     { data: mealTypesRaw },
     { data: ddCategoriesRaw },
     { data: favouriteRows },
+    { data: ratingRows },
   ] = await Promise.all([
     recipeIds.length > 0
       ? supabase
@@ -82,6 +83,12 @@ export default async function RecipesPage() {
     userId
       ? supabase.from('recipe_favourites').select('recipe_id').eq('user_id', userId)
       : Promise.resolve({ data: [] as { recipe_id: string }[] }),
+    recipeIds.length > 0
+      ? supabase
+          .from('recipe_ratings')
+          .select('recipe_id, rating')
+          .in('recipe_id', recipeIds)
+      : Promise.resolve({ data: [] as { recipe_id: string; rating: number }[] }),
   ]);
 
   // 3. Build maps
@@ -126,6 +133,18 @@ export default async function RecipesPage() {
   const ddCategories = (ddCategoriesRaw ?? []) as { slug: string; name: Record<string, string>; icon: string }[];
   const initialFavouriteIds = (favouriteRows ?? []).map((f) => f.recipe_id);
 
+  // Build average ratings map: recipe_id → average rating
+  const ratingTotals: Record<string, { sum: number; count: number }> = {};
+  for (const row of (ratingRows ?? []) as { recipe_id: string; rating: number }[]) {
+    if (!ratingTotals[row.recipe_id]) ratingTotals[row.recipe_id] = { sum: 0, count: 0 };
+    ratingTotals[row.recipe_id].sum   += row.rating;
+    ratingTotals[row.recipe_id].count += 1;
+  }
+  const averageRatings: Record<string, number> = {};
+  for (const [id, { sum, count }] of Object.entries(ratingTotals)) {
+    averageRatings[id] = sum / count;
+  }
+
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
@@ -146,6 +165,7 @@ export default async function RecipesPage() {
           ddCategories={ddCategories}
           userId={userId}
           initialFavouriteIds={initialFavouriteIds}
+          averageRatings={averageRatings}
         />
       </main>
 

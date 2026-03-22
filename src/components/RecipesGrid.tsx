@@ -64,6 +64,7 @@ type Translations = {
   favourites: string;
   filters: string;
   activeFilters: string;
+  rating: string;
 };
 
 const T: Record<string, Translations> = {
@@ -87,6 +88,7 @@ const T: Record<string, Translations> = {
     favourites: 'Favoriten',
     filters: 'Filter',
     activeFilters: 'Aktiv:',
+    rating: 'Bewertung',
   },
   en: {
     searchPlaceholder: 'Search recipes…',
@@ -108,6 +110,7 @@ const T: Record<string, Translations> = {
     favourites: 'Favourites',
     filters: 'Filters',
     activeFilters: 'Active:',
+    rating: 'Rating',
   },
   fr: {
     searchPlaceholder: 'Rechercher des recettes…',
@@ -129,6 +132,7 @@ const T: Record<string, Translations> = {
     favourites: 'Favoris',
     filters: 'Filtres',
     activeFilters: 'Actifs:',
+    rating: 'Note',
   },
   es: {
     searchPlaceholder: 'Buscar recetas…',
@@ -150,6 +154,7 @@ const T: Record<string, Translations> = {
     favourites: 'Favoritos',
     filters: 'Filtros',
     activeFilters: 'Activos:',
+    rating: 'Valoración',
   },
   it: {
     searchPlaceholder: 'Cerca ricette…',
@@ -171,6 +176,7 @@ const T: Record<string, Translations> = {
     favourites: 'Preferiti',
     filters: 'Filtri',
     activeFilters: 'Attivi:',
+    rating: 'Valutazione',
   },
 };
 
@@ -184,6 +190,7 @@ interface Props {
   ddCategories: { slug: string; name: Record<string, string>; icon: string }[];
   userId: string | null;
   initialFavouriteIds: string[];
+  averageRatings: Record<string, number>;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -228,7 +235,7 @@ function FilterRow({ label, children }: { label: string; children: React.ReactNo
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddCategories, userId, initialFavouriteIds }: Props) {
+export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddCategories, userId, initialFavouriteIds, averageRatings }: Props) {
   const t = T[lang] ?? T.en;
 
   const [search, setSearch] = useState('');
@@ -237,6 +244,7 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
   const [courseIds, setCourseIds] = useState<string[]>([]);
   const [mealTypeIds, setMealTypeIds] = useState<string[]>([]);
   const [goalKeys, setGoalKeys] = useState<string[]>([]);
+  const [minRating, setMinRating] = useState<number | null>(null);
   const [showFavourites, setShowFavourites] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [favouriteIds, setFavouriteIds] = useState<Set<string>>(() => new Set(initialFavouriteIds));
@@ -251,7 +259,7 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
   };
 
   // Panel-only filter count (excludes favourites and search)
-  const filterCount = difficulties.length + ddSlugs.length + courseIds.length + mealTypeIds.length + goalKeys.length;
+  const filterCount = difficulties.length + ddSlugs.length + courseIds.length + mealTypeIds.length + goalKeys.length + (minRating != null ? 1 : 0);
 
   const clearPanelFilters = () => {
     setDifficulties([]);
@@ -259,6 +267,7 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
     setCourseIds([]);
     setMealTypeIds([]);
     setGoalKeys([]);
+    setMinRating(null);
   };
 
   // Active filter chips for display when panel is collapsed
@@ -304,8 +313,15 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
         remove: () => setGoalKeys((p) => p.filter((x) => x !== g)),
       });
     });
+    if (minRating != null) {
+      chips.push({
+        id: `rating-${minRating}`,
+        label: minRating === 5 ? '★ 5' : `★ ${minRating}+`,
+        remove: () => setMinRating(null),
+      });
+    }
     return chips;
-  }, [difficulties, ddSlugs, courseIds, mealTypeIds, goalKeys, lang, ddCategories, courseTypes, mealTypes]);
+  }, [difficulties, ddSlugs, courseIds, mealTypeIds, goalKeys, minRating, lang, ddCategories, courseTypes, mealTypes]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -316,6 +332,7 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
       if (courseIds.length && !courseIds.includes(r.course_type_id ?? '')) return false;
       if (mealTypeIds.length && !mealTypeIds.some((id) => r.meal_type_ids.includes(id))) return false;
       if (goalKeys.length && !goalKeys.every((g) => r.goals.includes(g))) return false;
+      if (minRating != null && (averageRatings[r.id] ?? 0) < minRating) return false;
       if (q) {
         const de = r.title?.de?.toLowerCase() ?? '';
         const en = r.title?.en?.toLowerCase() ?? '';
@@ -323,7 +340,7 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
       }
       return true;
     });
-  }, [recipes, search, difficulties, ddSlugs, courseIds, mealTypeIds, goalKeys, showFavourites, favouriteIds]);
+  }, [recipes, search, difficulties, ddSlugs, courseIds, mealTypeIds, goalKeys, minRating, showFavourites, favouriteIds, averageRatings]);
 
   return (
     <div>
@@ -439,6 +456,19 @@ export default function RecipesGrid({ recipes, lang, courseTypes, mealTypes, ddC
                   onClick={() => setDifficulties(toggle(difficulties, d))}
                 >
                   {DIFF_CFG[d].label[lang as 'de' | 'en'] ?? DIFF_CFG[d].label.en}
+                </Pill>
+              ))}
+            </FilterRow>
+
+            {/* Rating */}
+            <FilterRow label={t.rating}>
+              {([3, 4, 5] as const).map((n) => (
+                <Pill
+                  key={n}
+                  active={minRating === n}
+                  onClick={() => setMinRating(minRating === n ? null : n)}
+                >
+                  {n === 5 ? '★ 5 only' : `★ ${n}+`}
                 </Pill>
               ))}
             </FilterRow>
