@@ -236,21 +236,66 @@ function ProgressRing({ checked, total }: { checked: number; total: number }) {
 
 // ─── ItemRow ───────────────────────────────────────────────────────────────────
 
-function ItemRow({ item, lang, icon, onToggle, onDelete, removeAria }: {
+function ItemRow({ item, lang, icon, units, onToggle, onDelete, onUpdate, removeAria }: {
   item: DisplayItem;
   lang: Lang;
   icon: string | null;
+  units: MeasurementUnit[];
   onToggle: (item: DisplayItem) => void;
   onDelete: (item: DisplayItem) => void;
+  onUpdate: (item: DisplayItem, patch: Partial<ShoppingListItem>) => void;
   removeAria: string;
 }) {
+  const [editing, setEditing] = useState<'qty-unit' | 'name' | null>(null);
+  const [editQty,  setEditQty]  = useState('');
+  const [editUnit, setEditUnit] = useState('');
+  const [editName, setEditName] = useState('');
+  const editQtyRef  = useRef<HTMLInputElement>(null);
+  const editUnitRef = useRef<HTMLSelectElement>(null);
+  const editNameRef = useRef<HTMLInputElement>(null);
+  const discardRef  = useRef(false);
+
   const label  = item.is_personal && item.personal_name
     ? item.personal_name
     : getIngredientLabel(item.ingredient_name, lang);
   const amount = formatAmount(item.amount, item.unit);
 
+  const startEditQtyUnit = () => {
+    if (item.is_checked) return;
+    setEditQty(item.amount != null ? String(item.amount % 1 === 0 ? item.amount : item.amount.toFixed(1)) : '');
+    setEditUnit(item.unit ?? '');
+    setEditing('qty-unit');
+    setTimeout(() => editQtyRef.current?.focus(), 0);
+  };
+
+  const saveQtyUnit = () => {
+    if (discardRef.current) { discardRef.current = false; setEditing(null); return; }
+    setEditing(null);
+    const newAmount = editQty.trim() ? Number(editQty) : null;
+    const newUnit   = editUnit.trim() || null;
+    if (newAmount !== item.amount || newUnit !== item.unit) {
+      onUpdate(item, { amount: newAmount, unit: newUnit });
+    }
+  };
+
+  const startEditName = () => {
+    if (!item.is_personal || item.is_checked) return;
+    setEditName(item.personal_name ?? label);
+    setEditing('name');
+    setTimeout(() => { editNameRef.current?.focus(); editNameRef.current?.select(); }, 0);
+  };
+
+  const saveName = () => {
+    if (discardRef.current) { discardRef.current = false; setEditing(null); return; }
+    setEditing(null);
+    const trimmed = editName.trim();
+    if (trimmed && trimmed !== (item.personal_name ?? label)) {
+      onUpdate(item, { personal_name: trimmed });
+    }
+  };
+
   return (
-    <li className={`group grid grid-cols-[20px_1.2rem_3.5rem_1fr_auto] items-center gap-x-2 rounded-xl border border-[#0e393d]/8 bg-white px-3.5 py-2.5 hover:border-[#0e393d]/15 transition ${item.is_checked ? 'opacity-45' : ''}`}>
+    <li className={`group grid grid-cols-[20px_1.25rem_4rem_1fr_auto] items-center gap-x-2 rounded-xl border border-[#0e393d]/8 bg-white px-3.5 py-2.5 hover:border-[#0e393d]/15 transition ${item.is_checked ? 'opacity-45' : ''}`}>
       {/* Col 1: Checkbox */}
       <button
         type="button"
@@ -267,21 +312,81 @@ function ItemRow({ item, lang, icon, onToggle, onDelete, removeAria }: {
         )}
       </button>
 
-      {/* Col 2: DD emoji (always present, empty if none) */}
+      {/* Col 2: DD emoji */}
       <span className="text-base leading-none text-center">{icon ?? ''}</span>
 
-      {/* Col 3: Qty + unit (right-aligned, empty if none) */}
-      <span className="text-sm font-medium text-[#0e393d] text-right leading-snug">{amount}</span>
-
-      {/* Col 4: Name + notes */}
-      <div className="min-w-0">
-        <span className={`text-sm text-[#1c2a2b] leading-snug ${item.is_checked ? 'line-through' : ''}`}>
-          {label}
+      {/* Col 3: Qty+unit display OR qty input when editing */}
+      {editing === 'qty-unit' ? (
+        <input
+          ref={editQtyRef}
+          type="number"
+          value={editQty}
+          onChange={(e) => setEditQty(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter')  { e.preventDefault(); editUnitRef.current?.focus(); }
+            if (e.key === 'Escape') { discardRef.current = true; setEditing(null); }
+          }}
+          onBlur={(e) => { if (e.relatedTarget !== editUnitRef.current) saveQtyUnit(); }}
+          min={0} step={0.1}
+          className="w-full rounded-md border border-[#0e393d]/25 bg-white px-1.5 py-1 text-xs text-center text-[#1c2a2b] focus:border-[#0e393d]/50 focus:outline-none focus:ring-1 focus:ring-[#0e393d]/15 transition"
+        />
+      ) : (
+        <span
+          onClick={startEditQtyUnit}
+          title={!item.is_checked ? 'Edit qty / unit' : undefined}
+          className={`text-sm font-medium text-[#0e393d] text-right leading-snug select-none ${!item.is_checked ? 'cursor-text hover:bg-[#0e393d]/5 rounded px-0.5' : ''}`}
+        >
+          {amount}
         </span>
-        {item.notes && (
-          <span className="ml-1 text-xs text-[#1c2a2b]/40">{item.notes}</span>
-        )}
-      </div>
+      )}
+
+      {/* Col 4: unit select (qty-unit edit) | name input (name edit) | name+notes display */}
+      {editing === 'qty-unit' ? (
+        <select
+          ref={editUnitRef}
+          value={editUnit}
+          onChange={(e) => setEditUnit(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter')  { e.preventDefault(); saveQtyUnit(); }
+            if (e.key === 'Escape') { discardRef.current = true; setEditing(null); }
+          }}
+          onBlur={(e) => { if (e.relatedTarget !== editQtyRef.current) saveQtyUnit(); }}
+          className="w-full rounded-md border border-[#0e393d]/25 bg-white px-1 py-1 text-xs text-[#1c2a2b] focus:border-[#0e393d]/50 focus:outline-none focus:ring-1 focus:ring-[#0e393d]/15 transition"
+        >
+          <option value="">—</option>
+          {units.map((u) => (
+            <option key={u.id} value={u.code}>
+              {(u.abbreviation as Record<string, string>)[lang] ?? u.code}
+            </option>
+          ))}
+        </select>
+      ) : editing === 'name' ? (
+        <input
+          ref={editNameRef}
+          type="text"
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter')  { e.preventDefault(); saveName(); }
+            if (e.key === 'Escape') { discardRef.current = true; setEditing(null); }
+          }}
+          onBlur={saveName}
+          className="min-w-0 w-full rounded-md border border-[#0e393d]/25 bg-white px-2 py-1 text-sm text-[#1c2a2b] focus:border-[#0e393d]/50 focus:outline-none focus:ring-1 focus:ring-[#0e393d]/15 transition"
+        />
+      ) : (
+        <div
+          className="min-w-0"
+          onClick={startEditName}
+          title={item.is_personal && !item.is_checked ? 'Edit name' : undefined}
+        >
+          <span className={`text-sm text-[#1c2a2b] leading-snug ${item.is_checked ? 'line-through' : ''} ${item.is_personal && !item.is_checked ? 'cursor-text' : ''}`}>
+            {label}
+          </span>
+          {item.notes && (
+            <span className="ml-1 text-xs text-[#1c2a2b]/40">{item.notes}</span>
+          )}
+        </div>
+      )}
 
       {/* Col 5: Delete */}
       <button
@@ -326,10 +431,12 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
   const [selectedIng,     setSelectedIng]     = useState<IngredientSuggestion | null>(null);
   const [newQty,          setNewQty]          = useState('');
   const [newUnit,         setNewUnit]         = useState('');
-  const [adding,          setAdding]          = useState(false);
+  const [adding,           setAdding]           = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const inputRef          = useRef<HTMLInputElement>(null);
   const qtyInputRef       = useRef<HTMLInputElement>(null);
+  const unitSelectRef     = useRef<HTMLSelectElement>(null);
 
   // ── Fetch ingredient→category maps on mount ───────────────────────────────────
 
@@ -446,7 +553,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
         .select('id, name, daily_dozen_categories(slug, icon), default_unit_id')
         .filter(`name->>${lang}`, 'ilike', `%${query}%`)
         .limit(8);
-      if (!cancelled) { setSuggestions((data as IngredientSuggestion[] | null) ?? []); setShowDropdown(true); }
+      if (!cancelled) { setSuggestions((data as IngredientSuggestion[] | null) ?? []); setShowDropdown(true); setHighlightedIndex(-1); }
     })();
     return () => { cancelled = true; };
   }, [query, lang, selectedIng]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -556,6 +663,13 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     await supabase.from('shopping_list_items').delete().in('id', item.sourceIds);
   };
 
+  const handleUpdate = useCallback(async (item: DisplayItem, patch: Partial<ShoppingListItem>) => {
+    setItems((prev) => prev.map((i) => item.sourceIds.includes(i.id) ? { ...i, ...patch } : i));
+    await Promise.all(
+      item.sourceIds.map((id) => supabase.from('shopping_list_items').update(patch).eq('id', id))
+    );
+  }, [supabase]);
+
   const handleClearChecked = async () => {
     const ids = items.filter((i) => i.is_checked).map((i) => i.id);
     if (!ids.length) return;
@@ -564,10 +678,35 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Escape') { setShowDropdown(false); if (selectedIng) { setSelectedIng(null); setQuery(''); } return; }
+    if (e.key === 'Escape') {
+      setShowDropdown(false);
+      setHighlightedIndex(-1);
+      if (selectedIng) { setSelectedIng(null); setQuery(''); }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      if (showDropdown && suggestions.length > 0) {
+        e.preventDefault();
+        setHighlightedIndex((i) => Math.min(i + 1, suggestions.length - 1));
+      }
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      if (showDropdown && suggestions.length > 0) {
+        e.preventDefault();
+        setHighlightedIndex((i) => Math.max(i - 1, -1));
+      }
+      return;
+    }
     if (e.key === 'Enter') {
-      if (selectedIng) handleAddIngredient();
-      else if (!showDropdown && query.trim()) handleAddPersonal(query);
+      if (showDropdown && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
+        handleSelectIngredient(suggestions[highlightedIndex]);
+        setHighlightedIndex(-1);
+      } else if (selectedIng) {
+        handleAddIngredient();
+      } else if (!showDropdown && query.trim()) {
+        handleAddPersonal(query);
+      }
     }
   };
 
@@ -672,14 +811,17 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
         />
         {showDropdown && suggestions.length > 0 && (
           <ul className="absolute z-20 left-0 right-0 top-full mt-1 bg-white rounded-xl border border-[#0e393d]/12 shadow-lg overflow-hidden">
-            {suggestions.map((ing) => {
+            {suggestions.map((ing, idx) => {
               const label = localized(ing.name, lang) || '—';
               const cat   = ing.daily_dozen_categories;
               return (
                 <li key={ing.id}>
                   <button type="button"
-                    onMouseDown={(e) => { e.preventDefault(); handleSelectIngredient(ing); }}
-                    className="w-full text-left px-4 py-2.5 text-sm text-[#1c2a2b] hover:bg-[#0e393d]/5 transition flex items-center gap-2">
+                    onMouseDown={(e) => { e.preventDefault(); handleSelectIngredient(ing); setHighlightedIndex(-1); }}
+                    onMouseEnter={() => setHighlightedIndex(idx)}
+                    className={`w-full text-left px-4 py-2.5 text-sm text-[#1c2a2b] transition flex items-center gap-2 ${
+                      highlightedIndex === idx ? 'bg-[#0e393d]/8' : 'hover:bg-[#0e393d]/5'
+                    }`}>
                     {cat?.icon && <span className="text-base leading-none">{cat.icon}</span>}
                     <span>{highlightMatch(label, query)}</span>
                   </button>
@@ -698,10 +840,11 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
       {selectedIng && (
         <div className="flex gap-2 mt-2 mb-4">
           <input ref={qtyInputRef} type="number" value={newQty} onChange={(e) => setNewQty(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleAddIngredient(); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); unitSelectRef.current?.focus(); } }}
             placeholder={t.qty} min={0} step={0.1}
             className="w-20 rounded-xl border border-[#0e393d]/15 bg-white px-3 py-2.5 text-sm text-center text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition" />
-          <select value={newUnit} onChange={(e) => setNewUnit(e.target.value)}
+          <select ref={unitSelectRef} value={newUnit} onChange={(e) => setNewUnit(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddIngredient(); } }}
             className="w-28 rounded-xl border border-[#0e393d]/15 bg-white px-2 py-2.5 text-sm text-[#1c2a2b] focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition">
             <option value="">—</option>
             {units.map((u) => (
@@ -732,8 +875,8 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
       {sortedItems.length > 0 && (
         <ul className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-1.5">
           {sortedItems.map((item) => (
-            <ItemRow key={item.id} item={item} lang={lang} icon={item._icon}
-              onToggle={handleToggle} onDelete={handleDelete} removeAria={t.removeAria} />
+            <ItemRow key={item.id} item={item} lang={lang} icon={item._icon} units={units}
+              onToggle={handleToggle} onDelete={handleDelete} onUpdate={handleUpdate} removeAria={t.removeAria} />
           ))}
         </ul>
       )}
