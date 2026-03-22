@@ -678,14 +678,14 @@ function MarkdownToolbar({ taRef, value, onChange }: {
   ];
 
   return (
-    <div className="flex flex-wrap gap-1 mb-1.5">
+    <div className="flex flex-wrap gap-1 px-2 py-1.5 border-b border-[#0e393d]/8 bg-[#fafaf8]">
       {btns.map((b) => (
         <button
           key={b.label}
           type="button"
           title={b.title}
           onMouseDown={(e) => { e.preventDefault(); b.fn(); }}
-          className="rounded px-1.5 py-0.5 text-[11px] font-medium text-[#1c2a2b]/60 bg-[#0e393d]/5 hover:bg-[#0e393d]/12 hover:text-[#0e393d] transition select-none"
+          className="rounded px-1.5 py-0.5 text-[11px] font-medium text-[#1c2a2b]/60 hover:bg-[#0e393d]/8 hover:text-[#0e393d] transition select-none"
         >
           {b.label}
         </button>
@@ -2097,19 +2097,21 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                   </Field>
 
                   <Field label={`Instructions (${lang.toUpperCase()})`} hint="Markdown supported">
-                    <MarkdownToolbar
-                      taRef={instructionRef}
-                      value={form.instructions[lang]}
-                      onChange={(v) => setLangField('instructions', lang, v)}
-                    />
-                    <textarea
-                      ref={instructionRef}
-                      className={inputCls + ' resize-y'}
-                      rows={6}
-                      value={form.instructions[lang]}
-                      onChange={(e) => setLangField('instructions', lang, e.target.value)}
-                      placeholder={LANG_PLACEHOLDERS[lang].instructions}
-                    />
+                    <div className="rounded-lg border border-[#0e393d]/15 overflow-hidden focus-within:border-[#0e393d]/40 focus-within:ring-2 focus-within:ring-[#0e393d]/10 transition">
+                      <MarkdownToolbar
+                        taRef={instructionRef}
+                        value={form.instructions[lang]}
+                        onChange={(v) => setLangField('instructions', lang, v)}
+                      />
+                      <textarea
+                        ref={instructionRef}
+                        className="w-full bg-white px-3 py-2 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:outline-none resize-y"
+                        rows={6}
+                        value={form.instructions[lang]}
+                        onChange={(e) => setLangField('instructions', lang, e.target.value)}
+                        placeholder={LANG_PLACEHOLDERS[lang].instructions}
+                      />
+                    </div>
                     {lang === 'en' && (
                       <div className="flex justify-end mt-1.5">
                         <button
