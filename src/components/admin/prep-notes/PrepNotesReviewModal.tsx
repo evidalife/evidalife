@@ -7,9 +7,11 @@ import type { PrepNote } from './PrepNotesManager';
 
 export type PrepNoteReviewSuggestion = {
   id: string;
+  name_de?: string;
   name_fr?: string;
   name_es?: string;
   name_it?: string;
+  slug?: string;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -26,6 +28,7 @@ interface Props {
 }
 
 const LANG_COLS = [
+  { key: 'name_de' as const, label: 'DE' },
   { key: 'name_fr' as const, label: 'FR' },
   { key: 'name_es' as const, label: 'ES' },
   { key: 'name_it' as const, label: 'IT' },
@@ -45,10 +48,11 @@ export default function PrepNotesReviewModal({
 
   const getNote = (id: string) => notes.find((n) => n.id === id);
 
-  const getVal = (s: PrepNoteReviewSuggestion, field: 'name_fr' | 'name_es' | 'name_it'): string => {
-    const userEdit = edits[s.id]?.[field];
+  const getVal = (s: PrepNoteReviewSuggestion, field: keyof PrepNoteReviewSuggestion): string => {
+    if (field === 'id') return s.id;
+    const userEdit = edits[s.id]?.[field as string];
     if (userEdit !== undefined) return userEdit;
-    return s[field] ?? '';
+    return (s[field] as string | undefined) ?? '';
   };
 
   const setEdit = (id: string, field: string, value: string) => {
@@ -73,9 +77,11 @@ export default function PrepNotesReviewModal({
     const e = edits[s.id] ?? {};
     return {
       id: s.id,
+      name_de: (e.name_de ?? s.name_de) || undefined,
       name_fr: (e.name_fr ?? s.name_fr) || undefined,
       name_es: (e.name_es ?? s.name_es) || undefined,
       name_it: (e.name_it ?? s.name_it) || undefined,
+      slug: (e.slug ?? s.slug) || undefined,
     };
   };
 
@@ -145,10 +151,11 @@ export default function PrepNotesReviewModal({
                     <th className="w-8 px-4 py-2.5" />
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Prep Note</th>
                     {LANG_COLS.map((col) => (
-                      <th key={col.key} className="px-3 py-2.5 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider w-40">
+                      <th key={col.key} className="px-3 py-2.5 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider w-36">
                         {col.label}
                       </th>
                     ))}
+                    <th className="px-3 py-2.5 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider w-32">Slug</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#0e393d]/6">
@@ -186,6 +193,18 @@ export default function PrepNotesReviewModal({
                             )}
                           </td>
                         ))}
+                        <td className="px-3 py-2">
+                          {'slug' in s ? (
+                            <input
+                              value={getVal(s, 'slug')}
+                              onChange={(e) => setEdit(s.id, 'slug', e.target.value)}
+                              placeholder="e.g. finely-chopped"
+                              className="w-full rounded border border-[#0e393d]/15 bg-white px-2 py-1 text-[11px] text-[#1c2a2b] font-mono focus:outline-none focus:ring-1 focus:ring-[#0e393d]/30 transition"
+                            />
+                          ) : (
+                            <span className="text-xs text-[#1c2a2b]/25">—</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}

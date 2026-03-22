@@ -55,27 +55,38 @@ function FormRow({
 }) {
   const [aiStatus, setAiStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
 
+  const hasAnyName = !!(form.name_en.trim() || form.name_de.trim() || form.name_fr.trim() || form.name_es.trim() || form.name_it.trim());
+
   const handleAI = async () => {
-    if (!form.name_en.trim()) return;
+    if (!hasAnyName) return;
     setAiStatus('running');
     try {
-      const res = await fetch('/api/admin/translate-prep-note', {
+      const payload: Record<string, string> = {};
+      if (form.name_en.trim()) payload.name_en = form.name_en;
+      if (form.name_de.trim()) payload.name_de = form.name_de;
+      if (form.name_fr.trim()) payload.name_fr = form.name_fr;
+      if (form.name_es.trim()) payload.name_es = form.name_es;
+      if (form.name_it.trim()) payload.name_it = form.name_it;
+      const res = await fetch('/api/admin/autocomplete-prep-note', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name_en: form.name_en }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       onChange({
         ...form,
+        name_en: form.name_en || data.name_en || '',
         name_de: form.name_de || data.name_de || '',
         name_fr: form.name_fr || data.name_fr || '',
         name_es: form.name_es || data.name_es || '',
         name_it: form.name_it || data.name_it || '',
+        slug: form.slug || data.slug || '',
+        is_common: form.is_common !== undefined ? form.is_common : (data.is_common ?? true),
       });
       setAiStatus('done');
     } catch (e) {
-      console.error('Translate prep note error:', e);
+      console.error('Autocomplete prep note error:', e);
       setAiStatus('error');
     }
   };
@@ -110,16 +121,16 @@ function FormRow({
             <button
               type="button"
               onClick={() => { if (aiStatus !== 'running') handleAI(); }}
-              disabled={aiStatus === 'running' || !form.name_en.trim()}
+              disabled={aiStatus === 'running' || !hasAnyName}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded bg-violet-50 text-violet-700 text-[11px] font-medium hover:bg-violet-100 disabled:opacity-40 disabled:cursor-not-allowed transition whitespace-nowrap"
-              title="Translate EN name to DE/FR/ES/IT"
+              title="Autocomplete all name fields from any provided input"
             >
               {aiStatus === 'running' ? (
                 <>
                   <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>
-                  Translating…
+                  Running…
                 </>
-              ) : aiStatus === 'done' ? <>✓ Done</> : aiStatus === 'error' ? <>⚠ Retry</> : <>✦ AI Translate</>}
+              ) : aiStatus === 'done' ? <>✓ Done</> : aiStatus === 'error' ? <>⚠ Retry</> : <>✦ AI Autocomplete</>}
             </button>
           </div>
 
@@ -325,7 +336,7 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
   const handleReviewScan = async () => {
     setReviewScanStatus('scanning');
 
-    const toReview = notes.filter((n) => !n.name.fr || !n.name.es || !n.name.it);
+    const toReview = notes.filter((n) => !n.name.de || !n.name.fr || !n.name.es || !n.name.it || !n.slug);
 
     if (toReview.length === 0) {
       setReviewSuggestions([]);
@@ -346,6 +357,8 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
           body: JSON.stringify({
             notes: batch.map((n) => ({
               id: n.id,
+              slug: n.slug ?? '',
+              is_common: n.is_common,
               name_en: n.name.en ?? '',
               name_de: n.name.de ?? '',
               name_fr: n.name.fr ?? '',
@@ -378,12 +391,16 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
 
       const updatedName = {
         ...note.name,
+        ...(s.name_de ? { de: s.name_de } : {}),
         ...(s.name_fr ? { fr: s.name_fr } : {}),
         ...(s.name_es ? { es: s.name_es } : {}),
         ...(s.name_it ? { it: s.name_it } : {}),
       };
 
-      await supabase.from('preparation_notes').update({ name: updatedName }).eq('id', s.id);
+      const updatePayload: Record<string, unknown> = { name: updatedName };
+      if (s.slug) updatePayload.slug = s.slug;
+
+      await supabase.from('preparation_notes').update(updatePayload).eq('id', s.id);
       onProgress(i + 1, accepted.length);
     }
 
