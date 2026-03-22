@@ -20,6 +20,8 @@ export type ShoppingListItem = {
   is_checked: boolean;
   is_personal?: boolean;
   personal_name?: string | null;
+  ingredient_id?: string | null;
+  daily_dozen_category_slug?: string | null;
   sort_order: number;
   created_at: string;
   recipe_title?: Record<string, string> | null;
@@ -33,7 +35,30 @@ export type ShoppingList = {
   created_at: string;
 };
 
-type IngredientSuggestion = { id: string; name: Record<string, string> };
+type IngredientSuggestion = {
+  id: string;
+  name: Record<string, string>;
+  daily_dozen_categories: { slug: string; icon: string } | null;
+};
+
+// ─── Daily Dozen categories ────────────────────────────────────────────────────
+
+const DD_CATEGORIES = [
+  { slug: 'beans',        icon: '🫘', label: { en: 'Beans',                  de: 'Hülsenfrüchte',     fr: 'Légumineuses',        es: 'Legumbres',           it: 'Legumi'            } },
+  { slug: 'berries',      icon: '🫐', label: { en: 'Berries',                de: 'Beeren',            fr: 'Baies',               es: 'Bayas',               it: 'Bacche'            } },
+  { slug: 'fruits',       icon: '🍎', label: { en: 'Other Fruits',           de: 'Sonstige Früchte',  fr: 'Autres fruits',       es: 'Otras frutas',        it: 'Altri frutti'      } },
+  { slug: 'cruciferous',  icon: '🥦', label: { en: 'Cruciferous Vegetables', de: 'Kreuzblütler',      fr: 'Légumes crucifères',  es: 'Verduras crucíferas', it: 'Verdure crocifere' } },
+  { slug: 'greens',       icon: '🥬', label: { en: 'Greens',                 de: 'Blattgemüse',       fr: 'Légumes verts',       es: 'Verduras de hoja',    it: 'Verdure a foglia'  } },
+  { slug: 'vegetables',   icon: '🥕', label: { en: 'Other Vegetables',       de: 'Sonstiges Gemüse',  fr: 'Autres légumes',      es: 'Otras verduras',      it: 'Altre verdure'     } },
+  { slug: 'flaxseeds',    icon: '🌰', label: { en: 'Flaxseeds',              de: 'Leinsamen',         fr: 'Graines de lin',      es: 'Semillas de lino',    it: 'Semi di lino'      } },
+  { slug: 'nuts',         icon: '🥜', label: { en: 'Nuts & Seeds',           de: 'Nüsse & Samen',     fr: 'Noix & graines',      es: 'Nueces y semillas',   it: 'Noci e semi'       } },
+  { slug: 'herbs_spices', icon: '🌿', label: { en: 'Herbs & Spices',         de: 'Kräuter & Gewürze', fr: 'Herbes & épices',     es: 'Hierbas y especias',  it: 'Erbe e spezie'     } },
+  { slug: 'whole_grains', icon: '🌾', label: { en: 'Whole Grains',           de: 'Vollkornprodukte',  fr: 'Céréales complètes',  es: 'Granos integrales',   it: 'Cereali integrali' } },
+  { slug: 'beverages',    icon: '💧', label: { en: 'Beverages',              de: 'Getränke',          fr: 'Boissons',            es: 'Bebidas',             it: 'Bevande'           } },
+] as const;
+
+const DD_ORDER = DD_CATEGORIES.map((c) => c.slug);
+const DD_MAP = new Map<string, (typeof DD_CATEGORIES)[number]>(DD_CATEGORIES.map((c) => [c.slug, c]));
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -63,14 +88,28 @@ function highlightMatch(text: string, query: string) {
   );
 }
 
+function groupByCategory(items: ShoppingListItem[]): { slug: string; items: ShoppingListItem[] }[] {
+  const groups: Record<string, ShoppingListItem[]> = {};
+  for (const item of items) {
+    const cat = item.daily_dozen_category_slug || 'other';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(item);
+  }
+  const ordered: { slug: string; items: ShoppingListItem[] }[] = DD_ORDER
+    .filter((slug) => groups[slug])
+    .map((slug) => ({ slug: slug as string, items: groups[slug] }));
+  if (groups['other']) ordered.push({ slug: 'other', items: groups['other'] });
+  return ordered;
+}
+
 // ─── Translations ──────────────────────────────────────────────────────────────
 
 const T = {
   de: {
     eyebrow: 'Meine Liste',
     heading: 'Einkaufsliste',
-    addIngredient: 'Zutat suchen…',
-    quickAdd: 'Persönlichen Artikel hinzufügen…',
+    addItem: 'Artikel hinzufügen…',
+    enterHint: 'Enter drücken, um als persönlichen Artikel hinzuzufügen',
     fromRecipes: 'Aus Rezepten',
     personal: 'Persönliche Artikel',
     allFilter: 'Alle',
@@ -80,17 +119,17 @@ const T = {
     noItemsHint: 'Füge Zutaten hinzu oder starte von einem Rezept.',
     loginPrompt: 'Bitte melde dich an, um deine Einkaufsliste zu sehen.',
     loginBtn: 'Anmelden',
-    loading: 'Lade Liste…',
     removeAria: 'Entfernen',
     qty: 'Menge',
     unitLabel: 'Einheit',
     add: 'Hinzufügen',
+    other: 'Sonstiges',
   },
   en: {
     eyebrow: 'My List',
     heading: 'Shopping List',
-    addIngredient: 'Search ingredient…',
-    quickAdd: 'Add a personal item…',
+    addItem: 'Add an item…',
+    enterHint: 'Press Enter to add as a personal item',
     fromRecipes: 'From recipes',
     personal: 'Personal items',
     allFilter: 'All',
@@ -100,17 +139,17 @@ const T = {
     noItemsHint: 'Add ingredients or start from a recipe.',
     loginPrompt: 'Please sign in to view your shopping list.',
     loginBtn: 'Sign in',
-    loading: 'Loading list…',
     removeAria: 'Remove',
     qty: 'Qty',
     unitLabel: 'Unit',
     add: 'Add',
+    other: 'Other',
   },
   fr: {
     eyebrow: 'Ma liste',
     heading: 'Liste de courses',
-    addIngredient: 'Rechercher un ingrédient…',
-    quickAdd: 'Ajouter un article personnel…',
+    addItem: 'Ajouter un article…',
+    enterHint: 'Appuyez sur Entrée pour ajouter comme article personnel',
     fromRecipes: 'Issus de recettes',
     personal: 'Articles personnels',
     allFilter: 'Tous',
@@ -120,17 +159,17 @@ const T = {
     noItemsHint: 'Ajoutez des ingrédients ou commencez par une recette.',
     loginPrompt: 'Connectez-vous pour voir votre liste de courses.',
     loginBtn: 'Se connecter',
-    loading: 'Chargement…',
     removeAria: 'Supprimer',
     qty: 'Qté',
     unitLabel: 'Unité',
     add: 'Ajouter',
+    other: 'Autres',
   },
   es: {
     eyebrow: 'Mi lista',
     heading: 'Lista de compras',
-    addIngredient: 'Buscar ingrediente…',
-    quickAdd: 'Agregar artículo personal…',
+    addItem: 'Agregar un artículo…',
+    enterHint: 'Pulsa Intro para añadir como artículo personal',
     fromRecipes: 'De recetas',
     personal: 'Artículos personales',
     allFilter: 'Todos',
@@ -140,17 +179,17 @@ const T = {
     noItemsHint: 'Agrega ingredientes o empieza desde una receta.',
     loginPrompt: 'Por favor inicia sesión para ver tu lista de compras.',
     loginBtn: 'Iniciar sesión',
-    loading: 'Cargando…',
     removeAria: 'Eliminar',
     qty: 'Cant.',
     unitLabel: 'Unidad',
     add: 'Agregar',
+    other: 'Otros',
   },
   it: {
     eyebrow: 'La mia lista',
     heading: 'Lista della spesa',
-    addIngredient: 'Cerca ingrediente…',
-    quickAdd: 'Aggiungi articolo personale…',
+    addItem: 'Aggiungi un articolo…',
+    enterHint: 'Premi Invio per aggiungere come articolo personale',
     fromRecipes: 'Dalle ricette',
     personal: 'Articoli personali',
     allFilter: 'Tutti',
@@ -160,11 +199,11 @@ const T = {
     noItemsHint: 'Aggiungi ingredienti o inizia da una ricetta.',
     loginPrompt: 'Accedi per vedere la tua lista della spesa.',
     loginBtn: 'Accedi',
-    loading: 'Caricamento…',
     removeAria: 'Rimuovi',
     qty: 'Qtà',
     unitLabel: 'Unità',
     add: 'Aggiungi',
+    other: 'Altro',
   },
 };
 
@@ -217,7 +256,6 @@ function ItemRow({
 
   return (
     <li className={`group flex items-center gap-3 rounded-xl border border-[#0e393d]/8 bg-white px-4 py-3 hover:border-[#0e393d]/15 transition ${item.is_checked ? 'opacity-45' : ''}`}>
-      {/* Checkbox */}
       <button
         type="button"
         onClick={() => onToggle(item)}
@@ -235,7 +273,6 @@ function ItemRow({
         )}
       </button>
 
-      {/* Label */}
       <div className="flex-1 min-w-0">
         <span className={`text-sm text-[#1c2a2b] ${item.is_checked ? 'line-through' : ''}`}>
           {label}
@@ -253,7 +290,6 @@ function ItemRow({
         )}
       </div>
 
-      {/* Delete */}
       <button
         type="button"
         onClick={() => onDelete(item.id)}
@@ -287,21 +323,16 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
   // Recipe filter
   const [activeRecipe, setActiveRecipe] = useState<string | null>(null);
 
-  // Ingredient autocomplete
-  const [ingQuery, setIngQuery] = useState('');
-  const [ingResults, setIngResults] = useState<IngredientSuggestion[]>([]);
-  const [ingOpen, setIngOpen] = useState(false);
+  // Unified input state
+  const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<IngredientSuggestion[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIng, setSelectedIng] = useState<IngredientSuggestion | null>(null);
   const [newQty, setNewQty] = useState('');
   const [newUnit, setNewUnit] = useState('');
-  const [addingIng, setAddingIng] = useState(false);
-  const ingContainerRef = useRef<HTMLDivElement>(null);
-  const ingInputRef = useRef<HTMLInputElement>(null);
-
-  // Personal quick-add
-  const [personalText, setPersonalText] = useState('');
-  const [addingPersonal, setAddingPersonal] = useState(false);
-  const personalInputRef = useRef<HTMLInputElement>(null);
+  const [adding, setAdding] = useState(false);
+  const inputContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Derived
   const recipeItems = items.filter((i) => !i.is_personal);
@@ -320,36 +351,44 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     ).values()
   );
 
-  // ── Close autocomplete on outside click ──────────────────────────────────────
+  const grouped = groupByCategory(filteredRecipeItems);
+  const personalUnchecked = activeRecipe ? [] : personalItems.filter((i) => !i.is_checked);
+  const personalChecked   = activeRecipe ? [] : personalItems.filter((i) => i.is_checked);
+
+  // ── Close dropdown on outside click ──────────────────────────────────────────
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ingContainerRef.current && !ingContainerRef.current.contains(e.target as Node)) {
-        setIngOpen(false);
+      if (inputContainerRef.current && !inputContainerRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // ── Ingredient search ──────────────────────────────────────────────────────────
+  // ── Ingredient autocomplete ────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (ingQuery.length < 2) { setIngResults([]); setIngOpen(false); return; }
+    if (selectedIng || query.length < 2) {
+      setSuggestions([]);
+      setShowDropdown(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       const { data } = await supabase
         .from('ingredients')
-        .select('id, name')
-        .filter(`name->>${lang}`, 'ilike', `%${ingQuery}%`)
+        .select('id, name, daily_dozen_categories(slug, icon)')
+        .filter(`name->>${lang}`, 'ilike', `%${query}%`)
         .limit(8);
       if (!cancelled) {
-        setIngResults((data as IngredientSuggestion[] | null) ?? []);
-        setIngOpen(true);
+        setSuggestions((data as IngredientSuggestion[] | null) ?? []);
+        setShowDropdown(true);
       }
     })();
     return () => { cancelled = true; };
-  }, [ingQuery, lang]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [query, lang, selectedIng]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Realtime subscription ──────────────────────────────────────────────────────
 
@@ -401,22 +440,25 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
 
   const handleSelectIngredient = (ing: IngredientSuggestion) => {
     setSelectedIng(ing);
-    setIngQuery(localized(ing.name, lang) || '');
-    setIngOpen(false);
-    setIngResults([]);
+    setQuery(localized(ing.name, lang) || '');
+    setShowDropdown(false);
+    setSuggestions([]);
   };
 
   const handleAddIngredient = async () => {
     if (!selectedIng) return;
-    setAddingIng(true);
+    setAdding(true);
     const activeList = await ensureList();
-    if (!activeList) { setAddingIng(false); return; }
+    if (!activeList) { setAdding(false); return; }
     const maxOrder = items.length > 0 ? Math.max(...items.map((i) => i.sort_order)) + 1 : 0;
+    const catSlug = (selectedIng.daily_dozen_categories as { slug: string } | null)?.slug ?? null;
     const { data } = await supabase
       .from('shopping_list_items')
       .insert({
         list_id: activeList.id,
         ingredient_name: selectedIng.name,
+        ingredient_id: selectedIng.id,
+        daily_dozen_category_slug: catSlug,
         amount: newQty ? Number(newQty) : null,
         unit: newUnit.trim() || null,
         sort_order: maxOrder,
@@ -427,27 +469,26 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     if (data) {
       setItems((prev) => [...prev, { ...data, recipe_title: null }]);
       setSelectedIng(null);
-      setIngQuery('');
+      setQuery('');
       setNewQty('');
       setNewUnit('');
-      ingInputRef.current?.focus();
+      inputRef.current?.focus();
     }
-    setAddingIng(false);
+    setAdding(false);
   };
 
-  const handleAddPersonal = async () => {
-    const text = personalText.trim();
-    if (!text) { personalInputRef.current?.focus(); return; }
-    setAddingPersonal(true);
+  const handleAddPersonal = async (text: string) => {
+    if (!text.trim()) return;
+    setAdding(true);
     const activeList = await ensureList();
-    if (!activeList) { setAddingPersonal(false); return; }
+    if (!activeList) { setAdding(false); return; }
     const maxOrder = items.length > 0 ? Math.max(...items.map((i) => i.sort_order)) + 1 : 0;
     const { data } = await supabase
       .from('shopping_list_items')
       .insert({
         list_id: activeList.id,
         ingredient_name: {},
-        personal_name: text,
+        personal_name: text.trim(),
         is_personal: true,
         amount: null,
         unit: null,
@@ -457,10 +498,10 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
       .single();
     if (data) {
       setItems((prev) => [...prev, { ...data, recipe_title: null }]);
-      setPersonalText('');
-      personalInputRef.current?.focus();
+      setQuery('');
+      inputRef.current?.focus();
     }
-    setAddingPersonal(false);
+    setAdding(false);
   };
 
   const handleToggle = async (item: ShoppingListItem) => {
@@ -479,6 +520,21 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     if (!ids.length) return;
     setItems((prev) => prev.filter((i) => !i.is_checked));
     await supabase.from('shopping_list_items').delete().in('id', ids);
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setShowDropdown(false);
+      if (selectedIng) { setSelectedIng(null); setQuery(''); }
+      return;
+    }
+    if (e.key === 'Enter') {
+      if (selectedIng) {
+        handleAddIngredient();
+      } else if (!showDropdown && query.trim()) {
+        handleAddPersonal(query);
+      }
+    }
   };
 
   // ── Not logged in ──────────────────────────────────────────────────────────────
@@ -503,17 +559,12 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     );
   }
 
-  // ── Section splits ─────────────────────────────────────────────────────────────
-
-  const recipeUnchecked = filteredRecipeItems.filter((i) => !i.is_checked);
-  const recipeChecked   = filteredRecipeItems.filter((i) => i.is_checked);
-  const personalUnchecked = activeRecipe ? [] : personalItems.filter((i) => !i.is_checked);
-  const personalChecked   = activeRecipe ? [] : personalItems.filter((i) => i.is_checked);
-
   // ── Main UI ────────────────────────────────────────────────────────────────────
 
+  const showEnterHint = query.trim().length >= 2 && !selectedIng && !showDropdown;
+
   return (
-    <div className="flex-1 flex flex-col w-full max-w-2xl mx-auto px-4 sm:px-6 pt-28 pb-0">
+    <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto px-4 sm:px-6 pt-28 pb-0">
 
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
@@ -521,12 +572,10 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-1">{t.eyebrow}</p>
           <h1 className="font-serif text-3xl text-[#0e393d]">{t.heading}</h1>
         </div>
-        {totalItems > 0 && (
-          <ProgressRing checked={totalChecked} total={totalItems} />
-        )}
+        {totalItems > 0 && <ProgressRing checked={totalChecked} total={totalItems} />}
       </div>
 
-      {/* Recipe filter cards */}
+      {/* Recipe filter pills */}
       {uniqueRecipes.length > 0 && (
         <div className="flex gap-2 mb-5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
           <button
@@ -555,35 +604,37 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
         </div>
       )}
 
-      {/* Ingredient search with autocomplete */}
-      <div ref={ingContainerRef} className="relative mb-3">
+      {/* Unified input */}
+      <div ref={inputContainerRef} className="relative mb-1">
         <input
-          ref={ingInputRef}
+          ref={inputRef}
           type="text"
-          value={ingQuery}
+          value={query}
           onChange={(e) => {
-            setIngQuery(e.target.value);
-            if (!e.target.value) setSelectedIng(null);
+            setQuery(e.target.value);
+            if (selectedIng && e.target.value !== (localized(selectedIng.name, lang) || '')) {
+              setSelectedIng(null);
+            }
           }}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') setIngOpen(false);
-            if (e.key === 'Enter' && selectedIng) handleAddIngredient();
-          }}
-          placeholder={t.addIngredient}
+          onKeyDown={handleInputKeyDown}
+          placeholder={t.addItem}
           className="w-full rounded-xl border border-[#0e393d]/15 bg-white px-4 py-2.5 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
         />
-        {ingOpen && ingResults.length > 0 && (
+        {/* Autocomplete dropdown */}
+        {showDropdown && suggestions.length > 0 && (
           <ul className="absolute z-20 left-0 right-0 top-full mt-1 bg-white rounded-xl border border-[#0e393d]/12 shadow-lg overflow-hidden">
-            {ingResults.map((ing) => {
+            {suggestions.map((ing) => {
               const label = localized(ing.name, lang) || '—';
+              const cat = ing.daily_dozen_categories;
               return (
                 <li key={ing.id}>
                   <button
                     type="button"
                     onMouseDown={(e) => { e.preventDefault(); handleSelectIngredient(ing); }}
-                    className="w-full text-left px-4 py-2.5 text-sm text-[#1c2a2b] hover:bg-[#0e393d]/5 transition"
+                    className="w-full text-left px-4 py-2.5 text-sm text-[#1c2a2b] hover:bg-[#0e393d]/5 transition flex items-center gap-2"
                   >
-                    {highlightMatch(label, ingQuery)}
+                    {cat?.icon && <span className="text-base leading-none">{cat.icon}</span>}
+                    <span>{highlightMatch(label, query)}</span>
                   </button>
                 </li>
               );
@@ -592,9 +643,14 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
         )}
       </div>
 
+      {/* Enter hint */}
+      {showEnterHint && (
+        <p className="text-xs text-[#1c2a2b]/35 mb-3 px-1">{t.enterHint}</p>
+      )}
+
       {/* Qty + Unit + Add — shown when ingredient selected */}
       {selectedIng && (
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2 mt-2 mb-4">
           <input
             type="number"
             value={newQty}
@@ -615,37 +671,16 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
           />
           <button
             onClick={handleAddIngredient}
-            disabled={addingIng}
+            disabled={adding}
             className="flex-1 px-4 py-2.5 rounded-xl bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 disabled:opacity-40 transition"
           >
-            {addingIng ? '…' : t.add}
+            {adding ? '…' : t.add}
           </button>
         </div>
       )}
 
-      {/* Personal quick-add */}
-      <div className="flex gap-2 mb-6">
-        <input
-          ref={personalInputRef}
-          type="text"
-          value={personalText}
-          onChange={(e) => setPersonalText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleAddPersonal(); }}
-          placeholder={t.quickAdd}
-          className="flex-1 rounded-xl border border-[#0e393d]/15 bg-white px-4 py-2.5 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
-        />
-        <button
-          onClick={handleAddPersonal}
-          disabled={addingPersonal || !personalText.trim()}
-          aria-label={t.add}
-          className="w-10 h-10 rounded-xl bg-[#0e393d]/8 text-[#0e393d] font-bold text-lg hover:bg-[#0e393d]/15 disabled:opacity-40 transition flex items-center justify-center"
-        >
-          {addingPersonal ? '…' : '+'}
-        </button>
-      </div>
-
       {/* Empty state */}
-      {items.length === 0 && (
+      {items.length === 0 && !selectedIng && (
         <div className="text-center py-16 flex-1">
           <div className="w-12 h-12 rounded-full bg-[#0e393d]/6 flex items-center justify-center mx-auto mb-4">
             <CartIcon className="w-5 h-5 text-[#0e393d]/30" />
@@ -655,50 +690,49 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
         </div>
       )}
 
-      {/* From recipes section */}
-      {(recipeUnchecked.length > 0 || recipeChecked.length > 0) && (
-        <div className="mb-4">
+      {/* From recipes — grouped by Daily Dozen category */}
+      {grouped.length > 0 && (
+        <div className="mt-4 space-y-5">
           {!activeRecipe && recipeItems.length > 0 && (
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#1c2a2b]/30 mb-2">{t.fromRecipes}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#1c2a2b]/30">{t.fromRecipes}</p>
           )}
-          <ul className="space-y-1.5">
-            {recipeUnchecked.map((item) => (
-              <ItemRow key={item.id} item={item} lang={lang} onToggle={handleToggle} onDelete={handleDelete} removeAria={t.removeAria} />
-            ))}
-          </ul>
-          {recipeChecked.length > 0 && (
-            <ul className="space-y-1.5 mt-1.5">
-              {recipeChecked.map((item) => (
-                <ItemRow key={item.id} item={item} lang={lang} onToggle={handleToggle} onDelete={handleDelete} removeAria={t.removeAria} />
-              ))}
-            </ul>
-          )}
+          {grouped.map(({ slug, items: catItems }) => {
+            const cat = DD_MAP.get(slug as string);
+            const label = cat ? cat.label[lang] : t.other;
+            const icon = cat?.icon;
+            return (
+              <div key={slug}>
+                <p className="flex items-center gap-1.5 text-xs font-medium text-[#1c2a2b]/50 mb-2">
+                  {icon && <span>{icon}</span>}
+                  {label}
+                </p>
+                <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {catItems.map((item) => (
+                    <ItemRow key={item.id} item={item} lang={lang} onToggle={handleToggle} onDelete={handleDelete} removeAria={t.removeAria} />
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Personal items section */}
+      {/* Personal items */}
       {(personalUnchecked.length > 0 || personalChecked.length > 0) && (
-        <div className="mb-4">
+        <div className="mt-5 mb-4">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#1c2a2b]/30 mb-2">{t.personal}</p>
-          <ul className="space-y-1.5">
-            {personalUnchecked.map((item) => (
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {[...personalUnchecked, ...personalChecked].map((item) => (
               <ItemRow key={item.id} item={item} lang={lang} onToggle={handleToggle} onDelete={handleDelete} removeAria={t.removeAria} />
             ))}
           </ul>
-          {personalChecked.length > 0 && (
-            <ul className="space-y-1.5 mt-1.5">
-              {personalChecked.map((item) => (
-                <ItemRow key={item.id} item={item} lang={lang} onToggle={handleToggle} onDelete={handleDelete} removeAria={t.removeAria} />
-              ))}
-            </ul>
-          )}
         </div>
       )}
 
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Footer bar */}
+      {/* Footer */}
       {items.length > 0 && (
         <div className="sticky bottom-0 bg-[#fafaf8] border-t border-[#0e393d]/8 py-3 flex items-center justify-between">
           <span className="text-xs text-[#1c2a2b]/40">{t.xOfY(totalChecked, totalItems)}</span>
