@@ -51,6 +51,7 @@ function FormRow({
   saving,
   isEditing,
   duplicateCode,
+  duplicateName,
 }: {
   form: FormData;
   onChange: (f: FormData) => void;
@@ -59,26 +60,42 @@ function FormRow({
   saving: boolean;
   isEditing: boolean;
   duplicateCode?: boolean;
+  duplicateName?: boolean;
 }) {
   const [aiStatus, setAiStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
 
+  const hasAnyName = !!(form.name_en.trim() || form.name_de.trim() || form.name_fr.trim() || form.name_es.trim() || form.name_it.trim());
+
   const handleAI = async () => {
-    if (!form.name_en.trim()) return;
+    if (!hasAnyName) return;
     setAiStatus('running');
     try {
-      const res = await fetch('/api/admin/translate-unit', {
+      const payload: Record<string, string> = {};
+      if (form.name_en.trim()) payload.name_en = form.name_en;
+      if (form.name_de.trim()) payload.name_de = form.name_de;
+      if (form.name_fr.trim()) payload.name_fr = form.name_fr;
+      if (form.name_es.trim()) payload.name_es = form.name_es;
+      if (form.name_it.trim()) payload.name_it = form.name_it;
+      if (form.abbrev_en.trim()) payload.abbrev_en = form.abbrev_en;
+      if (form.abbrev_de.trim()) payload.abbrev_de = form.abbrev_de;
+      if (form.abbrev_fr.trim()) payload.abbrev_fr = form.abbrev_fr;
+      if (form.abbrev_es.trim()) payload.abbrev_es = form.abbrev_es;
+      if (form.abbrev_it.trim()) payload.abbrev_it = form.abbrev_it;
+      const res = await fetch('/api/admin/autocomplete-unit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name_en: form.name_en, abbrev_en: form.abbrev_en || undefined }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       onChange({
         ...form,
+        name_en: form.name_en || data.name_en || '',
         name_de: form.name_de || data.name_de || '',
         name_fr: form.name_fr || data.name_fr || '',
         name_es: form.name_es || data.name_es || '',
         name_it: form.name_it || data.name_it || '',
+        abbrev_en: form.abbrev_en || data.abbrev_en || '',
         abbrev_de: form.abbrev_de || data.abbrev_de || '',
         abbrev_fr: form.abbrev_fr || data.abbrev_fr || '',
         abbrev_es: form.abbrev_es || data.abbrev_es || '',
@@ -86,7 +103,7 @@ function FormRow({
       });
       setAiStatus('done');
     } catch (e) {
-      console.error('Translate unit error:', e);
+      console.error('Autocomplete unit error:', e);
       setAiStatus('error');
     }
   };
@@ -137,12 +154,19 @@ function FormRow({
             </div>
           </div>
 
-          {/* Duplicate code warning */}
-          {duplicateCode && !isEditing && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-              <p className="text-xs font-medium text-amber-800">
-                ⚠ A unit with code <span className="font-mono">{form.code}</span> already exists.
-              </p>
+          {/* Duplicate warnings */}
+          {(duplicateCode || duplicateName) && !isEditing && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 space-y-0.5">
+              {duplicateCode && (
+                <p className="text-xs font-medium text-amber-800">
+                  ⚠ A unit with code <span className="font-mono">{form.code}</span> already exists.
+                </p>
+              )}
+              {duplicateName && (
+                <p className="text-xs font-medium text-amber-800">
+                  ⚠ A unit with this name already exists.
+                </p>
+              )}
             </div>
           )}
 
@@ -169,16 +193,16 @@ function FormRow({
             <button
               type="button"
               onClick={() => { if (aiStatus !== 'running') handleAI(); }}
-              disabled={aiStatus === 'running' || !form.name_en.trim()}
+              disabled={aiStatus === 'running' || !hasAnyName}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded bg-violet-50 text-violet-700 text-[11px] font-medium hover:bg-violet-100 disabled:opacity-40 disabled:cursor-not-allowed transition whitespace-nowrap"
-              title="Translate EN name and abbreviation to DE/FR/ES/IT"
+              title="Autocomplete all name and abbreviation fields from any provided input"
             >
               {aiStatus === 'running' ? (
                 <>
                   <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>
-                  Translating…
+                  Running…
                 </>
-              ) : aiStatus === 'done' ? <>✓ Done</> : aiStatus === 'error' ? <>⚠ Retry</> : <>✦ AI Translate</>}
+              ) : aiStatus === 'done' ? <>✓ Done</> : aiStatus === 'error' ? <>⚠ Retry</> : <>✦ AI Autocomplete</>}
             </button>
           </div>
 
@@ -272,9 +296,11 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
 
-  // Duplicate detection on code field (add form only)
+  // Duplicate detection on code and name fields (add form only)
   const addDupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addNameDupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [codeDuplicate, setCodeDuplicate] = useState(false);
+  const [nameDuplicate, setNameDuplicate] = useState(false);
 
   // AI Review & Complete
   const [reviewScanStatus, setReviewScanStatus] = useState<'idle' | 'scanning' | 'ready' | 'error'>('idle');
@@ -291,6 +317,20 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
       setCodeDuplicate(units.some((u) => u.code.toLowerCase() === code));
     }, 300);
   }, [addForm.code, adding]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced duplicate detection on name_en field
+  useEffect(() => {
+    if (!adding) { setNameDuplicate(false); return; }
+    if (addNameDupTimerRef.current) clearTimeout(addNameDupTimerRef.current);
+    addNameDupTimerRef.current = setTimeout(() => {
+      const name = addForm.name_en.trim().toLowerCase();
+      if (!name) { setNameDuplicate(false); return; }
+      setNameDuplicate(units.some((u) =>
+        (u.name.en ?? '').toLowerCase() === name ||
+        (u.name.de ?? '').toLowerCase() === name
+      ));
+    }, 300);
+  }, [addForm.name_en, adding]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = useCallback(async () => {
     const { data } = await supabase
@@ -338,10 +378,11 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
     });
     setAdding(false);
     setCodeDuplicate(false);
+    setNameDuplicate(false);
     setError('');
   };
 
-  const cancelEdit = () => { setEditingId(null); setError(''); };
+  const cancelEdit = () => { setEditingId(null); setError(''); setNameDuplicate(false); };
 
   const saveEdit = async () => {
     if (!editingId || !editForm.name_en.trim()) { setError('Name (EN) is required.'); return; }
@@ -380,6 +421,7 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
     setAdding(false);
     setAddForm(EMPTY_FORM);
     setCodeDuplicate(false);
+    setNameDuplicate(false);
     await refresh();
   };
 
@@ -570,10 +612,11 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
                 form={addForm}
                 onChange={setAddForm}
                 onSave={saveAdd}
-                onCancel={() => { setAdding(false); setCodeDuplicate(false); setError(''); }}
+                onCancel={() => { setAdding(false); setCodeDuplicate(false); setNameDuplicate(false); setError(''); }}
                 saving={saving}
                 isEditing={false}
                 duplicateCode={codeDuplicate}
+                duplicateName={nameDuplicate}
               />
             )}
 
