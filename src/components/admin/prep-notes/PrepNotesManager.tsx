@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import PrepNotesReviewModal, { type PrepNoteReviewSuggestion } from './PrepNotesReviewModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,12 +42,16 @@ function FormRow({
   onSave,
   onCancel,
   saving,
+  duplicateMatches,
+  onEditExisting,
 }: {
   form: FormData;
   onChange: (f: FormData) => void;
   onSave: () => void;
   onCancel: () => void;
   saving: boolean;
+  duplicateMatches?: PrepNote[];
+  onEditExisting?: (note: PrepNote) => void;
 }) {
   const [aiStatus, setAiStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
 
@@ -117,6 +122,30 @@ function FormRow({
               ) : aiStatus === 'done' ? <>✓ Done</> : aiStatus === 'error' ? <>⚠ Retry</> : <>✦ AI Translate</>}
             </button>
           </div>
+
+          {/* Duplicate detection warning */}
+          {duplicateMatches && duplicateMatches.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+              <p className="text-xs font-medium text-amber-800 mb-1.5">
+                ⚠ Similar prep notes found — did you mean to edit one instead?
+              </p>
+              <div className="space-y-0.5">
+                {duplicateMatches.map((note) => {
+                  const label = [note.name.en, note.name.de].filter(Boolean).join(' / ');
+                  return (
+                    <button
+                      key={note.id}
+                      type="button"
+                      onClick={() => onEditExisting?.(note)}
+                      className="block w-full text-left px-2.5 py-1.5 rounded-md text-xs font-medium text-amber-900 hover:bg-amber-100 transition"
+                    >
+                      {label || note.slug}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* FR + ES + IT */}
           <div className="grid grid-cols-3 gap-2">
@@ -189,6 +218,34 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
 
+  // Duplicate detection for add form
+  const addDupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [addDuplicates, setAddDuplicates] = useState<PrepNote[]>([]);
+
+  // AI Review & Complete
+  const [reviewScanStatus, setReviewScanStatus] = useState<'idle' | 'scanning' | 'ready' | 'error'>('idle');
+  const [reviewSuggestions, setReviewSuggestions] = useState<PrepNoteReviewSuggestion[]>([]);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+
+  // Debounced duplicate search on addForm.name_en
+  useEffect(() => {
+    if (!adding) { setAddDuplicates([]); return; }
+    if (addDupTimerRef.current) clearTimeout(addDupTimerRef.current);
+    addDupTimerRef.current = setTimeout(() => {
+      const q = addForm.name_en.trim().toLowerCase();
+      if (!q) { setAddDuplicates([]); return; }
+      setAddDuplicates(
+        notes
+          .filter((n) => {
+            const en = (n.name.en ?? '').toLowerCase();
+            const de = (n.name.de ?? '').toLowerCase();
+            return (en && (en.includes(q) || q.includes(en))) || (de && (de.includes(q) || q.includes(de)));
+          })
+          .slice(0, 3)
+      );
+    }, 300);
+  }, [addForm.name_en, adding]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const refresh = useCallback(async () => {
     const { data } = await supabase
       .from('preparation_notes')
@@ -218,6 +275,7 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
       is_common: note.is_common,
     });
     setAdding(false);
+    setAddDuplicates([]);
     setError('');
   };
 
@@ -247,6 +305,7 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
     if (err) { setError(err.message); return; }
     setAdding(false);
     setAddForm(EMPTY_FORM);
+    setAddDuplicates([]);
     await refresh();
   };
 
@@ -260,6 +319,80 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
     await supabase.from('preparation_notes').update({ is_common: !note.is_common }).eq('id', note.id);
     setNotes((prev) => prev.map((n) => n.id === note.id ? { ...n, is_common: !n.is_common } : n));
   };
+
+  // ── AI Review & Complete ─────────────────────────────────────────────────────
+
+  const handleReviewScan = async () => {
+    setReviewScanStatus('scanning');
+
+    const toReview = notes.filter((n) => !n.name.fr || !n.name.es || !n.name.it);
+
+    if (toReview.length === 0) {
+      setReviewSuggestions([]);
+      setReviewScanStatus('ready');
+      setReviewModalOpen(true);
+      return;
+    }
+
+    const BATCH = 20;
+    const allSuggestions: PrepNoteReviewSuggestion[] = [];
+
+    try {
+      for (let i = 0; i < toReview.length; i += BATCH) {
+        const batch = toReview.slice(i, i + BATCH);
+        const res = await fetch('/api/admin/review-prep-notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            notes: batch.map((n) => ({
+              id: n.id,
+              name_en: n.name.en ?? '',
+              name_de: n.name.de ?? '',
+              name_fr: n.name.fr ?? '',
+              name_es: n.name.es ?? '',
+              name_it: n.name.it ?? '',
+            })),
+          }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const { suggestions } = await res.json();
+        allSuggestions.push(...suggestions);
+      }
+      setReviewSuggestions(allSuggestions);
+      setReviewScanStatus('ready');
+      setReviewModalOpen(true);
+    } catch (e) {
+      console.error('Review prep notes scan error:', e);
+      setReviewScanStatus('error');
+    }
+  };
+
+  const handleReviewApply = async (
+    accepted: PrepNoteReviewSuggestion[],
+    onProgress: (done: number, total: number) => void
+  ) => {
+    for (let i = 0; i < accepted.length; i++) {
+      const s = accepted[i];
+      const note = notes.find((n) => n.id === s.id);
+      if (!note) continue;
+
+      const updatedName = {
+        ...note.name,
+        ...(s.name_fr ? { fr: s.name_fr } : {}),
+        ...(s.name_es ? { es: s.name_es } : {}),
+        ...(s.name_it ? { it: s.name_it } : {}),
+      };
+
+      await supabase.from('preparation_notes').update({ name: updatedName }).eq('id', s.id);
+      onProgress(i + 1, accepted.length);
+    }
+
+    await refresh();
+    setReviewModalOpen(false);
+    setReviewScanStatus('idle');
+  };
+
+  // ── Filtered list ────────────────────────────────────────────────────────────
 
   const filtered = search
     ? notes.filter((n) => {
@@ -285,12 +418,36 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
             {notes.length} total · {notes.filter((n) => n.is_common).length} common
           </p>
         </div>
-        <button
-          onClick={() => { setAdding(true); setAddForm(EMPTY_FORM); setEditingId(null); setError(''); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 transition"
-        >
-          <span className="text-lg leading-none">+</span> New Note
-        </button>
+        <div className="flex items-center gap-2">
+          {/* AI Review & Complete */}
+          <button
+            onClick={() => { if (reviewScanStatus !== 'scanning') handleReviewScan(); }}
+            disabled={reviewScanStatus === 'scanning'}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#0e393d]/20 text-[#0e393d] text-xs font-medium hover:bg-[#0e393d]/5 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            title="Scan prep notes for missing translations"
+          >
+            {reviewScanStatus === 'scanning' ? (
+              <>
+                <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" strokeOpacity="0.25"/>
+                  <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/>
+                </svg>
+                Scanning…
+              </>
+            ) : reviewScanStatus === 'error' ? (
+              <>⚠ Retry Review</>
+            ) : (
+              <>✦ AI Review &amp; Complete</>
+            )}
+          </button>
+
+          <button
+            onClick={() => { setAdding(true); setAddForm(EMPTY_FORM); setEditingId(null); setAddDuplicates([]); setError(''); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 transition"
+          >
+            <span className="text-lg leading-none">+</span> New Note
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -328,8 +485,10 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
                 form={addForm}
                 onChange={setAddForm}
                 onSave={saveAdd}
-                onCancel={() => { setAdding(false); setError(''); }}
+                onCancel={() => { setAdding(false); setAddDuplicates([]); setError(''); }}
                 saving={saving}
+                duplicateMatches={addDuplicates}
+                onEditExisting={startEdit}
               />
             )}
 
@@ -395,6 +554,17 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
           </tbody>
         </table>
       </div>
+
+      {/* AI Review Modal */}
+      {reviewModalOpen && (
+        <PrepNotesReviewModal
+          suggestions={reviewSuggestions}
+          totalScanned={notes.length}
+          notes={notes}
+          onApply={handleReviewApply}
+          onClose={() => { setReviewModalOpen(false); setReviewScanStatus('idle'); }}
+        />
+      )}
     </div>
   );
 }
