@@ -107,6 +107,16 @@ const NAV_GROUPS: NavGroup[] = [
         ),
       },
       {
+        label: 'Units',
+        href: '/admin/units',
+        icon: (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9h18M3 15h18" />
+            <path d="M7 5v4M7 15v4M12 3v6M12 15v6M17 5v4M17 15v4" />
+          </svg>
+        ),
+      },
+      {
         label: 'Courses',
         href: '/admin/courses',
         icon: (
