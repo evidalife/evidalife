@@ -52,6 +52,7 @@ function FormRow({
   isEditing,
   duplicateCode,
   duplicateName,
+  maxSortOrder,
 }: {
   form: FormData;
   onChange: (f: FormData) => void;
@@ -61,6 +62,7 @@ function FormRow({
   isEditing: boolean;
   duplicateCode?: boolean;
   duplicateName?: boolean;
+  maxSortOrder?: number;
 }) {
   const [aiStatus, setAiStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
 
@@ -70,7 +72,7 @@ function FormRow({
     if (!hasAnyName) return;
     setAiStatus('running');
     try {
-      const payload: Record<string, string> = {};
+      const payload: Record<string, string | number> = {};
       if (form.name_en.trim()) payload.name_en = form.name_en;
       if (form.name_de.trim()) payload.name_de = form.name_de;
       if (form.name_fr.trim()) payload.name_fr = form.name_fr;
@@ -81,6 +83,7 @@ function FormRow({
       if (form.abbrev_fr.trim()) payload.abbrev_fr = form.abbrev_fr;
       if (form.abbrev_es.trim()) payload.abbrev_es = form.abbrev_es;
       if (form.abbrev_it.trim()) payload.abbrev_it = form.abbrev_it;
+      if (maxSortOrder !== undefined) payload.max_sort_order = maxSortOrder;
       const res = await fetch('/api/admin/autocomplete-unit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,6 +93,7 @@ function FormRow({
       const data = await res.json();
       onChange({
         ...form,
+        code: form.code || data.code || '',
         name_en: form.name_en || data.name_en || '',
         name_de: form.name_de || data.name_de || '',
         name_fr: form.name_fr || data.name_fr || '',
@@ -100,6 +104,8 @@ function FormRow({
         abbrev_fr: form.abbrev_fr || data.abbrev_fr || '',
         abbrev_es: form.abbrev_es || data.abbrev_es || '',
         abbrev_it: form.abbrev_it || data.abbrev_it || '',
+        category: form.category || data.category || '',
+        sort_order: form.sort_order || (data.sort_order != null ? String(data.sort_order) : ''),
       });
       setAiStatus('done');
     } catch (e) {
@@ -629,6 +635,7 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
                 isEditing={false}
                 duplicateCode={codeDuplicate}
                 duplicateName={nameDuplicate}
+                maxSortOrder={units.reduce((max, u) => Math.max(max, u.sort_order ?? 0), 0)}
               />
             )}
 

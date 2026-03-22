@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 type Body = {
   name_en?: string; name_de?: string; name_fr?: string; name_es?: string; name_it?: string;
   abbrev_en?: string; abbrev_de?: string; abbrev_fr?: string; abbrev_es?: string; abbrev_it?: string;
+  max_sort_order?: number;
 };
 
 export async function POST(req: NextRequest) {
@@ -38,17 +39,23 @@ export async function POST(req: NextRequest) {
   if (body.abbrev_es) abbrevParts.push(`ES="${body.abbrev_es}"`);
   if (body.abbrev_it) abbrevParts.push(`IT="${body.abbrev_it}"`);
 
+  const nextSortOrder = (body.max_sort_order ?? 0) + 10;
+
   const prompt = `You are a culinary and scientific measurement expert.
-Identify the measurement unit from the provided names/abbreviations, then return the complete set in all 5 languages.
+Identify the measurement unit from the provided names/abbreviations, then return the complete set in all 5 languages plus metadata.
 Use standard culinary/scientific terminology. Abbreviations should follow local conventions.
 
 Provided names: ${nameParts.join(', ')}
 ${abbrevParts.length > 0 ? `Provided abbreviations: ${abbrevParts.join(', ')}` : ''}
 
-Return ONLY a compact JSON object:
-{"name_en":"...","name_de":"...","name_fr":"...","name_es":"...","name_it":"...","abbrev_en":"...","abbrev_de":"...","abbrev_fr":"...","abbrev_es":"...","abbrev_it":"..."}
+Return ONLY a compact JSON object with these exact keys:
+{"name_en":"...","name_de":"...","name_fr":"...","name_es":"...","name_it":"...","abbrev_en":"...","abbrev_de":"...","abbrev_fr":"...","abbrev_es":"...","abbrev_it":"...","code":"...","category":"...","sort_order":${nextSortOrder}}
 
-If a unit has no standard abbreviation, use an empty string for abbrev fields.
+Rules:
+- code: short lowercase identifier, e.g. "tbsp", "bag", "btl", "piece" (max 10 chars)
+- category: one of exactly "Weight", "Volume", "Count"
+- sort_order: use ${nextSortOrder} (next logical number after current max)
+- If a unit has no standard abbreviation in a given language, use an empty string for that abbrev field.
 No markdown, no explanation.`;
 
   const client = new Anthropic({ apiKey });
