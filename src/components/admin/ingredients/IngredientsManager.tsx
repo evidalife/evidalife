@@ -152,6 +152,10 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
   // AI autocomplete (per-ingredient in panel)
   const [autocompleteStatus, setAutocompleteStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
 
+  // Duplicate detection + search suggestions (create mode only)
+  const [nameSearchResults, setNameSearchResults] = useState<Ingredient[]>([]);
+  const nameSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Bulk nutrition fill
   const [bulkNutritionStatus, setBulkNutritionStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [bulkNutritionProgress, setBulkNutritionProgress] = useState({ done: 0, total: 0 });
@@ -182,12 +186,33 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
 
   // ── Panel helpers ─────────────────────────────────────────────────────────────
 
+  const findNameMatches = (nameEn: string, nameDe: string): Ingredient[] => {
+    const q1 = nameEn.trim().toLowerCase();
+    const q2 = nameDe.trim().toLowerCase();
+    if (!q1 && !q2) return [];
+    return ingredients.filter(ing => {
+      const en = (ing.name?.en ?? '').toLowerCase();
+      const de = (ing.name?.de ?? '').toLowerCase();
+      if (q1 && en && (en.includes(q1) || q1.includes(en))) return true;
+      if (q2 && de && (de.includes(q2) || q2.includes(de))) return true;
+      return false;
+    }).slice(0, 5);
+  };
+
+  const triggerNameSearch = (nameEn: string, nameDe: string) => {
+    if (nameSearchTimerRef.current) clearTimeout(nameSearchTimerRef.current);
+    nameSearchTimerRef.current = setTimeout(() => {
+      setNameSearchResults(findNameMatches(nameEn, nameDe));
+    }, 300);
+  };
+
   const openCreate = () => {
     setEditingId(null);
     setForm(EMPTY_FORM);
     setSlugManuallyEdited(false);
     setError(null);
     setAutocompleteStatus('idle');
+    setNameSearchResults([]);
     setPanelOpen(true);
   };
 
@@ -212,6 +237,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
     setSlugManuallyEdited(true); // treat as manually edited when editing existing
     setError(null);
     setAutocompleteStatus('idle');
+    setNameSearchResults([]);
     setPanelOpen(true);
   };
 
@@ -752,7 +778,10 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                     <input
                       className={inputCls}
                       value={form.name_en}
-                      onChange={(e) => setField('name_en', e.target.value)}
+                      onChange={(e) => {
+                        setField('name_en', e.target.value);
+                        if (!editingId) triggerNameSearch(e.target.value, form.name_de);
+                      }}
                       placeholder="e.g. Spinach"
                       autoFocus
                     />
@@ -761,7 +790,10 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                     <input
                       className={inputCls}
                       value={form.name_de}
-                      onChange={(e) => setField('name_de', e.target.value)}
+                      onChange={(e) => {
+                        setField('name_de', e.target.value);
+                        if (!editingId) triggerNameSearch(form.name_en, e.target.value);
+                      }}
                       placeholder="z.B. Spinat"
                     />
                   </Field>
@@ -790,6 +822,30 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
                     />
                   </Field>
                 </div>
+
+                {/* 9B+9D: Duplicate detection + name suggestions (create mode only) */}
+                {!editingId && nameSearchResults.length > 0 && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+                    <p className="text-xs font-medium text-amber-800 mb-1.5">
+                      ⚠ Similar ingredients found — did you mean to edit one instead?
+                    </p>
+                    <div className="space-y-0.5">
+                      {nameSearchResults.map((ing) => {
+                        const label = [ing.name?.en, ing.name?.de].filter(Boolean).join(' / ');
+                        return (
+                          <button
+                            key={ing.id}
+                            type="button"
+                            onClick={() => openEdit(ing)}
+                            className="block w-full text-left px-2.5 py-1.5 rounded-md text-xs font-medium text-amber-900 hover:bg-amber-100 transition"
+                          >
+                            {label || ing.slug || ing.id}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 <Field label="Slug" hint="Auto-generated from EN name. Edit to override.">
                   <input
