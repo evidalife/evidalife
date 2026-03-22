@@ -149,6 +149,14 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
   const [error, setError] = useState<string | null>(null);
   const slugRef = useRef(false);
 
+  // Bulk nutrition fill
+  const [bulkNutritionStatus, setBulkNutritionStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [bulkNutritionProgress, setBulkNutritionProgress] = useState({ done: 0, total: 0 });
+
+  // Bulk translate FR/ES/IT
+  const [bulkTranslateStatus, setBulkTranslateStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [bulkTranslateProgress, setBulkTranslateProgress] = useState({ done: 0, total: 0 });
+
   // Auto-generate slug from EN name (only when creating and slug not manually edited)
   useEffect(() => {
     if (!editingId && !slugManuallyEdited && form.name_en) {
@@ -272,6 +280,108 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
     closePanel();
   };
 
+  // ── Bulk nutrition fill ───────────────────────────────────────────────────────
+
+  const handleBulkNutrition = async () => {
+    const missing = ingredients.filter(
+      (i) => i.kcal_per_100g == null && i.protein_per_100g == null && i.fat_per_100g == null && i.carbs_per_100g == null && i.fiber_per_100g == null
+    );
+    if (missing.length === 0) {
+      setBulkNutritionStatus('done');
+      return;
+    }
+    setBulkNutritionStatus('running');
+    setBulkNutritionProgress({ done: 0, total: missing.length });
+
+    const BATCH = 20;
+    let done = 0;
+    try {
+      for (let i = 0; i < missing.length; i += BATCH) {
+        const batch = missing.slice(i, i + BATCH);
+        const res = await fetch('/api/admin/bulk-nutrition', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ingredients: batch.map((ing) => ({
+              id: ing.id,
+              name_en: ing.name?.en ?? '',
+              name_de: ing.name?.de ?? '',
+            })),
+          }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const { results } = await res.json();
+        for (const r of results) {
+          await supabase.from('ingredients').update({
+            kcal_per_100g: r.kcal_per_100g,
+            protein_per_100g: r.protein_per_100g,
+            fat_per_100g: r.fat_per_100g,
+            carbs_per_100g: r.carbs_per_100g,
+            fiber_per_100g: r.fiber_per_100g,
+          }).eq('id', r.id);
+        }
+        done += batch.length;
+        setBulkNutritionProgress({ done, total: missing.length });
+      }
+      await refresh();
+      setBulkNutritionStatus('done');
+    } catch {
+      setBulkNutritionStatus('error');
+    }
+  };
+
+  // ── Bulk translate FR/ES/IT ───────────────────────────────────────────────────
+
+  const handleBulkTranslate = async () => {
+    const missing = ingredients.filter(
+      (i) => !i.name?.fr || !i.name?.es || !i.name?.it
+    );
+    if (missing.length === 0) {
+      setBulkTranslateStatus('done');
+      return;
+    }
+    setBulkTranslateStatus('running');
+    setBulkTranslateProgress({ done: 0, total: missing.length });
+
+    const BATCH = 30;
+    let done = 0;
+    try {
+      for (let i = 0; i < missing.length; i += BATCH) {
+        const batch = missing.slice(i, i + BATCH);
+        const res = await fetch('/api/admin/bulk-translate-ingredients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ingredients: batch.map((ing) => ({
+              id: ing.id,
+              name_en: ing.name?.en ?? '',
+              name_de: ing.name?.de ?? '',
+            })),
+          }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const { results } = await res.json();
+        for (const r of results) {
+          const ing = ingredients.find((x) => x.id === r.id);
+          if (!ing) continue;
+          const updatedName = {
+            ...(ing.name ?? {}),
+            ...(r.name_fr ? { fr: r.name_fr } : {}),
+            ...(r.name_es ? { es: r.name_es } : {}),
+            ...(r.name_it ? { it: r.name_it } : {}),
+          };
+          await supabase.from('ingredients').update({ name: updatedName }).eq('id', r.id);
+        }
+        done += batch.length;
+        setBulkTranslateProgress({ done, total: missing.length });
+      }
+      await refresh();
+      setBulkTranslateStatus('done');
+    } catch {
+      setBulkTranslateStatus('error');
+    }
+  };
+
   // ── Helpers ───────────────────────────────────────────────────────────────────
 
   const getUnit = (unitId: string | null) => units.find((u) => u.id === unitId);
@@ -313,12 +423,55 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
             {ingredients.length} total · {ingredients.filter(i => i.is_common).length} common
           </p>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 transition"
-        >
-          <span className="text-lg leading-none">+</span> New Ingredient
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Bulk translate button */}
+          <button
+            onClick={bulkTranslateStatus === 'idle' || bulkTranslateStatus === 'error' ? handleBulkTranslate : undefined}
+            disabled={bulkTranslateStatus === 'running'}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#0e393d]/20 text-[#0e393d] text-xs font-medium hover:bg-[#0e393d]/5 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            title="Translate missing FR/ES/IT names for all ingredients"
+          >
+            {bulkTranslateStatus === 'running' ? (
+              <>
+                <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>
+                {bulkTranslateProgress.done}/{bulkTranslateProgress.total} translating…
+              </>
+            ) : bulkTranslateStatus === 'done' ? (
+              <>✓ Names translated</>
+            ) : bulkTranslateStatus === 'error' ? (
+              <>⚠ Retry translate</>
+            ) : (
+              <>✦ Translate missing names</>
+            )}
+          </button>
+
+          {/* Bulk nutrition button */}
+          <button
+            onClick={bulkNutritionStatus === 'idle' || bulkNutritionStatus === 'error' ? handleBulkNutrition : undefined}
+            disabled={bulkNutritionStatus === 'running'}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#0e393d]/20 text-[#0e393d] text-xs font-medium hover:bg-[#0e393d]/5 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            title="Fill nutrition values for ingredients missing all nutrition data"
+          >
+            {bulkNutritionStatus === 'running' ? (
+              <>
+                <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>
+                {bulkNutritionProgress.done}/{bulkNutritionProgress.total} nutrition…
+              </>
+            ) : bulkNutritionStatus === 'done' ? (
+              <>✓ Nutrition filled</>
+            ) : bulkNutritionStatus === 'error' ? (
+              <>⚠ Retry nutrition</>
+            ) : (
+              <>✦ Fill missing nutrition</>
+            )}
+          </button>
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 transition"
+          >
+            <span className="text-lg leading-none">+</span> New Ingredient
+          </button>
+        </div>
       </div>
 
       {/* Search */}
