@@ -31,12 +31,10 @@
         "Coaching"
       ],
       "Shop": [
-        "Paquetes de prueba",
-        "Alimentación",
-        "Suscripción Eat@Home",
+        "Todos los productos",
+        "Paquetes de análisis",
         null,
-        "Carrito & Pago",
-        "Mis pedidos"
+        "Carrito"
       ]
     }
   },

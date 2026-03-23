@@ -31,12 +31,10 @@
         "Coaching"
       ],
       "Shop": [
+        "Tous les produits",
         "Forfaits de test",
-        "Alimentation",
-        "Abonnement Eat@Home",
         null,
-        "Panier & Paiement",
-        "Mes commandes"
+        "Panier"
       ]
     }
   },

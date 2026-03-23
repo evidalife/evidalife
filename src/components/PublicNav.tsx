@@ -15,7 +15,7 @@ const NAV_SLUG_MAP: Record<string, (string | null)[]> = {
   Kitchen: ['/how-to-start', '/daily-dozen', '/recipes', '/restaurant', null, '/blog', '/shopping-list', '/courses'],
   Health:  ['/health-engine', '/biomarkers', '/bioage', '/interventions', null, '/dashboard', '/science'],
   Fit:     ['/sleep', '/exercise', '/stress-recovery', null, '/coaching'],
-  Shop:    ['/shop', '/food', '/eat-at-home', null, '/cart', '/orders'],
+  Shop:    ['/shop', '/shop?type=test_package', null, '/cart'],
 };
 
 const NAV_SECTIONS = ['Kitchen', 'Health', 'Fit', 'Shop'] as const;
@@ -258,6 +258,12 @@ export default function PublicNav() {
                       className="block px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
                     >
                       {locale === 'de' || locale === 'fr' ? 'Profil' : locale === 'es' ? 'Perfil' : locale === 'it' ? 'Profilo' : 'Profile'}
+                    </Link>
+                    <Link
+                      href="/orders"
+                      className="block px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
+                    >
+                      {locale === 'de' ? 'Meine Bestellungen' : locale === 'fr' ? 'Mes commandes' : locale === 'es' ? 'Mis pedidos' : locale === 'it' ? 'I miei ordini' : 'My Orders'}
                     </Link>
                     {profile?.is_admin && (
                       <Link

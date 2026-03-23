@@ -226,9 +226,10 @@ export default function ShopContent({ products }: { products: Product[] }) {
   const lng = useLocale();
   const trust = t.raw('trust') as { title: string; body: string }[];
   const trustIcons = ['🔬', '📊', '🔒'];
-  const [activeType, setActiveType] = useState<string | null>(null);
   const { clearCart } = useCart();
   const searchParams = useSearchParams();
+  const typeParam = searchParams.get('type');
+  const [activeType, setActiveType] = useState<string | null>(typeParam);
 
   // Clear cart when returning from successful checkout
   useEffect(() => {
@@ -236,6 +237,11 @@ export default function ShopContent({ products }: { products: Product[] }) {
       clearCart();
     }
   }, [searchParams, clearCart]);
+
+  // Sync activeType when URL ?type= changes (e.g. nav link)
+  useEffect(() => {
+    setActiveType(searchParams.get('type'));
+  }, [searchParams]);
 
   // Unique product types present in the data (preserve insertion order)
   const availableTypes = Array.from(

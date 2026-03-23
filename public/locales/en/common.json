@@ -31,12 +31,10 @@
         "Coaching"
       ],
       "Shop": [
+        "All Products",
         "Test Packages",
-        "Food",
-        "Eat@Home Subscription",
         null,
-        "Cart & Checkout",
-        "My Orders"
+        "Cart"
       ]
     }
   },

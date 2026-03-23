@@ -31,12 +31,10 @@
         "Coaching"
       ],
       "Shop": [
-        "Test Pakete",
-        "Lebensmittel",
-        "Eat@Home Abo",
+        "Alle Produkte",
+        "Test-Pakete",
         null,
-        "Warenkorb & Checkout",
-        "Meine Bestellungen"
+        "Warenkorb"
       ]
     }
   },
