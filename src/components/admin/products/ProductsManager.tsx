@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import SimpleCropModal from '@/components/admin/shared/SimpleCropModal';
 
@@ -22,6 +22,13 @@ async function compressImage(file: File, maxWidth = 800, quality = 0.85): Promis
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Lang = 'de' | 'en' | 'fr' | 'es' | 'it';
+
+type ItemDefinition = {
+  id: string;
+  name: Record<string, string> | null;
+  item_type: string | null;
+  sort_order: number | null;
+};
 type LangContent = { de: string; en: string; fr: string; es: string; it: string };
 type I18n = Record<string, string> | null;
 
@@ -173,6 +180,12 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Test items ───────────────────────────────────────────────────────────────
+  const [allDefinitions, setAllDefinitions] = useState<ItemDefinition[]>([]);
+  const [includedItemIds, setIncludedItemIds] = useState<Set<string>>(new Set());
+  const [itemsSearch, setItemsSearch] = useState('');
+  const [itemsOpen, setItemsOpen] = useState(true);
+
   // ── Data refresh ────────────────────────────────────────────────────────────
 
   const refresh = useCallback(async () => {
@@ -182,6 +195,49 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       .order('created_at', { ascending: false });
     if (data) setProducts(data);
   }, [supabase]);
+
+  // Load all item definitions once on mount
+  useEffect(() => {
+    supabase
+      .from('product_item_definitions')
+      .select('id, name, item_type, sort_order')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .then(({ data }) => { if (data) setAllDefinitions(data); });
+  }, [supabase]);
+
+  // Re-load included items whenever the edited product changes
+  useEffect(() => {
+    if (!editingId) { setIncludedItemIds(new Set()); return; }
+    supabase
+      .from('product_items')
+      .select('product_item_definition_id')
+      .eq('product_id', editingId)
+      .then(({ data }) => {
+        setIncludedItemIds(new Set(data?.map((r) => r.product_item_definition_id) ?? []));
+      });
+  }, [editingId, supabase]);
+
+  const handleToggleItem = async (definitionId: string, checked: boolean) => {
+    setIncludedItemIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(definitionId); else next.delete(definitionId);
+      return next;
+    });
+    if (checked) {
+      await supabase.from('product_items').insert({
+        product_id: editingId!,
+        product_item_definition_id: definitionId,
+        quantity: 1,
+        sort_order: 0,
+      });
+    } else {
+      await supabase.from('product_items')
+        .delete()
+        .eq('product_id', editingId!)
+        .eq('product_item_definition_id', definitionId);
+    }
+  };
 
   // ── Panel helpers ────────────────────────────────────────────────────────────
 
@@ -783,6 +839,68 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                   ))}
                 </div>
               </div>
+
+              {/* Test Items */}
+              {editingId && (form.product_type === 'test_package' || form.product_type === 'addon_test') && (
+                <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
+                  <button
+                    type="button"
+                    onClick={() => setItemsOpen((o) => !o)}
+                    className="flex items-center justify-between w-full"
+                  >
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Included Test Items</p>
+                    <span className="text-[11px] text-[#1c2a2b]/50">
+                      {includedItemIds.size} of {allDefinitions.length} included
+                      <span className="ml-2 text-[#0e393d]/40">{itemsOpen ? '▲' : '▼'}</span>
+                    </span>
+                  </button>
+                  {itemsOpen && (
+                    <>
+                      <input
+                        type="text"
+                        placeholder="Search items…"
+                        value={itemsSearch}
+                        onChange={(e) => setItemsSearch(e.target.value)}
+                        className={inputCls}
+                      />
+                      <div className="max-h-64 overflow-y-auto rounded-lg border border-[#0e393d]/10 divide-y divide-[#0e393d]/6">
+                        {(() => {
+                          const filtered = allDefinitions.filter((d) => {
+                            if (!itemsSearch) return true;
+                            const q = itemsSearch.toLowerCase();
+                            const n = d.name?.de || d.name?.en || '';
+                            return n.toLowerCase().includes(q) || d.item_type?.toLowerCase().includes(q);
+                          });
+                          if (filtered.length === 0) {
+                            return <p className="px-4 py-6 text-center text-sm text-[#1c2a2b]/30">No items match.</p>;
+                          }
+                          return filtered.map((d) => {
+                            const checked = includedItemIds.has(d.id);
+                            const label = d.name?.de || d.name?.en || d.id;
+                            return (
+                              <label
+                                key={d.id}
+                                className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-[#0e393d]/3 transition"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(e) => handleToggleItem(d.id, e.target.checked)}
+                                  className="rounded border-[#0e393d]/30 text-[#0e393d] focus:ring-[#0e393d]/20"
+                                />
+                                <span className="flex-1 text-sm text-[#1c2a2b]">{label}</span>
+                                {d.item_type && (
+                                  <span className="text-[10px] text-[#1c2a2b]/35 font-mono">{d.item_type}</span>
+                                )}
+                              </label>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* Image */}
               <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
