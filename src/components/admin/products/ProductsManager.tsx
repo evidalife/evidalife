@@ -34,8 +34,11 @@ export type Product = {
   short_description: I18n;
   price_chf: number | null;
   price_eur: number | null;
+  compare_at_price_chf: number | null;
+  compare_at_price_eur: number | null;
   tax_class: string | null;
   product_type: string | null;
+  sort_order: number | null;
   is_active: boolean | null;
   is_featured: boolean | null;
   image_url: string | null;
@@ -48,12 +51,16 @@ type FormState = {
   name: LangContent;
   sku: string;
   slug: string;
+  short_description: LangContent;
   description: LangContent;
   price_chf: string;
   price_eur: string;
+  compare_at_price_chf: string;
+  compare_at_price_eur: string;
   tax_class: string;
   product_type: string;
   marker_count: string;
+  sort_order: string;
   is_active: boolean;
   is_featured: boolean;
 };
@@ -61,15 +68,24 @@ type FormState = {
 const EMPTY_FORM: FormState = {
   name: { de: '', en: '', fr: '', es: '', it: '' },
   sku: '', slug: '',
+  short_description: { de: '', en: '', fr: '', es: '', it: '' },
   description: { de: '', en: '', fr: '', es: '', it: '' },
   price_chf: '', price_eur: '',
+  compare_at_price_chf: '', compare_at_price_eur: '',
   tax_class: 'standard', product_type: 'test_package',
-  marker_count: '',
+  marker_count: '', sort_order: '',
   is_active: true, is_featured: false,
 };
 
 const TAX_CLASSES = ['standard', 'reduced', 'zero'];
-const PRODUCT_TYPES = ['test_package', 'addon_test', 'food', 'subscription'];
+const PRODUCT_TYPES = [
+  'test_package', 'addon_test', 'single_biomarker',
+  'supplement', 'functional_food', 'food', 'food_product', 'ready_meal',
+  'subscription', 'meal_subscription',
+  'program', 'bundle', 'digital_product',
+  'device', 'coaching_session',
+  'merch', 'merchandise',
+];
 
 function slugify(text: string): string {
   return text.toLowerCase()
@@ -201,12 +217,16 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       name: { de: p.name?.de ?? '', en: p.name?.en ?? '', fr: p.name?.fr ?? '', es: p.name?.es ?? '', it: p.name?.it ?? '' },
       sku: p.sku ?? '',
       slug: p.slug ?? '',
+      short_description: { de: p.short_description?.de ?? '', en: p.short_description?.en ?? '', fr: p.short_description?.fr ?? '', es: p.short_description?.es ?? '', it: p.short_description?.it ?? '' },
       description: { de: p.description?.de ?? '', en: p.description?.en ?? '', fr: p.description?.fr ?? '', es: p.description?.es ?? '', it: p.description?.it ?? '' },
       price_chf: p.price_chf != null ? String(p.price_chf) : '',
       price_eur: p.price_eur != null ? String(p.price_eur) : '',
+      compare_at_price_chf: p.compare_at_price_chf != null ? String(p.compare_at_price_chf) : '',
+      compare_at_price_eur: p.compare_at_price_eur != null ? String(p.compare_at_price_eur) : '',
       tax_class: p.tax_class ?? 'standard',
       product_type: p.product_type ?? 'test_package',
       marker_count: p.metadata?.marker_count != null ? String(p.metadata.marker_count) : '',
+      sort_order: p.sort_order != null ? String(p.sort_order) : '',
       is_active: p.is_active ?? true,
       is_featured: p.is_featured ?? false,
     });
@@ -229,7 +249,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const setLangField = (field: 'name' | 'description', l: Lang, v: string) =>
+  const setLangField = (field: 'name' | 'short_description' | 'description', l: Lang, v: string) =>
     setForm((prev) => ({ ...prev, [field]: { ...prev[field], [l]: v } }));
 
   // ── Image picker ─────────────────────────────────────────────────────────────
@@ -285,14 +305,19 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       const res = await fetch('/api/admin/translate-product', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name_en: form.name.en || form.name.de, description_en: form.description.en || form.description.de }),
+        body: JSON.stringify({
+          name_en: form.name.en || form.name.de,
+          short_description_en: form.short_description.en || form.short_description.de,
+          description_en: form.description.en || form.description.de,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Translate failed');
       setForm((f) => ({
         ...f,
-        name:        { ...f.name,        fr: f.name.fr        || json.name_fr        || '', es: f.name.es        || json.name_es        || '', it: f.name.it        || json.name_it        || '' },
-        description: { ...f.description, fr: f.description.fr || json.description_fr || '', es: f.description.es || json.description_es || '', it: f.description.it || json.description_it || '' },
+        name:              { ...f.name,              fr: f.name.fr              || json.name_fr              || '', es: f.name.es              || json.name_es              || '', it: f.name.it              || json.name_it              || '' },
+        short_description: { ...f.short_description, fr: f.short_description.fr || json.short_description_fr || '', es: f.short_description.es || json.short_description_es || '', it: f.short_description.it || json.short_description_it || '' },
+        description:       { ...f.description,       fr: f.description.fr       || json.description_fr       || '', es: f.description.es       || json.description_es       || '', it: f.description.it       || json.description_it       || '' },
       }));
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : String(e));
@@ -315,12 +340,16 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       name: { de: form.name.de, en: form.name.en, fr: form.name.fr, es: form.name.es, it: form.name.it },
       sku: form.sku.trim() || null,
       slug: form.slug.trim() || slugify(form.name.de || form.name.en),
+      short_description: { de: form.short_description.de, en: form.short_description.en, fr: form.short_description.fr, es: form.short_description.es, it: form.short_description.it },
       description: { de: form.description.de, en: form.description.en, fr: form.description.fr, es: form.description.es, it: form.description.it },
       price_chf: form.price_chf ? Number(form.price_chf) : null,
       price_eur: form.price_eur ? Number(form.price_eur) : null,
+      compare_at_price_chf: form.compare_at_price_chf ? Number(form.compare_at_price_chf) : null,
+      compare_at_price_eur: form.compare_at_price_eur ? Number(form.compare_at_price_eur) : null,
       tax_class: form.tax_class || null,
       product_type: form.product_type || null,
       metadata: form.marker_count ? { marker_count: Number(form.marker_count) } : null,
+      sort_order: form.sort_order ? Number(form.sort_order) : null,
       is_active: form.is_active,
       is_featured: form.is_featured,
     };
@@ -574,13 +603,23 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                   />
                 </Field>
 
+                <Field label={`Short Description (${lang.toUpperCase()})`} hint="Card subtitle — 1 sentence">
+                  <textarea
+                    className={inputCls + ' resize-none'}
+                    rows={2}
+                    value={form.short_description[lang]}
+                    onChange={(e) => setLangField('short_description', lang, e.target.value)}
+                    placeholder={lang === 'de' ? 'Ein Satz für die Produktkarte…' : 'One sentence for the product card…'}
+                  />
+                </Field>
+
                 <Field label={`Description (${lang.toUpperCase()})`}>
                   <textarea
                     className={inputCls + ' resize-none'}
                     rows={3}
                     value={form.description[lang]}
                     onChange={(e) => setLangField('description', lang, e.target.value)}
-                    placeholder={lang === 'de' ? 'Kurze Produktbeschreibung…' : 'Short product description…'}
+                    placeholder={lang === 'de' ? 'Ausführliche Produktbeschreibung…' : 'Full product description…'}
                   />
                 </Field>
 
@@ -666,6 +705,37 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                   </Field>
                 </div>
 
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Compare-at CHF" hint="Strikethrough price">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#1c2a2b]/40">CHF</span>
+                      <input
+                        type="number"
+                        className={inputCls + ' pl-11'}
+                        value={form.compare_at_price_chf}
+                        onChange={(e) => setField('compare_at_price_chf', e.target.value)}
+                        placeholder="399"
+                        min={0}
+                        step={0.01}
+                      />
+                    </div>
+                  </Field>
+                  <Field label="Compare-at EUR" hint="Strikethrough price">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#1c2a2b]/40">€</span>
+                      <input
+                        type="number"
+                        className={inputCls + ' pl-7'}
+                        value={form.compare_at_price_eur}
+                        onChange={(e) => setField('compare_at_price_eur', e.target.value)}
+                        placeholder="379"
+                        min={0}
+                        step={0.01}
+                      />
+                    </div>
+                  </Field>
+                </div>
+
                 <Field label="Tax Class">
                   <select
                     className={selectCls}
@@ -682,6 +752,18 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
               {/* Settings */}
               <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
                 <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Settings</p>
+
+                <Field label="Sort Order" hint="Lower numbers appear first">
+                  <input
+                    type="number"
+                    className={inputCls}
+                    value={form.sort_order}
+                    onChange={(e) => setField('sort_order', e.target.value)}
+                    placeholder="10"
+                    min={0}
+                    step={1}
+                  />
+                </Field>
 
                 <div className="flex flex-col gap-3">
                   {([
