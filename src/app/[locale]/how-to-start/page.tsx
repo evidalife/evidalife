@@ -8,6 +8,69 @@ export const metadata = { title: 'How to Start – Evida Life' };
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 type Lang = typeof VALID_LANGS[number];
 
+// ── Heatmap data ─────────────────────────────────────────────────────────────
+// Source: Tessiere et al. (2025), Nature Medicine, Figure 4
+// Columns: [Overall Healthy Aging, Cognitive, Physical, Mental Health, Free from Disease, Survived to 70]
+type CellVal = -4 | -3 | -2 | -1 | 0 | 1 | 2 | 3 | 4;
+interface HRow { food: string; cells: [CellVal, CellVal, CellVal, CellVal, CellVal, CellVal]; }
+
+const HP: HRow[] = [
+  { food: 'Fruit',                  cells: [ 4,  3,  3,  3,  4,  4] },
+  { food: 'MUFA:SFA ratio',         cells: [ 3,  2,  2,  2,  3,  3] },
+  { food: 'Whole grains',           cells: [ 3,  2,  3,  2,  3,  3] },
+  { food: 'Vegetables',             cells: [ 3,  2,  3,  2,  3,  3] },
+  { food: 'Added unsaturated fat',  cells: [ 2,  1,  2,  1,  2,  2] },
+  { food: 'Leafy greens',           cells: [ 2,  3,  2,  2,  2,  2] },
+  { food: 'Nuts',                   cells: [ 2,  2,  2,  1,  2,  2] },
+  { food: 'Nuts & legumes',         cells: [ 2,  2,  2,  1,  2,  2] },
+  { food: 'Dark-yellow vegetables', cells: [ 2,  2,  2,  1,  2,  2] },
+  { food: 'Vegetable oils',         cells: [ 2,  1,  2,  1,  2,  2] },
+  { food: 'Berries',                cells: [ 1,  2,  1,  2,  1,  1] },
+  { food: 'Yogurt',                 cells: [ 1,  1,  1,  1,  1,  1] },
+  { food: 'Low-fat dairy',          cells: [ 1,  1,  1,  0,  1,  1] },
+  { food: 'Olive oil',              cells: [ 1,  1,  1,  1,  1,  1] },
+  { food: 'Omega-3 fatty acids',    cells: [ 1,  2,  1,  1,  1,  1] },
+  { food: 'Beans',                  cells: [ 1,  1,  1,  1,  2,  1] },
+  { food: 'Soy',                    cells: [ 1,  1,  1,  1,  1,  1] },
+  { food: 'Legumes',                cells: [ 1,  1,  1,  1,  1,  1] },
+  { food: 'Coffee & tea',           cells: [ 1,  1,  0,  1,  1,  0] },
+];
+const HM: HRow[] = [
+  { food: 'Wine',           cells: [ 0,  0,  0, -1,  0,  0] },
+  { food: 'Fish & seafood', cells: [ 1,  1,  1,  0,  1,  0] },
+  { food: 'Total dairy',    cells: [ 0,  0,  0,  0,  0,  0] },
+  { food: 'Eggs',           cells: [ 0,  0,  0,  0, -1,  0] },
+  { food: 'Poultry',        cells: [-1,  0,  0,  0, -1,  0] },
+];
+const HA: HRow[] = [
+  { food: 'Trans fats',                  cells: [-4, -3, -3, -2, -4, -4] },
+  { food: 'Total meats',                 cells: [-3, -2, -2, -2, -3, -3] },
+  { food: 'Red & processed meats',       cells: [-3, -2, -2, -2, -3, -3] },
+  { food: 'Processed meat',             cells: [-3, -2, -2, -2, -3, -2] },
+  { food: 'Sodium',                      cells: [-2, -1, -1, -1, -2, -2] },
+  { food: 'Unprocessed red meat',        cells: [-2, -1, -1, -1, -2, -2] },
+  { food: 'Added sat. fat & trans fat', cells: [-3, -2, -2, -1, -3, -3] },
+  { food: 'French fries',               cells: [-2, -1, -1, -1, -2, -2] },
+  { food: 'Butter',                      cells: [-2, -1, -1, -1, -2, -1] },
+  { food: 'Sugar-sweetened beverages',  cells: [-2, -1, -1, -1, -2, -2] },
+  { food: 'High-fat dairy',             cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'Refined grains',             cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'Fast & fried foods',         cells: [-2, -1, -1, -1, -2, -1] },
+];
+
+function cellCls(v: CellVal): string {
+  if (v === 4)  return 'bg-emerald-700';
+  if (v === 3)  return 'bg-emerald-500';
+  if (v === 2)  return 'bg-emerald-300';
+  if (v === 1)  return 'bg-emerald-100';
+  if (v === 0)  return 'bg-gray-100';
+  if (v === -1) return 'bg-red-100';
+  if (v === -2) return 'bg-red-200';
+  if (v === -3) return 'bg-red-400';
+  return 'bg-red-600';
+}
+
+// ── Translations ──────────────────────────────────────────────────────────────
 const T: Record<Lang, {
   tag: string;
   h1: string;
@@ -29,11 +92,9 @@ const T: Record<Lang, {
   scienceTitle: string;
   scienceSub: string;
   promoteLabel: string;
-  promoteItems: string[];
-  promoteDescs: string[];
   avoidLabel: string;
-  avoidItems: string[];
-  avoidDescs: string[];
+  heatmapColHeaders: string[];
+  heatmapDividerLabel: string;
   citation: string;
   rulesTag: string;
   rulesTitle: string;
@@ -73,23 +134,21 @@ const T: Record<Lang, {
     whyText: 'Vollkorn, Beeren, Nüsse, Samen und Hülsenfrüchte (Soja) gehören laut der Harvard T.H. Chan School of Public Health zu den wichtigsten Lebensmitteln für gesundes Altern.',
     ddBadgeNote: '6 von 12 Daily Dozen Kategorien in einer Mahlzeit',
     ddBadges: [
-      '✅ Vollkorn (Hafer)',
-      '✅ Beeren (gemischte Beeren)',
-      '✅ Weitere Früchte (Apfel, Mango)',
-      '✅ Leinsamen',
-      '✅ Nüsse & Samen (Chia, Kürbis, Sonnenblume)',
-      '✅ Gewürze (Ceylon-Zimt)',
+      '🌾 Vollkorn (Hafer)',
+      '🫐 Beeren (gemischte Beeren)',
+      '🍎 Weitere Früchte (Apfel, Mango)',
+      '🌱 Leinsamen',
+      '🥜 Nüsse & Samen (Chia, Kürbis, Sonnenblume)',
+      '🧂 Gewürze (Ceylon-Zimt)',
     ],
     scienceTag: 'DIE WISSENSCHAFT',
     scienceTitle: 'Was Forscher über Essen & Longevity wissen',
-    scienceSub: 'Die Nurses\' Health Study begleitete über 70.000 Frauen über 30 Jahre – und identifizierte, welche Lebensmittel gesundes Altern fördern oder hemmen.',
-    promoteLabel: 'Fördern gesundes Altern',
-    promoteItems: ['Obst', 'Vollkorn', 'Gemüse', 'Nüsse', 'Hülsenfrüchte', 'Ungesättigte Fette', 'Blattgemüse', 'Dunkelgelbes Gemüse', 'Beeren', 'Olivenöl', 'Omega-3-reiche Lebensmittel', 'Soja', 'Fettarme Milchprodukte', 'Joghurt', 'Kaffee & Tee'],
-    promoteDescs: ['Stärkstes Longevity-Signal', 'Ballaststoffe, langsame Energie', 'Mikronährstoffe & Antioxidantien', 'Herzgesunde Fette & Protein', 'Protein, Ballaststoffe, Longevity', 'Pflanzenöle, Herzunterstützung', 'Folat, Vitamine, Anti-Aging', 'Beta-Carotin & Immunabwehr', 'Polyphenole & Gehirngesundheit', 'Mediterraner Longevity-Klassiker', 'Gehirn- & Herzschutz', 'Vollständiges Pflanzenprotein', 'Kalzium & Proteinquelle', 'Probiotika & Knochengesundheit', 'Antioxidantien, leichter Effekt'],
-    avoidLabel: 'Beschleunigen Alterung',
-    avoidItems: ['Transfette', 'Verarbeitetes Fleisch', 'Rotes Fleisch', 'Salz', 'Zuckerhaltige Getränke', 'Raffiniertes Getreide', 'Vollfettmilchprodukte', 'Butter', 'Pommes frites', 'Fast Food', 'Süssigkeiten & Snacks'],
-    avoidDescs: ['Stärkstes Alterungssignal', 'Nitrate, Salz, Karzinogene', 'Gesättigte Fette, Entzündung', 'Erhöht den Blutdruck', 'Leere Kalorien, Insulinspitzen', 'Wenig Ballaststoffe, viel Glukose', 'Gesättigte Fette, Entzündung', 'Hoher gesättigter Fettgehalt', 'Transfette & Acrylamid', 'Verarbeitet, kalorienreich', 'Zucker & raffinierte Kohlenhydrate'],
-    citation: 'Basierend auf Tessiere et al. (2024), Nurses\' Health Study – über 70.000 Frauen, 30 Jahre Beobachtungszeitraum.',
+    scienceSub: 'Tessiere et al. (2025) in Nature Medicine verfolgten 105.015 Teilnehmer in zwei großen Kohorten (Nurses\' Health Study & Health Professionals Follow-up Study) über 30 Jahre – und identifizierten, welche Lebensmittel gesundes Altern in 6 Gesundheitsdomänen fördern oder beschleunigen.',
+    promoteLabel: 'Fördert gesundes Altern',
+    avoidLabel: 'Beschleunigt Alterung',
+    heatmapColHeaders: ['Gesundes Altern', 'Kognitiv', 'Körperlich', 'Psychische Gesundheit', 'Krankheitsfrei', 'Bis 70 überleben'],
+    heatmapDividerLabel: 'Gemischt / neutral',
+    citation: 'Tessiere et al. (2025), Nature Medicine — 105.015 Teilnehmer, 30 Jahre Beobachtungszeitraum.',
     rulesTag: 'DREI EINFACHE REGELN',
     rulesTitle: 'So fängst du an',
     rules: [
@@ -136,23 +195,21 @@ const T: Record<Lang, {
     whyText: 'Whole grains, berries, nuts, seeds, and legumes (soy) are the top foods for healthy aging according to research from the Harvard T.H. Chan School of Public Health.',
     ddBadgeNote: '6 of 12 Daily Dozen categories in one meal',
     ddBadges: [
-      '✅ Whole Grains (oats)',
-      '✅ Berries (mixed berries)',
-      '✅ Other Fruits (apple, mango)',
-      '✅ Flaxseeds',
-      '✅ Nuts & Seeds (chia, pumpkin, sunflower)',
-      '✅ Spices (Ceylon cinnamon)',
+      '🌾 Whole Grains (oats)',
+      '🫐 Berries (mixed berries)',
+      '🍎 Other Fruits (apple, mango)',
+      '🌱 Flaxseeds',
+      '🥜 Nuts & Seeds (chia, pumpkin, sunflower)',
+      '🧂 Spices (Ceylon cinnamon)',
     ],
     scienceTag: 'THE SCIENCE',
     scienceTitle: 'What researchers know about food & longevity',
-    scienceSub: 'The Nurses\' Health Study followed over 70,000 women for 30 years — clearly identifying which foods promote or accelerate aging.',
-    promoteLabel: 'Promote healthy aging',
-    promoteItems: ['Fruit', 'Whole grains', 'Vegetables', 'Nuts', 'Legumes', 'Unsaturated fats', 'Leafy greens', 'Dark-yellow vegetables', 'Berries', 'Olive oil', 'Omega-3 rich foods', 'Soy', 'Low-fat dairy', 'Yogurt', 'Coffee & tea'],
-    promoteDescs: ['Strongest healthy aging signal', 'Fiber, slow energy release', 'Micronutrients & antioxidants', 'Heart-healthy fats & protein', 'Protein, fiber, longevity', 'Plant oils, heart support', 'Folate, vitamins, anti-aging', 'Beta-carotene & immunity', 'Polyphenols & brain health', 'Mediterranean longevity staple', 'Brain & heart protection', 'Complete plant protein', 'Calcium & protein source', 'Probiotics & bone health', 'Antioxidants, mild benefit'],
-    avoidLabel: 'Accelerate aging',
-    avoidItems: ['Trans fats', 'Processed meat', 'Red meat', 'Sodium', 'Sugar-sweetened beverages', 'Refined grains', 'High-fat dairy', 'Butter', 'French fries', 'Fast food', 'Sweets & snacks'],
-    avoidDescs: ['Strongest aging signal in study', 'Nitrates, salt, carcinogens', 'Saturated fat, inflammation', 'Raises blood pressure', 'Empty calories, insulin spikes', 'Low fiber, rapid glucose', 'Saturated fat, inflammation', 'High saturated fat content', 'Trans fats & acrylamide', 'Processed, calorie-dense', 'Sugar & refined carbs'],
-    citation: 'Based on Tessiere et al. (2024), Nurses\' Health Study — 70,000+ women followed for 30 years.',
+    scienceSub: 'Tessiere et al. (2025) in Nature Medicine followed 105,015 participants across two major cohorts (Nurses\' Health Study & Health Professionals Follow-up Study) for 30 years — identifying which foods promote or accelerate aging across 6 health outcomes.',
+    promoteLabel: 'Promotes healthy aging',
+    avoidLabel: 'Accelerates aging',
+    heatmapColHeaders: ['Healthy aging', 'Cognitive', 'Physical', 'Mental health', 'Disease-free', 'Survived 70'],
+    heatmapDividerLabel: 'Mixed / neutral',
+    citation: 'Tessiere et al. (2025), Nature Medicine — 105,015 participants followed for 30 years.',
     rulesTag: 'THREE SIMPLE RULES',
     rulesTitle: 'How to begin',
     rules: [
@@ -199,23 +256,21 @@ const T: Record<Lang, {
     whyText: "Les céréales complètes, les baies, les noix, les graines et les légumineuses (soja) sont les principaux aliments pour un vieillissement sain selon la Harvard T.H. Chan School of Public Health.",
     ddBadgeNote: '6 des 12 catégories Daily Dozen en un seul repas',
     ddBadges: [
-      '✅ Céréales complètes (avoine)',
-      '✅ Baies (fruits rouges)',
-      '✅ Autres fruits (pomme, mangue)',
-      '✅ Graines de lin',
-      '✅ Noix & graines (chia, courge, tournesol)',
-      '✅ Épices (cannelle de Ceylan)',
+      '🌾 Céréales complètes (avoine)',
+      '🫐 Baies (fruits rouges)',
+      '🍎 Autres fruits (pomme, mangue)',
+      '🌱 Graines de lin',
+      '🥜 Noix & graines (chia, courge, tournesol)',
+      '🧂 Épices (cannelle de Ceylan)',
     ],
     scienceTag: 'LA SCIENCE',
     scienceTitle: "Ce que les chercheurs savent sur l'alimentation & la longévité",
-    scienceSub: "La Nurses' Health Study a suivi plus de 70 000 femmes pendant 30 ans — identifiant clairement les aliments qui favorisent ou accélèrent le vieillissement.",
-    promoteLabel: 'Favorisent un vieillissement sain',
-    promoteItems: ['Fruits', 'Céréales complètes', 'Légumes', 'Noix', 'Légumineuses', 'Graisses insaturées', 'Légumes à feuilles', 'Légumes jaune foncé', 'Baies', "Huile d'olive", 'Aliments riches en oméga-3', 'Soja', 'Produits laitiers allégés', 'Yaourt', 'Café & thé'],
-    promoteDescs: ['Signal de longévité le plus fort', 'Fibres, énergie lente', 'Micronutriments & antioxydants', 'Graisses saines & protéines', 'Protéines, fibres, longévité', 'Huiles végétales, cœur', 'Folate, vitamines, anti-âge', 'Bêta-carotène & immunité', 'Polyphénols & cerveau', 'Pilier méditerranéen de longévité', 'Protection cœur & cerveau', 'Protéine végétale complète', 'Calcium & source de protéines', 'Probiotiques & os', 'Antioxydants, bénéfice léger'],
-    avoidLabel: 'Accélèrent le vieillissement',
-    avoidItems: ['Graisses trans', 'Viande transformée', 'Viande rouge', 'Sodium', 'Boissons sucrées', 'Céréales raffinées', 'Produits laitiers gras', 'Beurre', 'Frites', 'Fast food', 'Sucreries & snacks'],
-    avoidDescs: ["Signal de vieillissement le plus fort", 'Nitrates, sel, cancérigènes', 'Graisses saturées, inflammation', 'Augmente la pression artérielle', "Calories vides, pics d'insuline", 'Peu de fibres, glucose rapide', 'Graisses saturées, inflammation', 'Haute teneur en graisses saturées', 'Graisses trans & acrylamide', 'Transformé, dense en calories', 'Sucre & glucides raffinés'],
-    citation: "D'après Tessiere et al. (2024), Nurses' Health Study — plus de 70 000 femmes suivies pendant 30 ans.",
+    scienceSub: "Tessiere et al. (2025) dans Nature Medicine ont suivi 105 015 participants dans deux grandes cohortes (Nurses' Health Study & Health Professionals Follow-up Study) pendant 30 ans — identifiant les aliments qui favorisent ou accélèrent le vieillissement sur 6 résultats de santé.",
+    promoteLabel: 'Favorise un vieillissement sain',
+    avoidLabel: 'Accélère le vieillissement',
+    heatmapColHeaders: ['Vieillissement sain', 'Cognitif', 'Physique', 'Santé mentale', 'Sans maladie', 'Survie à 70'],
+    heatmapDividerLabel: 'Mixte / neutre',
+    citation: "Tessiere et al. (2025), Nature Medicine — 105 015 participants suivis pendant 30 ans.",
     rulesTag: 'TROIS RÈGLES SIMPLES',
     rulesTitle: 'Comment commencer',
     rules: [
@@ -262,23 +317,21 @@ const T: Record<Lang, {
     whyText: 'Los cereales integrales, las bayas, los frutos secos, las semillas y las legumbres (soja) son los principales alimentos para el envejecimiento saludable según la Harvard T.H. Chan School of Public Health.',
     ddBadgeNote: '6 de 12 categorías Daily Dozen en una comida',
     ddBadges: [
-      '✅ Cereales integrales (avena)',
-      '✅ Bayas (frutos del bosque)',
-      '✅ Otras frutas (manzana, mango)',
-      '✅ Semillas de lino',
-      '✅ Frutos secos & semillas (chía, calabaza, girasol)',
-      '✅ Especias (canela de Ceilán)',
+      '🌾 Cereales integrales (avena)',
+      '🫐 Bayas (frutos del bosque)',
+      '🍎 Otras frutas (manzana, mango)',
+      '🌱 Semillas de lino',
+      '🥜 Frutos secos & semillas (chía, calabaza, girasol)',
+      '🧂 Especias (canela de Ceilán)',
     ],
     scienceTag: 'LA CIENCIA',
     scienceTitle: 'Lo que los investigadores saben sobre alimentación y longevidad',
-    scienceSub: "El Nurses' Health Study siguió a más de 70.000 mujeres durante 30 años — identificando claramente qué alimentos promueven o aceleran el envejecimiento.",
-    promoteLabel: 'Promueven el envejecimiento saludable',
-    promoteItems: ['Frutas', 'Cereales integrales', 'Verduras', 'Frutos secos', 'Legumbres', 'Grasas insaturadas', 'Verduras de hoja', 'Verduras amarillo oscuro', 'Bayas', 'Aceite de oliva', 'Alimentos ricos en omega-3', 'Soja', 'Lácteos bajos en grasa', 'Yogur', 'Café y té'],
-    promoteDescs: ['Mayor señal de longevidad', 'Fibra, energía lenta', 'Micronutrientes & antioxidantes', 'Grasas saludables & proteína', 'Proteína, fibra, longevidad', 'Aceites vegetales, corazón', 'Folato, vitaminas, anti-envejecimiento', 'Betacaroteno e inmunidad', 'Polifenoles & salud cerebral', 'Clásico mediterráneo de longevidad', 'Protección cerebro & corazón', 'Proteína vegetal completa', 'Calcio & fuente proteica', 'Probióticos & huesos', 'Antioxidantes, beneficio leve'],
-    avoidLabel: 'Aceleran el envejecimiento',
-    avoidItems: ['Grasas trans', 'Carne procesada', 'Carne roja', 'Sodio', 'Bebidas azucaradas', 'Cereales refinados', 'Lácteos grasos', 'Mantequilla', 'Patatas fritas', 'Comida rápida', 'Dulces y snacks'],
-    avoidDescs: ['Mayor señal de envejecimiento', 'Nitratos, sal, carcinógenos', 'Grasas saturadas, inflamación', 'Aumenta la presión arterial', 'Calorías vacías, picos de insulina', 'Poca fibra, glucosa rápida', 'Grasas saturadas, inflamación', 'Alto contenido graso saturado', 'Grasas trans y acrilamida', 'Procesado, denso en calorías', 'Azúcar y carbohidratos refinados'],
-    citation: "Basado en Tessiere et al. (2024), Nurses' Health Study — más de 70.000 mujeres seguidas durante 30 años.",
+    scienceSub: "Tessiere et al. (2025) en Nature Medicine siguieron a 105.015 participantes en dos grandes cohortes (Nurses' Health Study & Health Professionals Follow-up Study) durante 30 años — identificando qué alimentos promueven o aceleran el envejecimiento en 6 resultados de salud.",
+    promoteLabel: 'Promueve el envejecimiento saludable',
+    avoidLabel: 'Acelera el envejecimiento',
+    heatmapColHeaders: ['Envej. sano', 'Cognitivo', 'Físico', 'Salud mental', 'Sin enfermedad', 'Superv. a 70'],
+    heatmapDividerLabel: 'Mixto / neutro',
+    citation: "Tessiere et al. (2025), Nature Medicine — 105.015 participantes seguidos durante 30 años.",
     rulesTag: 'TRES REGLAS SIMPLES',
     rulesTitle: 'Cómo empezar',
     rules: [
@@ -325,23 +378,21 @@ const T: Record<Lang, {
     whyText: "Cereali integrali, bacche, noci, semi e legumi (soia) sono i principali alimenti per l'invecchiamento sano secondo la Harvard T.H. Chan School of Public Health.",
     ddBadgeNote: '6 delle 12 categorie Daily Dozen in un pasto',
     ddBadges: [
-      '✅ Cereali integrali (avena)',
-      '✅ Bacche (frutti di bosco misti)',
-      '✅ Altri frutti (mela, mango)',
-      '✅ Semi di lino',
-      '✅ Noci & semi (chia, zucca, girasole)',
-      '✅ Spezie (cannella di Ceylon)',
+      '🌾 Cereali integrali (avena)',
+      '🫐 Bacche (frutti di bosco misti)',
+      '🍎 Altri frutti (mela, mango)',
+      '🌱 Semi di lino',
+      '🥜 Noci & semi (chia, zucca, girasole)',
+      '🧂 Spezie (cannella di Ceylon)',
     ],
     scienceTag: 'LA SCIENZA',
     scienceTitle: 'Cosa sanno i ricercatori su alimentazione e longevità',
-    scienceSub: "Il Nurses' Health Study ha seguito oltre 70.000 donne per 30 anni — identificando chiaramente quali alimenti promuovono o accelerano l'invecchiamento.",
-    promoteLabel: "Promuovono l'invecchiamento sano",
-    promoteItems: ['Frutta', 'Cereali integrali', 'Verdure', 'Noci', 'Legumi', 'Grassi insaturi', 'Verdure a foglia', 'Verdure giallo scuro', 'Bacche', "Olio d'oliva", 'Alimenti ricchi di omega-3', 'Soia', 'Latticini magri', 'Yogurt', 'Caffè e tè'],
-    promoteDescs: ['Segnale di longevità più forte', 'Fibre, energia lenta', 'Micronutrienti e antiossidanti', 'Grassi sani e proteine', 'Proteine, fibre, longevità', 'Oli vegetali, cuore', 'Folato, vitamine, anti-invecchiamento', 'Beta-carotene e immunità', 'Polifenoli e salute cerebrale', 'Pilastro mediterraneo di longevità', 'Protezione cuore e cervello', 'Proteina vegetale completa', 'Calcio e fonte proteica', 'Probiotici e ossa', 'Antiossidanti, beneficio lieve'],
-    avoidLabel: "Accelerano l'invecchiamento",
-    avoidItems: ['Grassi trans', 'Carne lavorata', 'Carne rossa', 'Sodio', 'Bevande zuccherate', 'Cereali raffinati', 'Latticini grassi', 'Burro', 'Patatine fritte', 'Fast food', 'Dolci e snack'],
-    avoidDescs: ["Segnale di invecchiamento più forte", 'Nitrati, sale, cancerogeni', 'Grassi saturi, infiammazione', 'Aumenta la pressione arteriosa', 'Calorie vuote, picchi insulinici', 'Poca fibra, glucosio rapido', 'Grassi saturi, infiammazione', 'Alto contenuto di grassi saturi', 'Grassi trans e acrilammide', 'Lavorato, ricco di calorie', 'Zucchero e carboidrati raffinati'],
-    citation: "Basato su Tessiere et al. (2024), Nurses' Health Study — oltre 70.000 donne seguite per 30 anni.",
+    scienceSub: "Tessiere et al. (2025) su Nature Medicine hanno seguito 105.015 partecipanti in due grandi coorti (Nurses' Health Study & Health Professionals Follow-up Study) per 30 anni — identificando gli alimenti che favoriscono o accelerano l'invecchiamento su 6 esiti di salute.",
+    promoteLabel: "Favorisce l'invecchiamento sano",
+    avoidLabel: "Accelera l'invecchiamento",
+    heatmapColHeaders: ['Inv. sano', 'Cognitivo', 'Fisico', 'Mentale', 'Senza malattia', 'A 70 anni'],
+    heatmapDividerLabel: 'Misto / neutro',
+    citation: "Tessiere et al. (2025), Nature Medicine — 105.015 partecipanti seguiti per 30 anni.",
     rulesTag: 'TRE REGOLE SEMPLICI',
     rulesTitle: 'Come iniziare',
     rules: [
@@ -429,7 +480,7 @@ export default async function HowToStartPage() {
                   <p className="text-xs text-[#1c2a2b]/60 leading-relaxed">
                     {t.whyText.split('Harvard T.H. Chan School of Public Health')[0]}
                     <a
-                      href="https://pubmed.ncbi.nlm.nih.gov/39231347/"
+                      href="https://pubmed.ncbi.nlm.nih.gov/40128348/"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline text-[#0e393d]/70 hover:text-[#0e393d] transition-colors"
@@ -454,7 +505,7 @@ export default async function HowToStartPage() {
           </div>
         </section>
 
-        {/* ── Section 2: Food science ───────────────────────────────────────── */}
+        {/* ── Section 2: Science heatmap ────────────────────────────────────── */}
         <section className="mb-20">
           <div className="mb-8 flex items-center gap-4">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] shrink-0">{t.scienceTag}</p>
@@ -464,67 +515,142 @@ export default async function HowToStartPage() {
           <h2 className="font-serif text-3xl text-[#0e393d] mb-3 max-w-2xl">{t.scienceTitle}</h2>
           <p className="text-base text-[#1c2a2b]/60 mb-8 max-w-2xl leading-relaxed">{t.scienceSub}</p>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {/* Promote card */}
-            <div className="rounded-2xl bg-emerald-50 ring-1 ring-emerald-100 p-6">
-              <div className="flex items-center gap-2 mb-5">
-                <span className="text-lg">✅</span>
-                <h3 className="font-semibold text-sm text-emerald-800 uppercase tracking-[0.12em]">{t.promoteLabel}</h3>
+          {/* Heatmap */}
+          <div className="overflow-x-auto -mx-6 px-6">
+            <div className="min-w-[620px]">
+
+              {/* Column headers */}
+              <div className="flex mb-0.5">
+                <div className="shrink-0" style={{ width: 164 }} />
+                {t.heatmapColHeaders.map((h, ci) => (
+                  <div key={ci} className="flex-1 flex items-end justify-center pb-1" style={{ height: 86 }}>
+                    <span
+                      className="text-[9px] font-semibold uppercase tracking-wide text-[#0e393d]/55 text-center leading-tight block"
+                      style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+                    >
+                      {h}
+                    </span>
+                  </div>
+                ))}
               </div>
-              <div className="space-y-2.5">
-                {t.promoteItems.map((item, i) => {
-                  const intensity = Math.round((1 - i / (t.promoteItems.length - 1)) * 100);
-                  return (
-                    <div key={i} className="flex items-center gap-3">
-                      <div
-                        className="shrink-0 w-1 rounded-full bg-emerald-500"
-                        style={{ height: 32, opacity: 0.2 + (intensity / 100) * 0.8 }}
-                      />
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-emerald-900 leading-none">{item}</p>
-                        <p className="text-[10px] text-emerald-700/70 mt-0.5 leading-snug">{t.promoteDescs[i]}</p>
-                      </div>
-                    </div>
-                  );
-                })}
+
+              {/* Promote rows */}
+              {HP.map((row) => (
+                <div key={row.food} className="flex border-b border-gray-50 last:border-0">
+                  <div
+                    className="shrink-0 pr-2 text-right text-[10.5px] text-[#1c2a2b]/55 flex items-center justify-end leading-tight"
+                    style={{ width: 164, height: 22 }}
+                  >
+                    {row.food}
+                  </div>
+                  {row.cells.map((v, ci) => (
+                    <div
+                      key={ci}
+                      className={`flex-1 m-[2px] rounded-[2px] ${cellCls(v)}`}
+                      style={{ height: 18 }}
+                    />
+                  ))}
+                </div>
+              ))}
+
+              {/* Divider: mixed/neutral */}
+              <div className="flex items-center gap-3 my-2">
+                <div className="shrink-0" style={{ width: 164 }} />
+                <div className="flex-1 h-px bg-[#0e393d]/10" />
+                <span className="text-[9px] uppercase tracking-[0.14em] text-[#0e393d]/40 whitespace-nowrap shrink-0">
+                  {t.heatmapDividerLabel}
+                </span>
+                <div className="flex-1 h-px bg-[#0e393d]/10" />
               </div>
-            </div>
-            {/* Avoid card */}
-            <div className="rounded-2xl bg-red-50 ring-1 ring-red-100 p-6">
-              <div className="flex items-center gap-2 mb-5">
-                <span className="text-lg">⚠️</span>
-                <h3 className="font-semibold text-sm text-red-800 uppercase tracking-[0.12em]">{t.avoidLabel}</h3>
+
+              {/* Mixed rows */}
+              {HM.map((row) => (
+                <div key={row.food} className="flex border-b border-gray-50 last:border-0">
+                  <div
+                    className="shrink-0 pr-2 text-right text-[10.5px] text-[#1c2a2b]/55 flex items-center justify-end leading-tight"
+                    style={{ width: 164, height: 22 }}
+                  >
+                    {row.food}
+                  </div>
+                  {row.cells.map((v, ci) => (
+                    <div
+                      key={ci}
+                      className={`flex-1 m-[2px] rounded-[2px] ${cellCls(v)}`}
+                      style={{ height: 18 }}
+                    />
+                  ))}
+                </div>
+              ))}
+
+              {/* Divider: avoid */}
+              <div className="flex items-center gap-3 my-2">
+                <div className="shrink-0" style={{ width: 164 }} />
+                <div className="flex-1 h-px bg-[#0e393d]/10" />
               </div>
-              <div className="space-y-2.5">
-                {t.avoidItems.map((item, i) => {
-                  const intensity = Math.round((1 - i / (t.avoidItems.length - 1)) * 100);
-                  return (
-                    <div key={i} className="flex items-center gap-3">
-                      <div
-                        className="shrink-0 w-1 rounded-full bg-red-500"
-                        style={{ height: 32, opacity: 0.2 + (intensity / 100) * 0.8 }}
-                      />
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-red-900 leading-none">{item}</p>
-                        <p className="text-[10px] text-red-700/70 mt-0.5 leading-snug">{t.avoidDescs[i]}</p>
-                      </div>
-                    </div>
-                  );
-                })}
+
+              {/* Avoid rows */}
+              {HA.map((row) => (
+                <div key={row.food} className="flex border-b border-gray-50 last:border-0">
+                  <div
+                    className="shrink-0 pr-2 text-right text-[10.5px] text-[#1c2a2b]/55 flex items-center justify-end leading-tight"
+                    style={{ width: 164, height: 22 }}
+                  >
+                    {row.food}
+                  </div>
+                  {row.cells.map((v, ci) => (
+                    <div
+                      key={ci}
+                      className={`flex-1 m-[2px] rounded-[2px] ${cellCls(v)}`}
+                      style={{ height: 18 }}
+                    />
+                  ))}
+                </div>
+              ))}
+
+              {/* Legend */}
+              <div className="mt-4 flex items-center gap-3">
+                <div className="shrink-0" style={{ width: 164 }} />
+                <span className="text-[9px] font-semibold text-red-600 whitespace-nowrap shrink-0">← {t.avoidLabel}</span>
+                <div className="flex gap-0.5 flex-1">
+                  {([-4, -3, -2, -1, 0, 1, 2, 3, 4] as CellVal[]).map((v) => (
+                    <div key={v} className={`flex-1 h-3 rounded-[1px] ${cellCls(v)}`} />
+                  ))}
+                </div>
+                <span className="text-[9px] font-semibold text-emerald-700 whitespace-nowrap shrink-0">{t.promoteLabel} →</span>
               </div>
             </div>
           </div>
-          <p className="mt-4 text-xs text-[#1c2a2b]/40 leading-relaxed">
-            {t.citation.split('Tessiere et al. (2024)')[0]}
+
+          {/* Citation */}
+          <p className="mt-5 text-xs text-[#1c2a2b]/40 leading-relaxed">
+            {t.citation}
+            {' · '}
             <a
-              href="https://pubmed.ncbi.nlm.nih.gov/39231347/"
+              href="https://pubmed.ncbi.nlm.nih.gov/40128348/"
               target="_blank"
               rel="noopener noreferrer"
               className="underline hover:text-[#1c2a2b]/60 transition-colors"
             >
-              Tessiere et al. (2024)
+              PubMed
             </a>
-            {t.citation.split('Tessiere et al. (2024)')[1]}
+            {' · '}
+            <a
+              href="https://www.nature.com/articles/s41591-025-03570-5"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-[#1c2a2b]/60 transition-colors"
+            >
+              Nature Medicine
+            </a>
+            {' · '}
+            <a
+              href="https://www.nature.com/articles/s41591-025-03570-5/figures/4"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-[#1c2a2b]/60 transition-colors"
+            >
+              Figure 4
+            </a>
           </p>
         </section>
 
