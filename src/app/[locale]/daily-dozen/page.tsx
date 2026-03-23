@@ -46,6 +46,38 @@ const T_TRACKER = {
 };
 
 // ─── Public page translations ──────────────────────────────────────────────────
+// ─── Static gauge helpers (tachometer mockup on public page) ──────────────────
+const G_CX = 130, G_CY = 115, G_SEGS = 12, G_GAP = 2.5, G_START = 135, G_ARC = 270;
+const G_SEG_ARC = (G_ARC - (G_SEGS - 1) * G_GAP) / G_SEGS;
+const G_R_MID = 85, G_MIN_THICK = 10, G_MAX_THICK = 26;
+function gRad(d: number) { return d * Math.PI / 180; }
+function gPx(r: number, d: number): [number, number] {
+  return [G_CX + r * Math.cos(gRad(d)), G_CY + r * Math.sin(gRad(d))];
+}
+function gSegPath(i: number): string {
+  const s = G_START + i * (G_SEG_ARC + G_GAP), e = s + G_SEG_ARC;
+  const t = i / (G_SEGS - 1);
+  const thick = G_MIN_THICK + t * (G_MAX_THICK - G_MIN_THICK);
+  const rO = G_R_MID + thick / 2, rI = G_R_MID - thick / 2;
+  const [x1, y1] = gPx(rO, s), [x2, y2] = gPx(rO, e);
+  const [x3, y3] = gPx(rI, e), [x4, y4] = gPx(rI, s);
+  return `M${x1.toFixed(1)},${y1.toFixed(1)} A${rO},${rO} 0 0,1 ${x2.toFixed(1)},${y2.toFixed(1)} L${x3.toFixed(1)},${y3.toFixed(1)} A${rI},${rI} 0 0,0 ${x4.toFixed(1)},${y4.toFixed(1)} Z`;
+}
+// Needle pre-computed for 8/12 filled (ratio ≈ 0.667, needle at 315°)
+const G_NEEDLE_DEG = G_START + (8 / 12) * G_ARC;
+const G_N_RAD = gRad(G_NEEDLE_DEG);
+const G_NDX = Math.cos(G_N_RAD), G_NDY = Math.sin(G_N_RAD);
+const G_TIP_R = G_R_MID - G_MIN_THICK / 2 + 4;
+const G_NEEDLE_PATH = [
+  `M${(G_CX + G_TIP_R * G_NDX).toFixed(1)},${(G_CY + G_TIP_R * G_NDY).toFixed(1)}`,
+  `L${(G_CX + 4 * (-G_NDY)).toFixed(1)},${(G_CY + 4 * G_NDX).toFixed(1)}`,
+  `L${(G_CX - 10 * G_NDX).toFixed(1)},${(G_CY - 10 * G_NDY).toFixed(1)}`,
+  `L${(G_CX - 4 * (-G_NDY)).toFixed(1)},${(G_CY - 4 * G_NDX).toFixed(1)} Z`,
+].join(' ');
+const G_LABEL_R = G_R_MID + G_MAX_THICK / 2 + 12;
+const [G_L0X, G_L0Y] = gPx(G_LABEL_R, G_START);
+const [G_LTX, G_LTY] = gPx(G_LABEL_R, G_START + G_ARC);
+
 const T_PUBLIC: Record<Lang, {
   tag: string;
   title: string;
@@ -60,18 +92,26 @@ const T_PUBLIC: Record<Lang, {
   gregerLink: string;
   // 12 categories
   catsHeading: string;
+  serving: string;
   servings: string;
   // Tracker
   trackerTag: string;
   trackerTitle: string;
   trackerSub: string;
   trackerFeatures: { title: string; desc: string }[];
+  gaugeDesc: string;
+  catsPillLabel: string;
+  streakPillLabel: string;
+  trackerDetail: string;
+  previewNote: string;
   // Recipes
   recipesTag: string;
   recipesTitle: string;
   recipesText: string;
   recipesCta: string;
   recipesBadges: string[];
+  recipeName: string;
+  recipeServingNote: string;
   // B12
   b12Text: string;
   // Books
@@ -84,7 +124,7 @@ const T_PUBLIC: Record<Lang, {
   statsItems: { stat: string; label: string }[];
   // Resources
   resourcesNote: string;
-  resourceLinks: string[];
+  resourceLink: string;
   // CTA
   ctaDark: string;
   ctaSub: string;
@@ -103,6 +143,7 @@ const T_PUBLIC: Record<Lang, {
     gregerNote: 'Mehr erfahren auf NutritionFacts.org →',
     gregerLink: 'https://nutritionfacts.org/daily-dozen/',
     catsHeading: 'Die 12 Kategorien',
+    serving: 'Portion',
     servings: 'Portionen',
     trackerTag: 'DEIN TÄGLICHER TRACKER',
     trackerTitle: 'Einfache Checkboxen. Echte Wirkung.',
@@ -112,11 +153,18 @@ const T_PUBLIC: Record<Lang, {
       { title: 'Fortschritts-Gauge', desc: 'Ein visueller Gauge zeigt, wie viele der 12 Kategorien du heute abgeschlossen hast. Strebe täglich nach 100%.' },
       { title: 'Rezept-Integration', desc: 'Unsere Vollwert-Rezepte sind rund um das Daily Dozen konzipiert. Koche ein Rezept, und mehrere Kategorien werden automatisch abgehakt.' },
     ],
+    gaugeDesc: 'So sieht dein Fortschritt im echten Tracker aus',
+    catsPillLabel: 'Kategorien',
+    streakPillLabel: 'Streak',
+    trackerDetail: 'Jede Kategorie wird mit einfachen Checkboxen abgehakt. Der Fortschritts-Gauge füllt sich automatisch. Am Ende des Tages siehst du auf einen Blick, wie vollständig dein Daily Dozen war.',
+    previewNote: 'Vorschau — echte Daten nach dem Einloggen',
     recipesTag: 'REZEPT-INTEGRATION',
     recipesTitle: 'Einmal kochen, viel abhaken.',
     recipesText: 'Jedes Rezept in unserer Bibliothek ist mit den Daily Dozen Kategorien versehen, die es abdeckt. Ein einziges Frühstück wie unsere Longevity Overnight Oats hakt 6 von 12 Kategorien in einer Mahlzeit ab: Vollkornprodukte, Beeren, Andere Früchte, Leinsamen, Nüsse & Samen und Gewürze.',
     recipesCta: 'Rezepte entdecken →',
-    recipesBadges: ['Vollkornprodukte', 'Beeren', 'Andere Früchte', 'Leinsamen', 'Nüsse & Samen', 'Gewürze'],
+    recipeName: 'Longevity Overnight Oats',
+    recipeServingNote: '6 von 12 Daily Dozen Kategorien in einer Mahlzeit',
+    recipesBadges: ['🌾 Vollkornprodukte', '🫐 Beeren', '🍎 Andere Früchte', '🌱 Leinsamen', '🥜 Nüsse & Samen', '🧂 Gewürze'],
     b12Text: 'Dr. Greger empfiehlt außerdem die Ergänzung mit Vitamin B12: mindestens 2.000 mcg Cyanocobalamin pro Woche (oder 50 mcg täglich), idealerweise als kaubares oder sublinguales Ergänzungsmittel. Dies ist der einzige Nährstoff, der aus einer pflanzlichen Ernährung nicht zuverlässig verfügbar ist.',
     booksTag: 'TIEFER EINTAUCHEN',
     booksTitle: 'Die Bücher hinter der Wissenschaft.',
@@ -130,15 +178,11 @@ const T_PUBLIC: Record<Lang, {
     statsItems: [
       { stat: '12', label: 'Lebensmittelkategorien' },
       { stat: '24+', label: 'Tägliche Portionen' },
-      { stat: '1.000+', label: 'Ausgewertete Studien' },
+      { stat: '20.000+', label: 'Zitate in 3 Büchern' },
       { stat: '3', label: 'Bestseller-Bücher' },
     ],
     resourcesNote: 'Das Daily Dozen ist Dr. Gregers Schöpfung. Wir haben unseren Tracker als digitalen Begleiter aufgebaut, inspiriert von seiner Arbeit.',
-    resourceLinks: [
-      'NutritionFacts.org Daily Dozen',
-      'Daily Dozen Themenseite',
-      'Daily Dozen Checklisten-Video',
-    ],
+    resourceLink: 'NutritionFacts.org',
     ctaDark: 'Starte noch heute mit deinem Daily Dozen.',
     ctaSub: 'Kostenloses Konto. Keine Kreditkarte. Hake deine ersten Kategorien in unter einer Minute ab.',
     ctaCta1: 'Kostenloses Konto erstellen',
@@ -156,6 +200,7 @@ const T_PUBLIC: Record<Lang, {
     gregerNote: 'Learn more at NutritionFacts.org →',
     gregerLink: 'https://nutritionfacts.org/daily-dozen/',
     catsHeading: 'The 12 Categories',
+    serving: 'serving',
     servings: 'servings',
     trackerTag: 'YOUR DAILY TRACKER',
     trackerTitle: 'Simple checkboxes. Real impact.',
@@ -165,11 +210,18 @@ const T_PUBLIC: Record<Lang, {
       { title: 'Progress Gauge', desc: "A visual gauge shows how many of the 12 categories you've completed today. Aim for 100% every day." },
       { title: 'Recipe Integration', desc: 'Our whole-food recipes are designed around the Daily Dozen. Cook a recipe, and multiple categories get checked off automatically.' },
     ],
+    gaugeDesc: 'This is what your progress looks like in the real tracker',
+    catsPillLabel: 'categories',
+    streakPillLabel: 'streak',
+    trackerDetail: 'Each category is checked off with simple taps. The gauge fills automatically as you go. At the end of the day, you can see at a glance how complete your Daily Dozen was.',
+    previewNote: 'Preview — real data after logging in',
     recipesTag: 'RECIPE INTEGRATION',
     recipesTitle: 'Cook once, check off many.',
     recipesText: 'Every recipe in our library is tagged with the Daily Dozen categories it covers. A single breakfast like our Longevity Overnight Oats checks off 6 of 12 categories in one meal: Whole Grains, Berries, Other Fruits, Flaxseeds, Nuts & Seeds, and Spices.',
     recipesCta: 'Browse recipes →',
-    recipesBadges: ['Whole Grains', 'Berries', 'Other Fruits', 'Flaxseeds', 'Nuts & Seeds', 'Spices'],
+    recipeName: 'Longevity Overnight Oats',
+    recipeServingNote: '6 of 12 Daily Dozen categories in one meal',
+    recipesBadges: ['🌾 Whole Grains', '🫐 Berries', '🍎 Other Fruits', '🌱 Flaxseeds', '🥜 Nuts & Seeds', '🧂 Spices'],
     b12Text: 'Dr. Greger also recommends supplementing with Vitamin B12: at least 2,000 mcg cyanocobalamin weekly (or 50 mcg daily), ideally as a chewable or sublingual supplement. This is the one nutrient not reliably available from a plant-based diet.',
     booksTag: 'GO DEEPER',
     booksTitle: 'The books behind the science.',
@@ -183,15 +235,11 @@ const T_PUBLIC: Record<Lang, {
     statsItems: [
       { stat: '12', label: 'Food categories' },
       { stat: '24+', label: 'Daily servings' },
-      { stat: '1,000+', label: 'Studies reviewed' },
+      { stat: '20,000+', label: 'Citations across 3 books' },
       { stat: '3', label: 'Bestselling books' },
     ],
     resourcesNote: "The Daily Dozen is Dr. Greger's creation. We've built our tracker as a digital companion inspired by his work.",
-    resourceLinks: [
-      'NutritionFacts.org Daily Dozen',
-      'Daily Dozen Topic Page',
-      'Daily Dozen Checklist Video',
-    ],
+    resourceLink: 'NutritionFacts.org',
     ctaDark: 'Start tracking your Daily Dozen today.',
     ctaSub: 'Free account. No credit card. Check off your first categories in under a minute.',
     ctaCta1: 'Create free account',
@@ -209,6 +257,7 @@ const T_PUBLIC: Record<Lang, {
     gregerNote: 'En savoir plus sur NutritionFacts.org →',
     gregerLink: 'https://nutritionfacts.org/daily-dozen/',
     catsHeading: 'Les 12 catégories',
+    serving: 'portion',
     servings: 'portions',
     trackerTag: 'VOTRE TRACKER QUOTIDIEN',
     trackerTitle: 'Des cases simples. Un vrai impact.',
@@ -218,11 +267,18 @@ const T_PUBLIC: Record<Lang, {
       { title: 'Jauge de progression', desc: "Une jauge visuelle montre combien des 12 catégories vous avez complétées aujourd'hui. Visez 100% chaque jour." },
       { title: 'Intégration des recettes', desc: 'Nos recettes à base d\'aliments complets sont conçues autour du Daily Dozen. Cuisinez une recette et plusieurs catégories sont cochées automatiquement.' },
     ],
+    gaugeDesc: 'Voici à quoi ressemble votre progression dans le vrai tracker',
+    catsPillLabel: 'catégories',
+    streakPillLabel: 'série',
+    trackerDetail: 'Chaque catégorie est cochée par de simples appuis. La jauge se remplit automatiquement. En fin de journée, vous pouvez voir d\'un coup d\'œil à quel point votre Daily Dozen était complet.',
+    previewNote: 'Aperçu — données réelles après connexion',
     recipesTag: 'INTÉGRATION DES RECETTES',
     recipesTitle: 'Cuisinez une fois, cochez plusieurs.',
     recipesText: "Chaque recette de notre bibliothèque est étiquetée avec les catégories Daily Dozen qu'elle couvre. Un seul petit-déjeuner comme nos Overnight Oats Longévité coche 6 des 12 catégories en un repas : Céréales complètes, Baies, Autres fruits, Graines de lin, Noix & graines, et Épices.",
     recipesCta: 'Parcourir les recettes →',
-    recipesBadges: ['Céréales complètes', 'Baies', 'Autres fruits', 'Graines de lin', 'Noix & graines', 'Épices'],
+    recipeName: 'Longevity Overnight Oats',
+    recipeServingNote: '6 des 12 catégories Daily Dozen en un repas',
+    recipesBadges: ['🌾 Céréales complètes', '🫐 Baies', '🍎 Autres fruits', '🌱 Graines de lin', '🥜 Noix & graines', '🧂 Épices'],
     b12Text: "Le Dr Greger recommande également de se supplémenter en Vitamine B12 : au moins 2 000 mcg de cyanocobalamine par semaine (ou 50 mcg par jour), idéalement sous forme de supplément à croquer ou sublingual. Il s'agit du seul nutriment qui n'est pas disponible de manière fiable dans une alimentation végétale.",
     booksTag: 'ALLER PLUS LOIN',
     booksTitle: 'Les livres derrière la science.',
@@ -236,15 +292,11 @@ const T_PUBLIC: Record<Lang, {
     statsItems: [
       { stat: '12', label: 'Catégories alimentaires' },
       { stat: '24+', label: 'Portions quotidiennes' },
-      { stat: '1 000+', label: 'Études analysées' },
+      { stat: '20 000+', label: 'Citations dans 3 livres' },
       { stat: '3', label: 'Livres bestsellers' },
     ],
     resourcesNote: "Le Daily Dozen est la création du Dr Greger. Nous avons construit notre tracker comme un compagnon numérique inspiré de son travail.",
-    resourceLinks: [
-      'NutritionFacts.org Daily Dozen',
-      'Page thématique Daily Dozen',
-      'Vidéo checklist Daily Dozen',
-    ],
+    resourceLink: 'NutritionFacts.org',
     ctaDark: 'Commencez à suivre votre Daily Dozen aujourd\'hui.',
     ctaSub: "Compte gratuit. Aucune carte bancaire. Cochez vos premières catégories en moins d'une minute.",
     ctaCta1: 'Créer un compte gratuit',
@@ -262,6 +314,7 @@ const T_PUBLIC: Record<Lang, {
     gregerNote: 'Más información en NutritionFacts.org →',
     gregerLink: 'https://nutritionfacts.org/daily-dozen/',
     catsHeading: 'Las 12 categorías',
+    serving: 'porción',
     servings: 'porciones',
     trackerTag: 'TU RASTREADOR DIARIO',
     trackerTitle: 'Casillas simples. Impacto real.',
@@ -271,11 +324,18 @@ const T_PUBLIC: Record<Lang, {
       { title: 'Indicador de progreso', desc: 'Un indicador visual muestra cuántas de las 12 categorías has completado hoy. Apunta al 100% cada día.' },
       { title: 'Integración de recetas', desc: 'Nuestras recetas integrales están diseñadas alrededor del Daily Dozen. Cocina una receta y varias categorías se marcan automáticamente.' },
     ],
+    gaugeDesc: 'Así se ve tu progreso en el rastreador real',
+    catsPillLabel: 'categorías',
+    streakPillLabel: 'racha',
+    trackerDetail: 'Cada categoría se marca con simples toques. El indicador se llena automáticamente. Al final del día, puedes ver de un vistazo qué tan completo fue tu Daily Dozen.',
+    previewNote: 'Vista previa — datos reales después de iniciar sesión',
     recipesTag: 'INTEGRACIÓN DE RECETAS',
     recipesTitle: 'Cocina una vez, marca muchas.',
     recipesText: 'Cada receta de nuestra biblioteca está etiquetada con las categorías Daily Dozen que cubre. Un solo desayuno como nuestros Overnight Oats de Longevidad marca 6 de 12 categorías en una comida: Cereales integrales, Bayas, Otras frutas, Linaza, Frutos secos y semillas, y Especias.',
     recipesCta: 'Explorar recetas →',
-    recipesBadges: ['Cereales integrales', 'Bayas', 'Otras frutas', 'Linaza', 'Frutos secos y semillas', 'Especias'],
+    recipeName: 'Longevity Overnight Oats',
+    recipeServingNote: '6 de 12 categorías Daily Dozen en una comida',
+    recipesBadges: ['🌾 Cereales integrales', '🫐 Bayas', '🍎 Otras frutas', '🌱 Linaza', '🥜 Frutos secos y semillas', '🧂 Especias'],
     b12Text: 'El Dr. Greger también recomienda suplementar con Vitamina B12: al menos 2.000 mcg de cianocobalamina semanalmente (o 50 mcg diarios), idealmente como suplemento masticable o sublingual. Este es el único nutriente que no está disponible de manera confiable en una dieta vegetal.',
     booksTag: 'PROFUNDIZAR',
     booksTitle: 'Los libros detrás de la ciencia.',
@@ -289,15 +349,11 @@ const T_PUBLIC: Record<Lang, {
     statsItems: [
       { stat: '12', label: 'Categorías de alimentos' },
       { stat: '24+', label: 'Porciones diarias' },
-      { stat: '1.000+', label: 'Estudios revisados' },
+      { stat: '20.000+', label: 'Citas en 3 libros' },
       { stat: '3', label: 'Libros bestsellers' },
     ],
     resourcesNote: 'El Daily Dozen es la creación del Dr. Greger. Hemos construido nuestro rastreador como un compañero digital inspirado en su trabajo.',
-    resourceLinks: [
-      'NutritionFacts.org Daily Dozen',
-      'Página temática Daily Dozen',
-      'Vídeo checklist Daily Dozen',
-    ],
+    resourceLink: 'NutritionFacts.org',
     ctaDark: 'Empieza a registrar tu Daily Dozen hoy.',
     ctaSub: 'Cuenta gratuita. Sin tarjeta de crédito. Marca tus primeras categorías en menos de un minuto.',
     ctaCta1: 'Crear cuenta gratuita',
@@ -315,6 +371,7 @@ const T_PUBLIC: Record<Lang, {
     gregerNote: 'Scopri di più su NutritionFacts.org →',
     gregerLink: 'https://nutritionfacts.org/daily-dozen/',
     catsHeading: 'Le 12 categorie',
+    serving: 'porzione',
     servings: 'porzioni',
     trackerTag: 'IL TUO TRACKER QUOTIDIANO',
     trackerTitle: 'Caselle semplici. Impatto reale.',
@@ -324,11 +381,18 @@ const T_PUBLIC: Record<Lang, {
       { title: 'Indicatore di avanzamento', desc: 'Un indicatore visivo mostra quante delle 12 categorie hai completato oggi. Punta al 100% ogni giorno.' },
       { title: 'Integrazione ricette', desc: 'Le nostre ricette a base di alimenti integrali sono progettate intorno al Daily Dozen. Cucina una ricetta e più categorie vengono spuntate automaticamente.' },
     ],
+    gaugeDesc: 'Ecco come appare il tuo progresso nel tracker reale',
+    catsPillLabel: 'categorie',
+    streakPillLabel: 'serie',
+    trackerDetail: 'Ogni categoria viene spuntata con semplici tocchi. L\'indicatore si riempie automaticamente. A fine giornata, puoi vedere in un colpo d\'occhio quanto era completo il tuo Daily Dozen.',
+    previewNote: 'Anteprima — dati reali dopo l\'accesso',
     recipesTag: 'INTEGRAZIONE RICETTE',
     recipesTitle: 'Cucina una volta, spunta molte.',
     recipesText: "Ogni ricetta nella nostra libreria è etichettata con le categorie Daily Dozen che copre. Una singola colazione come i nostri Overnight Oats Longevità spunta 6 delle 12 categorie in un pasto: Cereali integrali, Bacche, Altra frutta, Semi di lino, Noci e semi e Spezie.",
     recipesCta: 'Sfoglia le ricette →',
-    recipesBadges: ['Cereali integrali', 'Bacche', 'Altra frutta', 'Semi di lino', 'Noci e semi', 'Spezie'],
+    recipeName: 'Longevity Overnight Oats',
+    recipeServingNote: '6 delle 12 categorie Daily Dozen in un pasto',
+    recipesBadges: ['🌾 Cereali integrali', '🫐 Bacche', '🍎 Altra frutta', '🌱 Semi di lino', '🥜 Noci e semi', '🧂 Spezie'],
     b12Text: "Il Dr. Greger raccomanda anche di integrare con Vitamina B12: almeno 2.000 mcg di cianocobalamina settimanalmente (o 50 mcg al giorno), idealmente come integratore masticabile o sublinguale. Questo è l'unico nutriente non disponibile in modo affidabile da una dieta a base vegetale.",
     booksTag: 'APPROFONDIRE',
     booksTitle: 'I libri dietro la scienza.',
@@ -342,15 +406,11 @@ const T_PUBLIC: Record<Lang, {
     statsItems: [
       { stat: '12', label: 'Categorie alimentari' },
       { stat: '24+', label: 'Porzioni giornaliere' },
-      { stat: '1.000+', label: 'Studi analizzati' },
+      { stat: '20.000+', label: 'Citazioni in 3 libri' },
       { stat: '3', label: 'Libri bestseller' },
     ],
     resourcesNote: 'Il Daily Dozen è la creazione del Dr. Greger. Abbiamo costruito il nostro tracker come compagno digitale ispirato al suo lavoro.',
-    resourceLinks: [
-      'NutritionFacts.org Daily Dozen',
-      'Pagina tematica Daily Dozen',
-      'Video checklist Daily Dozen',
-    ],
+    resourceLink: 'NutritionFacts.org',
     ctaDark: 'Inizia a tracciare il tuo Daily Dozen oggi.',
     ctaSub: 'Account gratuito. Nessuna carta di credito. Spunta le tue prime categorie in meno di un minuto.',
     ctaCta1: 'Crea account gratuito',
@@ -432,12 +492,6 @@ const DD_CATEGORIES: Record<Lang, { emoji: string; name: string; servings: numbe
 };
 
 const OATS_PHOTO = 'https://images.unsplash.com/photo-1517673400267-0251440c45dc?w=800&q=80';
-
-const RESOURCE_URLS = [
-  'https://nutritionfacts.org/daily-dozen/',
-  'https://nutritionfacts.org/topics/daily-dozen/',
-  'https://nutritionfacts.org/video/dr-gregers-daily-dozen-checklist-2/',
-];
 
 export default async function DailyDozenPage() {
   const locale = await getLocale();
@@ -613,7 +667,7 @@ export default async function DailyDozenPage() {
               >
                 <span className="text-3xl">{cat.emoji}</span>
                 <p className="text-white font-light text-[0.88rem] leading-snug mt-0.5">{cat.name}</p>
-                <p className="text-white/50 text-[0.72rem]">{cat.servings} {t.servings}</p>
+                <p className="text-white/50 text-[0.72rem]">{cat.servings} {cat.servings === 1 ? t.serving : t.servings}</p>
                 <p className="text-white/35 text-[0.67rem] leading-snug">{cat.serving_example}</p>
                 <p className="text-[#ceab84]/70 text-[0.67rem] leading-snug italic mt-0.5">{cat.why}</p>
               </div>
@@ -631,25 +685,71 @@ export default async function DailyDozenPage() {
           </h2>
           <p className="text-[0.95rem] font-light text-[#5a6e6f] leading-relaxed mb-10 max-w-[600px]">{t.trackerSub}</p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+          {/* Tachometer gauge mockup */}
+          <div className="flex flex-col items-center mb-10">
+            <svg viewBox="0 0 260 210" width="100%" style={{ maxWidth: 260, overflow: 'visible' }} aria-hidden="true">
+              {Array.from({ length: G_SEGS }, (_, i) => (
+                <path key={i} d={gSegPath(i)} fill={i < 8 ? '#C4A96A' : 'rgba(14,57,61,0.06)'} />
+              ))}
+              <text x={G_CX} y={G_CY + 58} textAnchor="middle" fontSize={46} fontWeight={700}
+                fill="#0e393d" style={{ fontFamily: '-apple-system, system-ui, sans-serif' }}>16</text>
+              <text x={G_L0X.toFixed(1)} y={G_L0Y.toFixed(1)} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill="#aaa">0</text>
+              <text x={G_LTX.toFixed(1)} y={G_LTY.toFixed(1)} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill="#aaa">24</text>
+              <path d={G_NEEDLE_PATH} fill="#1c2a2b" opacity={0.65} />
+              <circle cx={G_CX} cy={G_CY} r={6} fill="#1c2a2b" opacity={0.15} />
+              <circle cx={G_CX} cy={G_CY} r={3.5} fill="white" stroke="#1c2a2b" strokeWidth={1} opacity={0.8} />
+            </svg>
+            <p className="text-[12px] text-[#888] mt-1 mb-3">{t.gaugeDesc}</p>
+            <div className="flex gap-2.5">
+              <div className="text-center px-3 py-1.5 bg-[#f5f4f0] rounded-lg">
+                <div className="text-[13px] font-medium text-[#C4A96A]">8/12</div>
+                <div className="text-[10px] text-[#888] mt-0.5">{t.catsPillLabel}</div>
+              </div>
+              <div className="text-center px-3 py-1.5 bg-[#f5f4f0] rounded-lg">
+                <div className="text-[13px] font-medium text-[#0e393d]">67%</div>
+                <div className="text-[10px] text-[#888] mt-0.5">score</div>
+              </div>
+              <div className="text-center px-3 py-1.5 bg-[#f5f4f0] rounded-lg">
+                <div className="text-[13px] font-medium text-[#0e393d]">14</div>
+                <div className="text-[10px] text-[#888] mt-0.5">{t.streakPillLabel}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {t.trackerFeatures.map((f, i) => (
               <div key={i} className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 p-6 flex flex-col gap-3">
-                {i === 1 && (
-                  <div className="flex items-center justify-center w-14 h-14 mb-1">
-                    <svg viewBox="0 0 100 100" className="w-12 h-12" aria-hidden="true">
-                      <circle cx="50" cy="50" r="38" fill="none" stroke="#0e393d" strokeOpacity="0.1" strokeWidth="9" />
-                      <circle cx="50" cy="50" r="38" fill="none" stroke="#0e393d" strokeWidth="9"
-                        strokeLinecap="round" strokeDasharray="239" strokeDashoffset="59"
-                        transform="rotate(-90 50 50)" />
-                      <text x="50" y="46" textAnchor="middle" fill="#0e393d" fontSize="19" fontFamily="Georgia, serif">8</text>
-                      <text x="50" y="57" textAnchor="middle" fill="#0e393d" fontSize="8" opacity="0.4" fontFamily="system-ui">/12</text>
-                    </svg>
-                  </div>
-                )}
                 <p className="text-[0.88rem] font-semibold text-[#0e393d]">{f.title}</p>
                 <p className="text-[0.83rem] text-[#5a6e6f] leading-relaxed">{f.desc}</p>
               </div>
             ))}
+          </div>
+
+          <p className="text-[0.88rem] text-[#5a6e6f] leading-relaxed mb-8 max-w-[520px]">{t.trackerDetail}</p>
+
+          {/* Tracker preview */}
+          <div className="max-w-[480px] mb-10">
+            <div className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 overflow-hidden">
+              {[
+                { emoji: cats[0].emoji, name: cats[0].name, target: 3, filled: 3 },
+                { emoji: cats[1].emoji, name: cats[1].name, target: 1, filled: 1 },
+                { emoji: cats[4].emoji, name: cats[4].name, target: 2, filled: 1 },
+                { emoji: cats[8].emoji, name: cats[8].name, target: 3, filled: 2 },
+              ].map((row, i) => (
+                <div key={i} className="flex items-center gap-3 px-5 py-3 border-b border-[#0e393d]/5 last:border-0">
+                  <span className="text-xl">{row.emoji}</span>
+                  <span className="flex-1 text-[0.82rem] text-[#0e393d]">{row.name}</span>
+                  <div className="flex gap-1">
+                    {Array.from({ length: row.target }, (_, j) => (
+                      <div key={j} className={`w-5 h-5 rounded-full border flex items-center justify-center text-[9px] ${j < row.filled ? 'bg-[#0e393d] border-[#0e393d] text-white' : 'bg-white border-[#0e393d]/20'}`}>
+                        {j < row.filled ? '✓' : ''}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-[#888] mt-2 text-center">{t.previewNote}</p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
@@ -672,16 +772,20 @@ export default async function DailyDozenPage() {
           </h2>
           <p className="text-[0.95rem] font-light text-[#5a6e6f] leading-relaxed mb-8 max-w-[620px]">{t.recipesText}</p>
 
-          <div className="rounded-2xl overflow-hidden ring-1 ring-[#0e393d]/8 bg-white max-w-[640px]">
+          <div className="rounded-2xl overflow-hidden ring-1 ring-[#0e393d]/8 bg-white max-w-[480px] mx-auto">
             <div className="relative h-52 overflow-hidden">
               <Image
                 src={OATS_PHOTO}
                 alt="Overnight oats"
                 fill
                 className="object-cover"
-                sizes="640px"
+                sizes="480px"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0e393d]/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-5">
+                <p className="text-white font-serif text-xl leading-snug">{t.recipeName}</p>
+                <p className="text-white/70 text-[0.75rem] mt-0.5">{t.recipeServingNote}</p>
+              </div>
             </div>
             <div className="p-5">
               <div className="flex flex-wrap gap-2">
@@ -762,19 +866,14 @@ export default async function DailyDozenPage() {
       <section className="border-b border-[#0e393d]/10">
         <div className="max-w-[1060px] mx-auto px-8 md:px-12 py-12">
           <p className="text-[0.88rem] text-[#5a6e6f] leading-relaxed mb-5 max-w-[560px]">{t.resourcesNote}</p>
-          <div className="flex flex-col gap-2">
-            {t.resourceLinks.map((label, i) => (
-              <a
-                key={i}
-                href={RESOURCE_URLS[i]}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[0.88rem] text-[#ceab84] hover:underline"
-              >
-                {label} →
-              </a>
-            ))}
-          </div>
+          <a
+            href="https://nutritionfacts.org/daily-dozen/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[0.88rem] text-[#ceab84] hover:underline"
+          >
+            {t.resourceLink} →
+          </a>
         </div>
       </section>
 
