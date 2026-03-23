@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
@@ -8,11 +9,27 @@ export const metadata = { title: 'How to Start – Evida Life' };
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 type Lang = typeof VALID_LANGS[number];
 
-// ── Translations ──────────────────────────────────────────────────────────────
+const PHOTOS = {
+  oats:       'https://images.unsplash.com/photo-1517673400267-0251440c45dc?w=800&q=80',
+  bloodTest:  'https://images.unsplash.com/photo-1579154204601-01588f351e67?w=800&q=80',
+  dashboard:  'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80',
+  vegetables: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&q=80',
+  elderly:    'https://images.unsplash.com/photo-1447452001602-7090c7ab2db3?w=800&q=80',
+};
+
+const CYCLE_PHOTOS = [PHOTOS.vegetables, PHOTOS.bloodTest, PHOTOS.dashboard];
+
 const T: Record<Lang, {
   tag: string;
   h1: string;
   sub: string;
+  // Cycle
+  cycleTag: string;
+  cycleTitle: string;
+  cycleCards: { emoji: string; title: string; desc: string }[];
+  cycleCallout: string;
+  cycleCalloutSub: string;
+  // Breakfast
   breakfastTag: string;
   breakfastTitle: string;
   breakfastSub: string;
@@ -26,22 +43,51 @@ const T: Record<Lang, {
   whyText: string;
   ddBadgeNote: string;
   ddBadges: string[];
+  // Food
+  foodTag: string;
+  foodTitle: string;
+  foodGreenLabel: string;
+  foodGreen: string[];
+  foodRedLabel: string;
+  foodRed: string[];
+  foodCitation: string;
+  foodLink: string;
+  // Measure
+  measureTag: string;
+  measureTitle: string;
+  measureDesc: string;
+  measureStats: { stat: string; label: string; sub: string }[];
+  measureCta: string;
+  // Science card
   scienceCardTag: string;
   scienceCardTitle: string;
   scienceCardDesc: string;
   scienceCardLink: string;
+  // Rules
   rulesTag: string;
   rulesTitle: string;
   rules: { title: string; body: string }[];
+  dailyDozenLink: string;
+  // CTA
   ctaTag: string;
   ctaTitle: string;
-  ctaCards: { title: string; desc: string; href: string; cta: string }[];
-  dailyDozenLink: string;
+  ctaSub: string;
+  ctaCta1: string;
+  ctaCta2: string;
 }> = {
   de: {
     tag: 'EINSTIEG',
     h1: 'Deine ersten Schritte zu einem längeren, gesünderen Leben.',
-    sub: 'Einfach. Praktisch. Wissenschaftlich fundiert.',
+    sub: 'Das Wichtigste, was du für deine Gesundheit tun kannst, ist auch das Einfachste: Ändere, was auf deinem Teller liegt. Hier erfährst du, wie du in 5 Minuten anfängst.',
+    cycleTag: 'DAS KONZEPT',
+    cycleTitle: 'Essen. Messen. Verbessern.',
+    cycleCards: [
+      { emoji: '🥗', title: 'Essen', desc: 'Vollwertige, pflanzenbasierte Ernährung mit der Daily Dozen – die wissenschaftlich stärkste Kostform.' },
+      { emoji: '🩺', title: 'Messen', desc: 'Blutbiomarker und biologisches Alter testen – und verstehen, wie dein Körper wirklich altert.' },
+      { emoji: '📈', title: 'Verbessern', desc: 'Die Ergebnisse sehen. Anpassen. Wiederholen. Messbare Veränderungen, Schritt für Schritt.' },
+    ],
+    cycleCallout: 'Echtes Ergebnis',
+    cycleCalloutSub: 'Eine unserer Nutzerinnen reduzierte ihr biologisches Alter von 33,0 auf 22,7 Jahre in 21 Monaten – verifiziert durch epigenetische TruDiagnostic-Tests.',
     breakfastTag: 'STARTE DEN TAG RICHTIG',
     breakfastTitle: 'Das perfekte Longevity-Frühstück',
     breakfastSub: 'Overnight Oats – in 5 Minuten vorbereitet, über Nacht durchgezogen.',
@@ -75,6 +121,38 @@ const T: Record<Lang, {
       '🥜 Nüsse & Samen (Chia, Kürbis, Sonnenblume)',
       '🧂 Gewürze (Ceylon-Zimt)',
     ],
+    foodTag: 'WAS DU ESSEN SOLLTEST',
+    foodTitle: 'Die Lebensmittel, die dein Leben verlängern.',
+    foodGreenLabel: 'Gesundheitsfördernde Lebensmittel',
+    foodGreen: [
+      'Früchte & Beeren',
+      'Gemüse & Blattgemüse',
+      'Vollkorn (Hafer, Quinoa, Naturreis)',
+      'Hülsenfrüchte (Bohnen, Linsen, Kichererbsen)',
+      'Nüsse & Samen (Walnüsse, Leinsamen, Chia)',
+      'Kräuter & Gewürze (Kurkuma, Zimt)',
+      'Olivenöl & ungesättigte Fette',
+    ],
+    foodRedLabel: 'Lebensmittel zu reduzieren',
+    foodRed: [
+      'Verarbeitetes & rotes Fleisch',
+      'Transfette & frittierte Speisen',
+      'Zuckerhaltige Getränke',
+      'Raffiniertes Getreide (Weißbrot, Pasta)',
+      'Stark salzhaltige Fertigprodukte',
+      'Vollfetter Milchprodukte & Butter',
+    ],
+    foodCitation: 'Basierend auf Tessier et al. (2025), Nature Medicine – über 105.000 Teilnehmer über 30 Jahre.',
+    foodLink: 'Zur Wissenschaft →',
+    measureTag: 'WARUM MESSEN',
+    measureTitle: 'Du kannst nicht verbessern, was du nicht misst.',
+    measureDesc: 'Standard-Gesundheitschecks zeigen nur, ob du krank bist. Unsere Bluttests gehen weiter – sie messen Biomarker an optimalen Werten, nicht nur an Normwerten. Kombiniert mit epigenetischen Altertests erhältst du ein vollständiges Bild, wie schnell du alterst – und ob deine Ernährung wirkt.',
+    measureStats: [
+      { stat: '15–36', label: 'Biomarker', sub: 'Ab CHF 149' },
+      { stat: '6', label: 'Gesundheitsdomänen', sub: 'Herz, Stoffwechsel, Entzündung, Organe, Nährstoffe, Hormone' },
+      { stat: 'Bio. Alter', label: 'Epigenetik', sub: 'TruDiagnostic zeigt dein wahres Alter' },
+    ],
+    measureCta: 'Bluttest-Pakete ansehen →',
     scienceCardTag: 'DIE WISSENSCHAFT',
     scienceCardTitle: 'Was sollte man für ein längeres Leben essen?',
     scienceCardDesc: 'Eine 30-Jahres-Studie mit über 105.000 Personen identifizierte, welche Lebensmittel gesundes Altern fördern – und welche es beschleunigen.',
@@ -86,19 +164,26 @@ const T: Record<Lang, {
       { title: 'Kaufe Lebensmittel ohne Zutatenliste', body: 'Wenn es aus der Erde oder von einem Baum stammt, iss es. Vollwertige pflanzliche Ernährung bedeutet: Echte Lebensmittel, keine Produkte. Je kürzer die Zutatenliste, desto besser.' },
       { title: 'Nutze die Daily Dozen', body: 'Dr. Gregers tägliche Checkliste deckt alle Lebensmittelgruppen ab, die du brauchst – und macht es einfach, den Überblick zu behalten.' },
     ],
-    ctaTag: 'NÄCHSTE SCHRITTE',
-    ctaTitle: 'Bereit, tiefer einzutauchen?',
-    ctaCards: [
-      { title: 'Daily Dozen', desc: 'Verfolge deine täglichen pflanzlichen Portionen mit Dr. Gregers Checkliste.', href: '/daily-dozen', cta: 'Zur Daily Dozen →' },
-      { title: 'Rezepte', desc: 'Entdecke unsere vollwertigen, pflanzlichen Rezepte – einfach, schnell, lecker.', href: '/recipes', cta: 'Zu den Rezepten →' },
-      { title: 'Gesundheit messen', desc: 'Verstehe, wo du heute stehst – mit professionellen Bluttests über unsere Longevity Pakete.', href: '/biomarkers', cta: 'Zu den Tests →' },
-    ],
     dailyDozenLink: 'Zur Daily Dozen →',
+    ctaTag: 'NÄCHSTER SCHRITT',
+    ctaTitle: 'Dein erster Schritt dauert 5 Minuten.',
+    ctaSub: 'Starte morgen früh mit Overnight Oats. Erstelle dein kostenloses Konto und tracke deine Daily Dozen.',
+    ctaCta1: 'Kostenloses Konto erstellen',
+    ctaCta2: 'Bluttests entdecken',
   },
   en: {
     tag: 'GET STARTED',
     h1: 'Your first steps to a longer, healthier life.',
-    sub: 'Simple. Practical. Science-backed.',
+    sub: 'The most important thing you can do for your health is also the simplest: change what\'s on your plate. Here\'s how to begin — in 5 minutes.',
+    cycleTag: 'THE CONCEPT',
+    cycleTitle: 'Eat. Measure. Improve.',
+    cycleCards: [
+      { emoji: '🥗', title: 'Eat', desc: 'Follow a whole-food, plant-based diet with the Daily Dozen — the most evidence-backed dietary pattern.' },
+      { emoji: '🩺', title: 'Measure', desc: 'Test your blood biomarkers and biological age — and understand how your body is truly aging.' },
+      { emoji: '📈', title: 'Improve', desc: 'See the results. Adjust. Repeat. Measurable change, step by step.' },
+    ],
+    cycleCallout: 'Real result',
+    cycleCalloutSub: 'One of our users reduced her biological age from 33.0 to 22.7 years over 21 months — verified by TruDiagnostic epigenetic testing.',
     breakfastTag: 'START YOUR MORNING RIGHT',
     breakfastTitle: 'The Perfect Longevity Breakfast',
     breakfastSub: 'Overnight Oats — prepared in 5 minutes, ready by morning.',
@@ -132,6 +217,38 @@ const T: Record<Lang, {
       '🥜 Nuts & Seeds (chia, pumpkin, sunflower)',
       '🧂 Spices (Ceylon cinnamon)',
     ],
+    foodTag: 'WHAT TO EAT',
+    foodTitle: 'The foods that extend your life.',
+    foodGreenLabel: 'Health-promoting foods',
+    foodGreen: [
+      'Fruits & berries',
+      'Vegetables & leafy greens',
+      'Whole grains (oats, quinoa, brown rice)',
+      'Legumes (beans, lentils, chickpeas)',
+      'Nuts & seeds (walnuts, flaxseeds, chia)',
+      'Herbs & spices (turmeric, cinnamon)',
+      'Olive oil & unsaturated fats',
+    ],
+    foodRedLabel: 'Foods to minimize',
+    foodRed: [
+      'Processed & red meat',
+      'Trans fats & fried foods',
+      'Sugar-sweetened beverages',
+      'Refined grains (white bread, pasta)',
+      'Sodium-heavy processed foods',
+      'High-fat dairy & butter',
+    ],
+    foodCitation: 'Based on Tessier et al. (2025), Nature Medicine — 105,000+ participants over 30 years.',
+    foodLink: 'Explore the science →',
+    measureTag: 'WHY MEASURE',
+    measureTitle: 'You can\'t improve what you don\'t measure.',
+    measureDesc: 'Standard health checks only tell you if you\'re sick. Our blood tests go further — measuring biomarkers against optimal ranges, not just normal ones. Combined with epigenetic age testing, you get a complete picture of how fast you\'re aging — and whether your diet is working.',
+    measureStats: [
+      { stat: '15–36', label: 'Biomarkers', sub: 'From CHF 149' },
+      { stat: '6', label: 'Health domains', sub: 'Heart, metabolism, inflammation, organs, nutrients, hormones' },
+      { stat: 'Bio. age', label: 'Epigenetics', sub: 'TruDiagnostic shows your true age' },
+    ],
+    measureCta: 'View blood test packages →',
     scienceCardTag: 'THE SCIENCE',
     scienceCardTitle: 'What should you eat for a longer life?',
     scienceCardDesc: 'A 30-year study of 105,000+ people identified which foods promote — and which accelerate — aging.',
@@ -143,19 +260,26 @@ const T: Record<Lang, {
       { title: 'Buy foods with no ingredients list', body: 'If it grew in the ground or on a tree, eat it. Whole food plant-based means real foods, not products. The shorter the ingredients list, the better.' },
       { title: 'Follow the Daily Dozen', body: 'Dr. Greger\'s daily checklist covers all the food groups you need — and makes it easy to stay on track.' },
     ],
-    ctaTag: 'NEXT STEPS',
-    ctaTitle: 'Ready to go deeper?',
-    ctaCards: [
-      { title: 'Daily Dozen', desc: 'Track your daily plant-based servings with Dr. Greger\'s evidence-based checklist.', href: '/daily-dozen', cta: 'Open Daily Dozen →' },
-      { title: 'Recipes', desc: 'Explore our whole-food, plant-based recipes — simple, quick, and delicious.', href: '/recipes', cta: 'Browse Recipes →' },
-      { title: 'Measure your health', desc: 'Understand where you stand today with professional blood tests via our Longevity packages.', href: '/biomarkers', cta: 'See Blood Tests →' },
-    ],
     dailyDozenLink: 'Open Daily Dozen →',
+    ctaTag: 'NEXT STEP',
+    ctaTitle: 'Your first step takes 5 minutes.',
+    ctaSub: 'Start with overnight oats tomorrow morning. Sign up to track your Daily Dozen.',
+    ctaCta1: 'Create free account',
+    ctaCta2: 'Explore blood tests',
   },
   fr: {
     tag: 'COMMENCER',
     h1: 'Vos premiers pas vers une vie plus longue et plus saine.',
-    sub: 'Simple. Pratique. Scientifiquement fondé.',
+    sub: 'La chose la plus importante que vous puissiez faire pour votre santé est aussi la plus simple : changer ce qu\'il y a dans votre assiette. Voici comment commencer — en 5 minutes.',
+    cycleTag: 'LE CONCEPT',
+    cycleTitle: 'Manger. Mesurer. Progresser.',
+    cycleCards: [
+      { emoji: '🥗', title: 'Manger', desc: 'Suivez une alimentation végétale à base d\'aliments complets avec le Daily Dozen — le régime le plus étayé par les preuves.' },
+      { emoji: '🩺', title: 'Mesurer', desc: 'Testez vos biomarqueurs sanguins et votre âge biologique — et comprenez comment votre corps vieillit vraiment.' },
+      { emoji: '📈', title: 'Progresser', desc: 'Voyez les résultats. Ajustez. Répétez. Un changement mesurable, étape par étape.' },
+    ],
+    cycleCallout: 'Résultat réel',
+    cycleCalloutSub: 'Une de nos utilisatrices a réduit son âge biologique de 33,0 à 22,7 ans en 21 mois — vérifié par les tests épigénétiques TruDiagnostic.',
     breakfastTag: 'BIEN COMMENCER LA JOURNÉE',
     breakfastTitle: 'Le petit-déjeuner longévité idéal',
     breakfastSub: 'Overnight Oats — préparés en 5 minutes, prêts le matin.',
@@ -189,6 +313,38 @@ const T: Record<Lang, {
       '🥜 Noix & graines (chia, courge, tournesol)',
       '🧂 Épices (cannelle de Ceylan)',
     ],
+    foodTag: 'QUOI MANGER',
+    foodTitle: 'Les aliments qui prolongent votre vie.',
+    foodGreenLabel: 'Aliments bénéfiques pour la santé',
+    foodGreen: [
+      'Fruits & baies',
+      'Légumes & légumes feuillus',
+      'Céréales complètes (avoine, quinoa, riz brun)',
+      'Légumineuses (haricots, lentilles, pois chiches)',
+      'Noix & graines (noix, lin, chia)',
+      'Herbes & épices (curcuma, cannelle)',
+      'Huile d\'olive & graisses insaturées',
+    ],
+    foodRedLabel: 'Aliments à réduire',
+    foodRed: [
+      'Viande transformée & rouge',
+      'Graisses trans & aliments frits',
+      'Boissons sucrées',
+      'Céréales raffinées (pain blanc, pâtes)',
+      'Aliments transformés riches en sodium',
+      'Produits laitiers riches en graisses & beurre',
+    ],
+    foodCitation: 'D\'après Tessier et al. (2025), Nature Medicine — plus de 105 000 participants sur 30 ans.',
+    foodLink: 'Explorer la science →',
+    measureTag: 'POURQUOI MESURER',
+    measureTitle: 'On ne peut pas améliorer ce qu\'on ne mesure pas.',
+    measureDesc: 'Les bilans de santé standard ne vous disent que si vous êtes malade. Nos tests sanguins vont plus loin — mesurant les biomarqueurs par rapport aux plages optimales, pas seulement normales. Combiné avec les tests d\'âge épigénétique, vous obtenez une image complète de la vitesse à laquelle vous vieillissez — et si votre alimentation fonctionne.',
+    measureStats: [
+      { stat: '15–36', label: 'Biomarqueurs', sub: 'À partir de CHF 149' },
+      { stat: '6', label: 'Domaines de santé', sub: 'Cœur, métabolisme, inflammation, organes, nutriments, hormones' },
+      { stat: 'Âge bio.', label: 'Épigénétique', sub: 'TruDiagnostic révèle votre vrai âge' },
+    ],
+    measureCta: 'Voir les packages de tests sanguins →',
     scienceCardTag: 'LA SCIENCE',
     scienceCardTitle: 'Que faut-il manger pour vivre plus longtemps ?',
     scienceCardDesc: 'Une étude de 30 ans portant sur plus de 105 000 personnes a identifié quels aliments favorisent — et lesquels accélèrent — le vieillissement.',
@@ -200,19 +356,26 @@ const T: Record<Lang, {
       { title: "Achetez des aliments sans liste d'ingrédients", body: "Si ça pousse dans la terre ou sur un arbre, mangez-le. Une alimentation végétale complète signifie de vrais aliments, pas des produits." },
       { title: 'Suivez le Daily Dozen', body: "La liste de contrôle quotidienne du Dr Greger couvre tous les groupes alimentaires dont vous avez besoin." },
     ],
-    ctaTag: 'PROCHAINES ÉTAPES',
-    ctaTitle: 'Prêt à aller plus loin ?',
-    ctaCards: [
-      { title: 'Daily Dozen', desc: 'Suivez vos portions végétales quotidiennes avec la liste de contrôle du Dr Greger.', href: '/daily-dozen', cta: 'Ouvrir le Daily Dozen →' },
-      { title: 'Recettes', desc: 'Découvrez nos recettes végétales complètes — simples, rapides et délicieuses.', href: '/recipes', cta: 'Voir les recettes →' },
-      { title: 'Mesurer votre santé', desc: 'Comprenez où vous en êtes avec des bilans sanguins professionnels.', href: '/biomarkers', cta: 'Voir les bilans →' },
-    ],
     dailyDozenLink: 'Ouvrir le Daily Dozen →',
+    ctaTag: 'PROCHAINE ÉTAPE',
+    ctaTitle: 'Votre premier pas prend 5 minutes.',
+    ctaSub: 'Commencez demain matin avec des Overnight Oats. Inscrivez-vous pour suivre votre Daily Dozen.',
+    ctaCta1: 'Créer un compte gratuit',
+    ctaCta2: 'Explorer les tests sanguins',
   },
   es: {
     tag: 'EMPEZAR',
     h1: 'Tus primeros pasos hacia una vida más larga y saludable.',
-    sub: 'Sencillo. Práctico. Respaldado por la ciencia.',
+    sub: 'Lo más importante que puedes hacer por tu salud es también lo más sencillo: cambiar lo que hay en tu plato. Así es como empezar — en 5 minutos.',
+    cycleTag: 'EL CONCEPTO',
+    cycleTitle: 'Comer. Medir. Mejorar.',
+    cycleCards: [
+      { emoji: '🥗', title: 'Comer', desc: 'Sigue una dieta integral a base de plantas con el Daily Dozen — el patrón dietético más respaldado por la evidencia.' },
+      { emoji: '🩺', title: 'Medir', desc: 'Analiza tus biomarcadores sanguíneos y edad biológica — y entiende cómo está envejeciendo realmente tu cuerpo.' },
+      { emoji: '📈', title: 'Mejorar', desc: 'Ver los resultados. Ajustar. Repetir. Cambio medible, paso a paso.' },
+    ],
+    cycleCallout: 'Resultado real',
+    cycleCalloutSub: 'Una de nuestras usuarias redujo su edad biológica de 33,0 a 22,7 años en 21 meses — verificado por pruebas epigenéticas TruDiagnostic.',
     breakfastTag: 'EMPIEZA BIEN LA MAÑANA',
     breakfastTitle: 'El desayuno de longevidad perfecto',
     breakfastSub: 'Overnight Oats — preparados en 5 minutos, listos por la mañana.',
@@ -246,6 +409,38 @@ const T: Record<Lang, {
       '🥜 Frutos secos & semillas (chía, calabaza, girasol)',
       '🧂 Especias (canela de Ceilán)',
     ],
+    foodTag: 'QUÉ COMER',
+    foodTitle: 'Los alimentos que alargan tu vida.',
+    foodGreenLabel: 'Alimentos que promueven la salud',
+    foodGreen: [
+      'Frutas & bayas',
+      'Verduras & hortalizas de hoja',
+      'Cereales integrales (avena, quinoa, arroz integral)',
+      'Legumbres (alubias, lentejas, garbanzos)',
+      'Frutos secos & semillas (nueces, lino, chía)',
+      'Hierbas & especias (cúrcuma, canela)',
+      'Aceite de oliva & grasas insaturadas',
+    ],
+    foodRedLabel: 'Alimentos a reducir',
+    foodRed: [
+      'Carne procesada & roja',
+      'Grasas trans & alimentos fritos',
+      'Bebidas azucaradas',
+      'Cereales refinados (pan blanco, pasta)',
+      'Alimentos procesados ricos en sodio',
+      'Lácteos altos en grasa & mantequilla',
+    ],
+    foodCitation: 'Basado en Tessier et al. (2025), Nature Medicine — más de 105.000 participantes durante 30 años.',
+    foodLink: 'Explorar la ciencia →',
+    measureTag: 'POR QUÉ MEDIR',
+    measureTitle: 'No puedes mejorar lo que no mides.',
+    measureDesc: 'Los controles de salud estándar solo te dicen si estás enfermo. Nuestros análisis de sangre van más lejos — midiendo biomarcadores contra rangos óptimos, no solo normales. Combinado con pruebas de edad epigenética, obtienes una imagen completa de qué tan rápido estás envejeciendo — y si tu dieta está funcionando.',
+    measureStats: [
+      { stat: '15–36', label: 'Biomarcadores', sub: 'Desde CHF 149' },
+      { stat: '6', label: 'Dominios de salud', sub: 'Corazón, metabolismo, inflamación, órganos, nutrientes, hormonas' },
+      { stat: 'Edad bio.', label: 'Epigenética', sub: 'TruDiagnostic muestra tu verdadera edad' },
+    ],
+    measureCta: 'Ver paquetes de análisis de sangre →',
     scienceCardTag: 'LA CIENCIA',
     scienceCardTitle: '¿Qué deberías comer para vivir más?',
     scienceCardDesc: 'Un estudio de 30 años con más de 105.000 personas identificó qué alimentos promueven — y cuáles aceleran — el envejecimiento.',
@@ -257,19 +452,26 @@ const T: Record<Lang, {
       { title: 'Compra alimentos sin lista de ingredientes', body: 'Si creció en la tierra o en un árbol, cómelo. La alimentación vegetal integral significa alimentos reales, no productos. Cuanto más corta la lista de ingredientes, mejor.' },
       { title: 'Sigue el Daily Dozen', body: 'La lista diaria del Dr. Greger cubre todos los grupos de alimentos que necesitas — y facilita mantenerse en el camino.' },
     ],
-    ctaTag: 'PRÓXIMOS PASOS',
-    ctaTitle: '¿Listo para ir más lejos?',
-    ctaCards: [
-      { title: 'Daily Dozen', desc: 'Registra tus raciones vegetales diarias con la lista basada en evidencia del Dr. Greger.', href: '/daily-dozen', cta: 'Abrir Daily Dozen →' },
-      { title: 'Recetas', desc: 'Explora nuestras recetas vegetales integrales — sencillas, rápidas y deliciosas.', href: '/recipes', cta: 'Ver recetas →' },
-      { title: 'Mide tu salud', desc: 'Entiende dónde estás hoy con análisis de sangre profesionales a través de nuestros paquetes.', href: '/biomarkers', cta: 'Ver análisis →' },
-    ],
     dailyDozenLink: 'Abrir Daily Dozen →',
+    ctaTag: 'PRÓXIMO PASO',
+    ctaTitle: 'Tu primer paso lleva 5 minutos.',
+    ctaSub: 'Empieza mañana por la mañana con Overnight Oats. Regístrate para registrar tu Daily Dozen.',
+    ctaCta1: 'Crear cuenta gratuita',
+    ctaCta2: 'Explorar análisis de sangre',
   },
   it: {
     tag: 'INIZIA ORA',
     h1: 'I tuoi primi passi verso una vita più lunga e in salute.',
-    sub: 'Semplice. Pratico. Supportato dalla scienza.',
+    sub: 'La cosa più importante che puoi fare per la tua salute è anche la più semplice: cambia cosa c\'è nel tuo piatto. Ecco come iniziare — in 5 minuti.',
+    cycleTag: 'IL CONCETTO',
+    cycleTitle: 'Mangiare. Misurare. Migliorare.',
+    cycleCards: [
+      { emoji: '🥗', title: 'Mangiare', desc: 'Segui una dieta integrale a base vegetale con il Daily Dozen — il modello alimentare più supportato dalle prove.' },
+      { emoji: '🩺', title: 'Misurare', desc: 'Testa i tuoi biomarcatori nel sangue e l\'età biologica — e capisci come sta invecchiando davvero il tuo corpo.' },
+      { emoji: '📈', title: 'Migliorare', desc: 'Vedi i risultati. Aggiusta. Ripeti. Cambiamento misurabile, passo dopo passo.' },
+    ],
+    cycleCallout: 'Risultato reale',
+    cycleCalloutSub: 'Una delle nostre utenti ha ridotto la sua età biologica da 33,0 a 22,7 anni in 21 mesi — verificato dai test epigenetici TruDiagnostic.',
     breakfastTag: 'INIZIA LA GIORNATA BENE',
     breakfastTitle: 'La colazione della longevità perfetta',
     breakfastSub: 'Overnight Oats — preparati in 5 minuti, pronti al mattino.',
@@ -303,6 +505,38 @@ const T: Record<Lang, {
       '🥜 Noci & semi (chia, zucca, girasole)',
       '🧂 Spezie (cannella di Ceylon)',
     ],
+    foodTag: 'COSA MANGIARE',
+    foodTitle: 'Gli alimenti che allungano la tua vita.',
+    foodGreenLabel: 'Alimenti che promuovono la salute',
+    foodGreen: [
+      'Frutta & bacche',
+      'Verdure & ortaggi a foglia',
+      'Cereali integrali (avena, quinoa, riso integrale)',
+      'Legumi (fagioli, lenticchie, ceci)',
+      'Noci & semi (noci, lino, chia)',
+      'Erbe & spezie (curcuma, cannella)',
+      'Olio d\'oliva & grassi insaturi',
+    ],
+    foodRedLabel: 'Alimenti da ridurre',
+    foodRed: [
+      'Carne lavorata & rossa',
+      'Grassi trans & cibi fritti',
+      'Bevande zuccherate',
+      'Cereali raffinati (pane bianco, pasta)',
+      'Cibi lavorati ricchi di sodio',
+      'Latticini ad alto contenuto di grassi & burro',
+    ],
+    foodCitation: 'Basato su Tessier et al. (2025), Nature Medicine — oltre 105.000 partecipanti su 30 anni.',
+    foodLink: 'Esplora la scienza →',
+    measureTag: 'PERCHÉ MISURARE',
+    measureTitle: 'Non puoi migliorare ciò che non misuri.',
+    measureDesc: 'I controlli sanitari standard ti dicono solo se sei malato. I nostri test del sangue vanno oltre — misurando i biomarcatori rispetto ai range ottimali, non solo normali. Combinato con i test dell\'età epigenetica, ottieni un quadro completo di quanto velocemente stai invecchiando — e se la tua dieta sta funzionando.',
+    measureStats: [
+      { stat: '15–36', label: 'Biomarcatori', sub: 'Da CHF 149' },
+      { stat: '6', label: 'Domini di salute', sub: 'Cuore, metabolismo, infiammazione, organi, nutrienti, ormoni' },
+      { stat: 'Età bio.', label: 'Epigenetica', sub: 'TruDiagnostic mostra la tua vera età' },
+    ],
+    measureCta: 'Vedi i pacchetti di esami del sangue →',
     scienceCardTag: 'LA SCIENZA',
     scienceCardTitle: 'Cosa dovresti mangiare per vivere più a lungo?',
     scienceCardDesc: 'Uno studio di 30 anni su oltre 105.000 persone ha identificato quali alimenti favoriscono — e quali accelerano — l\'invecchiamento.',
@@ -314,16 +548,20 @@ const T: Record<Lang, {
       { title: 'Acquista alimenti senza lista ingredienti', body: "Se è cresciuto nella terra o su un albero, mangialo. L'alimentazione vegetale integrale significa cibi veri, non prodotti. Più è corta la lista degli ingredienti, meglio è." },
       { title: 'Segui il Daily Dozen', body: "La lista giornaliera del Dr. Greger copre tutti i gruppi alimentari di cui hai bisogno — e rende facile restare in carreggiata." },
     ],
-    ctaTag: 'PROSSIMI PASSI',
-    ctaTitle: 'Pronto ad approfondire?',
-    ctaCards: [
-      { title: 'Daily Dozen', desc: 'Monitora le tue porzioni vegetali quotidiane con la checklist del Dr. Greger.', href: '/daily-dozen', cta: 'Apri Daily Dozen →' },
-      { title: 'Ricette', desc: 'Scopri le nostre ricette vegetali integrali — semplici, veloci e deliziose.', href: '/recipes', cta: 'Vedi ricette →' },
-      { title: 'Misura la tua salute', desc: 'Capisce dove sei oggi con esami del sangue professionali tramite i nostri pacchetti.', href: '/biomarkers', cta: 'Vedi esami →' },
-    ],
     dailyDozenLink: 'Apri Daily Dozen →',
+    ctaTag: 'PROSSIMO PASSO',
+    ctaTitle: 'Il tuo primo passo richiede 5 minuti.',
+    ctaSub: 'Inizia domani mattina con gli Overnight Oats. Registrati per tracciare il tuo Daily Dozen.',
+    ctaCta1: 'Crea account gratuito',
+    ctaCta2: 'Esplora gli esami del sangue',
   },
 };
+
+const RULE_VISUALS = [
+  { gradient: 'from-emerald-500 to-teal-400',   emoji: '🥦' },
+  { gradient: 'from-amber-400 to-orange-300',   emoji: '🍎' },
+  { gradient: 'from-teal-500 to-emerald-600',   emoji: '🥗' },
+];
 
 export default async function HowToStartPage() {
   const locale = await getLocale();
@@ -336,18 +574,80 @@ export default async function HowToStartPage() {
 
       <main className="mx-auto w-full max-w-[1060px] px-6 pt-28 pb-16 flex-1">
 
-        {/* ── Hero ───────────────────────────────────────────────────────────── */}
+        {/* ── Section 1: HERO ─────────────────────────────────────────────────── */}
         <div className="mb-16 text-center">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">{t.tag}</p>
           <h1 className="font-serif text-5xl text-[#0e393d] mb-4 leading-tight">{t.h1}</h1>
-          <p className="mx-auto max-w-xl text-base text-[#1c2a2b]/60 leading-relaxed">{t.sub}</p>
+          <p className="mx-auto max-w-xl text-base text-[#1c2a2b]/60 leading-relaxed mb-8">{t.sub}</p>
+          <div className="relative w-full max-h-[300px] rounded-2xl overflow-hidden">
+            <Image
+              src={PHOTOS.vegetables}
+              alt="Fresh vegetables"
+              width={1060}
+              height={300}
+              className="w-full max-h-[300px] object-cover"
+              priority
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0e393d]/30 to-transparent" />
+          </div>
         </div>
 
-        {/* ── Section 1: Overnight Oats ─────────────────────────────────────── */}
+        {/* ── Section 2: THE CYCLE ────────────────────────────────────────────── */}
+        <section className="mb-20">
+          <div className="mb-8 flex items-center gap-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] shrink-0">{t.cycleTag}</p>
+            <div className="flex-1 h-px bg-[#0e393d]/10" />
+          </div>
+          <h2 className="font-serif text-3xl text-[#0e393d] mb-8">{t.cycleTitle}</h2>
+
+          <div className="grid gap-5 sm:grid-cols-3 mb-6">
+            {t.cycleCards.map((card, i) => (
+              <div key={i} className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 overflow-hidden">
+                <div className="relative h-40 overflow-hidden">
+                  <Image
+                    src={CYCLE_PHOTOS[i]}
+                    alt={card.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 100vw, 33vw"
+                  />
+                  <div className="absolute inset-0 bg-[#0e393d]/40" />
+                  <div className="absolute inset-0 flex flex-col justify-end p-4">
+                    <span className="text-2xl mb-1">{card.emoji}</span>
+                    <span className="font-serif text-white text-lg">{card.title}</span>
+                  </div>
+                </div>
+                <div className="p-5">
+                  <p className="text-sm text-[#1c2a2b]/60 leading-relaxed">{card.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl bg-[#0e393d] px-8 py-6 flex flex-col sm:flex-row sm:items-start gap-4">
+            <div className="shrink-0">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">{t.cycleCallout}</span>
+            </div>
+            <p className="text-white/70 text-sm leading-relaxed">{t.cycleCalloutSub}</p>
+          </div>
+        </section>
+
+        {/* ── Section 3: OVERNIGHT OATS ───────────────────────────────────────── */}
         <section className="mb-20">
           <div className="mb-8 flex items-center gap-4">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] shrink-0">{t.breakfastTag}</p>
             <div className="flex-1 h-px bg-[#0e393d]/10" />
+          </div>
+
+          <div className="relative w-full h-48 rounded-2xl overflow-hidden mb-6">
+            <Image
+              src={PHOTOS.oats}
+              alt="Overnight oats"
+              fill
+              className="object-cover"
+              sizes="1060px"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0e393d]/50 to-transparent" />
           </div>
 
           <div className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 overflow-hidden">
@@ -419,7 +719,98 @@ export default async function HowToStartPage() {
           </div>
         </section>
 
-        {/* ── Section 2: Science teaser ─────────────────────────────────────── */}
+        {/* ── Section 4: WHAT TO EAT ──────────────────────────────────────────── */}
+        <section className="mb-20">
+          <div className="mb-8 flex items-center gap-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] shrink-0">{t.foodTag}</p>
+            <div className="flex-1 h-px bg-[#0e393d]/10" />
+          </div>
+          <h2 className="font-serif text-3xl text-[#0e393d] mb-8">{t.foodTitle}</h2>
+
+          <div className="grid gap-5 sm:grid-cols-2 mb-5">
+            {/* Green card */}
+            <div className="rounded-2xl bg-emerald-50 ring-1 ring-emerald-200 p-7">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-lg">🟢</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">{t.foodGreenLabel}</span>
+              </div>
+              <ul className="space-y-2.5">
+                {t.foodGreen.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-emerald-900/80 leading-snug">
+                    <span className="shrink-0 text-emerald-500 mt-0.5 text-xs">✓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Red card */}
+            <div className="rounded-2xl bg-red-50 ring-1 ring-red-100 p-7">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-lg">🔴</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-red-600">{t.foodRedLabel}</span>
+              </div>
+              <ul className="space-y-2.5">
+                {t.foodRed.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-red-900/70 leading-snug">
+                    <span className="shrink-0 text-red-400 mt-0.5 text-xs">↓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <p className="text-xs text-[#1c2a2b]/50 leading-relaxed">
+            {t.foodCitation}{' '}
+            <Link href="/science" className="underline text-[#0e393d]/60 hover:text-[#0e393d] transition-colors">
+              {t.foodLink}
+            </Link>
+          </p>
+        </section>
+
+        {/* ── Section 5: WHY MEASURE ──────────────────────────────────────────── */}
+        <section className="mb-20">
+          <div className="mb-8 flex items-center gap-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] shrink-0">{t.measureTag}</p>
+            <div className="flex-1 h-px bg-[#0e393d]/10" />
+          </div>
+
+          <div className="grid gap-10 sm:grid-cols-2 mb-8">
+            <div>
+              <h2 className="font-serif text-3xl text-[#0e393d] mb-5 leading-tight">{t.measureTitle}</h2>
+              <p className="text-sm text-[#1c2a2b]/60 leading-relaxed">{t.measureDesc}</p>
+            </div>
+            <div className="relative rounded-2xl overflow-hidden min-h-[220px]">
+              <Image
+                src={PHOTOS.bloodTest}
+                alt="Blood test"
+                fill
+                className="object-cover"
+                sizes="(max-width: 640px) 100vw, 50vw"
+              />
+              <div className="absolute inset-0 bg-[#0e393d]/20" />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3 mb-6">
+            {t.measureStats.map((s, i) => (
+              <div key={i} className="rounded-xl bg-white ring-1 ring-[#0e393d]/8 p-5">
+                <div className="font-serif text-2xl text-[#0e393d] mb-0.5">{s.stat}</div>
+                <div className="text-xs font-semibold text-[#0e393d] uppercase tracking-wide mb-2">{s.label}</div>
+                <p className="text-xs text-[#1c2a2b]/50 leading-snug">{s.sub}</p>
+              </div>
+            ))}
+          </div>
+
+          <Link
+            href="/shop"
+            className="inline-block text-sm font-medium text-[#ceab84] hover:text-[#ceab84]/80 transition-colors"
+          >
+            {t.measureCta}
+          </Link>
+        </section>
+
+        {/* ── Section 6: Science teaser ───────────────────────────────────────── */}
         <section className="mb-20">
           <div className="rounded-2xl bg-[#0e393d] p-8 md:p-10">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-3">{t.scienceCardTag}</p>
@@ -431,7 +822,7 @@ export default async function HowToStartPage() {
           </div>
         </section>
 
-        {/* ── Section 3: Three rules ────────────────────────────────────────── */}
+        {/* ── Section 7: THREE RULES ──────────────────────────────────────────── */}
         <section className="mb-20">
           <div className="mb-8 flex items-center gap-4">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] shrink-0">{t.rulesTag}</p>
@@ -439,54 +830,47 @@ export default async function HowToStartPage() {
           </div>
           <h2 className="font-serif text-3xl text-[#0e393d] mb-8">{t.rulesTitle}</h2>
 
-          {(() => {
-            const ruleGradients = [
-              { gradient: 'from-emerald-500 to-teal-400', emoji: '🥦' },
-              { gradient: 'from-amber-400 to-orange-300', emoji: '🍎' },
-              { gradient: 'from-teal-500 to-emerald-600', emoji: '🥗' },
-            ];
-            return (
-              <div className="grid gap-5 sm:grid-cols-3">
-                {t.rules.map((rule, i) => (
-                  <div key={i} className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 overflow-hidden flex flex-col">
-                    <div className={`w-full h-[140px] bg-gradient-to-br ${ruleGradients[i].gradient} flex items-center justify-center`}>
-                      <span className="text-5xl">{ruleGradients[i].emoji}</span>
-                    </div>
-                    <div className="p-7 flex flex-col flex-1">
-                      <div className="w-9 h-9 rounded-full bg-[#0e393d] flex items-center justify-center text-sm font-semibold text-white mb-4">
-                        {i + 1}
-                      </div>
-                      <h3 className="font-serif text-lg text-[#0e393d] mb-2">{rule.title}</h3>
-                      <p className="text-sm text-[#1c2a2b]/60 leading-relaxed">{rule.body}</p>
-                      {i === 2 && (
-                        <Link href="/daily-dozen" className="mt-4 inline-block text-sm font-medium text-[#ceab84] hover:text-[#ceab84]/80 transition-colors">
-                          {t.dailyDozenLink}
-                        </Link>
-                      )}
-                    </div>
+          <div className="grid gap-5 sm:grid-cols-3">
+            {t.rules.map((rule, i) => (
+              <div key={i} className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 overflow-hidden flex flex-col">
+                <div className={`w-full h-[140px] bg-gradient-to-br ${RULE_VISUALS[i].gradient} flex items-center justify-center`}>
+                  <span className="text-5xl">{RULE_VISUALS[i].emoji}</span>
+                </div>
+                <div className="p-7 flex flex-col flex-1">
+                  <div className="w-9 h-9 rounded-full bg-[#0e393d] flex items-center justify-center text-sm font-semibold text-white mb-4">
+                    {i + 1}
                   </div>
-                ))}
+                  <h3 className="font-serif text-lg text-[#0e393d] mb-2">{rule.title}</h3>
+                  <p className="text-sm text-[#1c2a2b]/60 leading-relaxed">{rule.body}</p>
+                  {i === 2 && (
+                    <Link href="/daily-dozen" className="mt-4 inline-block text-sm font-medium text-[#ceab84] hover:text-[#ceab84]/80 transition-colors">
+                      {t.dailyDozenLink}
+                    </Link>
+                  )}
+                </div>
               </div>
-            );
-          })()}
+            ))}
+          </div>
         </section>
 
-        {/* ── Section 4: CTA ───────────────────────────────────────────────── */}
-        <section className="rounded-2xl bg-[#0e393d] p-10 sm:p-12">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-3">{t.ctaTag}</p>
-          <h2 className="font-serif text-2xl text-white mb-8">{t.ctaTitle}</h2>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {t.ctaCards.map((card) => (
-              <Link
-                key={card.href}
-                href={card.href}
-                className="group rounded-xl bg-white/8 ring-1 ring-white/10 p-6 hover:bg-white/12 hover:ring-white/20 transition-all flex flex-col"
-              >
-                <h3 className="font-serif text-lg text-white mb-2">{card.title}</h3>
-                <p className="text-sm text-white/50 leading-relaxed flex-1 mb-4">{card.desc}</p>
-                <span className="text-sm font-medium text-[#ceab84] group-hover:text-[#ceab84]/80 transition-colors">{card.cta}</span>
-              </Link>
-            ))}
+        {/* ── Section 8: CTA ──────────────────────────────────────────────────── */}
+        <section className="rounded-2xl bg-[#0e393d] p-10 sm:p-12 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.ctaTag}</p>
+          <h2 className="font-serif text-3xl md:text-4xl text-white mb-3 leading-tight">{t.ctaTitle}</h2>
+          <p className="text-white/50 text-sm mb-8 max-w-sm mx-auto leading-relaxed">{t.ctaSub}</p>
+          <div className="flex gap-3 flex-wrap justify-center">
+            <Link
+              href="/login"
+              className="bg-[#ceab84] text-[#0e393d] font-semibold text-[13px] tracking-wide px-8 py-3.5 rounded-full transition-colors hover:bg-[#dfc4a4] whitespace-nowrap"
+            >
+              {t.ctaCta1}
+            </Link>
+            <Link
+              href="/shop"
+              className="text-white border border-white/30 text-[13px] font-light px-8 py-3.5 rounded-full transition-all hover:bg-white/10 whitespace-nowrap"
+            >
+              {t.ctaCta2}
+            </Link>
           </div>
         </section>
 
