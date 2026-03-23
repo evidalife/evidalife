@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sendEmail } from '@/lib/email';
+import { orderConfirmationHtml } from '@/emails/order-confirmation';
 
 export const runtime = 'nodejs';
 
@@ -127,6 +129,32 @@ export async function POST(req: NextRequest) {
 
   if (invoiceError) {
     console.error('[stripe-webhook] Failed to create invoice', invoiceError);
+  }
+
+  // ── Send order confirmation email ────────────────────────────────────────────
+  const customerEmail = session.customer_details?.email;
+  if (customerEmail) {
+    try {
+      const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://evidalife.com';
+      const html = orderConfirmationHtml({
+        orderNumber,
+        items: orderItems.map((i) => ({
+          product_name: i.product_name,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+        })),
+        totalAmount,
+        currency: 'CHF',
+        ordersUrl: `${origin}/orders`,
+      });
+      await sendEmail({
+        to: customerEmail,
+        subject: `Bestellbestätigung ${orderNumber} – Evida Life`,
+        html,
+      });
+    } catch (e) {
+      console.error('[stripe-webhook] Failed to send confirmation email', e);
+    }
   }
 
   return NextResponse.json({ received: true, order_number: orderNumber });

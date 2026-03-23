@@ -135,11 +135,11 @@ export default function PublicNav() {
         {/* Right side: hamburger (mobile) + lang toggle + user */}
         <div className="flex items-center gap-2 shrink-0">
 
-          {/* Cart icon */}
+          {/* Cart icon — desktop only */}
           <Link
             href="/cart"
             aria-label={locale === 'de' ? 'Warenkorb' : locale === 'fr' ? 'Panier' : locale === 'es' ? 'Carrito' : locale === 'it' ? 'Carrello' : 'Cart'}
-            className="relative w-9 h-9 flex items-center justify-center rounded-full text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors"
+            className="relative hidden md:flex w-9 h-9 items-center justify-center rounded-full text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
               <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
@@ -305,6 +305,25 @@ export default function PublicNav() {
         }}
       >
         <div className="mt-2 rounded-2xl bg-white/90 backdrop-blur-md border border-[#0e393d]/8 shadow-[0_8px_32px_rgba(14,57,61,0.14)] overflow-hidden">
+
+          {/* Mobile cart link */}
+          <Link
+            href="/cart"
+            className="flex items-center gap-3 px-5 py-3.5 text-[0.8rem] font-medium text-[#0e393d] hover:bg-[#f5f4f0] border-b border-[#0e393d]/6 transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <path d="M16 10a4 4 0 0 1-8 0" />
+            </svg>
+            <span>{locale === 'de' ? 'Warenkorb' : locale === 'fr' ? 'Panier' : locale === 'es' ? 'Carrito' : locale === 'it' ? 'Carrello' : 'Cart'}</span>
+            {itemCount > 0 && (
+              <span className="ml-auto min-w-[20px] h-5 flex items-center justify-center rounded-full bg-[#ceab84] text-[#0e393d] text-[10px] font-bold px-1.5">
+                {itemCount > 99 ? '99+' : itemCount}
+              </span>
+            )}
+          </Link>
+
           {NAV_SECTIONS.map((section, si) => {
             const items = dropdowns[section] ?? [];
             const slugs = NAV_SLUG_MAP[section] ?? [];
