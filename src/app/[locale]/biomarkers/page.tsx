@@ -22,21 +22,19 @@ type Lang = (typeof VALID_LANGS)[number];
 type DomainDef = {
   key: string;
   emoji: string;
-  sortMin: number;
-  sortMax: number;
   label: Record<Lang, string>;
 };
 
 const DOMAINS: DomainDef[] = [
-  { key: 'heart_vessels',    emoji: '❤️',  sortMin: 1,   sortMax: 65,  label: { de: 'Herz & Gefässe',          en: 'Heart & Vessels',       fr: 'Cœur & Vaisseaux',      es: 'Corazón & Vasos',        it: 'Cuore & Vasi' } },
-  { key: 'metabolism',       emoji: '⚡',  sortMin: 66,  sortMax: 105, label: { de: 'Stoffwechsel',              en: 'Metabolism',            fr: 'Métabolisme',            es: 'Metabolismo',             it: 'Metabolismo' } },
-  { key: 'inflammation',     emoji: '🛡️',  sortMin: 106, sortMax: 155, label: { de: 'Entzündung & Immunsystem', en: 'Inflammation & Immune', fr: 'Inflammation & Immunité',es: 'Inflamación & Inmunidad', it: 'Infiammazione & Immun.' } },
-  { key: 'organ_function',   emoji: '🫀',  sortMin: 156, sortMax: 225, label: { de: 'Organfunktion',             en: 'Organ Function',        fr: 'Fonction Organique',     es: 'Función Orgánica',        it: 'Funzione Organica' } },
-  { key: 'nutrients',        emoji: '🥬',  sortMin: 226, sortMax: 315, label: { de: 'Nährstoffe',                en: 'Nutrients',             fr: 'Nutriments',             es: 'Nutrientes',              it: 'Nutrienti' } },
-  { key: 'hormones',         emoji: '⚖️',  sortMin: 316, sortMax: 355, label: { de: 'Hormone',                   en: 'Hormones',              fr: 'Hormones',               es: 'Hormonas',                it: 'Ormoni' } },
-  { key: 'body_composition', emoji: '🏋️', sortMin: 356, sortMax: 395, label: { de: 'Körperzusammensetzung',     en: 'Body Composition',      fr: 'Composition Corporelle', es: 'Composición Corporal',    it: 'Composizione Corporea' } },
-  { key: 'fitness',          emoji: '🏃',  sortMin: 396, sortMax: 445, label: { de: 'Fitness & Erholung',        en: 'Fitness & Recovery',    fr: 'Forme & Récupération',   es: 'Forma & Recuperación',    it: 'Forma & Recupero' } },
-  { key: 'epigenetics',      emoji: '🧬',  sortMin: 446, sortMax: 999, label: { de: 'Epigenetik',                en: 'Epigenetics',           fr: 'Épigénétique',           es: 'Epigenética',             it: 'Epigenetica' } },
+  { key: 'heart_vessels',    emoji: '❤️',  label: { de: 'Herz & Gefässe',          en: 'Heart & Vessels',       fr: 'Cœur & Vaisseaux',      es: 'Corazón & Vasos',        it: 'Cuore & Vasi' } },
+  { key: 'metabolism',       emoji: '⚡',  label: { de: 'Stoffwechsel',              en: 'Metabolism',            fr: 'Métabolisme',            es: 'Metabolismo',             it: 'Metabolismo' } },
+  { key: 'inflammation',     emoji: '🛡️',  label: { de: 'Entzündung & Immunsystem', en: 'Inflammation & Immune', fr: 'Inflammation & Immunité',es: 'Inflamación & Inmunidad', it: 'Infiammazione & Immun.' } },
+  { key: 'organ_function',   emoji: '🫀',  label: { de: 'Organfunktion',             en: 'Organ Function',        fr: 'Fonction Organique',     es: 'Función Orgánica',        it: 'Funzione Organica' } },
+  { key: 'nutrients',        emoji: '🥬',  label: { de: 'Nährstoffe',                en: 'Nutrients',             fr: 'Nutriments',             es: 'Nutrientes',              it: 'Nutrienti' } },
+  { key: 'hormones',         emoji: '⚖️',  label: { de: 'Hormone',                   en: 'Hormones',              fr: 'Hormones',               es: 'Hormonas',                it: 'Ormoni' } },
+  { key: 'body_composition', emoji: '🏋️', label: { de: 'Körperzusammensetzung',     en: 'Body Composition',      fr: 'Composition Corporelle', es: 'Composición Corporal',    it: 'Composizione Corporea' } },
+  { key: 'fitness',          emoji: '🏃',  label: { de: 'Fitness & Erholung',        en: 'Fitness & Recovery',    fr: 'Forme & Récupération',   es: 'Forma & Recuperación',    it: 'Forma & Recupero' } },
+  { key: 'epigenetics',      emoji: '🧬',  label: { de: 'Epigenetik',                en: 'Epigenetics',           fr: 'Épigénétique',           es: 'Epigenética',             it: 'Epigenetica' } },
 ];
 
 // ─── UI strings ───────────────────────────────────────────────────────────────
@@ -253,10 +251,6 @@ function getName(nameObj: Record<string, string> | null, lang: Lang): string {
   return nameObj[lang] ?? nameObj['en'] ?? nameObj['de'] ?? '';
 }
 
-function getDomainForItem(sortOrder: number | null): DomainDef | undefined {
-  if (sortOrder == null) return undefined;
-  return DOMAINS.find((d) => sortOrder >= d.sortMin && sortOrder <= d.sortMax);
-}
 
 function RangeBar({
   refLow, refHigh, optLow, optHigh, rangeType,
@@ -359,13 +353,10 @@ export default async function BiomarkersPage() {
 
   const allDefs = defs ?? [];
 
-  // Group defs by clinical domain (based on sort_order)
+  // Group defs by he_domain field
   const domainGroups: { domain: DomainDef; items: typeof allDefs }[] = [];
   for (const domain of DOMAINS) {
-    const items = allDefs.filter((d) => {
-      const so = d.sort_order ?? 0;
-      return so >= domain.sortMin && so <= domain.sortMax;
-    });
+    const items = allDefs.filter((d) => d.he_domain === domain.key);
     if (items.length > 0) domainGroups.push({ domain, items });
   }
 
