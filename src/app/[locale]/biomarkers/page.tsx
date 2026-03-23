@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
@@ -436,9 +437,9 @@ export default async function BiomarkersPage() {
                       const bloodItems = items.filter((d) => bloodTypes.includes(d.item_type ?? ''));
                       if (bloodItems.length === 0) return null;
                       return (
-                        <>
+                        <Fragment key={domain.key}>
                           {/* Domain header */}
-                          <tr key={`hdr-${domain.key}`}>
+                          <tr>
                             <td
                               colSpan={1 + packages.length}
                               className="pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#ceab84]"
@@ -452,6 +453,7 @@ export default async function BiomarkersPage() {
                               key={def.id}
                               className="border-b border-[#0e393d]/6 hover:bg-[#0e393d]/2 transition-colors"
                             >
+
                               <td className="py-2.5 pr-4">
                                 <span className="text-[#1c2a2b]/80 text-sm">
                                   {getName(def.name as Record<string, string>, lang)}
@@ -481,7 +483,7 @@ export default async function BiomarkersPage() {
                               })}
                             </tr>
                           ))}
-                        </>
+                        </Fragment>
                       );
                     })}
 

@@ -29,7 +29,11 @@ export type Product = {
 // ─── Type labels (5 languages) ────────────────────────────────────────────────
 
 const TYPE_LABELS: Record<string, Record<string, string>> = {
-  test_package:      { de: 'Testpakete',        en: 'Test Packages',     fr: 'Forfaits de test',   es: 'Paquetes de análisis', it: 'Pacchetti test' },
+  test_package:      { de: 'Bluttests',          en: 'Blood Tests',       fr: 'Bilans sanguins',    es: 'Análisis de sangre',   it: 'Esami del sangue' },
+  clinical_test:     { de: 'Klinische Tests',    en: 'Clinical Tests',    fr: 'Tests cliniques',    es: 'Pruebas clínicas',     it: 'Test clinici' },
+  epigenetic_test:   { de: 'Epigenetik',         en: 'Epigenetic',        fr: 'Épigénétique',       es: 'Epigenética',          it: 'Epigenetica' },
+  genetic_test:      { de: 'Genetik',            en: 'Genetic',           fr: 'Génétique',          es: 'Genética',             it: 'Genetica' },
+  microbiome_test:   { de: 'Mikrobiom',          en: 'Microbiome',        fr: 'Microbiome',         es: 'Microbioma',           it: 'Microbioma' },
   addon_test:        { de: 'Erweiterungen',      en: 'Add-ons',           fr: 'Compléments',        es: 'Complementos',         it: 'Aggiunte' },
   single_biomarker:  { de: 'Einzelbiomarker',    en: 'Single Biomarkers', fr: 'Biomarqueurs seuls', es: 'Biomarcadores simples', it: 'Biomarcatori singoli' },
   supplement:        { de: 'Nahrungsergänzung',  en: 'Supplements',       fr: 'Compléments',        es: 'Suplementos',          it: 'Integratori' },
@@ -82,7 +86,7 @@ function ProductCard({
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
   const featured = product.is_featured ?? false;
-  const isTestPackage = product.product_type === 'test_package';
+  const isTestPackage = product.product_type === 'test_package' || product.product_type === 'clinical_test';
   const markerCount = product.metadata?.marker_count;
 
   const handleAddToCart = () => {
@@ -254,11 +258,13 @@ export default function ShopContent({ products }: { products: Product[] }) {
     : products;
 
   const packages  = displayProducts.filter((p) => p.product_type === 'test_package');
+  const clinical  = displayProducts.filter((p) => p.product_type === 'clinical_test');
+  const epigenetic = displayProducts.filter((p) => p.product_type === 'epigenetic_test');
   const addons    = displayProducts.filter((p) => p.product_type === 'addon_test');
   const food      = displayProducts.filter((p) => p.product_type === 'food' || p.product_type === 'food_product');
   const subs      = displayProducts.filter((p) => p.product_type === 'subscription' || p.product_type === 'meal_subscription');
   const other     = displayProducts.filter((p) =>
-    !['test_package', 'addon_test', 'food', 'food_product', 'subscription', 'meal_subscription'].includes(p.product_type ?? '')
+    !['test_package', 'clinical_test', 'epigenetic_test', 'genetic_test', 'microbiome_test', 'addon_test', 'food', 'food_product', 'subscription', 'meal_subscription'].includes(p.product_type ?? '')
   );
 
   return (
@@ -319,6 +325,12 @@ export default function ShopContent({ products }: { products: Product[] }) {
         {/* Product sections */}
         {packages.length > 0 && (
           <Section heading={t('packages.heading')} products={packages} />
+        )}
+        {clinical.length > 0 && (
+          <Section heading={typeLabel('clinical_test', lng)} products={clinical} />
+        )}
+        {epigenetic.length > 0 && (
+          <Section heading={typeLabel('epigenetic_test', lng)} products={epigenetic} />
         )}
         {addons.length > 0 && (
           <Section heading={t('addons.heading')} sub={t('addons.combo')} products={addons} />
