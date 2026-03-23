@@ -15,10 +15,10 @@ const STEP_VISUALS = [
 ];
 
 const CARDS: { gradient: string; emoji: string; href: string }[] = [
-  { gradient: 'from-emerald-600 to-teal-500',  emoji: '🥗', href: '/daily-dozen' },
-  { gradient: 'from-amber-500 to-orange-400',  emoji: '🍲', href: '/recipes'     },
-  { gradient: 'from-sky-600 to-indigo-500',    emoji: '🔬', href: '/biomarkers'  },
-  { gradient: 'from-rose-500 to-pink-400',     emoji: '📊', href: '/health'      },
+  { gradient: 'from-[#0e393d] to-[#1a5055]',  emoji: '🥗', href: '/daily-dozen' },
+  { gradient: 'from-[#6B4C11] to-[#9B7A2E]',  emoji: '🍲', href: '/recipes'     },
+  { gradient: 'from-[#1a3a6b] to-[#2D5A8E]',  emoji: '🔬', href: '/biomarkers'  },
+  { gradient: 'from-[#3D1A35] to-[#6B2D5B]',  emoji: '📊', href: '/health'      },
 ];
 
 const T: Record<Lang, {
@@ -294,8 +294,8 @@ export default async function HomePage() {
               href={meta.href}
               className="rounded-2xl overflow-hidden border border-[#0e393d]/10 bg-white hover:-translate-y-1 transition-transform duration-200"
             >
-              <div className={`h-40 bg-gradient-to-br ${meta.gradient} flex items-center justify-center`}>
-                <span className="text-4xl">{meta.emoji}</span>
+              <div className={`h-40 bg-gradient-to-br ${meta.gradient} relative overflow-hidden`}>
+                <span className="absolute top-3 right-4 text-6xl opacity-20 select-none">{meta.emoji}</span>
               </div>
               <div className="p-5 pb-6">
                 <h3 className="font-serif font-normal text-[1.1rem] text-[#0e393d] mb-1.5 leading-snug">{card.title}</h3>
