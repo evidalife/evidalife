@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data: products, error } = await admin
     .from('products')
-    .select('id, name, sku, price_chf')
+    .select('id, name, sku, price_chf, stripe_price_id_chf')
     .in('id', productIds)
     .eq('is_active', true)
     .is('deleted_at', null);
@@ -34,39 +34,47 @@ export async function POST(req: NextRequest) {
   const userClient = await createClient();
   const { data: { user } } = await userClient.auth.getUser();
 
-  // Build Stripe line items (prices in Rappen / CHF cents)
-  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = products.map((p) => {
-    const name =
-      typeof p.name === 'string'
-        ? p.name
-        : (p.name?.de || p.name?.en || 'Product');
-    return {
+  // Build Stripe line items — use pre-created Price ID if available, dynamic otherwise
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+  let dynamicSubtotalRappen = 0;
+
+  for (const p of products) {
+    if (p.stripe_price_id_chf) {
+      // Pre-created Stripe Price — tax already configured on the Price object
+      lineItems.push({ price: p.stripe_price_id_chf, quantity: 1 });
+    } else {
+      const name =
+        typeof p.name === 'string'
+          ? p.name
+          : (p.name?.de || p.name?.en || 'Product');
+      const unitAmount = Math.round((p.price_chf ?? 0) * 100);
+      dynamicSubtotalRappen += unitAmount;
+      lineItems.push({
+        price_data: {
+          currency: 'chf',
+          product_data: {
+            name,
+            metadata: { product_id: p.id, sku: p.sku ?? '' },
+          },
+          unit_amount: unitAmount,
+        },
+        quantity: 1,
+      });
+    }
+  }
+
+  // Add Swiss MwSt line item only for dynamic-priced items
+  if (dynamicSubtotalRappen > 0) {
+    const taxRappen = Math.round(dynamicSubtotalRappen * SWISS_TAX_RATE);
+    lineItems.push({
       price_data: {
         currency: 'chf',
-        product_data: {
-          name,
-          metadata: { product_id: p.id, sku: p.sku ?? '' },
-        },
-        unit_amount: Math.round((p.price_chf ?? 0) * 100),
+        product_data: { name: 'MwSt 8.1 %' },
+        unit_amount: taxRappen,
       },
       quantity: 1,
-    };
-  });
-
-  // Add Swiss MwSt as an explicit line item
-  const subtotalRappen = products.reduce(
-    (sum, p) => sum + Math.round((p.price_chf ?? 0) * 100),
-    0,
-  );
-  const taxRappen = Math.round(subtotalRappen * SWISS_TAX_RATE);
-  lineItems.push({
-    price_data: {
-      currency: 'chf',
-      product_data: { name: 'MwSt 8.1 %' },
-      unit_amount: taxRappen,
-    },
-    quantity: 1,
-  });
+    });
+  }
 
   const origin =
     req.headers.get('origin') ??

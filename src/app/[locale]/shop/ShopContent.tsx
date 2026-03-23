@@ -2,8 +2,39 @@
 
 import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type I18nStr = Record<string, string> | string | null;
+
+export type Product = {
+  id: string;
+  name: I18nStr;
+  description: I18nStr;
+  short_description: I18nStr;
+  price_chf: number | null;
+  compare_at_price_chf: number | null;
+  product_type: string | null;
+  is_featured: boolean | null;
+  slug: string | null;
+  image_url: string | null;
+  metadata: { marker_count?: number } | null;
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function loc(field: I18nStr, lng: string): string {
+  if (!field) return '';
+  if (typeof field === 'string') return field;
+  return field[lng] ?? field['en'] ?? field['de'] ?? '';
+}
+
+function chf(amount: number) {
+  return `CHF ${amount.toLocaleString('de-CH')}`;
+}
 
 async function startCheckout(productId: string): Promise<void> {
   const res = await fetch('/api/checkout', {
@@ -19,56 +50,21 @@ async function startCheckout(productId: string): Promise<void> {
   }
 }
 
-type LocalizedString = string | Record<string, string>;
-type LocalizedArray = string[] | Record<string, string[]> | null;
+// ─── Product card ─────────────────────────────────────────────────────────────
 
-type Product = {
-  id: string;
-  name: LocalizedString;
-  description: LocalizedString | null;
-  price: number;
-  marker_count: number | null;
-  product_type: string;
-  is_featured: boolean | null;
-  slug: string | null;
-  features: LocalizedArray;
-};
-
-function chf(amount: number) {
-  return `CHF ${amount.toLocaleString('de-CH')}`;
-}
-
-function getLocalized(field: LocalizedString | null | undefined, lng: string): string {
-  if (!field) return '';
-  if (typeof field === 'string') return field;
-  return field[lng] ?? field['de'] ?? '';
-}
-
-function getLocalizedFeatures(features: LocalizedArray, lng: string): string[] {
-  if (!features) return [];
-  if (Array.isArray(features)) return features;
-  return features[lng] ?? features['de'] ?? [];
-}
-
-function VitalcheckBadge() {
-  const t = useTranslations('shop.packages');
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ceab84]/15 px-3 py-1 text-xs font-medium text-[#8a6a3e]">
-      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-        <circle cx="6" cy="6" r="5.5" stroke="#ceab84" />
-        <path d="M3.5 6l1.8 1.8L8.5 4" stroke="#ceab84" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-      {t('vitalcheck')}
-    </span>
-  );
-}
-
-function PackageCard({ product, index, onCheckoutError }: { product: Product; index: number; onCheckoutError: () => void }) {
-  const t = useTranslations('shop.packages');
+function ProductCard({
+  product,
+  onCheckoutError,
+}: {
+  product: Product;
+  onCheckoutError: () => void;
+}) {
+  const t = useTranslations('shop');
   const lng = useLocale();
-  const featured = product.is_featured;
   const [loading, setLoading] = useState(false);
-  const features = getLocalizedFeatures(product.features, lng);
+  const featured = product.is_featured ?? false;
+  const isTestPackage = product.product_type === 'test_package';
+  const markerCount = product.metadata?.marker_count;
 
   const handleCheckout = async () => {
     setLoading(true);
@@ -79,6 +75,10 @@ function PackageCard({ product, index, onCheckoutError }: { product: Product; in
       onCheckoutError();
     }
   };
+
+  const name = loc(product.name, lng);
+  // Use short_description for cards if available, fall back to description
+  const subtitle = loc(product.short_description, lng) || loc(product.description, lng);
 
   return (
     <div
@@ -87,131 +87,126 @@ function PackageCard({ product, index, onCheckoutError }: { product: Product; in
           ? 'bg-[#0e393d] text-white shadow-xl ring-2 ring-[#ceab84]/40'
           : 'bg-white text-[#1c2a2b] shadow-sm ring-1 ring-[#0e393d]/8'
       }`}
-      style={{ animationDelay: `${index * 80}ms` }}
     >
       {featured && (
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
           <span className="inline-block rounded-full bg-[#ceab84] px-4 py-1 text-xs font-semibold text-[#0e393d] tracking-wide">
-            {t('featured')}
+            {t('packages.featured')}
           </span>
         </div>
       )}
 
-      <div className="mb-5">
-        <h3 className={`font-serif text-2xl mb-1 ${featured ? 'text-white' : 'text-[#0e393d]'}`}>
-          {getLocalized(product.name, lng)}
-        </h3>
-        <p className={`text-sm leading-relaxed ${featured ? 'text-white/70' : 'text-[#1c2a2b]/60'}`}>
-          {getLocalized(product.description, lng)}
-        </p>
-      </div>
-
-      <div className="mb-4">
-        <div className="flex items-baseline gap-1.5">
-          <span className={`font-serif text-4xl font-medium ${featured ? 'text-[#ceab84]' : 'text-[#0e393d]'}`}>
-            {chf(product.price)}
-          </span>
+      {/* Image */}
+      {product.image_url && (
+        <div className="mb-5 -mx-7 -mt-7 rounded-t-2xl overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`${product.image_url}?width=400&height=200&resize=cover`}
+            alt={name}
+            className="w-full h-32 object-cover"
+          />
         </div>
-        {product.marker_count && (
-          <p className={`mt-1 text-xs ${featured ? 'text-white/50' : 'text-[#1c2a2b]/40'}`}>
-            {t('biomarkers', { count: product.marker_count })}
+      )}
+
+      <div className="mb-4 flex-1">
+        <h3 className={`font-serif text-xl mb-1 ${featured ? 'text-white' : 'text-[#0e393d]'}`}>
+          {name || '—'}
+        </h3>
+        {subtitle && (
+          <p className={`text-sm leading-relaxed ${featured ? 'text-white/70' : 'text-[#1c2a2b]/60'}`}>
+            {subtitle}
           </p>
         )}
       </div>
 
       <div className="mb-5">
-        <VitalcheckBadge />
+        <div className="flex items-baseline gap-2">
+          <span className={`font-serif text-3xl font-medium ${featured ? 'text-[#ceab84]' : 'text-[#0e393d]'}`}>
+            {product.price_chf != null ? chf(product.price_chf) : '—'}
+          </span>
+          {product.compare_at_price_chf != null && product.compare_at_price_chf > (product.price_chf ?? 0) && (
+            <span className={`text-sm line-through ${featured ? 'text-white/40' : 'text-[#1c2a2b]/35'}`}>
+              {chf(product.compare_at_price_chf)}
+            </span>
+          )}
+        </div>
+        {markerCount != null && (
+          <p className={`mt-1 text-xs ${featured ? 'text-white/50' : 'text-[#1c2a2b]/40'}`}>
+            {t('packages.biomarkers', { count: markerCount })}
+          </p>
+        )}
       </div>
-
-      {features.length > 0 && (
-        <ul className="mb-7 flex-1 space-y-2">
-          {features.map((f) => (
-            <li key={f} className="flex items-start gap-2 text-sm">
-              <svg className={`mt-0.5 shrink-0 ${featured ? 'text-[#ceab84]' : 'text-[#0e393d]'}`} width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M2.5 7l3 3L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span className={featured ? 'text-white/80' : 'text-[#1c2a2b]/70'}>{f}</span>
-            </li>
-          ))}
-        </ul>
-      )}
 
       <button
         onClick={handleCheckout}
         disabled={loading}
-        aria-label={t('cta')}
         className={`block w-full rounded-xl py-3 text-center text-sm font-medium transition-colors disabled:opacity-60 ${
           featured
             ? 'bg-[#ceab84] text-[#0e393d] hover:bg-[#ceab84]/90'
             : 'bg-[#0e393d] text-white hover:bg-[#0e393d]/90'
         }`}
       >
-        {loading ? '…' : t('cta')}
+        {loading ? '…' : t('buyNow')}
       </button>
-    </div>
-  );
-}
 
-function AddonCard({ product, onCheckoutError }: { product: Product; onCheckoutError: () => void }) {
-  const t = useTranslations('shop');
-  const lng = useLocale();
-  const [loading, setLoading] = useState(false);
-  const features = getLocalizedFeatures(product.features, lng);
-
-  const handleCheckout = async () => {
-    setLoading(true);
-    try {
-      await startCheckout(product.id);
-    } catch {
-      setLoading(false);
-      onCheckoutError();
-    }
-  };
-
-  return (
-    <div className="flex flex-col rounded-2xl bg-white p-6 shadow-sm ring-1 ring-[#0e393d]/8 hover:shadow-md transition-shadow">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <h3 className="font-serif text-lg text-[#0e393d]">{getLocalized(product.name, lng)}</h3>
-        <span className="shrink-0 font-serif text-xl text-[#0e393d]">{chf(product.price)}</span>
-      </div>
-      <p className="mb-4 flex-1 text-sm leading-relaxed text-[#1c2a2b]/60">{getLocalized(product.description, lng)}</p>
-      <div className="mb-5">
-        <VitalcheckBadge />
-      </div>
-      {features.length > 0 && (
-        <ul className="mb-6 space-y-1.5">
-          {features.map((f) => (
-            <li key={f} className="flex items-start gap-2 text-sm text-[#1c2a2b]/60">
-              <svg className="mt-0.5 shrink-0 text-[#ceab84]" width="13" height="13" viewBox="0 0 14 14" fill="none">
-                <path d="M2.5 7l3 3L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              {f}
-            </li>
-          ))}
-        </ul>
+      {isTestPackage && (
+        <Link
+          href="/biomarkers"
+          className={`mt-3 block text-center text-xs transition-colors ${
+            featured ? 'text-white/50 hover:text-white/80' : 'text-[#1c2a2b]/40 hover:text-[#0e393d]'
+          }`}
+        >
+          {t('viewBiomarkers')}
+        </Link>
       )}
-      <button
-        onClick={handleCheckout}
-        disabled={loading}
-        aria-label={t('addons.cta')}
-        className="block w-full rounded-xl border border-[#0e393d]/20 py-2.5 text-center text-sm font-medium text-[#0e393d] hover:bg-[#0e393d] hover:text-white transition-colors disabled:opacity-60"
-      >
-        {loading ? '…' : t('addons.cta')}
-      </button>
     </div>
   );
 }
 
-interface ShopContentProps {
-  packages: Product[];
-  addons: Product[];
+// ─── Section ──────────────────────────────────────────────────────────────────
+
+function Section({
+  heading,
+  sub,
+  products,
+  onCheckoutError,
+}: {
+  heading: string;
+  sub?: string;
+  products: Product[];
+  onCheckoutError: () => void;
+}) {
+  return (
+    <section className="mb-20">
+      <div className="mb-8 flex items-center gap-4">
+        <h2 className="font-serif text-2xl text-[#0e393d]">{heading}</h2>
+        <div className="flex-1 h-px bg-[#0e393d]/10" />
+        {sub && <p className="text-sm text-[#1c2a2b]/40">{sub}</p>}
+      </div>
+      <div className="grid gap-6 sm:grid-cols-3">
+        {products.map((p) => (
+          <ProductCard key={p.id} product={p} onCheckoutError={onCheckoutError} />
+        ))}
+      </div>
+    </section>
+  );
 }
 
-export default function ShopContent({ packages, addons }: ShopContentProps) {
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function ShopContent({ products }: { products: Product[] }) {
   const t = useTranslations('shop');
   const trust = t.raw('trust') as { title: string; body: string }[];
   const trustIcons = ['🔬', '📊', '🔒'];
   const [checkoutError, setCheckoutError] = useState(false);
+
+  const packages  = products.filter((p) => p.product_type === 'test_package');
+  const addons    = products.filter((p) => p.product_type === 'addon_test');
+  const food      = products.filter((p) => p.product_type === 'food');
+  const subs      = products.filter((p) => p.product_type === 'subscription');
+  const other     = products.filter((p) =>
+    !['test_package', 'addon_test', 'food', 'subscription'].includes(p.product_type ?? '')
+  );
 
   const handleCheckoutError = () => setCheckoutError(true);
 
@@ -235,7 +230,7 @@ export default function ShopContent({ packages, addons }: ShopContentProps) {
           </div>
         )}
 
-        {/* Hero text */}
+        {/* Hero */}
         <div className="mb-14 text-center">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">
             {t('tag')}
@@ -248,45 +243,65 @@ export default function ShopContent({ packages, addons }: ShopContentProps) {
           </p>
         </div>
 
-        {/* Packages */}
-        <section className="mb-20">
-          <div className="mb-8 flex items-center gap-4">
-            <h2 className="font-serif text-2xl text-[#0e393d]">{t('packages.heading')}</h2>
-            <div className="flex-1 h-px bg-[#0e393d]/10" />
+        {/* Empty state */}
+        {products.length === 0 && (
+          <div className="py-20 text-center text-[#1c2a2b]/40 text-sm">
+            {t('emptyState')}
           </div>
-          <div className="grid gap-6 sm:grid-cols-3">
-            {packages.map((p, i) => (
-              <PackageCard key={p.id} product={p} index={i} onCheckoutError={handleCheckoutError} />
-            ))}
-          </div>
-        </section>
+        )}
 
-        {/* Add-ons */}
-        <section className="mb-20">
-          <div className="mb-8 flex items-center gap-4">
-            <h2 className="font-serif text-2xl text-[#0e393d]">{t('addons.heading')}</h2>
-            <div className="flex-1 h-px bg-[#0e393d]/10" />
-            <p className="text-sm text-[#1c2a2b]/40">{t('addons.combo')}</p>
-          </div>
-          <div className="grid gap-6 sm:grid-cols-3">
-            {addons.map((p) => (
-              <AddonCard key={p.id} product={p} onCheckoutError={handleCheckoutError} />
-            ))}
-          </div>
-        </section>
+        {/* Product sections */}
+        {packages.length > 0 && (
+          <Section
+            heading={t('packages.heading')}
+            products={packages}
+            onCheckoutError={handleCheckoutError}
+          />
+        )}
+        {addons.length > 0 && (
+          <Section
+            heading={t('addons.heading')}
+            sub={t('addons.combo')}
+            products={addons}
+            onCheckoutError={handleCheckoutError}
+          />
+        )}
+        {food.length > 0 && (
+          <Section
+            heading="Food"
+            products={food}
+            onCheckoutError={handleCheckoutError}
+          />
+        )}
+        {subs.length > 0 && (
+          <Section
+            heading="Subscriptions"
+            products={subs}
+            onCheckoutError={handleCheckoutError}
+          />
+        )}
+        {other.length > 0 && (
+          <Section
+            heading="More"
+            products={other}
+            onCheckoutError={handleCheckoutError}
+          />
+        )}
 
         {/* Trust strip */}
-        <section className="rounded-2xl bg-[#0e393d]/5 px-8 py-8">
-          <div className="grid gap-6 text-center sm:grid-cols-3">
-            {trust.map(({ title, body }, idx) => (
-              <div key={title}>
-                <div className="text-2xl mb-2">{trustIcons[idx]}</div>
-                <h3 className="font-serif text-base text-[#0e393d] mb-1">{title}</h3>
-                <p className="text-sm text-[#1c2a2b]/55 leading-relaxed">{body}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        {products.length > 0 && (
+          <section className="rounded-2xl bg-[#0e393d]/5 px-8 py-8">
+            <div className="grid gap-6 text-center sm:grid-cols-3">
+              {trust.map(({ title, body }, idx) => (
+                <div key={title}>
+                  <div className="text-2xl mb-2">{trustIcons[idx]}</div>
+                  <h3 className="font-serif text-base text-[#0e393d] mb-1">{title}</h3>
+                  <p className="text-sm text-[#1c2a2b]/55 leading-relaxed">{body}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
       </main>
 

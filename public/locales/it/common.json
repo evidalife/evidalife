@@ -4,10 +4,40 @@
     "cta": "Lista d'attesa",
     "login": "Accedi",
     "dropdowns": {
-      "Kitchen": ["Come iniziare", "Daily Dozen", "Ricette", "Ristorante", null, "Blog", "Lista della spesa", "Corsi"],
-      "Health": ["Health Engine", "Biomarcatori", "BioAge", "Interventi", null, "Dashboard", "Scienza"],
-      "Fit": ["Sonno", "Esercizio", "Stress & Recupero", null, "Coaching"],
-      "Shop": ["Pacchetti di test", "Alimentazione", "Abbonamento Eat@Home", null, "Carrello & Pagamento", "I miei ordini"]
+      "Kitchen": [
+        "Come iniziare",
+        "Daily Dozen",
+        "Ricette",
+        "Ristorante",
+        null,
+        "Blog",
+        "Lista della spesa",
+        "Corsi"
+      ],
+      "Health": [
+        "Health Engine",
+        "Biomarcatori",
+        "BioAge",
+        "Interventi",
+        null,
+        "Dashboard",
+        "Scienza"
+      ],
+      "Fit": [
+        "Sonno",
+        "Esercizio",
+        "Stress & Recupero",
+        null,
+        "Coaching"
+      ],
+      "Shop": [
+        "Pacchetti di test",
+        "Alimentazione",
+        "Abbonamento Eat@Home",
+        null,
+        "Carrello & Pagamento",
+        "I miei ordini"
+      ]
     }
   },
   "hero": {
@@ -24,19 +54,43 @@
     "desc": "Non forniamo solo conoscenza – rendiamo il cambiamento positivo misurabile. Con laboratori partner, monitoraggio quotidiano e il tuo punteggio di longevità personale, vedi esattamente come la tua alimentazione influisce sulla tua salute."
   },
   "cards": [
-    { "title": "Risultati lab & punteggio", "desc": "Tutti i biomarcatori in una dashboard. Il tuo punteggio di longevità tiene traccia dei tuoi progressi in tempo reale." },
-    { "title": "Tracker Daily Dozen", "desc": "I 12 gruppi alimentari del Dr. Michael Greger – monitoraggio quotidiano, semplice da implementare." },
-    { "title": "Database di ricette", "desc": "Deliziosi piatti a base di alimenti integrali adattati ai tuoi obiettivi di salute e al Daily Dozen." },
-    { "title": "Negozio & pacchetti", "desc": "Pacchetti di test di laboratorio e altro – salute di qualità resa accessibile. Facile da prenotare." }
+    {
+      "title": "Risultati lab & punteggio",
+      "desc": "Tutti i biomarcatori in una dashboard. Il tuo punteggio di longevità tiene traccia dei tuoi progressi in tempo reale."
+    },
+    {
+      "title": "Tracker Daily Dozen",
+      "desc": "I 12 gruppi alimentari del Dr. Michael Greger – monitoraggio quotidiano, semplice da implementare."
+    },
+    {
+      "title": "Database di ricette",
+      "desc": "Deliziosi piatti a base di alimenti integrali adattati ai tuoi obiettivi di salute e al Daily Dozen."
+    },
+    {
+      "title": "Negozio & pacchetti",
+      "desc": "Pacchetti di test di laboratorio e altro – salute di qualità resa accessibile. Facile da prenotare."
+    }
   ],
   "steps": {
     "tag": "Come funziona",
     "heading": "Tre passi verso",
     "headingEm": "una salute misurabile",
     "items": [
-      { "n": "01", "title": "Misurare", "desc": "I laboratori partner analizzano i tuoi marcatori di salute e longevità più importanti. Tutti i risultati chiaramente visibili nella tua dashboard personale." },
-      { "n": "02", "title": "Nutrire", "desc": "Nutrizione vegetale a base di alimenti integrali secondo il Daily Dozen del Dr. Greger. Con ricette, consigli e monitoraggio quotidiano integrati nell'app." },
-      { "n": "03", "title": "Migliorare", "desc": "Il tuo punteggio di longevità mostra in modo misurabile come la tua alimentazione influisce sui tuoi biomarcatori. Chiaro. Comprensibile. Motivante." }
+      {
+        "n": "01",
+        "title": "Misurare",
+        "desc": "I laboratori partner analizzano i tuoi marcatori di salute e longevità più importanti. Tutti i risultati chiaramente visibili nella tua dashboard personale."
+      },
+      {
+        "n": "02",
+        "title": "Nutrire",
+        "desc": "Nutrizione vegetale a base di alimenti integrali secondo il Daily Dozen del Dr. Greger. Con ricette, consigli e monitoraggio quotidiano integrati nell'app."
+      },
+      {
+        "n": "03",
+        "title": "Migliorare",
+        "desc": "Il tuo punteggio di longevità mostra in modo misurabile come la tua alimentazione influisce sui tuoi biomarcatori. Chiaro. Comprensibile. Motivante."
+      }
     ]
   },
   "waitlist": {
@@ -52,7 +106,12 @@
   "footer": {
     "co": {
       "label": "Azienda",
-      "items": ["Chi siamo", "Team", "Laboratori partner", "Contatto"]
+      "items": [
+        "Chi siamo",
+        "Team",
+        "Laboratori partner",
+        "Contatto"
+      ]
     },
     "legal": {
       "privacy": "Informativa sulla privacy",
@@ -94,15 +153,27 @@
       "cta": "Scegli componente aggiuntivo"
     },
     "trust": [
-      { "title": "Laboratori partner certificati", "body": "Laboratori accreditati ISO in Svizzera e Germania." },
-      { "title": "Dashboard automatica", "body": "Tutti i risultati direttamente nel tuo profilo Evida Life." },
-      { "title": "Privacy prima di tutto", "body": "Archiviazione dei dati svizzera, pienamente conforme al GDPR e alla nLPD." }
+      {
+        "title": "Laboratori partner certificati",
+        "body": "Laboratori accreditati ISO in Svizzera e Germania."
+      },
+      {
+        "title": "Dashboard automatica",
+        "body": "Tutti i risultati direttamente nel tuo profilo Evida Life."
+      },
+      {
+        "title": "Privacy prima di tutto",
+        "body": "Archiviazione dei dati svizzera, pienamente conforme al GDPR e alla nLPD."
+      }
     ],
     "footer": {
       "imprint": "Note legali",
       "privacy": "Privacy",
       "terms": "Termini"
-    }
+    },
+    "buyNow": "Acquista ora",
+    "viewBiomarkers": "Vedi tutti i biomarcatori →",
+    "emptyState": "Nessun prodotto disponibile al momento."
   },
   "privacy": {
     "title": "Informativa sulla privacy",

@@ -4,10 +4,40 @@
     "cta": "Warteliste",
     "login": "Anmelden",
     "dropdowns": {
-      "Kitchen": ["Wie starten", "Daily Dozen", "Rezepte", "Restaurant", null, "Blog", "Einkaufsliste", "Kurse"],
-      "Health": ["Health Engine", "Biomarker", "BioAge", "Interventionen", null, "Dashboard", "Wissenschaft"],
-      "Fit": ["Schlaf", "Bewegung", "Stress & Recovery", null, "Coaching"],
-      "Shop": ["Test Pakete", "Lebensmittel", "Eat@Home Abo", null, "Warenkorb & Checkout", "Meine Bestellungen"]
+      "Kitchen": [
+        "Wie starten",
+        "Daily Dozen",
+        "Rezepte",
+        "Restaurant",
+        null,
+        "Blog",
+        "Einkaufsliste",
+        "Kurse"
+      ],
+      "Health": [
+        "Health Engine",
+        "Biomarker",
+        "BioAge",
+        "Interventionen",
+        null,
+        "Dashboard",
+        "Wissenschaft"
+      ],
+      "Fit": [
+        "Schlaf",
+        "Bewegung",
+        "Stress & Recovery",
+        null,
+        "Coaching"
+      ],
+      "Shop": [
+        "Test Pakete",
+        "Lebensmittel",
+        "Eat@Home Abo",
+        null,
+        "Warenkorb & Checkout",
+        "Meine Bestellungen"
+      ]
     }
   },
   "hero": {
@@ -24,19 +54,43 @@
     "desc": "Wir stellen nicht nur Wissen zur Verfügung – wir machen positive Veränderungen messbar. Mit Partnerlaboren, täglichem Tracking und deinem persönlichen Longevity Score siehst du, wie deine Ernährung deine Gesundheit wirklich beeinflusst."
   },
   "cards": [
-    { "title": "Laborwerte & Score", "desc": "Alle Biomarker in einem Dashboard. Dein Longevity Score zeigt deinen Fortschritt in Echtzeit." },
-    { "title": "Daily Dozen Tracker", "desc": "Die 12 Lebensmittelgruppen nach Dr. Michael Greger – täglich tracken, einfach umsetzen." },
-    { "title": "Rezeptdatenbank", "desc": "Leckere, vollwertige Gerichte passend zu deinen Gesundheitszielen und dem Daily Dozen." },
-    { "title": "Shop & Pakete", "desc": "Labortest-Pakete und mehr – Gesundheit für jeden erschwinglich. Einfach buchen." }
+    {
+      "title": "Laborwerte & Score",
+      "desc": "Alle Biomarker in einem Dashboard. Dein Longevity Score zeigt deinen Fortschritt in Echtzeit."
+    },
+    {
+      "title": "Daily Dozen Tracker",
+      "desc": "Die 12 Lebensmittelgruppen nach Dr. Michael Greger – täglich tracken, einfach umsetzen."
+    },
+    {
+      "title": "Rezeptdatenbank",
+      "desc": "Leckere, vollwertige Gerichte passend zu deinen Gesundheitszielen und dem Daily Dozen."
+    },
+    {
+      "title": "Shop & Pakete",
+      "desc": "Labortest-Pakete und mehr – Gesundheit für jeden erschwinglich. Einfach buchen."
+    }
   ],
   "steps": {
     "tag": "So funktioniert es",
     "heading": "Drei Schritte zu",
     "headingEm": "messbarer Gesundheit",
     "items": [
-      { "n": "01", "title": "Messen", "desc": "Partnerlabore analysieren deine wichtigsten Gesundheits- und Longevity-Marker. Alle Werte übersichtlich in deinem persönlichen Dashboard." },
-      { "n": "02", "title": "Ernähren", "desc": "Vollwertige, pflanzenbasierte Ernährung nach Dr. Gregers Daily Dozen. Mit Rezepten, Tipps und täglichem Tracking in der App." },
-      { "n": "03", "title": "Verbessern", "desc": "Dein Longevity Score zeigt messbar, wie deine Ernährung deine Biomarker beeinflusst. Klar. Verständlich. Motivierend." }
+      {
+        "n": "01",
+        "title": "Messen",
+        "desc": "Partnerlabore analysieren deine wichtigsten Gesundheits- und Longevity-Marker. Alle Werte übersichtlich in deinem persönlichen Dashboard."
+      },
+      {
+        "n": "02",
+        "title": "Ernähren",
+        "desc": "Vollwertige, pflanzenbasierte Ernährung nach Dr. Gregers Daily Dozen. Mit Rezepten, Tipps und täglichem Tracking in der App."
+      },
+      {
+        "n": "03",
+        "title": "Verbessern",
+        "desc": "Dein Longevity Score zeigt messbar, wie deine Ernährung deine Biomarker beeinflusst. Klar. Verständlich. Motivierend."
+      }
     ]
   },
   "waitlist": {
@@ -52,7 +106,12 @@
   "footer": {
     "co": {
       "label": "Unternehmen",
-      "items": ["Über uns", "Team", "Partner Labs", "Kontakt"]
+      "items": [
+        "Über uns",
+        "Team",
+        "Partner Labs",
+        "Kontakt"
+      ]
     },
     "legal": {
       "privacy": "Datenschutz",
@@ -94,15 +153,27 @@
       "cta": "Add-on wählen"
     },
     "trust": [
-      { "title": "Zertifizierte Partnerlabore", "body": "ISO-akkreditierte Labore in der Schweiz und Deutschland." },
-      { "title": "Automatisches Dashboard", "body": "Alle Ergebnisse direkt in deinem Evida Life Profil." },
-      { "title": "Datenschutz first", "body": "Schweizer Datenhaltung, vollständig DSGVO- & nDSG-konform." }
+      {
+        "title": "Zertifizierte Partnerlabore",
+        "body": "ISO-akkreditierte Labore in der Schweiz und Deutschland."
+      },
+      {
+        "title": "Automatisches Dashboard",
+        "body": "Alle Ergebnisse direkt in deinem Evida Life Profil."
+      },
+      {
+        "title": "Datenschutz first",
+        "body": "Schweizer Datenhaltung, vollständig DSGVO- & nDSG-konform."
+      }
     ],
     "footer": {
       "imprint": "Impressum",
       "privacy": "Datenschutz",
       "terms": "AGB"
-    }
+    },
+    "buyNow": "Jetzt kaufen",
+    "viewBiomarkers": "Alle Biomarker ansehen →",
+    "emptyState": "Derzeit keine Produkte verfügbar."
   },
   "privacy": {
     "title": "Datenschutzerklärung",

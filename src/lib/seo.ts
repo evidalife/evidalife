@@ -124,4 +124,8 @@ export const PAGE_META = {
     de: { title: 'Partnerlabore', description: 'Unsere ISO-akkreditierten Partnerlabore in der Schweiz und Deutschland. Präzise Biomarker-Analysen für deine Gesundheit.' },
     en: { title: 'Partner Labs', description: 'Our ISO-accredited partner labs in Switzerland and Germany. Precise biomarker analyses for your health.' },
   },
+  biomarkers: {
+    de: { title: 'Biomarker', description: 'Longevity Bluttest-Pakete – verstehe deine Biomarker und optimiere deine Gesundheit mit Core, Pro, Complete und Add-ons.' },
+    en: { title: 'Biomarkers', description: 'Longevity blood test packages – understand your biomarkers and optimise your health with Core, Pro, Complete and add-ons.' },
+  },
 } as const;

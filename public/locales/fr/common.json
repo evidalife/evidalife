@@ -4,10 +4,40 @@
     "cta": "Liste d'attente",
     "login": "Connexion",
     "dropdowns": {
-      "Kitchen": ["Comment commencer", "Daily Dozen", "Recettes", "Restaurant", null, "Blog", "Liste de courses", "Cours"],
-      "Health": ["Health Engine", "Biomarqueurs", "BioAge", "Interventions", null, "Tableau de bord", "Science"],
-      "Fit": ["Sommeil", "Exercice", "Stress & Récupération", null, "Coaching"],
-      "Shop": ["Forfaits de test", "Alimentation", "Abonnement Eat@Home", null, "Panier & Paiement", "Mes commandes"]
+      "Kitchen": [
+        "Comment commencer",
+        "Daily Dozen",
+        "Recettes",
+        "Restaurant",
+        null,
+        "Blog",
+        "Liste de courses",
+        "Cours"
+      ],
+      "Health": [
+        "Health Engine",
+        "Biomarqueurs",
+        "BioAge",
+        "Interventions",
+        null,
+        "Tableau de bord",
+        "Science"
+      ],
+      "Fit": [
+        "Sommeil",
+        "Exercice",
+        "Stress & Récupération",
+        null,
+        "Coaching"
+      ],
+      "Shop": [
+        "Forfaits de test",
+        "Alimentation",
+        "Abonnement Eat@Home",
+        null,
+        "Panier & Paiement",
+        "Mes commandes"
+      ]
     }
   },
   "hero": {
@@ -24,19 +54,43 @@
     "desc": "Nous ne fournissons pas seulement des connaissances – nous rendons le changement positif mesurable. Avec des laboratoires partenaires, un suivi quotidien et votre score de longévité personnel, vous voyez exactement comment votre alimentation affecte votre santé."
   },
   "cards": [
-    { "title": "Résultats de labo & score", "desc": "Tous les biomarqueurs dans un tableau de bord. Votre score de longévité suit votre progression en temps réel." },
-    { "title": "Tracker Daily Dozen", "desc": "Les 12 groupes alimentaires du Dr Michael Greger – suivi quotidien, simple à mettre en œuvre." },
-    { "title": "Base de données de recettes", "desc": "De délicieux plats à base d'aliments complets adaptés à vos objectifs de santé et au Daily Dozen." },
-    { "title": "Boutique & forfaits", "desc": "Forfaits de tests de laboratoire et plus – une santé de qualité rendue abordable. Facile à réserver." }
+    {
+      "title": "Résultats de labo & score",
+      "desc": "Tous les biomarqueurs dans un tableau de bord. Votre score de longévité suit votre progression en temps réel."
+    },
+    {
+      "title": "Tracker Daily Dozen",
+      "desc": "Les 12 groupes alimentaires du Dr Michael Greger – suivi quotidien, simple à mettre en œuvre."
+    },
+    {
+      "title": "Base de données de recettes",
+      "desc": "De délicieux plats à base d'aliments complets adaptés à vos objectifs de santé et au Daily Dozen."
+    },
+    {
+      "title": "Boutique & forfaits",
+      "desc": "Forfaits de tests de laboratoire et plus – une santé de qualité rendue abordable. Facile à réserver."
+    }
   ],
   "steps": {
     "tag": "Comment ça marche",
     "heading": "Trois étapes vers",
     "headingEm": "une santé mesurable",
     "items": [
-      { "n": "01", "title": "Mesurer", "desc": "Les laboratoires partenaires analysent vos marqueurs de santé et de longévité les plus importants. Tous les résultats clairement visibles dans votre tableau de bord personnel." },
-      { "n": "02", "title": "Nourrir", "desc": "Nutrition végétale à base d'aliments complets selon le Daily Dozen du Dr Greger. Avec des recettes, des conseils et un suivi quotidien intégrés dans l'application." },
-      { "n": "03", "title": "Améliorer", "desc": "Votre score de longévité montre de manière mesurable comment votre alimentation affecte vos biomarqueurs. Clair. Compréhensible. Motivant." }
+      {
+        "n": "01",
+        "title": "Mesurer",
+        "desc": "Les laboratoires partenaires analysent vos marqueurs de santé et de longévité les plus importants. Tous les résultats clairement visibles dans votre tableau de bord personnel."
+      },
+      {
+        "n": "02",
+        "title": "Nourrir",
+        "desc": "Nutrition végétale à base d'aliments complets selon le Daily Dozen du Dr Greger. Avec des recettes, des conseils et un suivi quotidien intégrés dans l'application."
+      },
+      {
+        "n": "03",
+        "title": "Améliorer",
+        "desc": "Votre score de longévité montre de manière mesurable comment votre alimentation affecte vos biomarqueurs. Clair. Compréhensible. Motivant."
+      }
     ]
   },
   "waitlist": {
@@ -52,7 +106,12 @@
   "footer": {
     "co": {
       "label": "Entreprise",
-      "items": ["À propos", "Équipe", "Laboratoires partenaires", "Contact"]
+      "items": [
+        "À propos",
+        "Équipe",
+        "Laboratoires partenaires",
+        "Contact"
+      ]
     },
     "legal": {
       "privacy": "Politique de confidentialité",
@@ -94,15 +153,27 @@
       "cta": "Choisir le complément"
     },
     "trust": [
-      { "title": "Laboratoires partenaires certifiés", "body": "Laboratoires accrédités ISO en Suisse et en Allemagne." },
-      { "title": "Tableau de bord automatique", "body": "Tous les résultats directement dans votre profil Evida Life." },
-      { "title": "Confidentialité d'abord", "body": "Stockage des données en Suisse, entièrement conforme au RGPD et au nLPD." }
+      {
+        "title": "Laboratoires partenaires certifiés",
+        "body": "Laboratoires accrédités ISO en Suisse et en Allemagne."
+      },
+      {
+        "title": "Tableau de bord automatique",
+        "body": "Tous les résultats directement dans votre profil Evida Life."
+      },
+      {
+        "title": "Confidentialité d'abord",
+        "body": "Stockage des données en Suisse, entièrement conforme au RGPD et au nLPD."
+      }
     ],
     "footer": {
       "imprint": "Mentions légales",
       "privacy": "Confidentialité",
       "terms": "Conditions"
-    }
+    },
+    "buyNow": "Acheter maintenant",
+    "viewBiomarkers": "Voir tous les biomarqueurs →",
+    "emptyState": "Aucun produit disponible pour le moment."
   },
   "privacy": {
     "title": "Politique de confidentialité",
