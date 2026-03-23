@@ -537,20 +537,18 @@ export default async function HowToStartPage() {
           <h2 className="font-serif text-3xl text-[#0e393d] mb-8">{t.rulesTitle}</h2>
 
           {(() => {
-            const ruleImages = [
-              'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=200&fit=crop',
-              'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&h=200&fit=crop',
-              'https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=400&h=200&fit=crop',
+            const ruleGradients = [
+              { gradient: 'from-emerald-500 to-teal-400', emoji: '🥦' },
+              { gradient: 'from-amber-400 to-orange-300', emoji: '🍎' },
+              { gradient: 'from-teal-500 to-emerald-600', emoji: '🥗' },
             ];
             return (
               <div className="grid gap-5 sm:grid-cols-3">
                 {t.rules.map((rule, i) => (
                   <div key={i} className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 overflow-hidden flex flex-col">
-                    <img
-                      src={ruleImages[i]}
-                      alt={rule.title}
-                      className="w-full h-[140px] object-cover"
-                    />
+                    <div className={`w-full h-[140px] bg-gradient-to-br ${ruleGradients[i].gradient} flex items-center justify-center`}>
+                      <span className="text-5xl">{ruleGradients[i].emoji}</span>
+                    </div>
                     <div className="p-7 flex flex-col flex-1">
                       <div className="w-9 h-9 rounded-full bg-[#0e393d] flex items-center justify-center text-sm font-semibold text-white mb-4">
                         {i + 1}

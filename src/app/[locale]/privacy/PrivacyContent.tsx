@@ -25,9 +25,6 @@ export default function PrivacyContent() {
 
       <h2>{t('s2.heading')}</h2>
 
-      <h3>{t('s2.waitlist.heading')}</h3>
-      <p>{t('s2.waitlist.body')}</p>
-
       <h3>{t('s2.account.heading')}</h3>
       <p>{t('s2.account.body')}</p>
 

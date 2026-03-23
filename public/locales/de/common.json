@@ -1,7 +1,7 @@
 {
   "nav": {
     "brand": "EVIDA LIFE",
-    "cta": "Warteliste",
+    "cta": "Registrieren",
     "login": "Anmelden",
     "dropdowns": {
       "Kitchen": [
@@ -135,7 +135,7 @@
   },
   "shop": {
     "back": "← Zurück",
-    "checkoutComingSoon": "Demnächst verfügbar – trag dich in die Warteliste ein, um benachrichtigt zu werden.",
+    "checkoutComingSoon": "Checkout demnächst verfügbar.",
     "tag": "Longevity Testing",
     "h1": "Wisse, wo du stehst.",
     "sub": "Professionelle Bluttests über Partnerlabore – inklusive gratis Vitalcheck und persönlichem Longevity Dashboard.",

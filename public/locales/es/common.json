@@ -1,7 +1,7 @@
 {
   "nav": {
     "brand": "EVIDA LIFE",
-    "cta": "Lista de espera",
+    "cta": "Registrarse",
     "login": "Iniciar sesión",
     "dropdowns": {
       "Kitchen": [
@@ -135,7 +135,7 @@
   },
   "shop": {
     "back": "← Volver",
-    "checkoutComingSoon": "Próximamente — únete a la lista de espera para ser notificado cuando el pago esté disponible.",
+    "checkoutComingSoon": "Pago disponible próximamente.",
     "tag": "Pruebas de longevidad",
     "h1": "Sabe dónde estás.",
     "sub": "Análisis de sangre profesionales a través de laboratorios asociados – incluyendo un chequeo de vitalidad gratuito y un panel de longevidad personal.",
