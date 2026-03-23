@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import SimpleCropModal from '@/components/admin/shared/SimpleCropModal';
+import GalleryUpload, { type GalleryItem } from '@/components/admin/recipes/GalleryUpload';
+import type { ParsedProduct } from '@/app/api/admin/parse-product/route';
 
 async function compressImage(file: File, maxWidth = 800, quality = 0.85): Promise<{ blob: Blob; sizeKb: number }> {
   const bitmap = await createImageBitmap(file);
@@ -19,9 +21,20 @@ async function compressImage(file: File, maxWidth = 800, quality = 0.85): Promis
   });
 }
 
+async function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(',')[1]);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Lang = 'de' | 'en' | 'fr' | 'es' | 'it';
+type LangContent = { de: string; en: string; fr: string; es: string; it: string };
+type I18n = Record<string, string> | null;
 
 type ItemDefinition = {
   id: string;
@@ -29,8 +42,6 @@ type ItemDefinition = {
   item_type: string | null;
   sort_order: number | null;
 };
-type LangContent = { de: string; en: string; fr: string; es: string; it: string };
-type I18n = Record<string, string> | null;
 
 export type Product = {
   id: string;
@@ -49,6 +60,7 @@ export type Product = {
   is_active: boolean | null;
   is_featured: boolean | null;
   image_url: string | null;
+  gallery_urls: string[] | null;
   metadata: { marker_count?: number } | null;
   deleted_at: string | null;
   created_at: string;
@@ -100,7 +112,10 @@ function slugify(text: string): string {
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'product';
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Shared UI primitives ─────────────────────────────────────────────────────
+
+const inputCls = 'w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition';
+const selectCls = inputCls + ' cursor-pointer';
 
 function chf(n: number | null) {
   if (n == null) return '—';
@@ -136,11 +151,9 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
         checked ? 'bg-[#0e393d]' : 'bg-gray-200'
       }`}
     >
-      <span
-        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-          checked ? 'translate-x-4.5' : 'translate-x-0.5'
-        }`}
-      />
+      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+        checked ? 'translate-x-4.5' : 'translate-x-0.5'
+      }`} />
     </button>
   );
 }
@@ -155,8 +168,159 @@ function Field({ label, children, hint }: { label: string; children: React.React
   );
 }
 
-const inputCls = 'w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition';
-const selectCls = inputCls + ' cursor-pointer';
+function SectionBlock({
+  title, open, onToggle, badge, children,
+}: {
+  title: string; open: boolean; onToggle: () => void; badge?: React.ReactNode; children: React.ReactNode;
+}) {
+  return (
+    <div className="border-t border-[#0e393d]/8 pt-5">
+      <button type="button" onClick={onToggle} className="flex w-full items-center justify-between mb-3 group">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">{title}</span>
+          {badge}
+        </div>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
+          className={`text-[#0e393d]/30 group-hover:text-[#0e393d]/60 transition-transform ${open ? 'rotate-180' : ''}`}
+        >
+          <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {open && <div>{children}</div>}
+    </div>
+  );
+}
+
+function SectionBadge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-full bg-[#0e393d]/8 px-2 py-0.5 text-[10px] font-medium text-[#0e393d]/60">
+      {children}
+    </span>
+  );
+}
+
+// ─── Markdown toolbar ─────────────────────────────────────────────────────────
+
+function MarkdownToolbar({ taRef, value, onChange }: {
+  taRef: React.RefObject<HTMLTextAreaElement | null>;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const insert = (before: string, after = '', defaultText = '') => {
+    const ta = taRef.current;
+    if (!ta) return;
+    const s = ta.selectionStart;
+    const e = ta.selectionEnd;
+    const sel = value.slice(s, e) || defaultText;
+    const next = value.slice(0, s) + before + sel + after + value.slice(e);
+    onChange(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const cur = s + before.length + sel.length + after.length;
+      ta.setSelectionRange(cur, cur);
+    });
+  };
+
+  const btns = [
+    { label: 'B',       title: 'Bold',          fn: () => insert('**', '**', 'bold') },
+    { label: 'I',       title: 'Italic',         fn: () => insert('*', '*', 'italic') },
+    { label: '## H',    title: 'Heading',        fn: () => insert('\n## ', '', 'Heading') },
+    { label: '– List',  title: 'Bullet list',    fn: () => insert('\n- ', '', 'Item') },
+    { label: '1. Num',  title: 'Numbered list',  fn: () => insert('\n1. ', '', 'Item') },
+    { label: '> Tip',   title: 'Tip block',      fn: () => insert('\n> ', '', 'Tip') },
+    { label: '---',     title: 'Divider',        fn: () => insert('\n\n---\n\n') },
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-1 px-2 py-1.5 border-b border-[#0e393d]/8 bg-[#fafaf8]">
+      {btns.map((b) => (
+        <button key={b.label} type="button" title={b.title}
+          onMouseDown={(e) => { e.preventDefault(); b.fn(); }}
+          className="rounded px-1.5 py-0.5 text-[11px] font-medium text-[#1c2a2b]/60 hover:bg-[#0e393d]/8 hover:text-[#0e393d] transition select-none"
+        >
+          {b.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Quick Import components ──────────────────────────────────────────────────
+
+function ParsedProductCard({
+  result, onApply, onDiscard,
+}: { result: ParsedProduct; onApply: () => void; onDiscard: () => void }) {
+  return (
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50/40">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-emerald-200/60">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">✓</span>
+          <span className="text-sm font-medium text-emerald-800">Product parsed successfully</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={onDiscard}
+            className="rounded-lg border border-[#0e393d]/15 px-3 py-1.5 text-xs font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition">
+            Discard
+          </button>
+          <button type="button" onClick={onApply}
+            className="rounded-lg bg-[#0e393d] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0e393d]/90 transition">
+            Apply to form
+          </button>
+        </div>
+      </div>
+      <div className="px-4 py-3 space-y-1.5 text-xs">
+        {([
+          ['Name',        result.name_en],
+          ['Short desc',  result.short_description_en ? result.short_description_en.slice(0, 100) + (result.short_description_en.length > 100 ? '…' : '') : '—'],
+          ['Description', result.description_en ? result.description_en.slice(0, 120) + (result.description_en.length > 120 ? '…' : '') : '—'],
+          ['Price',       result.suggested_price_chf != null ? `CHF ${result.suggested_price_chf}` : '—'],
+          ['Type',        result.suggested_product_type ?? '—'],
+          ['Markers',     result.marker_count != null ? String(result.marker_count) : '—'],
+        ] as [string, string][]).map(([label, value]) => (
+          <div key={label} className="flex gap-2">
+            <span className="w-24 shrink-0 font-medium text-[#1c2a2b]/50">{label}</span>
+            <span className="text-[#1c2a2b]/80 break-words flex-1">{value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── AI button ────────────────────────────────────────────────────────────────
+
+function AiBtn({
+  onClick, disabled, status, idle, loading: loadingLabel, done,
+  color = 'amber',
+}: {
+  onClick: () => void;
+  disabled: boolean;
+  status: 'idle' | 'loading' | 'done' | 'error';
+  idle: string;
+  loading: string;
+  done: string;
+  color?: 'amber' | 'sky' | 'violet';
+}) {
+  const colors = {
+    amber: { base: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100', done: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    sky:   { base: 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100', done: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    violet:{ base: 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100', done: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  }[color];
+  const cls = status === 'done' ? colors.done : colors.base;
+  return (
+    <button type="button" onClick={onClick} disabled={disabled || status === 'loading'}
+      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${cls}`}
+    >
+      {status === 'loading' && (
+        <svg className="animate-spin h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+      )}
+      {status === 'loading' ? loadingLabel : status === 'done' ? done : idle}
+    </button>
+  );
+}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -179,14 +343,37 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const descRef = useRef<HTMLTextAreaElement>(null);
 
-  // ── Test items ───────────────────────────────────────────────────────────────
+  // AI statuses
+  const [rewriteStatus, setRewriteStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [styleStatus, setStyleStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+
+  // Quick Import
+  const [quickImportOpen, setQuickImportOpen] = useState(false);
+  const [quickImportText, setQuickImportText] = useState('');
+  const [quickImportParsing, setQuickImportParsing] = useState(false);
+  const [quickImportError, setQuickImportError] = useState<string | null>(null);
+  const [quickImportResult, setQuickImportResult] = useState<ParsedProduct | null>(null);
+
+  // Gallery
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+
+  // Test items
   const [allDefinitions, setAllDefinitions] = useState<ItemDefinition[]>([]);
   const [includedItemIds, setIncludedItemIds] = useState<Set<string>>(new Set());
   const [itemsSearch, setItemsSearch] = useState('');
   const [itemsOpen, setItemsOpen] = useState(true);
 
-  // ── Data refresh ────────────────────────────────────────────────────────────
+  // Section collapse state
+  const [openSections, setOpenSections] = useState({
+    content: true, details: true, pricing: true, settings: true,
+    testItems: true, gallery: false, cover: true,
+  });
+  const toggleSection = (k: keyof typeof openSections) =>
+    setOpenSections((prev) => ({ ...prev, [k]: !prev[k] }));
+
+  // ── Data refresh ─────────────────────────────────────────────────────────────
 
   const refresh = useCallback(async () => {
     const { data } = await supabase
@@ -196,7 +383,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     if (data) setProducts(data);
   }, [supabase]);
 
-  // Load all item definitions once on mount
+  // Load all definitions once on mount
   useEffect(() => {
     supabase
       .from('product_item_definitions')
@@ -206,7 +393,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       .then(({ data }) => { if (data) setAllDefinitions(data); });
   }, [supabase]);
 
-  // Re-load included items whenever the edited product changes
+  // Re-load included items when editingId changes
   useEffect(() => {
     if (!editingId) { setIncludedItemIds(new Set()); return; }
     supabase
@@ -218,28 +405,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       });
   }, [editingId, supabase]);
 
-  const handleToggleItem = async (definitionId: string, checked: boolean) => {
-    setIncludedItemIds((prev) => {
-      const next = new Set(prev);
-      if (checked) next.add(definitionId); else next.delete(definitionId);
-      return next;
-    });
-    if (checked) {
-      await supabase.from('product_items').insert({
-        product_id: editingId!,
-        product_item_definition_id: definitionId,
-        quantity: 1,
-        sort_order: 0,
-      });
-    } else {
-      await supabase.from('product_items')
-        .delete()
-        .eq('product_id', editingId!)
-        .eq('product_item_definition_id', definitionId);
-    }
-  };
-
-  // ── Panel helpers ────────────────────────────────────────────────────────────
+  // ── Panel helpers ─────────────────────────────────────────────────────────────
 
   const deleteImage = async (url: string | null) => {
     if (!url) return;
@@ -251,10 +417,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     if (!res.ok) console.error('Delete failed:', await res.text());
   };
 
-  const openCreate = () => {
-    setEditingId(null);
-    setLang('de');
-    setForm(EMPTY_FORM);
+  const resetPanel = () => {
     setImageFile(null);
     setImagePreview(null);
     setImageCompressedKb(null);
@@ -263,6 +426,23 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     setImageRemoved(false);
     pendingDeleteRef.current = null;
     setError(null);
+    setGalleryItems([]);
+    setQuickImportOpen(false);
+    setQuickImportText('');
+    setQuickImportResult(null);
+    setQuickImportError(null);
+    setRewriteStatus('idle');
+    setStyleStatus('idle');
+    setItemsSearch('');
+    setItemsOpen(true);
+  };
+
+  const openCreate = () => {
+    setEditingId(null);
+    setLang('de');
+    setForm(EMPTY_FORM);
+    resetPanel();
+    setOpenSections({ content: true, details: true, pricing: true, settings: true, testItems: true, gallery: false, cover: true });
     setPanelOpen(true);
   };
 
@@ -286,14 +466,18 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       is_active: p.is_active ?? true,
       is_featured: p.is_featured ?? false,
     });
-    setImageFile(null);
-    setImagePreview(null);
-    setImageCompressedKb(null);
-    setCropModalOpen(false);
+    const isTest = p.product_type === 'test_package' || p.product_type === 'addon_test';
+    // Load gallery
+    const existing = (p.gallery_urls ?? []).map((url, i) => ({
+      _key: `_g${i}`,
+      url,
+      order: i,
+    }));
+    resetPanel();
+    setGalleryItems(existing);
     setCurrentImageUrl(p.image_url);
-    setImageRemoved(false);
-    pendingDeleteRef.current = null;
-    setError(null);
+    setOpenSections({ content: true, details: true, pricing: true, settings: true, testItems: isTest, gallery: existing.length > 0, cover: true });
+    setEditingId(p.id);   // keep after resetPanel clears it
     setPanelOpen(true);
   };
 
@@ -308,7 +492,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   const setLangField = (field: 'name' | 'short_description' | 'description', l: Lang, v: string) =>
     setForm((prev) => ({ ...prev, [field]: { ...prev[field], [l]: v } }));
 
-  // ── Image picker ─────────────────────────────────────────────────────────────
+  // ── Image picker ──────────────────────────────────────────────────────────────
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -324,15 +508,8 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
   const uploadImage = async (_productId: string): Promise<string | null> => {
     if (!imageFile) return imageRemoved ? null : currentImageUrl;
-    // Track old URL for deletion after save succeeds
     if (currentImageUrl) pendingDeleteRef.current = currentImageUrl;
-    // Use FileReader (browser-native) to get base64 — Buffer.from is Node-only and breaks in Safari
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve((reader.result as string).split(',')[1]);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(imageFile);
-    });
+    const base64 = await readFileAsBase64(imageFile);
     const res = await fetch('/api/upload-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -382,7 +559,120 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     }
   };
 
-  // ── Save ─────────────────────────────────────────────────────────────────────
+  // ── AI Rewrite ────────────────────────────────────────────────────────────────
+
+  const handleRewrite = async () => {
+    const name = form.name[lang];
+    const short = form.short_description[lang];
+    const desc = form.description[lang];
+    if (!name && !short && !desc) return;
+    setRewriteStatus('loading');
+    try {
+      const res = await fetch('/api/admin/rewrite-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, short_description: short, description: desc, language: lang }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Rewrite failed');
+      setForm((f) => ({
+        ...f,
+        name:              { ...f.name,              [lang]: json.name              ?? f.name[lang] },
+        short_description: { ...f.short_description, [lang]: json.short_description ?? f.short_description[lang] },
+        description:       { ...f.description,       [lang]: json.description       ?? f.description[lang] },
+      }));
+      setRewriteStatus('done');
+    } catch {
+      setRewriteStatus('error');
+    }
+  };
+
+  // ── AI Style ──────────────────────────────────────────────────────────────────
+
+  const handleStyle = async () => {
+    const desc = form.description[lang];
+    if (!desc) return;
+    setStyleStatus('loading');
+    try {
+      const res = await fetch('/api/admin/style-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: desc, language: lang }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Style failed');
+      if (json.description) {
+        setForm((f) => ({ ...f, description: { ...f.description, [lang]: json.description } }));
+      }
+      setStyleStatus('done');
+    } catch {
+      setStyleStatus('error');
+    }
+  };
+
+  // ── Quick Import ──────────────────────────────────────────────────────────────
+
+  const handleQuickImport = async (text: string) => {
+    if (!text.trim()) return;
+    setQuickImportParsing(true);
+    setQuickImportError(null);
+    setQuickImportResult(null);
+    try {
+      const res = await fetch('/api/admin/parse-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Parse failed');
+      setQuickImportResult(json as ParsedProduct);
+    } catch (e: unknown) {
+      setQuickImportError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setQuickImportParsing(false);
+    }
+  };
+
+  const handleApplyParsed = (result: ParsedProduct) => {
+    setForm((f) => ({
+      ...f,
+      name:              { ...f.name,              en: result.name_en || f.name.en },
+      short_description: { ...f.short_description, en: result.short_description_en || f.short_description.en },
+      description:       { ...f.description,       en: result.description_en || f.description.en },
+      price_chf:         result.suggested_price_chf != null ? String(result.suggested_price_chf) : f.price_chf,
+      product_type:      result.suggested_product_type ?? f.product_type,
+      marker_count:      result.marker_count != null ? String(result.marker_count) : f.marker_count,
+    }));
+    setQuickImportResult(null);
+    setQuickImportOpen(false);
+    setLang('en');
+    setOpenSections((prev) => ({ ...prev, content: true, details: true, pricing: true }));
+  };
+
+  // ── Test items toggle ─────────────────────────────────────────────────────────
+
+  const handleToggleItem = async (definitionId: string, checked: boolean) => {
+    setIncludedItemIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(definitionId); else next.delete(definitionId);
+      return next;
+    });
+    if (checked) {
+      await supabase.from('product_items').insert({
+        product_id: editingId!,
+        product_item_definition_id: definitionId,
+        quantity: 1,
+        sort_order: 0,
+      });
+    } else {
+      await supabase.from('product_items')
+        .delete()
+        .eq('product_id', editingId!)
+        .eq('product_item_definition_id', definitionId);
+    }
+  };
+
+  // ── Save ──────────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
     if (!form.name.de.trim() && !form.name.en.trim()) {
@@ -422,13 +712,36 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
         productId = data.id;
       }
 
-      // Upload image after we have the product id
+      // Upload cover image
       const imageUrl = await uploadImage(productId!);
       if (imageUrl !== currentImageUrl || imageRemoved) {
         await supabase.from('products').update({ image_url: imageUrl }).eq('id', productId!);
       }
 
-      // DB committed — now safe to delete old storage file
+      // Upload pending gallery items
+      const galleryPayload: string[] = [];
+      const sortedGallery = [...galleryItems].sort((a, b) => a.order - b.order);
+      for (const item of sortedGallery) {
+        if (item._file) {
+          try {
+            const base64 = await readFileAsBase64(item._file);
+            const res = await fetch('/api/upload-image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ base64, filename: item._file.name, bucket: 'product-images', contentType: item._file.type }),
+            });
+            const json = await res.json();
+            if (json.url) galleryPayload.push(json.url as string);
+          } catch {
+            if (item.url) galleryPayload.push(item.url);
+          }
+        } else if (item.url) {
+          galleryPayload.push(item.url);
+        }
+      }
+      await supabase.from('products').update({ gallery_urls: galleryPayload }).eq('id', productId!);
+
+      // DB committed — delete old cover
       await deleteImage(pendingDeleteRef.current);
       pendingDeleteRef.current = null;
 
@@ -442,7 +755,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     }
   };
 
-  // ── Delete / restore ─────────────────────────────────────────────────────────
+  // ── Delete / restore ──────────────────────────────────────────────────────────
 
   const handleDelete = async (p: Product) => {
     if (!confirm(`Delete "${p.name?.de || p.name?.en || p.sku || 'this product'}"? This is a soft-delete.`)) return;
@@ -456,7 +769,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     await refresh();
   };
 
-  // ── Filtered list ────────────────────────────────────────────────────────────
+  // ── Filtered list ─────────────────────────────────────────────────────────────
 
   const filtered = products.filter((p) => {
     if (!search) return true;
@@ -468,6 +781,8 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       p.product_type?.toLowerCase().includes(q)
     );
   });
+
+  const isTestType = form.product_type === 'test_package' || form.product_type === 'addon_test';
 
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -482,21 +797,16 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
             {products.length} total · {products.filter(p => p.is_active && !p.deleted_at).length} active
           </p>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 transition"
-        >
+        <button onClick={openCreate}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 transition">
           <span className="text-lg leading-none">+</span> New Product
         </button>
       </div>
 
       {/* Search */}
       <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Search by name, SKU, type…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+        <input type="text" placeholder="Search by name, SKU, type…"
+          value={search} onChange={(e) => setSearch(e.target.value)}
           className="w-full max-w-xs rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
         />
       </div>
@@ -518,74 +828,46 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
           <tbody className="divide-y divide-[#0e393d]/6">
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
-                  No products found.
-                </td>
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">No products found.</td>
               </tr>
             )}
             {filtered.map((p) => (
-              <tr
-                key={p.id}
-                className={`hover:bg-[#fafaf8] transition-colors ${p.deleted_at ? 'opacity-50' : ''}`}
-              >
-                {/* Thumbnail */}
+              <tr key={p.id} className={`hover:bg-[#fafaf8] transition-colors ${p.deleted_at ? 'opacity-50' : ''}`}>
                 <td className="px-4 py-3">
                   {p.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={p.image_url} alt="" className="w-9 h-9 min-w-[36px] rounded-lg object-cover border border-[#0e393d]/10" />
                   ) : (
                     <div className="w-9 h-9 rounded-lg bg-[#0e393d]/6 flex items-center justify-center text-[#0e393d]/30">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                        <rect x="3" y="3" width="18" height="18" rx="2" />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <polyline points="21 15 16 10 5 21" />
-                      </svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                     </div>
                   )}
                 </td>
-
-                {/* Name / SKU */}
                 <td className="px-4 py-3">
                   <div className="font-medium text-[#0e393d]">{p.name?.de || p.name?.en || <span className="text-[#1c2a2b]/30">—</span>}</div>
                   {p.sku && <div className="text-xs text-[#1c2a2b]/40 font-mono mt-0.5">{p.sku}</div>}
                 </td>
-
-                {/* Type */}
                 <td className="px-4 py-3">
                   <Badge color="gold">{p.product_type ?? '—'}</Badge>
                   {p.is_featured && <span className="ml-1.5"><Badge color="gold">★ featured</Badge></span>}
                 </td>
-
-                {/* Prices */}
                 <td className="px-4 py-3 text-[#1c2a2b]/70 tabular-nums">{chf(p.price_chf)}</td>
-                <td className="px-4 py-3 text-[#1c2a2b]/70 tabular-nums">
-                  {p.price_eur != null ? `€${p.price_eur}` : '—'}
-                </td>
-
-                {/* Status */}
+                <td className="px-4 py-3 text-[#1c2a2b]/70 tabular-nums">{p.price_eur != null ? `€${p.price_eur}` : '—'}</td>
                 <td className="px-4 py-3"><StatusBadge product={p} /></td>
-
-                {/* Actions */}
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => openEdit(p)}
-                      className="px-3 py-1 rounded-md text-xs font-medium text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition"
-                    >
+                    <button onClick={() => openEdit(p)}
+                      className="px-3 py-1 rounded-md text-xs font-medium text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition">
                       Edit
                     </button>
                     {p.deleted_at ? (
-                      <button
-                        onClick={() => handleRestore(p)}
-                        className="px-3 py-1 rounded-md text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition"
-                      >
+                      <button onClick={() => handleRestore(p)}
+                        className="px-3 py-1 rounded-md text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition">
                         Restore
                       </button>
                     ) : (
-                      <button
-                        onClick={() => handleDelete(p)}
-                        className="px-3 py-1 rounded-md text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 transition"
-                      >
+                      <button onClick={() => handleDelete(p)}
+                        className="px-3 py-1 rounded-md text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 transition">
                         Delete
                       </button>
                     )}
@@ -597,45 +879,34 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
         </table>
       </div>
 
-      {/* ── Slide-over panel ─────────────────────────────────────────────────── */}
+      {/* ── Slide-over panel ──────────────────────────────────────────────────── */}
       {panelOpen && (
         <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/20 z-40 backdrop-blur-[1px]"
-            onClick={closePanel}
-          />
+          <div className="fixed inset-0 bg-black/20 z-40 backdrop-blur-[1px]" onClick={closePanel} />
 
-          {/* Panel */}
-          <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col bg-white shadow-2xl">
+          <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-3xl flex-col bg-white shadow-2xl">
 
             {/* Panel header */}
-            <div className="flex items-center justify-between border-b border-[#0e393d]/10 px-6 py-4">
+            <div className="flex items-center justify-between border-b border-[#0e393d]/10 px-6 py-4 shrink-0">
               <h2 className="font-serif text-lg text-[#0e393d]">
                 {editingId ? 'Edit Product' : 'New Product'}
               </h2>
-              <div className="flex items-center gap-3">
-                {/* AI Translate */}
-                <button
-                  onClick={handleTranslate}
-                  disabled={translating}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#ceab84]/40 text-[10px] font-medium text-[#8a6a3e] hover:bg-[#ceab84]/10 disabled:opacity-50 transition whitespace-nowrap"
-                >
-                  {translating ? '…' : '✦ AI Translate'}
-                </button>
+              <div className="flex items-center gap-2 flex-wrap justify-end">
                 {/* Lang tabs */}
                 <div className="flex rounded-lg border border-[#0e393d]/15 overflow-hidden text-xs">
                   {(['de', 'en', 'fr', 'es', 'it'] as Lang[]).map((l) => (
-                    <button
-                      key={l}
-                      onClick={() => setLang(l)}
-                      className={`px-3 py-1.5 font-medium transition ${lang === l ? 'bg-[#0e393d] text-white' : 'text-[#1c2a2b]/60 hover:bg-[#0e393d]/5'}`}
-                    >
+                    <button key={l} onClick={() => setLang(l)}
+                      className={`px-2.5 py-1.5 font-medium transition ${lang === l ? 'bg-[#0e393d] text-white' : 'text-[#1c2a2b]/60 hover:bg-[#0e393d]/5'}`}>
                       {l.toUpperCase()}
                     </button>
                   ))}
                 </div>
-                <button onClick={closePanel} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
+                {/* AI Translate */}
+                <button onClick={handleTranslate} disabled={translating}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#ceab84]/40 text-[10px] font-medium text-[#8a6a3e] hover:bg-[#ceab84]/10 disabled:opacity-50 transition whitespace-nowrap">
+                  {translating ? '…' : '✦ AI Translate'}
+                </button>
+                <button onClick={closePanel} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition ml-1">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
                     <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
                   </svg>
@@ -644,253 +915,248 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
             </div>
 
             {/* Panel body */}
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+            <div className="flex-1 overflow-y-auto px-6 py-5">
 
-              {/* Basic info */}
-              <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Content — {lang.toUpperCase()}</p>
+              {/* ── Quick Import ─────────────────────────────────────────── */}
+              <div className="mb-5">
+                <button type="button" onClick={() => setQuickImportOpen((v) => !v)}
+                  className="flex w-full items-center justify-between group">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Quick Import</span>
+                    <span className="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-600">AI-powered</span>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
+                    className={`text-[#0e393d]/30 group-hover:text-[#0e393d]/60 transition-transform ${quickImportOpen ? 'rotate-180' : ''}`}>
+                    <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
 
-                <Field label={`Name (${lang.toUpperCase()}) *`}>
-                  <input
-                    className={inputCls}
-                    value={form.name[lang]}
-                    onChange={(e) => setLangField('name', lang, e.target.value)}
-                    placeholder={lang === 'de' ? 'z.B. Longevity Pro' : 'e.g. Longevity Pro'}
-                  />
-                </Field>
+                {quickImportOpen && (
+                  <div className="mt-3 space-y-3">
+                    {!quickImportResult && !quickImportParsing && (
+                      <div className="rounded-xl border-2 border-dashed border-violet-200 bg-violet-50/40 p-4 space-y-3">
+                        <div className="flex flex-col items-center gap-2 py-1 text-center">
+                          <span className="text-2xl">📋</span>
+                          <p className="text-sm font-medium text-violet-800">Paste product info from any source</p>
+                          <p className="text-xs text-violet-500">Product page, PDF, spec sheet, or any text</p>
+                        </div>
+                        <textarea
+                          value={quickImportText}
+                          onChange={(e) => setQuickImportText(e.target.value)}
+                          rows={4}
+                          placeholder="Paste product text here…"
+                          className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-200 transition resize-none"
+                        />
+                        {quickImportText.trim() && (
+                          <div className="flex justify-end">
+                            <button type="button" onClick={() => { handleQuickImport(quickImportText); setQuickImportText(''); }}
+                              className="rounded-lg bg-violet-600 px-4 py-2 text-xs font-medium text-white hover:bg-violet-700 transition">
+                              Parse with AI
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {quickImportParsing && (
+                      <div className="flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-4">
+                        <svg className="animate-spin h-4 w-4 text-violet-500 shrink-0" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        <p className="text-sm text-violet-700">Parsing product with AI…</p>
+                      </div>
+                    )}
+                    {quickImportError && (
+                      <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        {quickImportError}
+                        <button type="button" onClick={() => setQuickImportError(null)} className="ml-2 text-xs underline">Dismiss</button>
+                      </div>
+                    )}
+                    {quickImportResult && (
+                      <ParsedProductCard
+                        result={quickImportResult}
+                        onApply={() => handleApplyParsed(quickImportResult)}
+                        onDiscard={() => setQuickImportResult(null)}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
 
-                <Field label={`Short Description (${lang.toUpperCase()})`} hint="Card subtitle — 1 sentence">
-                  <textarea
-                    className={inputCls + ' resize-none'}
-                    rows={2}
-                    value={form.short_description[lang]}
-                    onChange={(e) => setLangField('short_description', lang, e.target.value)}
-                    placeholder={lang === 'de' ? 'Ein Satz für die Produktkarte…' : 'One sentence for the product card…'}
-                  />
-                </Field>
-
-                <Field label={`Description (${lang.toUpperCase()})`}>
-                  <textarea
-                    className={inputCls + ' resize-none'}
-                    rows={3}
-                    value={form.description[lang]}
-                    onChange={(e) => setLangField('description', lang, e.target.value)}
-                    placeholder={lang === 'de' ? 'Ausführliche Produktbeschreibung…' : 'Full product description…'}
-                  />
-                </Field>
-
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84] pt-2">Details</p>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="SKU">
-                    <input
-                      className={inputCls}
-                      value={form.sku}
-                      onChange={(e) => setField('sku', e.target.value)}
-                      placeholder="EVD-PRO-001"
+              {/* ── Content ──────────────────────────────────────────────── */}
+              <SectionBlock title={`Content — ${lang.toUpperCase()}`} open={openSections.content} onToggle={() => toggleSection('content')}>
+                <div className="space-y-4">
+                  <Field label={`Name (${lang.toUpperCase()}) *`}>
+                    <input className={inputCls} value={form.name[lang]}
+                      onChange={(e) => setLangField('name', lang, e.target.value)}
+                      placeholder={lang === 'de' ? 'z.B. Longevity Pro' : 'e.g. Longevity Pro'}
                     />
                   </Field>
-                  <Field label="Slug">
-                    <input
-                      className={inputCls}
-                      value={form.slug}
-                      onChange={(e) => setField('slug', e.target.value)}
-                      placeholder="longevity-pro"
+
+                  <Field label={`Short Description (${lang.toUpperCase()})`} hint="Card subtitle — 1 sentence">
+                    <textarea className={inputCls + ' resize-none'} rows={2}
+                      value={form.short_description[lang]}
+                      onChange={(e) => setLangField('short_description', lang, e.target.value)}
+                      placeholder={lang === 'de' ? 'Ein Satz für die Produktkarte…' : 'One sentence for the product card…'}
                     />
+                  </Field>
+
+                  <Field label={`Description (${lang.toUpperCase()})`} hint="Markdown supported">
+                    <div className="rounded-lg border border-[#0e393d]/15 overflow-hidden focus-within:border-[#0e393d]/40 focus-within:ring-2 focus-within:ring-[#0e393d]/10 transition">
+                      <MarkdownToolbar taRef={descRef} value={form.description[lang]}
+                        onChange={(v) => setLangField('description', lang, v)} />
+                      <textarea
+                        ref={descRef}
+                        className="w-full bg-white px-3 py-2 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:outline-none resize-y"
+                        rows={5}
+                        value={form.description[lang]}
+                        onChange={(e) => setLangField('description', lang, e.target.value)}
+                        placeholder={lang === 'de' ? 'Ausführliche Produktbeschreibung…' : 'Full product description…'}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 mt-1.5 flex-wrap">
+                      <AiBtn onClick={() => { setRewriteStatus('idle'); handleRewrite(); }}
+                        disabled={!form.name[lang] && !form.description[lang]}
+                        status={rewriteStatus} idle="✦ Rewrite & Proofread" loading="Rewriting…" done="✓ Rewritten" color="amber" />
+                      <AiBtn onClick={() => { setStyleStatus('idle'); handleStyle(); }}
+                        disabled={!form.description[lang]}
+                        status={styleStatus} idle="✦ AI Style" loading="Styling…" done="✓ Styled" color="sky" />
+                    </div>
                   </Field>
                 </div>
+              </SectionBlock>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Product Type">
-                    <select
-                      className={selectCls}
-                      value={form.product_type}
-                      onChange={(e) => setField('product_type', e.target.value)}
-                    >
-                      {PRODUCT_TYPES.map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
+              {/* ── Details ──────────────────────────────────────────────── */}
+              <SectionBlock title="Details" open={openSections.details} onToggle={() => toggleSection('details')}>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="SKU">
+                      <input className={inputCls} value={form.sku} onChange={(e) => setField('sku', e.target.value)} placeholder="EVD-PRO-001" />
+                    </Field>
+                    <Field label="Slug">
+                      <input className={inputCls} value={form.slug} onChange={(e) => setField('slug', e.target.value)} placeholder="longevity-pro" />
+                    </Field>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Product Type">
+                      <select className={selectCls} value={form.product_type} onChange={(e) => setField('product_type', e.target.value)}>
+                        {PRODUCT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Marker Count">
+                      <input type="number" className={inputCls} value={form.marker_count}
+                        onChange={(e) => setField('marker_count', e.target.value)} placeholder="23" min={0} />
+                    </Field>
+                  </div>
+                </div>
+              </SectionBlock>
+
+              {/* ── Pricing ──────────────────────────────────────────────── */}
+              <SectionBlock title="Pricing" open={openSections.pricing} onToggle={() => toggleSection('pricing')}>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Price CHF">
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#1c2a2b]/40">CHF</span>
+                        <input type="number" className={inputCls + ' pl-11'} value={form.price_chf}
+                          onChange={(e) => setField('price_chf', e.target.value)} placeholder="299" min={0} step={0.01} />
+                      </div>
+                    </Field>
+                    <Field label="Price EUR">
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#1c2a2b]/40">€</span>
+                        <input type="number" className={inputCls + ' pl-7'} value={form.price_eur}
+                          onChange={(e) => setField('price_eur', e.target.value)} placeholder="279" min={0} step={0.01} />
+                      </div>
+                    </Field>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Compare-at CHF" hint="Strikethrough price">
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#1c2a2b]/40">CHF</span>
+                        <input type="number" className={inputCls + ' pl-11'} value={form.compare_at_price_chf}
+                          onChange={(e) => setField('compare_at_price_chf', e.target.value)} placeholder="399" min={0} step={0.01} />
+                      </div>
+                    </Field>
+                    <Field label="Compare-at EUR" hint="Strikethrough price">
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#1c2a2b]/40">€</span>
+                        <input type="number" className={inputCls + ' pl-7'} value={form.compare_at_price_eur}
+                          onChange={(e) => setField('compare_at_price_eur', e.target.value)} placeholder="379" min={0} step={0.01} />
+                      </div>
+                    </Field>
+                  </div>
+                  <Field label="Tax Class">
+                    <select className={selectCls} value={form.tax_class} onChange={(e) => setField('tax_class', e.target.value)}>
+                      {TAX_CLASSES.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </Field>
-                  <Field label="Marker Count">
-                    <input
-                      type="number"
-                      className={inputCls}
-                      value={form.marker_count}
-                      onChange={(e) => setField('marker_count', e.target.value)}
-                      placeholder="23"
-                      min={0}
-                    />
-                  </Field>
                 </div>
+              </SectionBlock>
 
-              </div>
-
-              {/* Pricing */}
-              <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Pricing</p>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Price CHF">
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#1c2a2b]/40">CHF</span>
-                      <input
-                        type="number"
-                        className={inputCls + ' pl-11'}
-                        value={form.price_chf}
-                        onChange={(e) => setField('price_chf', e.target.value)}
-                        placeholder="299"
-                        min={0}
-                        step={0.01}
-                      />
-                    </div>
+              {/* ── Settings ─────────────────────────────────────────────── */}
+              <SectionBlock title="Settings" open={openSections.settings} onToggle={() => toggleSection('settings')}>
+                <div className="space-y-3">
+                  <Field label="Sort Order" hint="Lower numbers appear first">
+                    <input type="number" className={inputCls} value={form.sort_order}
+                      onChange={(e) => setField('sort_order', e.target.value)} placeholder="10" min={0} step={1} />
                   </Field>
-                  <Field label="Price EUR">
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#1c2a2b]/40">€</span>
-                      <input
-                        type="number"
-                        className={inputCls + ' pl-7'}
-                        value={form.price_eur}
-                        onChange={(e) => setField('price_eur', e.target.value)}
-                        placeholder="279"
-                        min={0}
-                        step={0.01}
-                      />
-                    </div>
-                  </Field>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Compare-at CHF" hint="Strikethrough price">
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#1c2a2b]/40">CHF</span>
-                      <input
-                        type="number"
-                        className={inputCls + ' pl-11'}
-                        value={form.compare_at_price_chf}
-                        onChange={(e) => setField('compare_at_price_chf', e.target.value)}
-                        placeholder="399"
-                        min={0}
-                        step={0.01}
-                      />
-                    </div>
-                  </Field>
-                  <Field label="Compare-at EUR" hint="Strikethrough price">
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#1c2a2b]/40">€</span>
-                      <input
-                        type="number"
-                        className={inputCls + ' pl-7'}
-                        value={form.compare_at_price_eur}
-                        onChange={(e) => setField('compare_at_price_eur', e.target.value)}
-                        placeholder="379"
-                        min={0}
-                        step={0.01}
-                      />
-                    </div>
-                  </Field>
-                </div>
-
-                <Field label="Tax Class">
-                  <select
-                    className={selectCls}
-                    value={form.tax_class}
-                    onChange={(e) => setField('tax_class', e.target.value)}
-                  >
-                    {TAX_CLASSES.map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-
-              {/* Settings */}
-              <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Settings</p>
-
-                <Field label="Sort Order" hint="Lower numbers appear first">
-                  <input
-                    type="number"
-                    className={inputCls}
-                    value={form.sort_order}
-                    onChange={(e) => setField('sort_order', e.target.value)}
-                    placeholder="10"
-                    min={0}
-                    step={1}
-                  />
-                </Field>
-
-                <div className="flex flex-col gap-3">
-                  {([
-                    ['is_active', 'Active', 'Visible to customers in the shop'],
-                    ['is_featured', 'Featured', 'Highlighted as recommended'],
-                  ] as [keyof FormState, string, string][]).map(([key, label, hint]) => (
-                    <div key={key} className="flex items-center justify-between rounded-lg border border-[#0e393d]/10 px-4 py-3">
-                      <div>
-                        <p className="text-sm font-medium text-[#1c2a2b]">{label}</p>
-                        <p className="text-xs text-[#1c2a2b]/40">{hint}</p>
+                  <div className="flex flex-col gap-3">
+                    {([
+                      ['is_active', 'Active', 'Visible to customers in the shop'],
+                      ['is_featured', 'Featured', 'Highlighted as recommended'],
+                    ] as [keyof FormState, string, string][]).map(([key, label, hint]) => (
+                      <div key={key} className="flex items-center justify-between rounded-lg border border-[#0e393d]/10 px-4 py-3">
+                        <div>
+                          <p className="text-sm font-medium text-[#1c2a2b]">{label}</p>
+                          <p className="text-xs text-[#1c2a2b]/40">{hint}</p>
+                        </div>
+                        <Toggle checked={form[key] as boolean} onChange={(v) => setField(key, v)} />
                       </div>
-                      <Toggle
-                        checked={form[key] as boolean}
-                        onChange={(v) => setField(key, v)}
-                      />
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </SectionBlock>
 
-              {/* Test Items */}
-              {editingId && (form.product_type === 'test_package' || form.product_type === 'addon_test') && (
-                <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
-                  <button
-                    type="button"
-                    onClick={() => setItemsOpen((o) => !o)}
-                    className="flex items-center justify-between w-full"
-                  >
-                    <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Included Test Items</p>
-                    <span className="text-[11px] text-[#1c2a2b]/50">
-                      {includedItemIds.size} of {allDefinitions.length} included
-                      <span className="ml-2 text-[#0e393d]/40">{itemsOpen ? '▲' : '▼'}</span>
-                    </span>
-                  </button>
-                  {itemsOpen && (
+              {/* ── Included Test Items ───────────────────────────────────── */}
+              {isTestType && (
+                <SectionBlock
+                  title="Included Test Items"
+                  open={openSections.testItems}
+                  onToggle={() => toggleSection('testItems')}
+                  badge={editingId ? <SectionBadge>{includedItemIds.size} / {allDefinitions.length}</SectionBadge> : undefined}
+                >
+                  {!editingId ? (
+                    <p className="rounded-lg bg-[#0e393d]/5 px-4 py-3 text-sm text-[#1c2a2b]/50">
+                      Save the product first to manage included test items.
+                    </p>
+                  ) : (
                     <>
-                      <input
-                        type="text"
-                        placeholder="Search items…"
-                        value={itemsSearch}
-                        onChange={(e) => setItemsSearch(e.target.value)}
-                        className={inputCls}
-                      />
+                      <input type="text" placeholder="Search items…"
+                        value={itemsSearch} onChange={(e) => setItemsSearch(e.target.value)}
+                        className={inputCls + ' mb-3'} />
                       <div className="max-h-64 overflow-y-auto rounded-lg border border-[#0e393d]/10 divide-y divide-[#0e393d]/6">
                         {(() => {
-                          const filtered = allDefinitions.filter((d) => {
+                          const filteredDefs = allDefinitions.filter((d) => {
                             if (!itemsSearch) return true;
                             const q = itemsSearch.toLowerCase();
-                            const n = d.name?.de || d.name?.en || '';
+                            const n = d.name?.en || d.name?.de || '';
                             return n.toLowerCase().includes(q) || d.item_type?.toLowerCase().includes(q);
                           });
-                          if (filtered.length === 0) {
+                          if (filteredDefs.length === 0) {
                             return <p className="px-4 py-6 text-center text-sm text-[#1c2a2b]/30">No items match.</p>;
                           }
-                          return filtered.map((d) => {
+                          return filteredDefs.map((d) => {
                             const checked = includedItemIds.has(d.id);
-                            const label = d.name?.de || d.name?.en || d.id;
+                            const label = d.name?.en || d.name?.de || d.id;
                             return (
-                              <label
-                                key={d.id}
-                                className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-[#0e393d]/3 transition"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
+                              <label key={d.id} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-[#0e393d]/3 transition">
+                                <input type="checkbox" checked={checked}
                                   onChange={(e) => handleToggleItem(d.id, e.target.checked)}
-                                  className="rounded border-[#0e393d]/30 text-[#0e393d] focus:ring-[#0e393d]/20"
-                                />
+                                  className="rounded border-[#0e393d]/30 text-[#0e393d] focus:ring-[#0e393d]/20" />
                                 <span className="flex-1 text-sm text-[#1c2a2b]">{label}</span>
                                 {d.item_type && (
-                                  <span className="text-[10px] text-[#1c2a2b]/35 font-mono">{d.item_type}</span>
+                                  <span className="text-[10px] text-[#1c2a2b]/35 font-mono shrink-0">{d.item_type}</span>
                                 )}
                               </label>
                             );
@@ -899,72 +1165,57 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                       </div>
                     </>
                   )}
-                </div>
+                </SectionBlock>
               )}
 
-              {/* Image */}
-              <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Cover Image</p>
+              {/* ── Gallery ──────────────────────────────────────────────── */}
+              <SectionBlock
+                title="Photo Gallery"
+                open={openSections.gallery}
+                onToggle={() => toggleSection('gallery')}
+                badge={<SectionBadge>{galleryItems.length} / 10</SectionBadge>}
+              >
+                <GalleryUpload items={galleryItems} onChange={setGalleryItems} maxPhotos={10} />
+              </SectionBlock>
 
+              {/* ── Cover Image ───────────────────────────────────────────── */}
+              <SectionBlock title="Cover Image" open={openSections.cover} onToggle={() => toggleSection('cover')}>
                 {(imagePreview || currentImageUrl) && (
-                  <div className="relative">
+                  <div className="relative mb-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={imagePreview ?? currentImageUrl!}
-                      alt="Preview"
-                      className="w-full h-40 object-cover rounded-xl border border-[#0e393d]/10"
-                    />
-                    <button
-                      type="button"
-                      title="Remove photo"
-                      onClick={handleRemoveCoverImage}
-                      className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white hover:bg-red-600/80 transition"
-                    >
+                    <img src={imagePreview ?? currentImageUrl!} alt="Preview"
+                      className="w-full h-40 object-cover rounded-xl border border-[#0e393d]/10" />
+                    <button type="button" title="Remove photo" onClick={handleRemoveCoverImage}
+                      className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white hover:bg-red-600/80 transition">
                       <svg width="8" height="8" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round"/></svg>
                       Remove
                     </button>
                   </div>
                 )}
-
                 {imageCompressedKb && (
-                  <p className="text-[11px] text-[#1c2a2b]/40">Auto-compressed · {imageCompressedKb} KB</p>
+                  <p className="mb-2 text-[11px] text-[#1c2a2b]/40">Auto-compressed · {imageCompressedKb} KB</p>
                 )}
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full rounded-lg border border-dashed border-[#0e393d]/20 py-4 text-sm text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d]/70 hover:bg-[#0e393d]/3 transition"
-                >
+                <button type="button" onClick={() => fileInputRef.current?.click()}
+                  className="w-full rounded-lg border border-dashed border-[#0e393d]/20 py-4 text-sm text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d]/70 hover:bg-[#0e393d]/3 transition">
                   {imagePreview || currentImageUrl ? 'Replace image' : 'Upload image'}
                   <span className="block text-xs mt-0.5 text-[#1c2a2b]/30">JPEG, PNG, WebP · max 5 MB</span>
                 </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={handleImageChange}
-                />
-              </div>
+                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+                  className="hidden" onChange={handleImageChange} />
+              </SectionBlock>
 
             </div>
 
             {/* Panel footer */}
-            <div className="border-t border-[#0e393d]/10 px-6 py-4">
-              {error && (
-                <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
-              )}
+            <div className="border-t border-[#0e393d]/10 px-6 py-4 shrink-0">
+              {error && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
               <div className="flex gap-3">
-                <button
-                  onClick={closePanel}
-                  className="flex-1 rounded-lg border border-[#0e393d]/15 py-2.5 text-sm font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition"
-                >
+                <button onClick={closePanel}
+                  className="flex-1 rounded-lg border border-[#0e393d]/15 py-2.5 text-sm font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition">
                   Cancel
                 </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex-1 rounded-lg bg-[#0e393d] py-2.5 text-sm font-medium text-white hover:bg-[#0e393d]/90 disabled:opacity-50 transition"
-                >
+                <button onClick={handleSave} disabled={saving}
+                  className="flex-1 rounded-lg bg-[#0e393d] py-2.5 text-sm font-medium text-white hover:bg-[#0e393d]/90 disabled:opacity-50 transition">
                   {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Create Product'}
                 </button>
               </div>
