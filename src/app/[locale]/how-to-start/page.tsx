@@ -26,6 +26,7 @@ const T: Record<Lang, {
   // Cycle
   cycleTag: string;
   cycleTitle: string;
+  cycleParagraph: string;
   cycleCards: { emoji: string; title: string; desc: string }[];
   cycleCallout: string;
   cycleCalloutSub: string;
@@ -87,6 +88,7 @@ const T: Record<Lang, {
     sub: 'Das Wichtigste, was du für deine Gesundheit tun kannst, ist auch das Einfachste: Ändere, was auf deinem Teller liegt. Hier erfährst du, wie du in 5 Minuten anfängst.',
     cycleTag: 'DAS KONZEPT',
     cycleTitle: 'Essen. Messen. Verbessern.',
+    cycleParagraph: 'Evida Life basiert auf einem einfachen Kreislauf: Verbessere deine Ernährung mit der Daily Dozen, miss die Wirkung mit professionellen Bluttests und beobachte, wie sich deine Gesundheitsmarker verbessern.',
     cycleCards: [
       { emoji: '🥗', title: 'Essen', desc: 'Vollwertige, pflanzenbasierte Ernährung mit der Daily Dozen – die wissenschaftlich stärkste Kostform.' },
       { emoji: '🩺', title: 'Messen', desc: 'Blutbiomarker und biologisches Alter testen – und verstehen, wie dein Körper wirklich altert.' },
@@ -192,6 +194,7 @@ const T: Record<Lang, {
     sub: 'The most important thing you can do for your health is also the simplest: change what\'s on your plate. Here\'s how to begin — in 5 minutes.',
     cycleTag: 'THE CONCEPT',
     cycleTitle: 'Eat. Measure. Improve.',
+    cycleParagraph: 'Evida Life is built on a simple loop: improve your diet using the Daily Dozen, measure the impact with professional blood tests, and watch your health markers improve over time.',
     cycleCards: [
       { emoji: '🥗', title: 'Eat', desc: 'Follow a whole-food, plant-based diet with the Daily Dozen — the most evidence-backed dietary pattern.' },
       { emoji: '🩺', title: 'Measure', desc: 'Test your blood biomarkers and biological age — and understand how your body is truly aging.' },
@@ -297,6 +300,7 @@ const T: Record<Lang, {
     sub: 'La chose la plus importante que vous puissiez faire pour votre santé est aussi la plus simple : changer ce qu\'il y a dans votre assiette. Voici comment commencer — en 5 minutes.',
     cycleTag: 'LE CONCEPT',
     cycleTitle: 'Manger. Mesurer. Progresser.',
+    cycleParagraph: "Evida Life repose sur une boucle simple : améliorez votre alimentation avec le Daily Dozen, mesurez l'impact avec des analyses de sang professionnelles et observez comment vos marqueurs de santé s'améliorent au fil du temps.",
     cycleCards: [
       { emoji: '🥗', title: 'Manger', desc: 'Suivez une alimentation végétale à base d\'aliments complets avec le Daily Dozen — le régime le plus étayé par les preuves.' },
       { emoji: '🩺', title: 'Mesurer', desc: 'Testez vos biomarqueurs sanguins et votre âge biologique — et comprenez comment votre corps vieillit vraiment.' },
@@ -402,6 +406,7 @@ const T: Record<Lang, {
     sub: 'Lo más importante que puedes hacer por tu salud es también lo más sencillo: cambiar lo que hay en tu plato. Así es como empezar — en 5 minutos.',
     cycleTag: 'EL CONCEPTO',
     cycleTitle: 'Comer. Medir. Mejorar.',
+    cycleParagraph: 'Evida Life se basa en un ciclo simple: mejora tu dieta con el Daily Dozen, mide el impacto con análisis de sangre profesionales y observa cómo mejoran tus marcadores de salud con el tiempo.',
     cycleCards: [
       { emoji: '🥗', title: 'Comer', desc: 'Sigue una dieta integral a base de plantas con el Daily Dozen — el patrón dietético más respaldado por la evidencia.' },
       { emoji: '🩺', title: 'Medir', desc: 'Analiza tus biomarcadores sanguíneos y edad biológica — y entiende cómo está envejeciendo realmente tu cuerpo.' },
@@ -507,6 +512,7 @@ const T: Record<Lang, {
     sub: 'La cosa più importante che puoi fare per la tua salute è anche la più semplice: cambia cosa c\'è nel tuo piatto. Ecco come iniziare — in 5 minuti.',
     cycleTag: 'IL CONCETTO',
     cycleTitle: 'Mangiare. Misurare. Migliorare.',
+    cycleParagraph: 'Evida Life si basa su un semplice ciclo: migliora la tua dieta con il Daily Dozen, misura l\'impatto con analisi del sangue professionali e osserva come migliorano i tuoi marcatori di salute nel tempo.',
     cycleCards: [
       { emoji: '🥗', title: 'Mangiare', desc: 'Segui una dieta integrale a base vegetale con il Daily Dozen — il modello alimentare più supportato dalle prove.' },
       { emoji: '🩺', title: 'Misurare', desc: 'Testa i tuoi biomarcatori nel sangue e l\'età biologica — e capisci come sta invecchiando davvero il tuo corpo.' },
@@ -608,10 +614,10 @@ const T: Record<Lang, {
   },
 };
 
-const RULE_VISUALS = [
-  { gradient: 'from-emerald-500 to-teal-400',   emoji: '🥦' },
-  { gradient: 'from-amber-400 to-orange-300',   emoji: '🍎' },
-  { gradient: 'from-teal-500 to-emerald-600',   emoji: '🥗' },
+const RULE_PHOTOS = [
+  'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80',
+  'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80',
+  'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&q=80',
 ];
 
 export default async function HowToStartPage() {
@@ -629,18 +635,7 @@ export default async function HowToStartPage() {
         <div className="mb-16 text-center">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">{t.tag}</p>
           <h1 className="font-serif text-5xl text-[#0e393d] mb-4 leading-tight">{t.h1}</h1>
-          <p className="mx-auto max-w-xl text-base text-[#1c2a2b]/60 leading-relaxed mb-8">{t.sub}</p>
-          <div className="relative w-full max-h-[300px] rounded-2xl overflow-hidden">
-            <Image
-              src={PHOTOS.vegetables}
-              alt="Fresh vegetables"
-              width={1060}
-              height={300}
-              className="w-full max-h-[300px] object-cover"
-              priority
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0e393d]/30 to-transparent" />
-          </div>
+          <p className="mx-auto max-w-xl text-base text-[#1c2a2b]/60 leading-relaxed">{t.sub}</p>
         </div>
 
         {/* ── Section 2: THE CYCLE ────────────────────────────────────────────── */}
@@ -649,7 +644,8 @@ export default async function HowToStartPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] shrink-0">{t.cycleTag}</p>
             <div className="flex-1 h-px bg-[#0e393d]/10" />
           </div>
-          <h2 className="font-serif text-3xl text-[#0e393d] mb-8">{t.cycleTitle}</h2>
+          <h2 className="font-serif text-3xl text-[#0e393d] mb-4">{t.cycleTitle}</h2>
+          <p className="text-sm text-[#1c2a2b]/60 leading-relaxed mb-8 max-w-2xl">{t.cycleParagraph}</p>
 
           <div className="grid gap-5 sm:grid-cols-3 mb-6">
             {t.cycleCards.map((card, i) => (
@@ -779,31 +775,29 @@ export default async function HowToStartPage() {
           <h2 className="font-serif text-3xl text-[#0e393d] mb-8">{t.foodTitle}</h2>
 
           <div className="grid gap-5 sm:grid-cols-2 mb-5">
-            {/* Green card */}
-            <div className="rounded-2xl bg-emerald-50 ring-1 ring-emerald-200 p-7">
+            {/* Promote card */}
+            <div className="rounded-2xl bg-[#0e393d]/5 ring-1 ring-[#0e393d]/10 p-7">
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-lg">🟢</span>
-                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">{t.foodGreenLabel}</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#0e393d]">{t.foodGreenLabel}</span>
               </div>
               <ul className="space-y-2.5">
                 {t.foodGreen.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-sm text-emerald-900/80 leading-snug">
-                    <span className="shrink-0 text-emerald-500 mt-0.5 text-xs">✓</span>
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-[#0e393d]/70 leading-snug">
+                    <span className="shrink-0 text-[#0e393d] mt-0.5 text-xs">✓</span>
                     {item}
                   </li>
                 ))}
               </ul>
             </div>
-            {/* Red card */}
-            <div className="rounded-2xl bg-red-50 ring-1 ring-red-100 p-7">
+            {/* Minimize card */}
+            <div className="rounded-2xl bg-[#f2ebdb]/60 ring-1 ring-[#ceab84]/30 p-7">
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-lg">🔴</span>
-                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-red-600">{t.foodRedLabel}</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#ceab84]">{t.foodRedLabel}</span>
               </div>
               <ul className="space-y-2.5">
                 {t.foodRed.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-sm text-red-900/70 leading-snug">
-                    <span className="shrink-0 text-red-400 mt-0.5 text-xs">↓</span>
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-[#5a6e6f] leading-snug">
+                    <span className="shrink-0 text-[#ceab84] mt-0.5 text-xs">↓</span>
                     {item}
                   </li>
                 ))}
@@ -872,83 +866,71 @@ export default async function HowToStartPage() {
           <div className="grid gap-5 sm:grid-cols-3">
 
             {/* Card 1 — Health Dashboard / Gauge */}
-            <div className="rounded-2xl bg-[#0d0f12] ring-1 ring-white/10 p-6 flex flex-col">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/40 mb-4">{t.previewCards[0].title}</p>
+            <div className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 p-6 flex flex-col">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#0e393d]/40 mb-4">{t.previewCards[0].title}</p>
               <div className="flex-1 flex flex-col items-center justify-center py-4">
-                {/* Gauge SVG */}
-                <svg viewBox="0 0 120 70" className="w-36" aria-hidden="true">
-                  {/* Track arc */}
-                  <path
-                    d="M 10 65 A 50 50 0 0 1 110 65"
-                    fill="none"
-                    stroke="#ffffff10"
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                  />
-                  {/* Fill arc — 78% of 180° = ~140° */}
-                  <path
-                    d="M 10 65 A 50 50 0 0 1 97 25"
-                    fill="none"
-                    stroke="#4ade9a"
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                  />
-                  <text x="60" y="60" textAnchor="middle" fill="white" fontSize="18" fontFamily="Georgia, serif" fontWeight="normal">78</text>
-                  <text x="60" y="72" textAnchor="middle" fill="#ffffff50" fontSize="7" fontFamily="system-ui, sans-serif">/100</text>
+                {/* Full-circle ring gauge */}
+                <svg viewBox="0 0 100 100" className="w-24 h-24" aria-hidden="true">
+                  <circle cx="50" cy="50" r="38" fill="none" stroke="#0e393d" strokeOpacity="0.1" strokeWidth="8" />
+                  <circle cx="50" cy="50" r="38" fill="none" stroke="#0e393d" strokeWidth="8"
+                    strokeLinecap="round" strokeDasharray="239" strokeDashoffset="53"
+                    transform="rotate(-90 50 50)" />
+                  <text x="50" y="47" textAnchor="middle" fill="#0e393d" fontSize="20" fontFamily="Georgia, serif">78</text>
+                  <text x="50" y="58" textAnchor="middle" fill="#0e393d" fontSize="8" opacity="0.4" fontFamily="system-ui">/100</text>
                 </svg>
-                <p className="text-[#4ade9a] text-xs font-medium mt-2">Longevity Score</p>
+                <p className="text-[#0e393d] text-xs font-medium mt-2">Longevity Score</p>
               </div>
-              <p className="text-xs text-white/40 leading-snug mt-3">{t.previewCards[0].label}</p>
+              <p className="text-xs text-[#1c2a2b]/50 leading-snug mt-3">{t.previewCards[0].label}</p>
             </div>
 
             {/* Card 2 — Biological Age Report */}
-            <div className="rounded-2xl bg-[#0d0f12] ring-1 ring-white/10 p-6 flex flex-col">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/40 mb-4">{t.previewCards[1].title}</p>
+            <div className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 p-6 flex flex-col">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#0e393d]/40 mb-4">{t.previewCards[1].title}</p>
               <div className="flex-1 flex flex-col items-center justify-center py-4 gap-1">
                 <div className="flex items-baseline gap-2">
-                  <span className="font-serif text-3xl text-white/40 line-through decoration-white/30">35.4</span>
-                  <span className="text-white/30 text-lg">→</span>
-                  <span className="font-serif text-4xl text-[#4ade9a]">22.7</span>
+                  <span className="font-serif text-3xl text-[#0e393d]/30 line-through decoration-[#0e393d]/20">35.4</span>
+                  <span className="text-[#0e393d]/30 text-lg">→</span>
+                  <span className="font-serif text-4xl text-emerald-600">22.7</span>
                 </div>
-                <p className="text-xs font-medium text-[#4ade9a] mt-1">{t.previewAgeChange}</p>
-                <p className="text-[10px] text-white/30">{t.previewAgeNote}</p>
+                <p className="text-xs font-medium text-emerald-600 mt-1">{t.previewAgeChange}</p>
+                <p className="text-[10px] text-[#1c2a2b]/40">{t.previewAgeNote}</p>
               </div>
-              <p className="text-xs text-white/40 leading-snug mt-3">{t.previewCards[1].label}</p>
+              <p className="text-xs text-[#1c2a2b]/50 leading-snug mt-3">{t.previewCards[1].label}</p>
             </div>
 
             {/* Card 3 — Biomarker Trends */}
-            <div className="rounded-2xl bg-[#0d0f12] ring-1 ring-white/10 p-6 flex flex-col">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/40 mb-4">{t.previewCards[2].title}</p>
+            <div className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 p-6 flex flex-col">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#0e393d]/40 mb-4">{t.previewCards[2].title}</p>
               <div className="flex-1 flex flex-col justify-center gap-3 py-2">
                 {/* Optimal bar */}
                 <div>
-                  <div className="flex justify-between text-[10px] text-white/40 mb-1">
-                    <span>LDL Cholesterol</span><span className="text-[#4ade9a]">Optimal</span>
+                  <div className="flex justify-between text-[10px] text-[#1c2a2b]/50 mb-1">
+                    <span>LDL Cholesterol</span><span className="text-[#0e393d]">Optimal</span>
                   </div>
-                  <div className="w-full bg-white/8 rounded-full h-1.5">
-                    <div className="bg-[#4ade9a] h-1.5 rounded-full" style={{ width: '88%' }} />
+                  <div className="w-full bg-[#0e393d]/8 rounded-full h-1.5">
+                    <div className="bg-[#0e393d] h-1.5 rounded-full" style={{ width: '88%' }} />
                   </div>
                 </div>
                 {/* Attention bar */}
                 <div>
-                  <div className="flex justify-between text-[10px] text-white/40 mb-1">
-                    <span>hsCRP</span><span className="text-[#f59e0b]">Attention</span>
+                  <div className="flex justify-between text-[10px] text-[#1c2a2b]/50 mb-1">
+                    <span>hsCRP</span><span className="text-[#ceab84]">Attention</span>
                   </div>
-                  <div className="w-full bg-white/8 rounded-full h-1.5">
-                    <div className="bg-[#f59e0b] h-1.5 rounded-full" style={{ width: '58%' }} />
+                  <div className="w-full bg-[#0e393d]/8 rounded-full h-1.5">
+                    <div className="bg-[#ceab84] h-1.5 rounded-full" style={{ width: '58%' }} />
                   </div>
                 </div>
                 {/* Critical bar */}
                 <div>
-                  <div className="flex justify-between text-[10px] text-white/40 mb-1">
+                  <div className="flex justify-between text-[10px] text-[#1c2a2b]/50 mb-1">
                     <span>Vitamin D</span><span className="text-[#f87171]">Critical</span>
                   </div>
-                  <div className="w-full bg-white/8 rounded-full h-1.5">
+                  <div className="w-full bg-[#0e393d]/8 rounded-full h-1.5">
                     <div className="bg-[#f87171] h-1.5 rounded-full" style={{ width: '28%' }} />
                   </div>
                 </div>
               </div>
-              <p className="text-xs text-white/40 leading-snug mt-3">{t.previewCards[2].label}</p>
+              <p className="text-xs text-[#1c2a2b]/50 leading-snug mt-3">{t.previewCards[2].label}</p>
             </div>
 
           </div>
@@ -977,8 +959,15 @@ export default async function HowToStartPage() {
           <div className="grid gap-5 sm:grid-cols-3">
             {t.rules.map((rule, i) => (
               <div key={i} className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 overflow-hidden flex flex-col">
-                <div className={`w-full h-[140px] bg-gradient-to-br ${RULE_VISUALS[i].gradient} flex items-center justify-center`}>
-                  <span className="text-5xl">{RULE_VISUALS[i].emoji}</span>
+                <div className="relative w-full h-[140px] overflow-hidden">
+                  <Image
+                    src={RULE_PHOTOS[i]}
+                    alt={rule.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 100vw, 33vw"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0e393d]/40 to-transparent" />
                 </div>
                 <div className="p-7 flex flex-col flex-1">
                   <div className="w-9 h-9 rounded-full bg-[#0e393d] flex items-center justify-center text-sm font-semibold text-white mb-4">
