@@ -19,5 +19,28 @@ export default async function ShopPage() {
 
   const products: Product[] = rows ?? [];
 
+  // Inject live biomarker counts from junction table for test packages
+  const testPackageIds = products
+    .filter((p) => p.product_type === 'test_package')
+    .map((p) => p.id);
+
+  if (testPackageIds.length > 0) {
+    const { data: piRows } = await supabase
+      .from('product_items')
+      .select('product_id')
+      .in('product_id', testPackageIds);
+
+    const countMap = new Map<string, number>();
+    for (const row of piRows ?? []) {
+      countMap.set(row.product_id, (countMap.get(row.product_id) ?? 0) + 1);
+    }
+    for (const p of products) {
+      const count = countMap.get(p.id);
+      if (count != null) {
+        p.metadata = { ...(p.metadata ?? {}), marker_count: count };
+      }
+    }
+  }
+
   return <ShopContent products={products} />;
 }

@@ -2,6 +2,7 @@ import { getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import { createClient } from '@/lib/supabase/server';
 
 export const metadata = { title: 'Health – Evida Life' };
 
@@ -13,7 +14,7 @@ const T: Record<Lang, {
   h1: string;
   sub: string;
   pillarsHeading: string;
-  pillars: { icon: string; name: string; desc: string; link: string; cta: string }[];
+  pillars: { icon: string; name: string; desc: (n: number) => string; link: string; cta: string }[];
   engineHeading: string;
   engineSub: string;
   engineSteps: { title: string; body: string }[];
@@ -28,21 +29,21 @@ const T: Record<Lang, {
       {
         icon: '🩸',
         name: 'Blut-Biomarker',
-        desc: '37 Blutmarker über 6 Domänen: Herz-Kreislauf, Stoffwechsel, Entzündung, Organfunktion, Nährstoffe und Hormone. Grundlage jedes Longevity-Protokolls.',
+        desc: (n) => `${n} Blutmarker über 6 Domänen: Herz-Kreislauf, Stoffwechsel, Entzündung, Organfunktion, Nährstoffe und Hormone. Grundlage jedes Longevity-Protokolls.`,
         link: '/biomarkers',
         cta: 'Alle Biomarker →',
       },
       {
         icon: '🧬',
         name: 'Biologisches Alter',
-        desc: 'Epigenetische Uhren (DunedinPACE & GrimAge v2), die deine echte Alterungsgeschwindigkeit und dein biologisches Alter messen. Messbar und veränderbar.',
+        desc: () => 'Epigenetische Uhren (DunedinPACE & GrimAge v2), die deine echte Alterungsgeschwindigkeit und dein biologisches Alter messen. Messbar und veränderbar.',
         link: '/bioage',
         cta: 'Mehr erfahren →',
       },
       {
         icon: '🏥',
         name: 'Klinische Assessments',
-        desc: 'VO₂max, DEXA-Körperscan und Vitalcheck – körperliche Messungen, die zeigen, was Blut nicht kann: Fitnesslevel, Körperzusammensetzung, Gefässgesundheit.',
+        desc: () => 'VO₂max, DEXA-Körperscan und Vitalcheck – körperliche Messungen, die zeigen, was Blut nicht kann: Fitnesslevel, Körperzusammensetzung, Gefässgesundheit.',
         link: '/assessments',
         cta: 'Zur Übersicht →',
       },
@@ -65,21 +66,21 @@ const T: Record<Lang, {
       {
         icon: '🩸',
         name: 'Blood Biomarkers',
-        desc: '37 blood markers across 6 domains: heart & vessels, metabolism, inflammation, organ function, nutrients, and hormones. The foundation of any longevity protocol.',
+        desc: (n) => `${n} blood markers across 6 domains: heart & vessels, metabolism, inflammation, organ function, nutrients, and hormones. The foundation of any longevity protocol.`,
         link: '/biomarkers',
         cta: 'All biomarkers →',
       },
       {
         icon: '🧬',
         name: 'Biological Age',
-        desc: 'Epigenetic clocks (DunedinPACE & GrimAge v2) measuring your true aging speed and biological age. Measurable and changeable.',
+        desc: () => 'Epigenetic clocks (DunedinPACE & GrimAge v2) measuring your true aging speed and biological age. Measurable and changeable.',
         link: '/bioage',
         cta: 'Learn more →',
       },
       {
         icon: '🏥',
         name: 'Clinical Assessments',
-        desc: 'VO₂max, DEXA body scan, and vitalcheck — physical measurements that reveal what blood tests can\'t: fitness level, body composition, vascular health.',
+        desc: () => 'VO₂max, DEXA body scan, and vitalcheck — physical measurements that reveal what blood tests can\'t: fitness level, body composition, vascular health.',
         link: '/assessments',
         cta: 'See all assessments →',
       },
@@ -102,21 +103,21 @@ const T: Record<Lang, {
       {
         icon: '🩸',
         name: 'Biomarqueurs sanguins',
-        desc: '37 marqueurs sanguins sur 6 domaines: cœur & vaisseaux, métabolisme, inflammation, fonction organique, nutriments et hormones.',
+        desc: (n) => `${n} marqueurs sanguins sur 6 domaines: cœur & vaisseaux, métabolisme, inflammation, fonction organique, nutriments et hormones.`,
         link: '/biomarkers',
         cta: 'Tous les biomarqueurs →',
       },
       {
         icon: '🧬',
         name: 'Âge biologique',
-        desc: 'Horloges épigénétiques (DunedinPACE & GrimAge v2) mesurant votre vitesse de vieillissement réelle et votre âge biologique. Mesurable et modifiable.',
+        desc: () => 'Horloges épigénétiques (DunedinPACE & GrimAge v2) mesurant votre vitesse de vieillissement réelle et votre âge biologique. Mesurable et modifiable.',
         link: '/bioage',
         cta: 'En savoir plus →',
       },
       {
         icon: '🏥',
         name: 'Évaluations cliniques',
-        desc: 'VO₂max, scan corporel DEXA et bilan de vitalité — mesures physiques révélant ce que les analyses sanguines ne peuvent pas: condition physique, composition corporelle.',
+        desc: () => 'VO₂max, scan corporel DEXA et bilan de vitalité — mesures physiques révélant ce que les analyses sanguines ne peuvent pas: condition physique, composition corporelle.',
         link: '/assessments',
         cta: 'Voir toutes les évaluations →',
       },
@@ -139,21 +140,21 @@ const T: Record<Lang, {
       {
         icon: '🩸',
         name: 'Biomarcadores en sangre',
-        desc: '37 marcadores en sangre en 6 dominios: corazón & vasos, metabolismo, inflamación, función orgánica, nutrientes y hormonas.',
+        desc: (n) => `${n} marcadores en sangre en 6 dominios: corazón & vasos, metabolismo, inflamación, función orgánica, nutrientes y hormonas.`,
         link: '/biomarkers',
         cta: 'Todos los biomarcadores →',
       },
       {
         icon: '🧬',
         name: 'Edad biológica',
-        desc: 'Relojes epigenéticos (DunedinPACE & GrimAge v2) que miden tu velocidad de envejecimiento real y tu edad biológica. Medible y modificable.',
+        desc: () => 'Relojes epigenéticos (DunedinPACE & GrimAge v2) que miden tu velocidad de envejecimiento real y tu edad biológica. Medible y modificable.',
         link: '/bioage',
         cta: 'Saber más →',
       },
       {
         icon: '🏥',
         name: 'Evaluaciones clínicas',
-        desc: 'VO₂max, escáner corporal DEXA y vitalcheck — mediciones físicas que revelan lo que la sangre no puede: nivel de forma física, composición corporal.',
+        desc: () => 'VO₂max, escáner corporal DEXA y vitalcheck — mediciones físicas que revelan lo que la sangre no puede: nivel de forma física, composición corporal.',
         link: '/assessments',
         cta: 'Ver todas las evaluaciones →',
       },
@@ -176,21 +177,21 @@ const T: Record<Lang, {
       {
         icon: '🩸',
         name: 'Biomarcatori nel sangue',
-        desc: '37 marcatori nel sangue su 6 domini: cuore & vasi, metabolismo, infiammazione, funzione organica, nutrienti e ormoni.',
+        desc: (n) => `${n} marcatori nel sangue su 6 domini: cuore & vasi, metabolismo, infiammazione, funzione organica, nutrienti e ormoni.`,
         link: '/biomarkers',
         cta: 'Tutti i biomarcatori →',
       },
       {
         icon: '🧬',
         name: 'Età biologica',
-        desc: 'Orologi epigenetici (DunedinPACE & GrimAge v2) che misurano la tua vera velocità di invecchiamento e la tua età biologica. Misurabile e modificabile.',
+        desc: () => 'Orologi epigenetici (DunedinPACE & GrimAge v2) che misurano la tua vera velocità di invecchiamento e la tua età biologica. Misurabile e modificabile.',
         link: '/bioage',
         cta: 'Scopri di più →',
       },
       {
         icon: '🏥',
         name: 'Valutazioni cliniche',
-        desc: 'VO₂max, scansione corporea DEXA e vitalcheck — misurazioni fisiche che rivelano ciò che il sangue non può: livello di forma fisica, composizione corporea.',
+        desc: () => 'VO₂max, scansione corporea DEXA e vitalcheck — misurazioni fisiche che rivelano ciò che il sangue non può: livello di forma fisica, composizione corporea.',
         link: '/assessments',
         cta: 'Vedi tutte le valutazioni →',
       },
@@ -210,6 +211,20 @@ export default async function HealthPage() {
   const locale = await getLocale();
   const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const t = T[lang];
+
+  const supabase = await createClient();
+  const { data: completePkg } = await supabase
+    .from('products')
+    .select('id')
+    .eq('slug', 'longevity-complete')
+    .single();
+  const { count: itemCount } = completePkg
+    ? await supabase
+        .from('product_items')
+        .select('id', { count: 'exact', head: true })
+        .eq('product_id', completePkg.id)
+    : { count: null };
+  const biomarkerCount = itemCount ?? 36;
 
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
@@ -243,7 +258,7 @@ export default async function HealthPage() {
                   {pillar.name}
                 </h3>
                 <p className="text-sm text-[#1c2a2b]/60 leading-relaxed flex-1 mb-5">
-                  {pillar.desc}
+                  {pillar.desc(biomarkerCount)}
                 </p>
                 <span className="text-sm font-medium text-[#ceab84] group-hover:text-[#ceab84]/80 transition-colors">
                   {pillar.cta}
