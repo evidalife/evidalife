@@ -58,6 +58,12 @@ const T: Record<Lang, {
   measureDesc: string;
   measureStats: { stat: string; label: string; sub: string }[];
   measureCta: string;
+  // Results preview
+  previewTag: string;
+  previewTitle: string;
+  previewCards: { title: string; label: string }[];
+  previewAgeChange: string;
+  previewAgeNote: string;
   // Science card
   scienceCardTag: string;
   scienceCardTitle: string;
@@ -153,6 +159,15 @@ const T: Record<Lang, {
       { stat: 'Bio. Alter', label: 'Epigenetik', sub: 'TruDiagnostic zeigt dein wahres Alter' },
     ],
     measureCta: 'Bluttest-Pakete ansehen →',
+    previewTag: 'DEINE ERGEBNISSE',
+    previewTitle: 'Sieh genau, wo du stehst.',
+    previewCards: [
+      { title: 'Health Dashboard',    label: 'Dein Longevity Score – aktualisiert mit jedem Test' },
+      { title: 'Biologisches Alter',  label: 'Epigenetisches Alter – verifiziert durch TruDiagnostic' },
+      { title: 'Biomarker-Trends',    label: '36 Biomarker in 6 Gesundheitsdomänen' },
+    ],
+    previewAgeChange: '−12,7 Jahre jünger',
+    previewAgeNote: 'in 21 Monaten',
     scienceCardTag: 'DIE WISSENSCHAFT',
     scienceCardTitle: 'Was sollte man für ein längeres Leben essen?',
     scienceCardDesc: 'Eine 30-Jahres-Studie mit über 105.000 Personen identifizierte, welche Lebensmittel gesundes Altern fördern – und welche es beschleunigen.',
@@ -249,6 +264,15 @@ const T: Record<Lang, {
       { stat: 'Bio. age', label: 'Epigenetics', sub: 'TruDiagnostic shows your true age' },
     ],
     measureCta: 'View blood test packages →',
+    previewTag: 'YOUR RESULTS',
+    previewTitle: 'See exactly where you stand.',
+    previewCards: [
+      { title: 'Health Dashboard',     label: 'Your Longevity Score — updated with every test' },
+      { title: 'Biological Age Report', label: 'Epigenetic age — verified by TruDiagnostic' },
+      { title: 'Biomarker Trends',     label: '36 biomarkers across 6 health domains' },
+    ],
+    previewAgeChange: '−12.7 years younger',
+    previewAgeNote: 'over 21 months',
     scienceCardTag: 'THE SCIENCE',
     scienceCardTitle: 'What should you eat for a longer life?',
     scienceCardDesc: 'A 30-year study of 105,000+ people identified which foods promote — and which accelerate — aging.',
@@ -345,6 +369,15 @@ const T: Record<Lang, {
       { stat: 'Âge bio.', label: 'Épigénétique', sub: 'TruDiagnostic révèle votre vrai âge' },
     ],
     measureCta: 'Voir les packages de tests sanguins →',
+    previewTag: 'VOS RÉSULTATS',
+    previewTitle: 'Voyez exactement où vous en êtes.',
+    previewCards: [
+      { title: 'Tableau de bord santé', label: 'Votre score de longévité — mis à jour à chaque test' },
+      { title: 'Rapport d\'âge biologique', label: 'Âge épigénétique — vérifié par TruDiagnostic' },
+      { title: 'Tendances des biomarqueurs', label: '36 biomarqueurs dans 6 domaines de santé' },
+    ],
+    previewAgeChange: '−12,7 ans plus jeune',
+    previewAgeNote: 'en 21 mois',
     scienceCardTag: 'LA SCIENCE',
     scienceCardTitle: 'Que faut-il manger pour vivre plus longtemps ?',
     scienceCardDesc: 'Une étude de 30 ans portant sur plus de 105 000 personnes a identifié quels aliments favorisent — et lesquels accélèrent — le vieillissement.',
@@ -441,6 +474,15 @@ const T: Record<Lang, {
       { stat: 'Edad bio.', label: 'Epigenética', sub: 'TruDiagnostic muestra tu verdadera edad' },
     ],
     measureCta: 'Ver paquetes de análisis de sangre →',
+    previewTag: 'TUS RESULTADOS',
+    previewTitle: 'Ve exactamente dónde estás.',
+    previewCards: [
+      { title: 'Panel de salud',            label: 'Tu puntuación de longevidad — actualizada con cada análisis' },
+      { title: 'Informe de edad biológica', label: 'Edad epigenética — verificada por TruDiagnostic' },
+      { title: 'Tendencias de biomarcadores', label: '36 biomarcadores en 6 dominios de salud' },
+    ],
+    previewAgeChange: '−12,7 años más joven',
+    previewAgeNote: 'en 21 meses',
     scienceCardTag: 'LA CIENCIA',
     scienceCardTitle: '¿Qué deberías comer para vivir más?',
     scienceCardDesc: 'Un estudio de 30 años con más de 105.000 personas identificó qué alimentos promueven — y cuáles aceleran — el envejecimiento.',
@@ -537,6 +579,15 @@ const T: Record<Lang, {
       { stat: 'Età bio.', label: 'Epigenetica', sub: 'TruDiagnostic mostra la tua vera età' },
     ],
     measureCta: 'Vedi i pacchetti di esami del sangue →',
+    previewTag: 'I TUOI RISULTATI',
+    previewTitle: 'Vedi esattamente dove ti trovi.',
+    previewCards: [
+      { title: 'Dashboard salute',          label: 'Il tuo Longevity Score — aggiornato ad ogni test' },
+      { title: 'Report età biologica',      label: 'Età epigenetica — verificata da TruDiagnostic' },
+      { title: 'Tendenze biomarcatori',     label: '36 biomarcatori in 6 domini di salute' },
+    ],
+    previewAgeChange: '−12,7 anni più giovane',
+    previewAgeNote: 'in 21 mesi',
     scienceCardTag: 'LA SCIENZA',
     scienceCardTitle: 'Cosa dovresti mangiare per vivere più a lungo?',
     scienceCardDesc: 'Uno studio di 30 anni su oltre 105.000 persone ha identificato quali alimenti favoriscono — e quali accelerano — l\'invecchiamento.',
@@ -808,6 +859,99 @@ export default async function HowToStartPage() {
           >
             {t.measureCta}
           </Link>
+        </section>
+
+        {/* ── Section 5b: WHAT YOU'LL GET ─────────────────────────────────────── */}
+        <section className="mb-20">
+          <div className="mb-8 flex items-center gap-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] shrink-0">{t.previewTag}</p>
+            <div className="flex-1 h-px bg-[#0e393d]/10" />
+          </div>
+          <h2 className="font-serif text-3xl text-[#0e393d] mb-8">{t.previewTitle}</h2>
+
+          <div className="grid gap-5 sm:grid-cols-3">
+
+            {/* Card 1 — Health Dashboard / Gauge */}
+            <div className="rounded-2xl bg-[#0d0f12] ring-1 ring-white/10 p-6 flex flex-col">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/40 mb-4">{t.previewCards[0].title}</p>
+              <div className="flex-1 flex flex-col items-center justify-center py-4">
+                {/* Gauge SVG */}
+                <svg viewBox="0 0 120 70" className="w-36" aria-hidden="true">
+                  {/* Track arc */}
+                  <path
+                    d="M 10 65 A 50 50 0 0 1 110 65"
+                    fill="none"
+                    stroke="#ffffff10"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                  />
+                  {/* Fill arc — 78% of 180° = ~140° */}
+                  <path
+                    d="M 10 65 A 50 50 0 0 1 97 25"
+                    fill="none"
+                    stroke="#4ade9a"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                  />
+                  <text x="60" y="60" textAnchor="middle" fill="white" fontSize="18" fontFamily="Georgia, serif" fontWeight="normal">78</text>
+                  <text x="60" y="72" textAnchor="middle" fill="#ffffff50" fontSize="7" fontFamily="system-ui, sans-serif">/100</text>
+                </svg>
+                <p className="text-[#4ade9a] text-xs font-medium mt-2">Longevity Score</p>
+              </div>
+              <p className="text-xs text-white/40 leading-snug mt-3">{t.previewCards[0].label}</p>
+            </div>
+
+            {/* Card 2 — Biological Age Report */}
+            <div className="rounded-2xl bg-[#0d0f12] ring-1 ring-white/10 p-6 flex flex-col">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/40 mb-4">{t.previewCards[1].title}</p>
+              <div className="flex-1 flex flex-col items-center justify-center py-4 gap-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-serif text-3xl text-white/40 line-through decoration-white/30">35.4</span>
+                  <span className="text-white/30 text-lg">→</span>
+                  <span className="font-serif text-4xl text-[#4ade9a]">22.7</span>
+                </div>
+                <p className="text-xs font-medium text-[#4ade9a] mt-1">{t.previewAgeChange}</p>
+                <p className="text-[10px] text-white/30">{t.previewAgeNote}</p>
+              </div>
+              <p className="text-xs text-white/40 leading-snug mt-3">{t.previewCards[1].label}</p>
+            </div>
+
+            {/* Card 3 — Biomarker Trends */}
+            <div className="rounded-2xl bg-[#0d0f12] ring-1 ring-white/10 p-6 flex flex-col">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/40 mb-4">{t.previewCards[2].title}</p>
+              <div className="flex-1 flex flex-col justify-center gap-3 py-2">
+                {/* Optimal bar */}
+                <div>
+                  <div className="flex justify-between text-[10px] text-white/40 mb-1">
+                    <span>LDL Cholesterol</span><span className="text-[#4ade9a]">Optimal</span>
+                  </div>
+                  <div className="w-full bg-white/8 rounded-full h-1.5">
+                    <div className="bg-[#4ade9a] h-1.5 rounded-full" style={{ width: '88%' }} />
+                  </div>
+                </div>
+                {/* Attention bar */}
+                <div>
+                  <div className="flex justify-between text-[10px] text-white/40 mb-1">
+                    <span>hsCRP</span><span className="text-[#f59e0b]">Attention</span>
+                  </div>
+                  <div className="w-full bg-white/8 rounded-full h-1.5">
+                    <div className="bg-[#f59e0b] h-1.5 rounded-full" style={{ width: '58%' }} />
+                  </div>
+                </div>
+                {/* Critical bar */}
+                <div>
+                  <div className="flex justify-between text-[10px] text-white/40 mb-1">
+                    <span>Vitamin D</span><span className="text-[#f87171]">Critical</span>
+                  </div>
+                  <div className="w-full bg-white/8 rounded-full h-1.5">
+                    <div className="bg-[#f87171] h-1.5 rounded-full" style={{ width: '28%' }} />
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-white/40 leading-snug mt-3">{t.previewCards[2].label}</p>
+            </div>
+
+          </div>
         </section>
 
         {/* ── Section 6: Science teaser ───────────────────────────────────────── */}
