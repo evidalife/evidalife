@@ -45,6 +45,30 @@ const SCIENCE_FINDINGS = [
   { stat: '11',     key: 'f3' },
 ];
 
+const PRODUCT_FEATURES: Record<number, Record<Lang, string[]>> = {
+  1: { // Core
+    en: ['15 essential blood markers', 'Personal health dashboard', 'Optimal range analysis', 'Digital results in 48h'],
+    de: ['15 essenzielle Blutmarker', 'Persönliches Gesundheits-Dashboard', 'Optimal-Bereich-Analyse', 'Digitale Ergebnisse in 48h'],
+    fr: ['15 marqueurs sanguins essentiels', 'Tableau de bord santé personnel', 'Analyse des plages optimales', 'Résultats numériques en 48h'],
+    es: ['15 marcadores sanguíneos esenciales', 'Panel de salud personal', 'Análisis de rangos óptimos', 'Resultados digitales en 48h'],
+    it: ['15 biomarcatori essenziali', 'Dashboard salute personale', 'Analisi range ottimali', 'Risultati digitali in 48h'],
+  },
+  2: { // Pro
+    en: ['27 advanced blood markers', 'All 6 health domains', 'Longevity Score tracking', 'Hormones & inflammation panel', 'Priority lab processing'],
+    de: ['27 erweiterte Blutmarker', 'Alle 6 Gesundheitsdomänen', 'Longevity Score Tracking', 'Hormone & Entzündungspanel', 'Prioritäts-Laborverarbeitung'],
+    fr: ['27 marqueurs sanguins avancés', 'Les 6 domaines de santé', 'Suivi du Longevity Score', 'Panel hormones & inflammation', 'Traitement laboratoire prioritaire'],
+    es: ['27 biomarcadores avanzados', 'Los 6 dominios de salud', 'Seguimiento del Longevity Score', 'Panel hormonal & inflamación', 'Procesamiento prioritario'],
+    it: ['27 biomarcatori avanzati', 'Tutti i 6 domini di salute', 'Monitoraggio Longevity Score', 'Pannello ormoni & infiammazione', 'Elaborazione lab prioritaria'],
+  },
+  3: { // Complete
+    en: ['36 comprehensive markers', 'Full nutrient panel (B12, D, Zinc, Omega...)', 'Hormone profile (Testosterone, Cortisol...)', 'Longevity Score + trend history', 'Most popular package'],
+    de: ['36 umfassende Marker', 'Volles Nährstoffpanel (B12, D, Zink, Omega...)', 'Hormonprofil (Testosteron, Cortisol...)', 'Longevity Score + Verlauf', 'Unser beliebtestes Paket'],
+    fr: ['36 marqueurs complets', 'Panel nutritionnel complet (B12, D, Zinc, Oméga...)', 'Profil hormonal (Testostérone, Cortisol...)', 'Longevity Score + historique', 'Notre forfait le plus populaire'],
+    es: ['36 marcadores completos', 'Panel nutricional completo (B12, D, Zinc, Omega...)', 'Perfil hormonal (Testosterona, Cortisol...)', 'Longevity Score + historial', 'Nuestro paquete más popular'],
+    it: ['36 marcatori completi', 'Pannello nutrienti completo (B12, D, Zinco, Omega...)', 'Profilo ormonale (Testosterone, Cortisolo...)', 'Longevity Score + storico', 'Il nostro pacchetto più popolare'],
+  },
+};
+
 const T: Record<Lang, {
   hero: { h1: string; h1em: string; sub: string; cta1: string; cta2: string };
   problem: { tag: string; heading: string; headingEm: string; cards: { label: string; desc: string }[]; callout: string; calloutSub: string };
@@ -52,7 +76,7 @@ const T: Record<Lang, {
   pillars: { tag: string; heading: string; headingEm: string; cards: { title: string; desc: string }[] };
   steps: { tag: string; heading: string; headingEm: string; items: { n: string; title: string; desc: string }[] };
   science: { tag: string; heading: string; sub: string; findings: { label: string }[]; link: string };
-  pricing: { tag: string; heading: string; headingEm: string; cta: string; freeNote: string; markersLabel: string };
+  pricing: { tag: string; heading: string; headingEm: string; cta: string; freeNote: string };
   cta: { title: string; sub: string; cta1: string; cta2: string };
 }> = {
   de: {
@@ -121,7 +145,6 @@ const T: Record<Lang, {
       headingEm: 'Transparent.',
       cta: 'Details ansehen',
       freeNote: 'Kostenloses Konto inkl. Daily Dozen Tracker, Rezepte und Einkaufsliste.',
-      markersLabel: 'Blutmarker',
     },
     cta: {
       title: 'Deine Gesundheitsreise beginnt mit einer Mahlzeit.',
@@ -196,7 +219,6 @@ const T: Record<Lang, {
       headingEm: 'Transparent.',
       cta: 'View details',
       freeNote: 'Free account includes Daily Dozen tracker, recipes, and shopping list.',
-      markersLabel: 'blood markers',
     },
     cta: {
       title: 'Your health journey starts with one meal.',
@@ -271,7 +293,6 @@ const T: Record<Lang, {
       headingEm: 'Transparent.',
       cta: 'Voir les détails',
       freeNote: 'Le compte gratuit inclut le Daily Dozen Tracker, les recettes et la liste de courses.',
-      markersLabel: 'marqueurs sanguins',
     },
     cta: {
       title: 'Votre parcours de santé commence par un repas.',
@@ -346,7 +367,6 @@ const T: Record<Lang, {
       headingEm: 'Transparente.',
       cta: 'Ver detalles',
       freeNote: 'La cuenta gratuita incluye Daily Dozen Tracker, recetas y lista de compras.',
-      markersLabel: 'biomarcadores',
     },
     cta: {
       title: 'Tu viaje de salud comienza con una comida.',
@@ -421,7 +441,6 @@ const T: Record<Lang, {
       headingEm: 'Trasparente.',
       cta: 'Vedi dettagli',
       freeNote: 'Il conto gratuito include Daily Dozen Tracker, ricette e lista della spesa.',
-      markersLabel: 'biomarcatori',
     },
     cta: {
       title: 'Il tuo viaggio di salute inizia con un pasto.',
@@ -691,8 +710,11 @@ export default async function HomePage() {
               const shortDesc = (product.short_description as Record<string, string>)?.[lang]
                 ?? (product.short_description as Record<string, string>)?.en
                 ?? '';
-              const count = countMap[product.id] || 0;
               const isMiddle = idx === 1;
+              const features = PRODUCT_FEATURES[product.sort_order]?.[lang]
+                ?? PRODUCT_FEATURES[product.sort_order]?.en
+                ?? [];
+              const popularLabel = lang === 'de' ? 'Beliebt' : lang === 'fr' ? 'Populaire' : lang === 'es' ? 'Popular' : lang === 'it' ? 'Popolare' : 'Popular';
 
               return (
                 <Link
@@ -704,10 +726,16 @@ export default async function HomePage() {
                       : 'bg-white ring-1 ring-[#0e393d]/10'
                   }`}
                 >
+                  {isMiddle && (
+                    <span className="self-start text-[10px] font-semibold uppercase tracking-widest bg-[#ceab84] text-[#0e393d] px-3 py-1 rounded-full mb-4">
+                      {popularLabel}
+                    </span>
+                  )}
+
                   <div className={`text-xs font-medium tracking-widest uppercase mb-2 ${isMiddle ? 'text-[#ceab84]' : 'text-[#5a6e6f]'}`}>
                     {name}
                   </div>
-                  <div className={`font-serif text-4xl font-normal mb-0.5 ${isMiddle ? 'text-white' : 'text-[#0e393d]'}`}>
+                  <div className={`font-serif text-4xl font-normal mb-1 ${isMiddle ? 'text-white' : 'text-[#0e393d]'}`}>
                     CHF {product.price_chf}
                   </div>
                   {product.compare_at_price_chf && (
@@ -715,26 +743,28 @@ export default async function HomePage() {
                       CHF {product.compare_at_price_chf}
                     </div>
                   )}
-                  <div className={`text-xs mb-6 leading-relaxed ${isMiddle ? 'text-white/50' : 'text-[#5a6e6f]'}`}>
+                  <p className={`text-xs leading-relaxed mb-5 ${isMiddle ? 'text-white/50' : 'text-[#5a6e6f]'}`}>
                     {shortDesc}
-                  </div>
-                  {count > 0 && (
-                    <div className={`flex items-center gap-1.5 mb-auto ${isMiddle ? 'text-white/70' : 'text-[#5a6e6f]'}`}>
-                      <span className={`text-[10px] ${isMiddle ? 'text-[#ceab84]' : 'text-emerald-600'}`}>✓</span>
-                      <span className="text-[0.82rem] font-light">
-                        {count} {t.pricing.markersLabel}
-                      </span>
-                    </div>
-                  )}
-                  <div className="pt-6 mt-auto">
-                    <span className={`block text-center font-medium text-[13px] tracking-wide px-6 py-3 rounded-full transition-colors whitespace-nowrap ${
-                      isMiddle
-                        ? 'bg-[#ceab84] text-[#0e393d] hover:bg-[#dfc4a4]'
-                        : 'bg-[#0e393d]/8 text-[#0e393d] hover:bg-[#0e393d]/15'
-                    }`}>
-                      {t.pricing.cta}
-                    </span>
-                  </div>
+                  </p>
+
+                  <div className={`h-px mb-5 ${isMiddle ? 'bg-white/10' : 'bg-[#0e393d]/8'}`} />
+
+                  <ul className="flex-1 space-y-2.5 mb-6">
+                    {features.map((f) => (
+                      <li key={f} className="flex items-start gap-2.5">
+                        <span className={`mt-0.5 text-[10px] shrink-0 ${isMiddle ? 'text-[#ceab84]' : 'text-emerald-600'}`}>✓</span>
+                        <span className={`text-[0.82rem] font-light leading-snug ${isMiddle ? 'text-white/80' : 'text-[#5a6e6f]'}`}>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <span className={`block text-center font-medium text-[13px] tracking-wide px-6 py-3 rounded-full transition-colors whitespace-nowrap ${
+                    isMiddle
+                      ? 'bg-[#ceab84] text-[#0e393d] hover:bg-[#dfc4a4]'
+                      : 'bg-[#0e393d]/8 text-[#0e393d] hover:bg-[#0e393d]/15'
+                  }`}>
+                    {t.pricing.cta}
+                  </span>
                 </Link>
               );
             })}
