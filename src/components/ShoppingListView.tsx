@@ -392,7 +392,7 @@ function ItemRow({ item, lang, icon, units, onToggle, onDelete, onUpdate, remove
       <button
         type="button"
         onClick={() => onDelete(item)}
-        className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded-md text-[#1c2a2b]/30 hover:text-red-500 hover:bg-red-50 transition"
+        className="opacity-100 md:opacity-0 md:group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded-md text-[#1c2a2b]/30 hover:text-red-500 hover:bg-red-50 transition"
         aria-label={removeAria}
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
