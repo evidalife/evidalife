@@ -71,7 +71,7 @@ const T: Record<Lang, {
     notIncluded: 'Nicht enthalten',
     total: 'Gesamt',
     markers: 'Marker',
-    addonsHeading: 'Add-on Tests',
+    addonsHeading: 'Weitere Tests',
     addonsSub: 'Kombinierbar mit jedem Paket',
     detailHeading: 'Alle Biomarker',
     viewAll: 'Alle ansehen',
@@ -96,7 +96,7 @@ const T: Record<Lang, {
     notIncluded: 'Not included',
     total: 'Total',
     markers: 'markers',
-    addonsHeading: 'Add-on Tests',
+    addonsHeading: 'Additional Tests',
     addonsSub: 'Combinable with any package',
     detailHeading: 'All Biomarkers',
     viewAll: 'View all',
@@ -353,11 +353,24 @@ export default async function BiomarkersPage() {
 
   const allDefs = defs ?? [];
 
-  // Group defs by he_domain field
+  // Collect all definition IDs linked to at least one package
+  const linkedDefIds = new Set<string>();
+  for (const ids of pkgItemMap.values()) {
+    for (const id of ids) linkedDefIds.add(id);
+  }
+
+  // Group defs by he_domain field (matrix uses all defs; detail cards use only linked defs)
   const domainGroups: { domain: DomainDef; items: typeof allDefs }[] = [];
   for (const domain of DOMAINS) {
     const items = allDefs.filter((d) => d.he_domain === domain.key);
     if (items.length > 0) domainGroups.push({ domain, items });
+  }
+
+  // Detail cards: only defs linked to at least one package
+  const linkedDomainGroups: { domain: DomainDef; items: typeof allDefs }[] = [];
+  for (const domain of DOMAINS) {
+    const items = allDefs.filter((d) => d.he_domain === domain.key && linkedDefIds.has(d.id));
+    if (items.length > 0) linkedDomainGroups.push({ domain, items });
   }
 
   // Count biomarkers per package (only blood biomarker types)
@@ -519,7 +532,7 @@ export default async function BiomarkersPage() {
             <div className="flex-1 h-px bg-[#0e393d]/10" />
           </div>
 
-          {domainGroups.map(({ domain, items }) => (
+          {linkedDomainGroups.map(({ domain, items }) => (
             <div key={domain.key} className="mb-10">
               <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#ceab84] mb-4">
                 {domain.emoji} {domain.label[lang]}
