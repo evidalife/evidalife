@@ -24,6 +24,38 @@ export type Product = {
   metadata: { marker_count?: number } | null;
 };
 
+// ─── Type labels (5 languages) ────────────────────────────────────────────────
+
+const TYPE_LABELS: Record<string, Record<string, string>> = {
+  test_package:      { de: 'Testpakete',        en: 'Test Packages',     fr: 'Forfaits de test',   es: 'Paquetes de análisis', it: 'Pacchetti test' },
+  addon_test:        { de: 'Erweiterungen',      en: 'Add-ons',           fr: 'Compléments',        es: 'Complementos',         it: 'Aggiunte' },
+  single_biomarker:  { de: 'Einzelbiomarker',    en: 'Single Biomarkers', fr: 'Biomarqueurs seuls', es: 'Biomarcadores simples', it: 'Biomarcatori singoli' },
+  supplement:        { de: 'Nahrungsergänzung',  en: 'Supplements',       fr: 'Compléments',        es: 'Suplementos',          it: 'Integratori' },
+  functional_food:   { de: 'Functional Food',    en: 'Functional Food',   fr: 'Alimentation fonctionnelle', es: 'Alimentos funcionales', it: 'Cibo funzionale' },
+  food:              { de: 'Lebensmittel',        en: 'Food',              fr: 'Alimentation',       es: 'Alimentación',         it: 'Alimentazione' },
+  food_product:      { de: 'Lebensmittel',        en: 'Food',              fr: 'Alimentation',       es: 'Alimentación',         it: 'Alimentazione' },
+  ready_meal:        { de: 'Fertiggerichte',      en: 'Ready Meals',       fr: 'Plats préparés',     es: 'Platos preparados',    it: 'Pasti pronti' },
+  subscription:      { de: 'Abonnements',         en: 'Subscriptions',     fr: 'Abonnements',        es: 'Suscripciones',        it: 'Abbonamenti' },
+  meal_subscription: { de: 'Mahlzeiten-Abo',      en: 'Meal Plans',        fr: 'Plans repas',        es: 'Planes de comida',     it: 'Piani pasto' },
+  program:           { de: 'Programme',           en: 'Programs',          fr: 'Programmes',         es: 'Programas',            it: 'Programmi' },
+  bundle:            { de: 'Bundles',             en: 'Bundles',           fr: 'Offres groupées',    es: 'Paquetes',             it: 'Bundle' },
+  digital_product:   { de: 'Digital',             en: 'Digital',           fr: 'Numérique',          es: 'Digital',              it: 'Digitale' },
+  device:            { de: 'Geräte',              en: 'Devices',           fr: 'Appareils',          es: 'Dispositivos',         it: 'Dispositivi' },
+  coaching_session:  { de: 'Coaching',            en: 'Coaching',          fr: 'Coaching',           es: 'Coaching',             it: 'Coaching' },
+  merch:             { de: 'Merchandise',         en: 'Merchandise',       fr: 'Marchandise',        es: 'Merchandising',        it: 'Merchandise' },
+  merchandise:       { de: 'Merchandise',         en: 'Merchandise',       fr: 'Marchandise',        es: 'Merchandising',        it: 'Merchandise' },
+};
+
+function typeLabel(type: string, lng: string): string {
+  return TYPE_LABELS[type]?.[lng] ?? TYPE_LABELS[type]?.['en'] ?? type;
+}
+
+// ─── All pill label ────────────────────────────────────────────────────────────
+
+const ALL_LABEL: Record<string, string> = {
+  de: 'Alle', en: 'All', fr: 'Tout', es: 'Todo', it: 'Tutti',
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function loc(field: I18nStr, lng: string): string {
@@ -77,8 +109,44 @@ function ProductCard({
   };
 
   const name = loc(product.name, lng);
-  // Use short_description for cards if available, fall back to description
   const subtitle = loc(product.short_description, lng) || loc(product.description, lng);
+
+  // Image + name area — wrapped in Link when slug exists
+  const imageEl = product.image_url ? (
+    <div className="mb-0 -mx-7 -mt-7 rounded-t-2xl overflow-hidden">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`${product.image_url}?width=400&height=200&resize=cover`}
+        alt={name}
+        className="w-full h-32 object-cover"
+      />
+    </div>
+  ) : null;
+
+  const nameEl = (
+    <div className="mb-4 flex-1 pt-5">
+      <h3 className={`font-serif text-xl mb-1 ${featured ? 'text-white' : 'text-[#0e393d]'}`}>
+        {name || '—'}
+      </h3>
+      {subtitle && (
+        <p className={`text-sm leading-relaxed ${featured ? 'text-white/70' : 'text-[#1c2a2b]/60'}`}>
+          {subtitle}
+        </p>
+      )}
+    </div>
+  );
+
+  const clickableContent = product.slug ? (
+    <Link href={`/shop/${product.slug}`} className="block group/link">
+      {imageEl}
+      {nameEl}
+    </Link>
+  ) : (
+    <>
+      {imageEl}
+      {nameEl}
+    </>
+  );
 
   return (
     <div
@@ -96,28 +164,7 @@ function ProductCard({
         </div>
       )}
 
-      {/* Image */}
-      {product.image_url && (
-        <div className="mb-5 -mx-7 -mt-7 rounded-t-2xl overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`${product.image_url}?width=400&height=200&resize=cover`}
-            alt={name}
-            className="w-full h-32 object-cover"
-          />
-        </div>
-      )}
-
-      <div className="mb-4 flex-1">
-        <h3 className={`font-serif text-xl mb-1 ${featured ? 'text-white' : 'text-[#0e393d]'}`}>
-          {name || '—'}
-        </h3>
-        {subtitle && (
-          <p className={`text-sm leading-relaxed ${featured ? 'text-white/70' : 'text-[#1c2a2b]/60'}`}>
-            {subtitle}
-          </p>
-        )}
-      </div>
+      {clickableContent}
 
       <div className="mb-5">
         <div className="flex items-baseline gap-2">
@@ -196,16 +243,28 @@ function Section({
 
 export default function ShopContent({ products }: { products: Product[] }) {
   const t = useTranslations('shop');
+  const lng = useLocale();
   const trust = t.raw('trust') as { title: string; body: string }[];
   const trustIcons = ['🔬', '📊', '🔒'];
   const [checkoutError, setCheckoutError] = useState(false);
+  const [activeType, setActiveType] = useState<string | null>(null);
 
-  const packages  = products.filter((p) => p.product_type === 'test_package');
-  const addons    = products.filter((p) => p.product_type === 'addon_test');
-  const food      = products.filter((p) => p.product_type === 'food');
-  const subs      = products.filter((p) => p.product_type === 'subscription');
-  const other     = products.filter((p) =>
-    !['test_package', 'addon_test', 'food', 'subscription'].includes(p.product_type ?? '')
+  // Unique product types present in the data (preserve insertion order)
+  const availableTypes = Array.from(
+    new Set(products.map((p) => p.product_type).filter((type): type is string => type != null))
+  );
+
+  // Filter products by active type (null = show all)
+  const displayProducts = activeType
+    ? products.filter((p) => p.product_type === activeType)
+    : products;
+
+  const packages  = displayProducts.filter((p) => p.product_type === 'test_package');
+  const addons    = displayProducts.filter((p) => p.product_type === 'addon_test');
+  const food      = displayProducts.filter((p) => p.product_type === 'food' || p.product_type === 'food_product');
+  const subs      = displayProducts.filter((p) => p.product_type === 'subscription' || p.product_type === 'meal_subscription');
+  const other     = displayProducts.filter((p) =>
+    !['test_package', 'addon_test', 'food', 'food_product', 'subscription', 'meal_subscription'].includes(p.product_type ?? '')
   );
 
   const handleCheckoutError = () => setCheckoutError(true);
@@ -231,7 +290,7 @@ export default function ShopContent({ products }: { products: Product[] }) {
         )}
 
         {/* Hero */}
-        <div className="mb-14 text-center">
+        <div className="mb-10 text-center">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">
             {t('tag')}
           </p>
@@ -242,6 +301,35 @@ export default function ShopContent({ products }: { products: Product[] }) {
             {t('sub')}
           </p>
         </div>
+
+        {/* Filter pills */}
+        {availableTypes.length > 1 && (
+          <div className="mb-12 flex flex-wrap gap-2 justify-center">
+            <button
+              onClick={() => setActiveType(null)}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                activeType === null
+                  ? 'bg-[#0e393d] text-white'
+                  : 'border border-[#0e393d]/20 text-[#0e393d] hover:bg-[#0e393d]/5'
+              }`}
+            >
+              {ALL_LABEL[lng] ?? 'All'}
+            </button>
+            {availableTypes.map((type) => (
+              <button
+                key={type}
+                onClick={() => setActiveType(activeType === type ? null : type)}
+                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                  activeType === type
+                    ? 'bg-[#0e393d] text-white'
+                    : 'border border-[#0e393d]/20 text-[#0e393d] hover:bg-[#0e393d]/5'
+                }`}
+              >
+                {typeLabel(type, lng)}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Empty state */}
         {products.length === 0 && (
@@ -268,21 +356,21 @@ export default function ShopContent({ products }: { products: Product[] }) {
         )}
         {food.length > 0 && (
           <Section
-            heading="Food"
+            heading={typeLabel('food', lng)}
             products={food}
             onCheckoutError={handleCheckoutError}
           />
         )}
         {subs.length > 0 && (
           <Section
-            heading="Subscriptions"
+            heading={typeLabel('subscription', lng)}
             products={subs}
             onCheckoutError={handleCheckoutError}
           />
         )}
         {other.length > 0 && (
           <Section
-            heading="More"
+            heading={typeLabel(other[0].product_type ?? 'other', lng)}
             products={other}
             onCheckoutError={handleCheckoutError}
           />
