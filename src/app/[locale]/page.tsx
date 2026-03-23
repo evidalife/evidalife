@@ -54,18 +54,18 @@ const PRODUCT_FEATURES: Record<number, Record<Lang, string[]>> = {
     it: ['15 biomarcatori essenziali', 'Dashboard salute personale', 'Analisi range ottimali', 'Risultati digitali in 48h'],
   },
   2: { // Pro
-    en: ['27 advanced blood markers', 'All 6 health domains', 'Longevity Score tracking', 'Hormones & inflammation panel', 'Priority lab processing'],
-    de: ['27 erweiterte Blutmarker', 'Alle 6 Gesundheitsdomänen', 'Longevity Score Tracking', 'Hormone & Entzündungspanel', 'Prioritäts-Laborverarbeitung'],
-    fr: ['27 marqueurs sanguins avancés', 'Les 6 domaines de santé', 'Suivi du Longevity Score', 'Panel hormones & inflammation', 'Traitement laboratoire prioritaire'],
-    es: ['27 biomarcadores avanzados', 'Los 6 dominios de salud', 'Seguimiento del Longevity Score', 'Panel hormonal & inflamación', 'Procesamiento prioritario'],
-    it: ['27 biomarcatori avanzati', 'Tutti i 6 domini di salute', 'Monitoraggio Longevity Score', 'Pannello ormoni & infiammazione', 'Elaborazione lab prioritaria'],
+    en: ['27 advanced blood markers', 'All 6 health domains', 'Longevity Score tracking', 'Hormones & inflammation panel', 'Most popular package'],
+    de: ['27 erweiterte Blutmarker', 'Alle 6 Gesundheitsdomänen', 'Longevity Score Tracking', 'Hormone & Entzündungspanel', 'Unser beliebtestes Paket'],
+    fr: ['27 marqueurs sanguins avancés', 'Les 6 domaines de santé', 'Suivi du Longevity Score', 'Panel hormones & inflammation', 'Notre forfait le plus populaire'],
+    es: ['27 biomarcadores avanzados', 'Los 6 dominios de salud', 'Seguimiento del Longevity Score', 'Panel hormonal & inflamación', 'Nuestro paquete más popular'],
+    it: ['27 biomarcatori avanzati', 'Tutti i 6 domini di salute', 'Monitoraggio Longevity Score', 'Pannello ormoni & infiammazione', 'Il nostro pacchetto più popolare'],
   },
   3: { // Complete
-    en: ['36 comprehensive markers', 'Full nutrient panel (B12, D, Zinc, Omega...)', 'Hormone profile (Testosterone, Cortisol...)', 'Longevity Score + trend history', 'Most popular package'],
-    de: ['36 umfassende Marker', 'Volles Nährstoffpanel (B12, D, Zink, Omega...)', 'Hormonprofil (Testosteron, Cortisol...)', 'Longevity Score + Verlauf', 'Unser beliebtestes Paket'],
-    fr: ['36 marqueurs complets', 'Panel nutritionnel complet (B12, D, Zinc, Oméga...)', 'Profil hormonal (Testostérone, Cortisol...)', 'Longevity Score + historique', 'Notre forfait le plus populaire'],
-    es: ['36 marcadores completos', 'Panel nutricional completo (B12, D, Zinc, Omega...)', 'Perfil hormonal (Testosterona, Cortisol...)', 'Longevity Score + historial', 'Nuestro paquete más popular'],
-    it: ['36 marcatori completi', 'Pannello nutrienti completo (B12, D, Zinco, Omega...)', 'Profilo ormonale (Testosterone, Cortisolo...)', 'Longevity Score + storico', 'Il nostro pacchetto più popolare'],
+    en: ['36 comprehensive markers', 'Full nutrient panel (B12, D, Zinc, Omega...)', 'Hormone profile (Testosterone, Cortisol...)', 'Longevity Score + trend history', 'Priority lab processing'],
+    de: ['36 umfassende Marker', 'Volles Nährstoffpanel (B12, D, Zink, Omega...)', 'Hormonprofil (Testosteron, Cortisol...)', 'Longevity Score + Verlauf', 'Prioritäts-Laborverarbeitung'],
+    fr: ['36 marqueurs complets', 'Panel nutritionnel complet (B12, D, Zinc, Oméga...)', 'Profil hormonal (Testostérone, Cortisol...)', 'Longevity Score + historique', 'Traitement laboratoire prioritaire'],
+    es: ['36 marcadores completos', 'Panel nutricional completo (B12, D, Zinc, Omega...)', 'Perfil hormonal (Testosterona, Cortisol...)', 'Longevity Score + historial', 'Procesamiento prioritario'],
+    it: ['36 marcatori completi', 'Pannello nutrienti completo (B12, D, Zinco, Omega...)', 'Profilo ormonale (Testosterone, Cortisolo...)', 'Longevity Score + storico', 'Elaborazione lab prioritaria'],
   },
 };
 
@@ -483,7 +483,7 @@ export default async function HomePage() {
 
   const { data: products } = await supabase
     .from('products')
-    .select('id, slug, name, short_description, price_chf, compare_at_price_chf, sort_order')
+    .select('id, slug, name, description, short_description, price_chf, compare_at_price_chf, sort_order')
     .eq('product_type', 'test_package')
     .eq('is_active', true)
     .order('sort_order');
