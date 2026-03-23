@@ -8,6 +8,12 @@ const HERO_IMG = 'https://images.unsplash.com/photo-1476611338391-6f395a0ebc7b?w
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 type Lang = (typeof VALID_LANGS)[number];
 
+const STEP_VISUALS = [
+  { gradient: 'from-sky-700/20 to-sky-500/10',     emoji: '🩺' },
+  { gradient: 'from-emerald-700/20 to-emerald-500/10', emoji: '🥗' },
+  { gradient: 'from-amber-700/20 to-amber-500/10',  emoji: '📈' },
+];
+
 const CARDS: { gradient: string; emoji: string; href: string }[] = [
   { gradient: 'from-emerald-600 to-teal-500',  emoji: '🥗', href: '/daily-dozen' },
   { gradient: 'from-amber-500 to-orange-400',  emoji: '🍲', href: '/recipes'     },
@@ -311,9 +317,12 @@ export default async function HomePage() {
             </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-white/10 border border-white/10 rounded-2xl overflow-hidden">
-            {t.steps.items.map((step) => (
+            {t.steps.items.map((step, idx) => (
               <div key={step.n} className="bg-[#0e393d] hover:bg-[#1a5055] transition-colors duration-200 p-10">
                 <div className="font-serif font-normal text-[4.5rem] text-white/8 leading-none mb-6">{step.n}</div>
+                <div className={`h-32 rounded-xl bg-gradient-to-br ${STEP_VISUALS[idx].gradient} flex items-center justify-center text-4xl mb-5`}>
+                  {STEP_VISUALS[idx].emoji}
+                </div>
                 <h3 className="font-serif font-normal text-[1.5rem] text-white mb-2.5">{step.title}</h3>
                 <p className="text-[0.83rem] font-light text-white/50 leading-relaxed">{step.desc}</p>
               </div>
