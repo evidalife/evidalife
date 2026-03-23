@@ -5,7 +5,7 @@
     "login": "Connexion",
     "dropdowns": {
       "Kitchen": ["Comment commencer", "Daily Dozen", "Recettes", "Restaurant", null, "Blog", "Liste de courses", "Cours"],
-      "Health": ["Health Engine", "Valeurs sanguines & biomarqueurs", "BioAge", "Interventions", null, "Tableau de bord", "Science"],
+      "Health": ["Health Engine", "Biomarqueurs", "BioAge", "Interventions", null, "Tableau de bord", "Science"],
       "Fit": ["Sommeil", "Exercice", "Stress & Récupération", null, "Coaching"],
       "Shop": ["Forfaits de test", "Alimentation", "Abonnement Eat@Home", null, "Panier & Paiement", "Mes commandes"]
     }
