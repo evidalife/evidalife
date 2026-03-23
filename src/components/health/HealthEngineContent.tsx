@@ -140,7 +140,7 @@ const T: Record<Lang, {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const FEATURED_DOMAINS: BiomarkerCategory[] = [
-  'metabolic', 'cardiovascular', 'inflammation', 'organ_function', 'hormonal', 'nutritional',
+  'heart_vessels', 'metabolism', 'inflammation', 'organ_function', 'nutrients', 'hormones', 'body_composition', 'fitness',
 ];
 
 function TrafficDot({ light }: { light: string }) {
@@ -369,7 +369,7 @@ export default function HealthEngineContent({ lang, userId, scores, definitions 
             {/* ── Domain Cards ─────────────────────────────────────────────── */}
             <section className="mb-10">
               <h2 className="font-serif text-xl text-[#0e393d] mb-4">{t.domains}</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
                 {FEATURED_DOMAINS.map((cat) => {
                   const ds = scores.domains[cat];
                   return (

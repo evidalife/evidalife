@@ -6,14 +6,14 @@
 export type StatusFlag = 'optimal' | 'good' | 'moderate' | 'risk';
 
 export type BiomarkerCategory =
-  | 'metabolic'
-  | 'cardiovascular'
+  | 'heart_vessels'
+  | 'metabolism'
   | 'inflammation'
-  | 'hormonal'
-  | 'nutritional'
   | 'organ_function'
-  | 'functional'
-  | 'epigenetic';
+  | 'nutrients'
+  | 'hormones'
+  | 'body_composition'
+  | 'fitness';
 
 export type TrafficLight = 'green' | 'yellow' | 'red';
 
@@ -41,16 +41,16 @@ export type HealthScoreResult = {
   biomarkers: ScoredBiomarker[];
 };
 
-// Domain weights — total should sum to 1
+// Domain weights — total sums to 1
 const DOMAIN_WEIGHTS: Partial<Record<BiomarkerCategory, number>> = {
-  metabolic: 0.20,
-  cardiovascular: 0.20,
-  inflammation: 0.15,
-  organ_function: 0.15,
-  hormonal: 0.15,
-  nutritional: 0.10,
-  functional: 0.03,
-  epigenetic: 0.02,
+  heart_vessels:   0.20,
+  metabolism:      0.18,
+  inflammation:    0.15,
+  organ_function:  0.15,
+  nutrients:       0.12,
+  hormones:        0.10,
+  body_composition: 0.05,
+  fitness:         0.05,
 };
 
 function flagToScore(flag: StatusFlag): number {
@@ -62,6 +62,11 @@ function flagToScore(flag: StatusFlag): number {
   }
 }
 
+// Infers range_type from which bounds are present, then scores accordingly.
+//
+//  lower_is_better  — only upper bounds set; lower value = better
+//  higher_is_better — only lower bounds set; higher value = better
+//  range            — both bounds set; value should be within band
 function rangeScore(
   value: number,
   refLow: number | null,
@@ -69,18 +74,47 @@ function rangeScore(
   optLow: number | null,
   optHigh: number | null,
 ): number {
-  if (optLow != null && optHigh != null && value >= optLow && value <= optHigh) return 100;
-  if (refLow != null && refHigh != null) {
-    if (value >= refLow && value <= refHigh) return 75;
-    const span = refHigh - refLow;
+  const hasRefLow  = refLow  != null;
+  const hasRefHigh = refHigh != null;
+  const hasOptLow  = optLow  != null;
+  const hasOptHigh = optHigh != null;
+
+  // ── lower_is_better ──────────────────────────────────────────────────────
+  if (!hasRefLow && hasRefHigh) {
+    const opt = hasOptHigh ? optHigh! : refHigh;
+    if (value <= opt) return 100;
+    if (value <= refHigh) return 75;
+    const overshoot = (value - refHigh) / refHigh;
+    if (overshoot <= 0.25) return 50;
+    if (overshoot <= 0.75) return 25;
+    return 0;
+  }
+
+  // ── higher_is_better ─────────────────────────────────────────────────────
+  if (hasRefLow && !hasRefHigh) {
+    const opt = hasOptLow ? optLow! : refLow;
+    if (value >= opt) return 100;
+    if (value >= refLow) return 75;
+    const undershoot = (refLow - value) / refLow;
+    if (undershoot <= 0.25) return 50;
+    if (undershoot <= 0.75) return 25;
+    return 0;
+  }
+
+  // ── range (both bounds) ───────────────────────────────────────────────────
+  if (hasRefLow && hasRefHigh) {
+    if (hasOptLow && hasOptHigh && value >= optLow! && value <= optHigh!) return 100;
+    if (value >= refLow! && value <= refHigh) return 75;
+    const span = refHigh - refLow!;
     if (span === 0) return 50;
-    const pct = value < refLow
-      ? (refLow - value) / span
+    const pct = value < refLow!
+      ? (refLow! - value) / span
       : (value - refHigh) / span;
     if (pct <= 0.25) return 50;
     if (pct <= 0.75) return 25;
     return 0;
   }
+
   return 50; // no range info — neutral
 }
 
@@ -160,7 +194,7 @@ export function computeHealthScore(
   // Domain scores grouped by category
   const groups = new Map<string, number[]>();
   for (const bm of biomarkers) {
-    const key = bm.category ?? 'functional';
+    const key = bm.category ?? 'fitness';
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(bm.score);
   }
@@ -191,12 +225,12 @@ export function computeHealthScore(
 }
 
 export const CATEGORY_DISPLAY: Record<string, Record<string, string>> = {
-  metabolic:      { de: 'Metabolismus',      en: 'Metabolic Health',     fr: 'Métabolisme',       es: 'Salud Metabólica',      it: 'Salute Metabolica' },
-  cardiovascular: { de: 'Herz-Kreislauf',     en: 'Cardiovascular',       fr: 'Cardiovasculaire',  es: 'Cardiovascular',        it: 'Cardiovascolare' },
-  inflammation:   { de: 'Entzündung',         en: 'Inflammation',         fr: 'Inflammation',      es: 'Inflamación',           it: 'Infiammazione' },
-  organ_function: { de: 'Organfunktion',      en: 'Organ Function',       fr: 'Fonction Organique',es: 'Función Orgánica',      it: 'Funzione Organica' },
-  hormonal:       { de: 'Hormonhaushalt',     en: 'Hormonal Balance',     fr: 'Équilibre Hormonal',es: 'Balance Hormonal',      it: 'Equilibrio Ormonale' },
-  nutritional:    { de: 'Nährstoffversorgung',en: 'Nutrition',             fr: 'Nutrition',         es: 'Nutrición',             it: 'Nutrizione' },
-  functional:     { de: 'Funktionalität',     en: 'Functional',           fr: 'Fonctionnel',       es: 'Funcional',             it: 'Funzionale' },
-  epigenetic:     { de: 'Epigenetik',         en: 'Epigenetic',           fr: 'Épigénétique',      es: 'Epigenética',           it: 'Epigenética' },
+  heart_vessels:    { de: 'Herz & Gefässe',        en: 'Heart & Vessels',       fr: 'Cœur & Vaisseaux',       es: 'Corazón & Vasos',        it: 'Cuore & Vasi' },
+  metabolism:       { de: 'Stoffwechsel',            en: 'Metabolism',            fr: 'Métabolisme',             es: 'Metabolismo',             it: 'Metabolismo' },
+  inflammation:     { de: 'Entzündung & Immunsystem',en: 'Inflammation & Immune', fr: 'Inflammation & Immunité', es: 'Inflamación & Inmunidad',  it: 'Infiammazione & Immunit.' },
+  organ_function:   { de: 'Organfunktion',           en: 'Organ Function',        fr: 'Fonction Organique',      es: 'Función Orgánica',         it: 'Funzione Organica' },
+  nutrients:        { de: 'Nährstoffe',              en: 'Nutrients',             fr: 'Nutriments',              es: 'Nutrientes',               it: 'Nutrienti' },
+  hormones:         { de: 'Hormone',                 en: 'Hormones',              fr: 'Hormones',                es: 'Hormonas',                 it: 'Ormoni' },
+  body_composition: { de: 'Körperzusammensetzung',   en: 'Body Composition',      fr: 'Composition Corporelle',  es: 'Composición Corporal',     it: 'Composizione Corporea' },
+  fitness:          { de: 'Fitness & Erholung',      en: 'Fitness & Recovery',    fr: 'Forme & Récupération',    es: 'Forma & Recuperación',     it: 'Forma & Recupero' },
 };
