@@ -442,6 +442,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     setLang('de');
     setForm(EMPTY_FORM);
     resetPanel();
+    setQuickImportOpen(true); // open for new products
     setOpenSections({ content: true, details: true, pricing: true, settings: true, testItems: true, gallery: false, cover: true });
     setPanelOpen(true);
   };
@@ -901,11 +902,6 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                     </button>
                   ))}
                 </div>
-                {/* AI Translate */}
-                <button onClick={handleTranslate} disabled={translating}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#ceab84]/40 text-[10px] font-medium text-[#8a6a3e] hover:bg-[#ceab84]/10 disabled:opacity-50 transition whitespace-nowrap">
-                  {translating ? '…' : '✦ AI Translate'}
-                </button>
                 <button onClick={closePanel} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition ml-1">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
                     <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
@@ -934,27 +930,50 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                 {quickImportOpen && (
                   <div className="mt-3 space-y-3">
                     {!quickImportResult && !quickImportParsing && (
-                      <div className="rounded-xl border-2 border-dashed border-violet-200 bg-violet-50/40 p-4 space-y-3">
+                      <div
+                        className="rounded-xl border-2 border-dashed border-violet-200 bg-violet-50/40 p-4 space-y-3"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => { e.preventDefault(); const t = e.dataTransfer.getData('text'); if (t) { handleQuickImport(t); } }}
+                      >
                         <div className="flex flex-col items-center gap-2 py-1 text-center">
                           <span className="text-2xl">📋</span>
                           <p className="text-sm font-medium text-violet-800">Paste product info from any source</p>
                           <p className="text-xs text-violet-500">Product page, PDF, spec sheet, or any text</p>
+                          <button
+                            type="button"
+                            disabled={quickImportParsing}
+                            onClick={async () => {
+                              try {
+                                const t = await navigator.clipboard.readText();
+                                if (t) handleQuickImport(t);
+                              } catch { /* permission denied */ }
+                            }}
+                            className="mt-1 flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50 transition"
+                          >
+                            📋 Paste from clipboard
+                          </button>
                         </div>
-                        <textarea
-                          value={quickImportText}
-                          onChange={(e) => setQuickImportText(e.target.value)}
-                          rows={4}
-                          placeholder="Paste product text here…"
-                          className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-200 transition resize-none"
-                        />
-                        {quickImportText.trim() && (
-                          <div className="flex justify-end">
-                            <button type="button" onClick={() => { handleQuickImport(quickImportText); setQuickImportText(''); }}
-                              className="rounded-lg bg-violet-600 px-4 py-2 text-xs font-medium text-white hover:bg-violet-700 transition">
-                              Parse with AI
-                            </button>
-                          </div>
-                        )}
+                        <div className="relative">
+                          <span className="absolute inset-x-0 top-0 flex justify-center -translate-y-1/2">
+                            <span className="bg-violet-50 px-2 text-[10px] text-violet-400">or type / paste below</span>
+                          </span>
+                          <textarea
+                            value={quickImportText}
+                            onChange={(e) => setQuickImportText(e.target.value)}
+                            onPaste={(e) => { const t = e.clipboardData.getData('text'); if (t) { e.preventDefault(); handleQuickImport(t); } }}
+                            rows={4}
+                            placeholder="Paste product text here…"
+                            className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-200 transition resize-none mt-2"
+                          />
+                          {quickImportText.trim() && (
+                            <div className="flex justify-end mt-1">
+                              <button type="button" onClick={() => { handleQuickImport(quickImportText); setQuickImportText(''); }}
+                                className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-700 transition">
+                                Parse with AI
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                     {quickImportParsing && (
@@ -1021,6 +1040,10 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                       <AiBtn onClick={() => { setStyleStatus('idle'); handleStyle(); }}
                         disabled={!form.description[lang]}
                         status={styleStatus} idle="✦ AI Style" loading="Styling…" done="✓ Styled" color="sky" />
+                      <button onClick={handleTranslate} disabled={translating}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#ceab84]/40 text-[10px] font-medium text-[#8a6a3e] hover:bg-[#ceab84]/10 disabled:opacity-50 transition whitespace-nowrap">
+                        {translating ? '…' : '✦ AI Translate all'}
+                      </button>
                     </div>
                   </Field>
                 </div>

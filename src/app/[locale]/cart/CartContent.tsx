@@ -181,6 +181,9 @@ export default function CartContent({ locale }: { locale: string }) {
 
       <main className="mx-auto w-full max-w-3xl px-6 pt-28 pb-20 flex-1">
 
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">
+          {lang === 'de' ? 'Warenkorb' : lang === 'fr' ? 'Panier' : lang === 'es' ? 'Carrito' : lang === 'it' ? 'Carrello' : 'Your Cart'}
+        </p>
         <h1 className="font-serif text-4xl text-[#0e393d] mb-10">{t.title}</h1>
 
         {/* Empty state */}
