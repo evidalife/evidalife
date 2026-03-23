@@ -71,7 +71,7 @@ const PRODUCT_FEATURES: Record<number, Record<Lang, string[]>> = {
 
 const T: Record<Lang, {
   hero: { h1: string; h1em: string; sub: string; cta1: string; cta2: string };
-  problem: { tag: string; heading: string; headingEm: string; cards: { label: string; desc: string }[]; callout: string; calloutSub: string };
+  problem: { tag: string; heading: string; headingEm: string; context: string; deathsYear: string; cards: { label: string; desc: string }[]; callout: string; calloutSub: string; source: string };
   mission: { tag: string; heading: string; headingEm: string; desc: string; cta: string };
   pillars: { tag: string; heading: string; headingEm: string; cards: { title: string; desc: string }[] };
   steps: { tag: string; heading: string; headingEm: string; items: { n: string; title: string; desc: string }[] };
@@ -91,6 +91,8 @@ const T: Record<Lang, {
       tag: 'Das Problem',
       heading: 'Die stille',
       headingEm: 'Epidemie.',
+      context: 'Jedes Jahr sterben über 40 Millionen Menschen an nichtübertragbaren Krankheiten – das sind 74 % aller Todesfälle weltweit. Die vier grössten Killer sind grösstenteils durch Ernährung und Lebensstil vermeidbar.',
+      deathsYear: 'Todesfälle/Jahr',
       cards: [
         { label: 'Herzerkrankungen',             desc: '80 % durch Ernährung vermeidbar' },
         { label: 'Krebs',                        desc: '40 % durch Lifestyle vermeidbar' },
@@ -98,7 +100,8 @@ const T: Record<Lang, {
         { label: 'Diabetes',                     desc: '85 % durch Ernährung vermeidbar' },
       ],
       callout: '+10–15 Jahre',
-      calloutSub: 'längeres, gesünderes Leben – mit vollwertiger pflanzenbasierter Ernährung.',
+      calloutSub: 'Das sind mehr Tote als in beiden Weltkriegen zusammen — jedes einzelne Jahr. Doch die meisten dieser Todesfälle sind vermeidbar. Ungesunde Ernährung ist heute der Risikofaktor Nr. 1 für vorzeitigen Tod weltweit.',
+      source: 'Quelle: WHO Noncommunicable Diseases Fact Sheet, 2024',
     },
     mission: {
       tag: 'Unsere Mission',
@@ -165,6 +168,8 @@ const T: Record<Lang, {
       tag: 'The Problem',
       heading: 'The silent',
       headingEm: 'epidemic.',
+      context: 'Every year, over 40 million people die from noncommunicable diseases — that\'s 74% of all deaths worldwide. The four biggest killers are largely preventable through diet and lifestyle.',
+      deathsYear: 'deaths/year',
       cards: [
         { label: 'Heart disease',        desc: '80% preventable through diet' },
         { label: 'Cancer',               desc: '40% preventable through lifestyle' },
@@ -172,7 +177,8 @@ const T: Record<Lang, {
         { label: 'Diabetes',             desc: '85% preventable through diet' },
       ],
       callout: '+10–15 years',
-      calloutSub: 'longer, healthier life — with a whole-food, plant-based diet.',
+      calloutSub: "That's more than both World Wars combined — every single year. Yet most of these deaths are preventable. Unhealthy diets are now the #1 risk factor for early death globally.",
+      source: 'Source: WHO Noncommunicable Diseases Fact Sheet, 2024',
     },
     mission: {
       tag: 'Our Mission',
@@ -239,6 +245,8 @@ const T: Record<Lang, {
       tag: 'Le Problème',
       heading: "L'épidémie",
       headingEm: 'silencieuse.',
+      context: "Chaque année, plus de 40 millions de personnes meurent de maladies non transmissibles — soit 74 % de tous les décès dans le monde. Les quatre plus grands tueurs sont largement évitables par l'alimentation et le mode de vie.",
+      deathsYear: 'décès/an',
       cards: [
         { label: 'Maladies cardiaques',      desc: "80 % évitables par l'alimentation" },
         { label: 'Cancer',                   desc: '40 % évitables par le mode de vie' },
@@ -246,7 +254,8 @@ const T: Record<Lang, {
         { label: 'Diabète',                  desc: "85 % évitables par l'alimentation" },
       ],
       callout: '+10–15 ans',
-      calloutSub: "de vie en plus, en meilleure santé — grâce à une alimentation végétale à base d'aliments complets.",
+      calloutSub: "C'est plus de morts que lors des deux guerres mondiales réunies — chaque année. Pourtant, la plupart de ces décès sont évitables. Une alimentation malsaine est désormais le facteur de risque n°1 de mort prématurée dans le monde.",
+      source: 'Source : Fiche d\'information de l\'OMS sur les maladies non transmissibles, 2024',
     },
     mission: {
       tag: 'Notre Mission',
@@ -313,6 +322,8 @@ const T: Record<Lang, {
       tag: 'El Problema',
       heading: 'La epidemia',
       headingEm: 'silenciosa.',
+      context: 'Cada año, más de 40 millones de personas mueren por enfermedades no transmisibles — el 74 % de todas las muertes en el mundo. Los cuatro mayores asesinos son en gran medida prevenibles mediante la dieta y el estilo de vida.',
+      deathsYear: 'muertes/año',
       cards: [
         { label: 'Enfermedades cardíacas',      desc: '80% prevenibles a través de la dieta' },
         { label: 'Cáncer',                      desc: '40% prevenibles a través del estilo de vida' },
@@ -320,7 +331,8 @@ const T: Record<Lang, {
         { label: 'Diabetes',                    desc: '85% prevenibles a través de la dieta' },
       ],
       callout: '+10–15 años',
-      calloutSub: 'más de vida saludable — con una dieta integral a base de plantas.',
+      calloutSub: 'Eso es más muertos que en ambas guerras mundiales juntas — cada año. Sin embargo, la mayoría de estas muertes son prevenibles. Las dietas poco saludables son ahora el factor de riesgo n.º 1 de muerte prematura a nivel mundial.',
+      source: 'Fuente: Hoja de datos de la OMS sobre enfermedades no transmisibles, 2024',
     },
     mission: {
       tag: 'Nuestra Misión',
@@ -387,6 +399,8 @@ const T: Record<Lang, {
       tag: 'Il Problema',
       heading: "L'epidemia",
       headingEm: 'silenziosa.',
+      context: "Ogni anno, oltre 40 milioni di persone muoiono per malattie non trasmissibili — il 74 % di tutti i decessi nel mondo. I quattro maggiori killer sono ampiamente prevenibili attraverso l'alimentazione e lo stile di vita.",
+      deathsYear: 'decessi/anno',
       cards: [
         { label: 'Malattie cardiache',         desc: "80% prevenibili attraverso l'alimentazione" },
         { label: 'Cancro',                     desc: '40% prevenibili attraverso lo stile di vita' },
@@ -394,7 +408,8 @@ const T: Record<Lang, {
         { label: 'Diabete',                    desc: "85% prevenibili attraverso l'alimentazione" },
       ],
       callout: '+10–15 anni',
-      calloutSub: 'di vita in più, più sana — con una dieta integrale a base vegetale.',
+      calloutSub: "Sono più morti di entrambe le guerre mondiali messe insieme — ogni singolo anno. Eppure la maggior parte di questi decessi è prevenibile. Le diete non salutari sono ora il fattore di rischio n. 1 per la morte prematura a livello globale.",
+      source: "Fonte: Scheda informativa dell'OMS sulle malattie non trasmissibili, 2024",
     },
     mission: {
       tag: 'La Nostra Missione',
@@ -534,17 +549,19 @@ export default async function HomePage() {
 
       {/* ─── 2. THE PROBLEM ─── */}
       <section className="max-w-[1060px] mx-auto px-8 md:px-12 py-20 md:py-28">
-        <div className="mb-12">
+        <div className="mb-10">
           <SectionTag label={t.problem.tag} />
-          <h2 className="font-serif font-normal text-4xl md:text-5xl text-[#0e393d] leading-[1.1] tracking-tight">
+          <h2 className="font-serif font-normal text-4xl md:text-5xl text-[#0e393d] leading-[1.1] tracking-tight mb-5">
             {t.problem.heading}<br />
             <em className="italic font-normal text-[#0e393d]/60">{t.problem.headingEm}</em>
           </h2>
+          <p className="text-[0.95rem] font-light text-[#5a6e6f] leading-relaxed max-w-[620px]">{t.problem.context}</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {t.problem.cards.map((card, i) => (
             <div key={i} className="rounded-xl bg-white ring-1 ring-[#0e393d]/8 p-6">
-              <div className="font-serif text-4xl font-normal text-[#0e393d] mb-1">{PROBLEM_STATS[i].stat}</div>
+              <div className="font-serif text-4xl font-normal text-[#0e393d] mb-0.5">{PROBLEM_STATS[i].stat}</div>
+              <div className="text-[0.65rem] text-[#5a6e6f] mb-2">{t.problem.deathsYear}</div>
               <div className="text-xs font-medium text-[#0e393d] tracking-wide mb-3 uppercase">{card.label}</div>
               <div className="w-full bg-[#0e393d]/8 rounded-full h-1 mb-2">
                 <div className="bg-emerald-500 h-1 rounded-full" style={{ width: `${PROBLEM_STATS[i].pct}%` }} />
@@ -553,10 +570,20 @@ export default async function HomePage() {
             </div>
           ))}
         </div>
-        <div className="rounded-xl bg-[#0e393d] px-8 py-6 flex flex-col sm:flex-row sm:items-center gap-3">
-          <span className="font-serif text-3xl md:text-4xl text-[#ceab84] whitespace-nowrap">{t.problem.callout}</span>
+        <div className="rounded-xl bg-[#0e393d] px-8 py-6 flex flex-col sm:flex-row sm:items-start gap-4">
+          <span className="font-serif text-3xl md:text-4xl text-[#ceab84] whitespace-nowrap shrink-0">{t.problem.callout}</span>
           <span className="text-white/70 font-light text-[0.9rem] leading-relaxed">{t.problem.calloutSub}</span>
         </div>
+        <p className="mt-3 text-[0.65rem] text-[#5a6e6f]/50">
+          <a
+            href="https://www.who.int/news-room/fact-sheets/detail/noncommunicable-diseases"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-[#5a6e6f]/80 transition-colors"
+          >
+            {t.problem.source}
+          </a>
+        </p>
       </section>
 
       {/* ─── 3. OUR MISSION ─── */}
