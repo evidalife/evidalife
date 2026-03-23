@@ -9,11 +9,23 @@ function getStripe() {
 
 const SWISS_TAX_RATE = 0.081; // 8.1 % MwSt
 
+type CartItem = { productId: string; quantity: number };
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const productIds: string[] = body.productIds ?? [];
 
-  if (!productIds.length) {
+  // Support both { productIds: string[] } and { items: CartItem[] }
+  let cartItems: CartItem[];
+  if (body.items) {
+    cartItems = (body.items as CartItem[]).filter((i) => i.productId && i.quantity > 0);
+  } else {
+    const productIds: string[] = body.productIds ?? [];
+    cartItems = productIds.map((id) => ({ productId: id, quantity: 1 }));
+  }
+
+  const productIds = cartItems.map((i) => i.productId);
+
+  if (!cartItems.length) {
     return NextResponse.json({ error: 'No products selected' }, { status: 400 });
   }
 
@@ -39,16 +51,17 @@ export async function POST(req: NextRequest) {
   let dynamicSubtotalRappen = 0;
 
   for (const p of products) {
+    const qty = cartItems.find((i) => i.productId === p.id)?.quantity ?? 1;
     if (p.stripe_price_id_chf) {
       // Pre-created Stripe Price — tax already configured on the Price object
-      lineItems.push({ price: p.stripe_price_id_chf, quantity: 1 });
+      lineItems.push({ price: p.stripe_price_id_chf, quantity: qty });
     } else {
       const name =
         typeof p.name === 'string'
           ? p.name
           : (p.name?.de || p.name?.en || 'Product');
       const unitAmount = Math.round((p.price_chf ?? 0) * 100);
-      dynamicSubtotalRappen += unitAmount;
+      dynamicSubtotalRappen += unitAmount * qty;
       lineItems.push({
         price_data: {
           currency: 'chf',
@@ -58,7 +71,7 @@ export async function POST(req: NextRequest) {
           },
           unit_amount: unitAmount,
         },
-        quantity: 1,
+        quantity: qty,
       });
     }
   }

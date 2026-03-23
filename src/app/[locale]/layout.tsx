@@ -4,6 +4,7 @@ import Script from 'next/script';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getLocale } from 'next-intl/server';
 import { AuthProvider } from '@/context/AuthProvider';
+import { CartProvider } from '@/lib/cart';
 import CookieBanner from '@/components/CookieBanner';
 import { routing } from '@/i18n/routing';
 import '../globals.css';
@@ -64,7 +65,9 @@ export default async function LocaleLayout({ children }: { children: React.React
       </head>
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased overscroll-none`}>
         <NextIntlClientProvider messages={messages}>
-          <AuthProvider>{children}</AuthProvider>
+          <CartProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </CartProvider>
           <CookieBanner />
         </NextIntlClientProvider>
       </body>

@@ -173,7 +173,9 @@
     },
     "buyNow": "Acheter maintenant",
     "viewBiomarkers": "Voir tous les biomarqueurs →",
-    "emptyState": "Aucun produit disponible pour le moment."
+    "emptyState": "Aucun produit disponible pour le moment.",
+    "addToCart": "Ajouter au panier",
+    "added": "✓ Ajouté"
   },
   "privacy": {
     "title": "Politique de confidentialité",

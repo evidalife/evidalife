@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/navigation';
+import { useSearchParams } from 'next/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import { useCart } from '@/lib/cart';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,44 +70,25 @@ function chf(amount: number) {
   return `CHF ${amount.toLocaleString('de-CH')}`;
 }
 
-async function startCheckout(productId: string): Promise<void> {
-  const res = await fetch('/api/checkout', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ productIds: [productId] }),
-  });
-  const data = await res.json();
-  if (data.url) {
-    window.location.href = data.url;
-  } else {
-    throw new Error(data.error ?? 'Checkout failed');
-  }
-}
-
 // ─── Product card ─────────────────────────────────────────────────────────────
 
 function ProductCard({
   product,
-  onCheckoutError,
 }: {
   product: Product;
-  onCheckoutError: () => void;
 }) {
   const t = useTranslations('shop');
   const lng = useLocale();
-  const [loading, setLoading] = useState(false);
+  const { addItem } = useCart();
+  const [added, setAdded] = useState(false);
   const featured = product.is_featured ?? false;
   const isTestPackage = product.product_type === 'test_package';
   const markerCount = product.metadata?.marker_count;
 
-  const handleCheckout = async () => {
-    setLoading(true);
-    try {
-      await startCheckout(product.id);
-    } catch {
-      setLoading(false);
-      onCheckoutError();
-    }
+  const handleAddToCart = () => {
+    addItem(product.id);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1500);
   };
 
   const name = loc(product.name, lng);
@@ -185,15 +168,14 @@ function ProductCard({
       </div>
 
       <button
-        onClick={handleCheckout}
-        disabled={loading}
-        className={`block w-full rounded-xl py-3 text-center text-sm font-medium transition-colors disabled:opacity-60 ${
+        onClick={handleAddToCart}
+        className={`block w-full rounded-xl py-3 text-center text-sm font-medium transition-colors ${
           featured
             ? 'bg-[#ceab84] text-[#0e393d] hover:bg-[#ceab84]/90'
             : 'bg-[#0e393d] text-white hover:bg-[#0e393d]/90'
         }`}
       >
-        {loading ? '…' : t('buyNow')}
+        {added ? t('added') : t('addToCart')}
       </button>
 
       {isTestPackage && (
@@ -216,12 +198,10 @@ function Section({
   heading,
   sub,
   products,
-  onCheckoutError,
 }: {
   heading: string;
   sub?: string;
   products: Product[];
-  onCheckoutError: () => void;
 }) {
   return (
     <section className="mb-20">
@@ -232,7 +212,7 @@ function Section({
       </div>
       <div className="grid gap-6 sm:grid-cols-3">
         {products.map((p) => (
-          <ProductCard key={p.id} product={p} onCheckoutError={onCheckoutError} />
+          <ProductCard key={p.id} product={p} />
         ))}
       </div>
     </section>
@@ -246,8 +226,16 @@ export default function ShopContent({ products }: { products: Product[] }) {
   const lng = useLocale();
   const trust = t.raw('trust') as { title: string; body: string }[];
   const trustIcons = ['🔬', '📊', '🔒'];
-  const [checkoutError, setCheckoutError] = useState(false);
   const [activeType, setActiveType] = useState<string | null>(null);
+  const { clearCart } = useCart();
+  const searchParams = useSearchParams();
+
+  // Clear cart when returning from successful checkout
+  useEffect(() => {
+    if (searchParams.get('success') === '1') {
+      clearCart();
+    }
+  }, [searchParams, clearCart]);
 
   // Unique product types present in the data (preserve insertion order)
   const availableTypes = Array.from(
@@ -267,27 +255,11 @@ export default function ShopContent({ products }: { products: Product[] }) {
     !['test_package', 'addon_test', 'food', 'food_product', 'subscription', 'meal_subscription'].includes(p.product_type ?? '')
   );
 
-  const handleCheckoutError = () => setCheckoutError(true);
-
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
       <main className="mx-auto w-full max-w-[1060px] px-6 pt-28 pb-16 flex-1">
-
-        {/* Checkout error banner */}
-        {checkoutError && (
-          <div className="mb-8 rounded-xl bg-[#ceab84]/15 border border-[#ceab84]/30 px-5 py-4 text-sm text-[#8a6a3e] flex items-center justify-between gap-4">
-            <span>{t('checkoutComingSoon')}</span>
-            <button
-              onClick={() => setCheckoutError(false)}
-              className="shrink-0 text-[#ceab84] hover:text-[#8a6a3e] transition-colors"
-              aria-label="Dismiss"
-            >
-              ✕
-            </button>
-          </div>
-        )}
 
         {/* Hero */}
         <div className="mb-10 text-center">
@@ -340,40 +312,19 @@ export default function ShopContent({ products }: { products: Product[] }) {
 
         {/* Product sections */}
         {packages.length > 0 && (
-          <Section
-            heading={t('packages.heading')}
-            products={packages}
-            onCheckoutError={handleCheckoutError}
-          />
+          <Section heading={t('packages.heading')} products={packages} />
         )}
         {addons.length > 0 && (
-          <Section
-            heading={t('addons.heading')}
-            sub={t('addons.combo')}
-            products={addons}
-            onCheckoutError={handleCheckoutError}
-          />
+          <Section heading={t('addons.heading')} sub={t('addons.combo')} products={addons} />
         )}
         {food.length > 0 && (
-          <Section
-            heading={typeLabel('food', lng)}
-            products={food}
-            onCheckoutError={handleCheckoutError}
-          />
+          <Section heading={typeLabel('food', lng)} products={food} />
         )}
         {subs.length > 0 && (
-          <Section
-            heading={typeLabel('subscription', lng)}
-            products={subs}
-            onCheckoutError={handleCheckoutError}
-          />
+          <Section heading={typeLabel('subscription', lng)} products={subs} />
         )}
         {other.length > 0 && (
-          <Section
-            heading={typeLabel(other[0].product_type ?? 'other', lng)}
-            products={other}
-            onCheckoutError={handleCheckoutError}
-          />
+          <Section heading={typeLabel(other[0].product_type ?? 'other', lng)} products={other} />
         )}
 
         {/* Trust strip */}

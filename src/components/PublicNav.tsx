@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname, Link } from '@/i18n/navigation';
 import { useAuth } from '@/context/AuthProvider';
+import { useCart } from '@/lib/cart';
 import { createClient } from '@/lib/supabase/client';
 import Image from 'next/image';
 
@@ -51,6 +52,7 @@ export default function PublicNav() {
 
   const closeAllMenus = () => { setMobileOpen(false); setLangOpen(false); setUserOpen(false); };
 
+  const { itemCount } = useCart();
   const login = locale === 'de' ? 'Anmelden' : locale === 'fr' ? 'Connexion' : locale === 'es' ? 'Entrar' : locale === 'it' ? 'Accedi' : 'Login';
   const dropdowns = t.raw('dropdowns') as Record<string, (string | null)[]>;
 
@@ -132,6 +134,24 @@ export default function PublicNav() {
 
         {/* Right side: hamburger (mobile) + lang toggle + user */}
         <div className="flex items-center gap-2 shrink-0">
+
+          {/* Cart icon */}
+          <Link
+            href="/cart"
+            aria-label={locale === 'de' ? 'Warenkorb' : locale === 'fr' ? 'Panier' : locale === 'es' ? 'Carrito' : locale === 'it' ? 'Carrello' : 'Cart'}
+            className="relative w-9 h-9 flex items-center justify-center rounded-full text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <path d="M16 10a4 4 0 0 1-8 0" />
+            </svg>
+            {itemCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-[#ceab84] text-[#0e393d] text-[9px] font-bold px-1">
+                {itemCount > 99 ? '99+' : itemCount}
+              </span>
+            )}
+          </Link>
 
           {/* Hamburger / X — mobile only */}
           <button

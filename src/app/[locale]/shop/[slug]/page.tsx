@@ -162,7 +162,7 @@ export default async function ProductSlugPage({ params }: { params: Params }) {
         )}
 
         {/* Buy button */}
-        <BuyButton productId={product.id} label={t('buyNow', lng)} />
+        <BuyButton productId={product.id} locale={locale} />
 
         {/* Full description */}
         {description && (
