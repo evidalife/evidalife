@@ -227,8 +227,30 @@ const T = {
       'Wenn wir das biologische Altern nur um 7 Jahre verlangsamen, halbiert sich das Risiko für Tod, Gebrechlichkeit und Behinderung in jedem Lebensalter.',
       'Ein 50-Jähriger hätte das Gesundheitsprofil eines heutigen 43-Jährigen. Ein 60-Jähriger würde einem heutigen 53-Jährigen ähneln.',
     ],
-    agingHallmarksNote: 'Forscher haben 12 biologische Kennzeichen des Alterns identifiziert. Viele davon werden direkt durch die Ernährung beeinflusst.',
+    agingHallmarksNote: 'Forscher haben 11 biologische Kennzeichen des Alterns identifiziert. Viele davon werden direkt durch die Ernährung beeinflusst.',
     agingSource: 'Quelle: Kennedy et al. (2016), Cold Spring Harb Perspect Med',
+    hallmarksTag: 'HALLMARKS DES ALTERNS',
+    hallmarksTitle: '11 Mechanismen des Alterns – und was deine Ernährung damit macht.',
+    hallmarksSub: 'Jedes Hallmark kann durch deine Ernährung beschleunigt oder verlangsamt werden.',
+    animalLabel: 'Tierische Produkte:',
+    plantLabel: 'Pflanzlich:',
+    hallmarks: [
+      { name: 'AMPK', sub: 'Zellulärer Energiesensor', animal: 'Hohe Kaloriendichte + gesättigte Fette → AMPK gehemmt', plant: 'Ballaststoffe + Fastenfenster → AMPK aktiviert' },
+      { name: 'Autophagie', sub: 'Zelluläre Selbstreinigung', animal: 'Ständiger Proteinüberschuss schaltet Autophagie ab', plant: 'Polyphenole + reduzierte Kalorienlast → Autophagie gesteigert' },
+      { name: 'mTOR', sub: 'Wachstumssignalschalter', animal: 'Tierisches Protein (Leucin) → mTOR chronisch überaktiviert', plant: 'Pflanzliches Protein → mTOR für Langlebigkeit moduliert' },
+      { name: 'IGF-1', sub: 'Insulinähnlicher Wachstumsfaktor', animal: 'Milchprodukte, Fleisch, Eier → IGF-1 auf krebsfördernde Werte erhöht', plant: 'Vollwertige Pflanzenkost → IGF-1 auf Langlebigkeitsniveau' },
+      { name: 'Telomerverkürzung', sub: 'Biologische Uhr', animal: 'Chronische Entzündung → beschleunigter Telomerverlust', plant: 'Antioxidantien + entzündungshemmende Substanzen → Telomerschutz' },
+      { name: 'Epigenetische Veränderungen', sub: 'Genexpressionsschalter', animal: 'Fördert entzündungsfördernde Genexpressionsmuster', plant: 'Polyphenole + Methyldonoren aktivieren Langlebigkeitsgene' },
+      { name: 'Mitochondriale Dysfunktion', sub: 'Energiewerk-Versagen', animal: 'Gesättigte Fette beeinträchtigen die Mitochondrienmembranfunktion', plant: 'AMPK + Antioxidantien unterstützen mitochondriale Integrität' },
+      { name: 'Zelluläre Seneszenz', sub: 'Zombie-Zellen', animal: 'Erhöht DNA-Schäden → mehr seneszente Zellen akkumulieren', plant: 'Flavonoide wirken als Senolytika und eliminieren Zombie-Zellen' },
+      { name: 'Chronische Entzündung', sub: 'Inflammaging', animal: 'Gesättigte Fette + Endotoxine lösen systemische Entzündung aus', plant: 'Ballaststoffe + Polyphenole → entzündungshemmende kurzkettige Fettsäuren' },
+      { name: 'Oxidativer Stress', sub: 'Freie-Radikale-Schäden', animal: 'Erzeugt reaktive Sauerstoffspezies mit wenigen schützenden Antioxidantien', plant: 'Tausende Antioxidantien neutralisieren freie Radikale' },
+      { name: 'Darmdysbiose', sub: 'Mikrobiom-Störung', animal: 'Ernährt pathogene Bakterien, fördert Darmentzündung', plant: 'Ballaststoffe ernähren schützende Bakterien → Langlebigkeitssignale' },
+    ],
+    ctaTitle: 'Nimm deine Gesundheit in die Hand.',
+    ctaBtn1: 'Mit der Daily Dozen starten',
+    ctaBtn2: 'Biomarker messen lassen',
+    ctaBtn3: 'So fängst du an',
     heatmapTag: 'ERNÄHRUNG & LONGEVITY',
     heatmapTitle: 'Was Forscher über Essen & gesundes Altern wissen',
     heatmapSub: 'Tessiere et al. (2025) in Nature Medicine verfolgten 105.015 Teilnehmer in zwei großen Kohorten (Nurses\' Health Study & Health Professionals Follow-up Study) über 30 Jahre – und identifizierten, welche Lebensmittel gesundes Altern in 6 Gesundheitsdomänen fördern oder beschleunigen.',
@@ -268,8 +290,30 @@ const T = {
       'If we slow biological aging by just 7 years, the risk of death, frailty, and disability is cut in half at every age.',
       'A 50-year-old would have the health profile of today\'s 43-year-old. A 60-year-old would resemble a current 53-year-old.',
     ],
-    agingHallmarksNote: 'Researchers have identified 12 biological hallmarks of aging. Many of them are directly influenced by diet.',
+    agingHallmarksNote: 'Researchers have identified 11 biological hallmarks of aging. Many of them are directly influenced by diet.',
     agingSource: 'Source: Kennedy et al. (2016), Cold Spring Harb Perspect Med',
+    hallmarksTag: 'HALLMARKS OF AGING',
+    hallmarksTitle: '11 mechanisms of aging — and what your diet does to each one.',
+    hallmarksSub: 'Each hallmark can be accelerated or slowed by what you eat.',
+    animalLabel: 'Animal products:',
+    plantLabel: 'Plant-based:',
+    hallmarks: [
+      { name: 'AMPK', sub: 'Cellular energy sensor', animal: 'High calorie density + saturated fat → AMPK inhibited', plant: 'Dietary fiber + fasting windows → AMPK activated' },
+      { name: 'Autophagy', sub: 'Cellular self-cleaning', animal: 'Constant protein surplus shuts autophagy off', plant: 'Polyphenols + lower caloric load → autophagy enhanced' },
+      { name: 'mTOR', sub: 'Growth signaling switch', animal: 'Animal protein (leucine) → mTOR chronically overactivated', plant: 'Plant protein → mTOR moderated for longevity' },
+      { name: 'IGF-1', sub: 'Insulin-like growth factor', animal: 'Dairy, meat, eggs → IGF-1 elevated to cancer-promoting levels', plant: 'Whole plant foods → IGF-1 at longevity-associated levels' },
+      { name: 'Telomere shortening', sub: 'Biological clock', animal: 'Chronic inflammation → accelerated telomere loss', plant: 'Antioxidants + anti-inflammatory compounds → telomere protection' },
+      { name: 'Epigenetic alterations', sub: 'Gene expression switches', animal: 'Promotes pro-inflammatory gene expression patterns', plant: 'Polyphenols + methyl donors activate longevity genes' },
+      { name: 'Mitochondrial dysfunction', sub: 'Energy factory failure', animal: 'Saturated fats impair mitochondrial membrane function', plant: 'AMPK + antioxidants support mitochondrial integrity' },
+      { name: 'Cellular senescence', sub: 'Zombie cells', animal: 'Increases DNA damage → more senescent cells accumulate', plant: 'Flavonoids act as senolytics, clearing zombie cells' },
+      { name: 'Chronic inflammation', sub: 'Inflammaging', animal: 'Saturated fats + endotoxins trigger systemic inflammation', plant: 'Fiber + polyphenols → anti-inflammatory short-chain fatty acids' },
+      { name: 'Oxidative stress', sub: 'Free radical damage', animal: 'Generates reactive oxygen species with few protective antioxidants', plant: 'Thousands of antioxidants neutralize free radicals' },
+      { name: 'Gut dysbiosis', sub: 'Microbiome disruption', animal: 'Feeds pathogenic bacteria, promotes gut inflammation', plant: 'Dietary fiber feeds protective bacteria → longevity signals' },
+    ],
+    ctaTitle: 'Take control of your health.',
+    ctaBtn1: 'Start with the Daily Dozen',
+    ctaBtn2: 'Measure your biomarkers',
+    ctaBtn3: 'Learn how to start',
     heatmapTag: 'FOOD & LONGEVITY',
     heatmapTitle: 'What researchers know about food & healthy aging',
     heatmapSub: 'Tessiere et al. (2025) in Nature Medicine followed 105,015 participants across two major cohorts (Nurses\' Health Study & Health Professionals Follow-up Study) for 30 years — identifying which foods promote or accelerate aging across 6 health outcomes.',
@@ -309,8 +353,30 @@ const T = {
       'Si nous ralentissons le vieillissement biologique de seulement 7 ans, le risque de décès, de fragilité et de handicap est réduit de moitié à chaque âge.',
       'Un individu de 50 ans aurait le profil de santé d\'un individu de 43 ans d\'aujourd\'hui. Un individu de 60 ans ressemblerait à un individu actuel de 53 ans.',
     ],
-    agingHallmarksNote: 'Les chercheurs ont identifié 12 caractéristiques biologiques du vieillissement. Beaucoup d\'entre elles sont directement influencées par l\'alimentation.',
+    agingHallmarksNote: 'Les chercheurs ont identifié 11 caractéristiques biologiques du vieillissement. Beaucoup d\'entre elles sont directement influencées par l\'alimentation.',
     agingSource: 'Source : Kennedy et al. (2016), Cold Spring Harb Perspect Med',
+    hallmarksTag: 'HALLMARKS DU VIEILLISSEMENT',
+    hallmarksTitle: '11 mécanismes du vieillissement — et ce que votre alimentation fait à chacun.',
+    hallmarksSub: 'Chaque hallmark peut être accéléré ou ralenti par ce que vous mangez.',
+    animalLabel: 'Produits animaux :',
+    plantLabel: 'Végétal :',
+    hallmarks: [
+      { name: 'AMPK', sub: 'Capteur d\'énergie cellulaire', animal: 'Haute densité calorique + graisses saturées → AMPK inhibée', plant: 'Fibres alimentaires + fenêtres de jeûne → AMPK activée' },
+      { name: 'Autophagie', sub: 'Auto-nettoyage cellulaire', animal: 'Excès constant de protéines désactive l\'autophagie', plant: 'Polyphénols + charge calorique réduite → autophagie améliorée' },
+      { name: 'mTOR', sub: 'Commutateur de signalisation de croissance', animal: 'Protéines animales (leucine) → mTOR chroniquement suractivé', plant: 'Protéines végétales → mTOR modéré pour la longévité' },
+      { name: 'IGF-1', sub: 'Facteur de croissance insulinomimétique', animal: 'Produits laitiers, viande, œufs → IGF-1 à des niveaux favorisant le cancer', plant: 'Aliments végétaux complets → IGF-1 à des niveaux de longévité' },
+      { name: 'Raccourcissement des télomères', sub: 'Horloge biologique', animal: 'Inflammation chronique → perte accélérée des télomères', plant: 'Antioxydants + composés anti-inflammatoires → protection des télomères' },
+      { name: 'Altérations épigénétiques', sub: 'Interrupteurs d\'expression génique', animal: 'Favorise des profils d\'expression génique pro-inflammatoires', plant: 'Polyphénols + donneurs de méthyle activent les gènes de longévité' },
+      { name: 'Dysfonction mitochondriale', sub: 'Défaillance de la centrale énergétique', animal: 'Les graisses saturées altèrent la fonction membranaire mitochondriale', plant: 'AMPK + antioxydants soutiennent l\'intégrité mitochondriale' },
+      { name: 'Sénescence cellulaire', sub: 'Cellules zombies', animal: 'Augmente les dommages à l\'ADN → plus de cellules sénescentes s\'accumulent', plant: 'Les flavonoïdes agissent comme sénolytiques, éliminant les cellules zombies' },
+      { name: 'Inflammation chronique', sub: 'Inflammaging', animal: 'Graisses saturées + endotoxines déclenchent une inflammation systémique', plant: 'Fibres + polyphénols → acides gras à chaîne courte anti-inflammatoires' },
+      { name: 'Stress oxydatif', sub: 'Dommages par les radicaux libres', animal: 'Génère des espèces réactives de l\'oxygène avec peu d\'antioxydants protecteurs', plant: 'Des milliers d\'antioxydants neutralisent les radicaux libres' },
+      { name: 'Dysbiose intestinale', sub: 'Perturbation du microbiome', animal: 'Nourrit des bactéries pathogènes, favorise l\'inflammation intestinale', plant: 'Les fibres alimentaires nourrissent les bactéries protectrices → signaux de longévité' },
+    ],
+    ctaTitle: 'Prenez le contrôle de votre santé.',
+    ctaBtn1: 'Commencer avec le Daily Dozen',
+    ctaBtn2: 'Mesurer vos biomarqueurs',
+    ctaBtn3: 'Apprendre à commencer',
     heatmapTag: 'ALIMENTATION & LONGÉVITÉ',
     heatmapTitle: "Ce que les chercheurs savent sur l'alimentation & le vieillissement sain",
     heatmapSub: "Tessiere et al. (2025) dans Nature Medicine ont suivi 105 015 participants dans deux grandes cohortes (Nurses' Health Study & Health Professionals Follow-up Study) pendant 30 ans — identifiant les aliments qui favorisent ou accélèrent le vieillissement sur 6 résultats de santé.",
@@ -350,8 +416,30 @@ const T = {
       'Si ralentizamos el envejecimiento biológico solo 7 años, el riesgo de muerte, fragilidad y discapacidad se reduce a la mitad a cualquier edad.',
       'Una persona de 50 años tendría el perfil de salud de un actual de 43. Una de 60 años se parecería a una actual de 53.',
     ],
-    agingHallmarksNote: 'Los investigadores han identificado 12 características biológicas del envejecimiento. Muchas de ellas están directamente influenciadas por la dieta.',
+    agingHallmarksNote: 'Los investigadores han identificado 11 características biológicas del envejecimiento. Muchas de ellas están directamente influenciadas por la dieta.',
     agingSource: 'Fuente: Kennedy et al. (2016), Cold Spring Harb Perspect Med',
+    hallmarksTag: 'HALLMARKS DEL ENVEJECIMIENTO',
+    hallmarksTitle: '11 mecanismos del envejecimiento — y lo que hace tu dieta a cada uno.',
+    hallmarksSub: 'Cada hallmark puede acelerarse o ralentizarse según lo que comes.',
+    animalLabel: 'Productos animales:',
+    plantLabel: 'Vegetal:',
+    hallmarks: [
+      { name: 'AMPK', sub: 'Sensor de energía celular', animal: 'Alta densidad calórica + grasas saturadas → AMPK inhibida', plant: 'Fibra dietética + ventanas de ayuno → AMPK activada' },
+      { name: 'Autofagia', sub: 'Autolimpieza celular', animal: 'Exceso constante de proteínas desactiva la autofagia', plant: 'Polifenoles + carga calórica reducida → autofagia mejorada' },
+      { name: 'mTOR', sub: 'Interruptor de señalización de crecimiento', animal: 'Proteína animal (leucina) → mTOR crónicamente sobreactivado', plant: 'Proteína vegetal → mTOR moderado para la longevidad' },
+      { name: 'IGF-1', sub: 'Factor de crecimiento insulínico', animal: 'Lácteos, carne, huevos → IGF-1 elevado a niveles pro-cáncer', plant: 'Alimentos vegetales integrales → IGF-1 a niveles de longevidad' },
+      { name: 'Acortamiento de telómeros', sub: 'Reloj biológico', animal: 'Inflamación crónica → pérdida acelerada de telómeros', plant: 'Antioxidantes + compuestos antiinflamatorios → protección de telómeros' },
+      { name: 'Alteraciones epigenéticas', sub: 'Interruptores de expresión génica', animal: 'Promueve patrones de expresión génica proinflamatorios', plant: 'Polifenoles + donantes de metilo activan genes de longevidad' },
+      { name: 'Disfunción mitocondrial', sub: 'Fallo de la central energética', animal: 'Las grasas saturadas dañan la función de la membrana mitocondrial', plant: 'AMPK + antioxidantes apoyan la integridad mitocondrial' },
+      { name: 'Senescencia celular', sub: 'Células zombi', animal: 'Aumenta el daño al ADN → más células senescentes se acumulan', plant: 'Los flavonoides actúan como senolíticos, eliminando células zombi' },
+      { name: 'Inflamación crónica', sub: 'Inflammaging', animal: 'Grasas saturadas + endotoxinas desencadenan inflamación sistémica', plant: 'Fibra + polifenoles → ácidos grasos de cadena corta antiinflamatorios' },
+      { name: 'Estrés oxidativo', sub: 'Daño por radicales libres', animal: 'Genera especies reactivas de oxígeno con pocos antioxidantes protectores', plant: 'Miles de antioxidantes neutralizan los radicales libres' },
+      { name: 'Disbiosis intestinal', sub: 'Alteración del microbioma', animal: 'Alimenta bacterias patógenas, promueve la inflamación intestinal', plant: 'La fibra alimenta bacterias protectoras → señales de longevidad' },
+    ],
+    ctaTitle: 'Toma el control de tu salud.',
+    ctaBtn1: 'Empezar con el Daily Dozen',
+    ctaBtn2: 'Medir tus biomarcadores',
+    ctaBtn3: 'Aprender cómo empezar',
     heatmapTag: 'ALIMENTACIÓN & LONGEVIDAD',
     heatmapTitle: 'Lo que los investigadores saben sobre alimentación y envejecimiento saludable',
     heatmapSub: "Tessiere et al. (2025) en Nature Medicine siguieron a 105.015 participantes en dos grandes cohortes (Nurses' Health Study & Health Professionals Follow-up Study) durante 30 años — identificando qué alimentos promueven o aceleran el envejecimiento en 6 resultados de salud.",
@@ -391,8 +479,30 @@ const T = {
       'Se rallentiamo l\'invecchiamento biologico di soli 7 anni, il rischio di morte, fragilità e disabilità si dimezza ad ogni età.',
       'Un 50enne avrebbe il profilo di salute di un attuale 43enne. Un 60enne assomiglierebbe a un attuale 53enne.',
     ],
-    agingHallmarksNote: 'I ricercatori hanno identificato 12 caratteristiche biologiche dell\'invecchiamento. Molte di esse sono direttamente influenzate dall\'alimentazione.',
+    agingHallmarksNote: 'I ricercatori hanno identificato 11 caratteristiche biologiche dell\'invecchiamento. Molte di esse sono direttamente influenzate dall\'alimentazione.',
     agingSource: 'Fonte: Kennedy et al. (2016), Cold Spring Harb Perspect Med',
+    hallmarksTag: 'HALLMARKS DELL\'INVECCHIAMENTO',
+    hallmarksTitle: '11 meccanismi dell\'invecchiamento — e cosa fa la tua dieta a ciascuno.',
+    hallmarksSub: 'Ogni hallmark può essere accelerato o rallentato da ciò che mangi.',
+    animalLabel: 'Prodotti animali:',
+    plantLabel: 'Vegetale:',
+    hallmarks: [
+      { name: 'AMPK', sub: 'Sensore energetico cellulare', animal: 'Alta densità calorica + grassi saturi → AMPK inibita', plant: 'Fibre alimentari + finestre di digiuno → AMPK attivata' },
+      { name: 'Autofagia', sub: 'Autopulizia cellulare', animal: 'Eccesso costante di proteine disattiva l\'autofagia', plant: 'Polifenoli + carico calorico ridotto → autofagia potenziata' },
+      { name: 'mTOR', sub: 'Interruttore di segnalazione della crescita', animal: 'Proteine animali (leucina) → mTOR cronicamente iperattivato', plant: 'Proteine vegetali → mTOR moderato per la longevità' },
+      { name: 'IGF-1', sub: 'Fattore di crescita insulino-simile', animal: 'Latticini, carne, uova → IGF-1 elevato a livelli pro-cancro', plant: 'Alimenti vegetali integrali → IGF-1 a livelli di longevità' },
+      { name: 'Accorciamento dei telomeri', sub: 'Orologio biologico', animal: 'Infiammazione cronica → perdita accelerata dei telomeri', plant: 'Antiossidanti + composti antinfiammatori → protezione dei telomeri' },
+      { name: 'Alterazioni epigenetiche', sub: 'Interruttori dell\'espressione genica', animal: 'Promuove profili di espressione genica pro-infiammatoria', plant: 'Polifenoli + donatori di metile attivano geni della longevità' },
+      { name: 'Disfunzione mitocondriale', sub: 'Guasto della centrale energetica', animal: 'I grassi saturi compromettono la funzione della membrana mitocondriale', plant: 'AMPK + antiossidanti supportano l\'integrità mitocondriale' },
+      { name: 'Senescenza cellulare', sub: 'Cellule zombi', animal: 'Aumenta il danno al DNA → si accumulano più cellule senescenti', plant: 'I flavonoidi agiscono come senolitici, eliminando le cellule zombi' },
+      { name: 'Infiammazione cronica', sub: 'Inflammaging', animal: 'Grassi saturi + endotossine scatenano infiammazione sistemica', plant: 'Fibra + polifenoli → acidi grassi a catena corta antinfiammatori' },
+      { name: 'Stress ossidativo', sub: 'Danno da radicali liberi', animal: 'Genera specie reattive dell\'ossigeno con pochi antiossidanti protettivi', plant: 'Migliaia di antiossidanti neutralizzano i radicali liberi' },
+      { name: 'Disbiosi intestinale', sub: 'Alterazione del microbioma', animal: 'Nutre batteri patogeni, promuove l\'infiammazione intestinale', plant: 'Le fibre alimentano batteri protettivi → segnali di longevità' },
+    ],
+    ctaTitle: 'Prendi il controllo della tua salute.',
+    ctaBtn1: 'Inizia con il Daily Dozen',
+    ctaBtn2: 'Misura i tuoi biomarcatori',
+    ctaBtn3: 'Scopri come iniziare',
     heatmapTag: 'ALIMENTAZIONE & LONGEVITÀ',
     heatmapTitle: 'Cosa sanno i ricercatori su alimentazione e invecchiamento sano',
     heatmapSub: "Tessiere et al. (2025) su Nature Medicine hanno seguito 105.015 partecipanti in due grandi coorti (Nurses' Health Study & Health Professionals Follow-up Study) per 30 anni — identificando gli alimenti che favoriscono o accelerano l'invecchiamento su 6 esiti di salute.",
@@ -507,7 +617,7 @@ export default async function SciencePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             {DISEASES.map((d, i) => (
-              <div key={i} className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 p-6">
+              <div key={i} className="rounded-xl bg-white ring-1 ring-[#0e393d]/8 p-6">
                 <div className="flex items-start justify-between mb-4">
                   <span className="text-3xl">{d.emoji}</span>
                   <span className="text-xs font-semibold text-[#0e393d]/40 uppercase tracking-wide">{d.pct}% {t.allDeaths}</span>
@@ -532,8 +642,8 @@ export default async function SciencePage() {
             ))}
           </div>
 
-          <div className="rounded-xl bg-[#0e393d]/5 border border-[#0e393d]/10 px-6 py-5">
-            <p className="text-sm text-[#1c2a2b]/70 leading-relaxed">{t.factsBox}</p>
+          <div className="rounded-xl bg-emerald-50 ring-1 ring-emerald-200 px-6 py-5">
+            <p className="text-sm text-emerald-900/80 leading-relaxed">{t.factsBox}</p>
           </div>
         </section>
 
@@ -543,11 +653,11 @@ export default async function SciencePage() {
           <h2 className="font-serif text-2xl sm:text-3xl text-[#0e393d] mb-3 leading-tight">{t.agingTitle}</h2>
           <p className="text-sm text-[#1c2a2b]/60 mb-8 leading-relaxed max-w-2xl">{t.agingSub}</p>
 
-          <div className="space-y-4 mb-8">
+          <div className="grid sm:grid-cols-3 gap-4 mb-8">
             {t.agingFacts.map((fact, i) => (
-              <div key={i} className="flex gap-5 rounded-xl bg-white ring-1 ring-[#0e393d]/8 px-6 py-5">
-                <span className="shrink-0 w-7 h-7 rounded-full bg-[#0e393d] flex items-center justify-center text-[11px] font-semibold text-white mt-0.5">{i + 1}</span>
-                <p className="text-[0.93rem] text-[#1c2a2b]/80 leading-relaxed">{fact}</p>
+              <div key={i} className="bg-[#0e393d] rounded-xl p-6 text-white">
+                <span className="block text-[#ceab84] text-[10px] font-semibold uppercase tracking-[0.14em] mb-3">0{i + 1}</span>
+                <p className="text-[0.88rem] text-white/70 leading-relaxed">{fact}</p>
               </div>
             ))}
           </div>
@@ -565,6 +675,34 @@ export default async function SciencePage() {
                 PubMed
               </a>
             </p>
+          </div>
+        </section>
+
+        {/* ── Hallmarks of Aging ── */}
+        <section className="w-full max-w-5xl mx-auto px-6 py-16 border-b border-[#0e393d]/10">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-3">{t.hallmarksTag}</p>
+          <h2 className="font-serif text-2xl sm:text-3xl text-[#0e393d] mb-3 leading-tight">{t.hallmarksTitle}</h2>
+          <p className="text-sm text-[#1c2a2b]/60 mb-8 leading-relaxed max-w-2xl">{t.hallmarksSub}</p>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {t.hallmarks.map((h: { name: string; sub: string; animal: string; plant: string }, i: number) => (
+              <div key={i} className="rounded-xl bg-white ring-1 ring-[#0e393d]/8 p-5 flex flex-col gap-3">
+                <div>
+                  <p className="font-serif text-[1rem] text-[#0e393d] leading-snug">{h.name}</p>
+                  <p className="text-[0.75rem] text-[#5a6e6f] mt-0.5">{h.sub}</p>
+                </div>
+                <div className="space-y-2 pt-2 border-t border-[#0e393d]/8">
+                  <p className="text-[0.75rem] leading-snug">
+                    <span className="text-red-500 font-medium">🔴 {t.animalLabel} </span>
+                    <span className="text-red-700/70">{h.animal}</span>
+                  </p>
+                  <p className="text-[0.75rem] leading-snug">
+                    <span className="text-emerald-600 font-medium">🟢 {t.plantLabel} </span>
+                    <span className="text-emerald-700/70">{h.plant}</span>
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -707,6 +845,33 @@ export default async function SciencePage() {
           <div className="rounded-2xl border border-[#ceab84]/30 bg-[#ceab84]/6 px-6 py-5">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#8a6a3e] mb-2">{t.disclaimer}</p>
             <p className="text-sm text-[#8a6a3e]/80 leading-relaxed">{t.disclaimerBody}</p>
+          </div>
+        </section>
+
+        {/* ── CTA ── */}
+        <section className="w-full max-w-5xl mx-auto px-6 pb-16">
+          <div className="rounded-2xl bg-[#0e393d] px-10 md:px-16 py-14 text-center">
+            <h2 className="font-serif text-3xl md:text-4xl text-white mb-8 leading-tight">{t.ctaTitle}</h2>
+            <div className="flex gap-3 flex-wrap justify-center">
+              <a
+                href="/daily-dozen"
+                className="bg-[#ceab84] text-[#0e393d] font-semibold text-[13px] tracking-wide px-7 py-3.5 rounded-full transition-colors hover:bg-[#dfc4a4] whitespace-nowrap"
+              >
+                {t.ctaBtn1}
+              </a>
+              <a
+                href="/shop"
+                className="bg-white/10 text-white border border-white/20 text-[13px] font-light px-7 py-3.5 rounded-full transition-all hover:bg-white/20 whitespace-nowrap"
+              >
+                {t.ctaBtn2}
+              </a>
+              <a
+                href="/how-to-start"
+                className="bg-white/10 text-white border border-white/20 text-[13px] font-light px-7 py-3.5 rounded-full transition-all hover:bg-white/20 whitespace-nowrap"
+              >
+                {t.ctaBtn3}
+              </a>
+            </div>
           </div>
         </section>
 
