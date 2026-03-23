@@ -8,10 +8,9 @@
         "Cómo empezar",
         "Daily Dozen",
         "Recetas",
-        "Restaurante",
+        "Lista de compras",
         null,
         "Blog",
-        "Lista de compras",
         "Cursos"
       ],
       "Health": [
@@ -31,8 +30,10 @@
         "Coaching"
       ],
       "Shop": [
-        "Todos los productos",
-        "Paquetes de análisis",
+        "Tienda",
+        "Análisis de sangre",
+        "Tests clínicos",
+        "Tests epigenéticos",
         null,
         "Carrito"
       ]

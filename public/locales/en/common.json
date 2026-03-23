@@ -5,13 +5,12 @@
     "login": "Login",
     "dropdowns": {
       "Kitchen": [
-        "How to start",
+        "How to Start",
         "Daily Dozen",
         "Recipes",
-        "Restaurant",
+        "Shopping List",
         null,
         "Blog",
-        "Shopping List",
         "Courses"
       ],
       "Health": [
@@ -31,8 +30,10 @@
         "Coaching"
       ],
       "Shop": [
-        "All Products",
-        "Test Packages",
+        "Shop",
+        "Blood Tests",
+        "Clinical Tests",
+        "Epigenetic Tests",
         null,
         "Cart"
       ]
