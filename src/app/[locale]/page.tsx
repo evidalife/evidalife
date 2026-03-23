@@ -3,6 +3,7 @@ import { getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import { createClient } from '@/lib/supabase/server';
 
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 type Lang = (typeof VALID_LANGS)[number];
@@ -29,17 +30,19 @@ const PILLARS: { photo: string; href: string }[] = [
 
 const STEP_PHOTOS = [PHOTOS.step1, PHOTOS.step2, PHOTOS.step3];
 
+// Task 5: corrected stats — Heart 20M/80%, Cancer 10M/40%, Respiratory 4M/70%, Diabetes 2M/85%
 const PROBLEM_STATS = [
-  { stat: '18M', pct: 80 },
+  { stat: '20M', pct: 80 },
   { stat: '10M', pct: 40 },
-  { stat: '6M',  pct: 90 },
-  { stat: '2M',  pct: 70 },
+  { stat: '4M',  pct: 70 },
+  { stat: '2M',  pct: 85 },
 ];
 
+// Task 6: corrected science findings — 80% (Esselstyn), +10–15 yrs, 11 hallmarks
 const SCIENCE_FINDINGS = [
-  { stat: '32%', key: 'f1' },
-  { stat: '+14', key: 'f2' },
-  { stat: '11',  key: 'f3' },
+  { stat: '80%',    key: 'f1' },
+  { stat: '+10–15', key: 'f2' },
+  { stat: '11',     key: 'f3' },
 ];
 
 const T: Record<Lang, {
@@ -49,7 +52,7 @@ const T: Record<Lang, {
   pillars: { tag: string; heading: string; headingEm: string; cards: { title: string; desc: string }[] };
   steps: { tag: string; heading: string; headingEm: string; items: { n: string; title: string; desc: string }[] };
   science: { tag: string; heading: string; sub: string; findings: { label: string }[]; link: string };
-  pricing: { tag: string; heading: string; headingEm: string; plans: { name: string; price: string; priceNote: string; features: string[]; cta: string; highlight: boolean }[] };
+  pricing: { tag: string; heading: string; headingEm: string; cta: string; freeNote: string; markersLabel: string };
   cta: { title: string; sub: string; cta1: string; cta2: string };
 }> = {
   de: {
@@ -65,10 +68,10 @@ const T: Record<Lang, {
       heading: 'Die stille',
       headingEm: 'Epidemie.',
       cards: [
-        { label: 'Herzerkrankungen', desc: '80 % durch Ernährung vermeidbar' },
-        { label: 'Krebs',            desc: '40 % durch Lifestyle vermeidbar' },
-        { label: 'Schlaganfall',     desc: '90 % durch Lifestyle vermeidbar' },
-        { label: 'Diabetes',         desc: '70 % durch Ernährung vermeidbar' },
+        { label: 'Herzerkrankungen',             desc: '80 % durch Ernährung vermeidbar' },
+        { label: 'Krebs',                        desc: '40 % durch Lifestyle vermeidbar' },
+        { label: 'Chron. Atemwegserkrankungen',  desc: '70 % durch Lifestyle vermeidbar' },
+        { label: 'Diabetes',                     desc: '85 % durch Ernährung vermeidbar' },
       ],
       callout: '+10–15 Jahre',
       calloutSub: 'längeres, gesünderes Leben – mit vollwertiger pflanzenbasierter Ernährung.',
@@ -87,7 +90,7 @@ const T: Record<Lang, {
       cards: [
         { title: 'Daily Dozen Tracker', desc: 'Tracke Dr. Gregers 12 Lebensmittelgruppen täglich. Einfache Checkboxen, echte Wirkung.' },
         { title: 'Vollwertige Rezepte',  desc: 'Pflanzenbasierte Rezepte passend zur Daily Dozen. Schnell, lecker, gesund.' },
-        { title: 'Blut-Biomarker',       desc: '36 professionelle Blutmarker in 6 Gesundheitsdomänen. Ab CHF 149.' },
+        { title: 'Blut-Biomarker',       desc: 'Professionelle Blutmarker in 6 Gesundheitsdomänen. Ab CHF 149.' },
         { title: 'Health Dashboard',     desc: 'Dein Longevity Score: alle Werte an einem Ort. Sieh genau, wo du stehst.' },
       ],
     },
@@ -106,9 +109,9 @@ const T: Record<Lang, {
       heading: 'Belegt durch',
       sub: 'Unsere Empfehlungen basieren auf peer-reviewten Studien, nicht auf Trends.',
       findings: [
-        { label: 'Reduktion des Herzerkrankungsrisikos durch WFPB-Ernährung' },
-        { label: 'Lebensjahre zusätzlich durch vollwertige pflanzenbasierte Ernährung' },
-        { label: 'Hallmarks of Aging, die auf Lebensstil ansprechen' },
+        { label: 'Reduktion kardialer Ereignisse durch WFPB-Ernährung (Esselstyn 2014)' },
+        { label: 'Jahre zusätzliche Lebenserwartung durch Lebensstiländerungen' },
+        { label: 'Hallmarks of Aging, die durch Ernährung beeinflusst werden' },
       ],
       link: 'Zur Wissenschaft',
     },
@@ -116,32 +119,9 @@ const T: Record<Lang, {
       tag: 'Preise',
       heading: 'Einfach.',
       headingEm: 'Transparent.',
-      plans: [
-        {
-          name: 'Core',
-          price: 'Kostenlos',
-          priceNote: 'Für immer',
-          features: ['Daily Dozen Tracker', 'Rezeptbibliothek', 'Ernährungstipps', 'Community-Zugang'],
-          cta: 'Kostenlos starten',
-          highlight: false,
-        },
-        {
-          name: 'Pro',
-          price: 'CHF 149',
-          priceNote: 'einmalig pro Test',
-          features: ['Alles in Core', 'Basis-Laborpanel (12 Marker)', 'Persönliches Dashboard', 'Ergebnisinterpretation'],
-          cta: 'Pro wählen',
-          highlight: true,
-        },
-        {
-          name: 'Complete',
-          price: 'CHF 299',
-          priceNote: 'einmalig pro Test',
-          features: ['Alles in Pro', 'Volles Laborpanel (36 Marker)', '6 Gesundheitsdomänen', 'Longevity Score + Verlauf'],
-          cta: 'Complete wählen',
-          highlight: false,
-        },
-      ],
+      cta: 'Details ansehen',
+      freeNote: 'Kostenloses Konto inkl. Daily Dozen Tracker, Rezepte und Einkaufsliste.',
+      markersLabel: 'Blutmarker',
     },
     cta: {
       title: 'Deine Gesundheitsreise beginnt mit einer Mahlzeit.',
@@ -163,10 +143,10 @@ const T: Record<Lang, {
       heading: 'The silent',
       headingEm: 'epidemic.',
       cards: [
-        { label: 'Heart disease', desc: '80% preventable through diet' },
-        { label: 'Cancer',        desc: '40% preventable through lifestyle' },
-        { label: 'Stroke',        desc: '90% preventable through lifestyle' },
-        { label: 'Diabetes',      desc: '70% preventable through diet' },
+        { label: 'Heart disease',        desc: '80% preventable through diet' },
+        { label: 'Cancer',               desc: '40% preventable through lifestyle' },
+        { label: 'Chronic respiratory',  desc: '70% preventable through lifestyle' },
+        { label: 'Diabetes',             desc: '85% preventable through diet' },
       ],
       callout: '+10–15 years',
       calloutSub: 'longer, healthier life — with a whole-food, plant-based diet.',
@@ -185,7 +165,7 @@ const T: Record<Lang, {
       cards: [
         { title: 'Daily Dozen Tracker', desc: "Track Dr. Greger's 12 food groups daily. Simple checkboxes, real impact." },
         { title: 'Whole-Food Recipes',  desc: 'Plant-based recipes matched to the Daily Dozen. Quick, delicious, healthy.' },
-        { title: 'Blood Biomarkers',    desc: '36 professional blood markers across 6 health domains. From CHF 149.' },
+        { title: 'Blood Biomarkers',    desc: 'Professional blood markers across 6 health domains. From CHF 149.' },
         { title: 'Health Dashboard',    desc: 'Your Longevity Score: all results in one place. See exactly where you stand.' },
       ],
     },
@@ -204,9 +184,9 @@ const T: Record<Lang, {
       heading: 'Backed by evidence.',
       sub: 'Our recommendations are based on peer-reviewed research, not trends.',
       findings: [
-        { label: 'Reduction in heart disease risk from a WFPB diet' },
-        { label: 'Additional life years from a whole-food, plant-based diet' },
-        { label: 'Hallmarks of Aging that respond to lifestyle interventions' },
+        { label: 'Reduction in cardiac events with a WFPB diet (Esselstyn 2014)' },
+        { label: 'Additional years of life expectancy through lifestyle changes' },
+        { label: 'Hallmarks of Aging influenced by diet and lifestyle' },
       ],
       link: 'Explore the science',
     },
@@ -214,32 +194,9 @@ const T: Record<Lang, {
       tag: 'Pricing',
       heading: 'Simple.',
       headingEm: 'Transparent.',
-      plans: [
-        {
-          name: 'Core',
-          price: 'Free',
-          priceNote: 'Forever',
-          features: ['Daily Dozen Tracker', 'Recipe library', 'Nutrition tips', 'Community access'],
-          cta: 'Start for free',
-          highlight: false,
-        },
-        {
-          name: 'Pro',
-          price: 'CHF 149',
-          priceNote: 'one-time per test',
-          features: ['Everything in Core', 'Basic lab panel (12 markers)', 'Personal dashboard', 'Result interpretation'],
-          cta: 'Choose Pro',
-          highlight: true,
-        },
-        {
-          name: 'Complete',
-          price: 'CHF 299',
-          priceNote: 'one-time per test',
-          features: ['Everything in Pro', 'Full lab panel (36 markers)', '6 health domains', 'Longevity Score + history'],
-          cta: 'Choose Complete',
-          highlight: false,
-        },
-      ],
+      cta: 'View details',
+      freeNote: 'Free account includes Daily Dozen tracker, recipes, and shopping list.',
+      markersLabel: 'blood markers',
     },
     cta: {
       title: 'Your health journey starts with one meal.',
@@ -261,13 +218,13 @@ const T: Record<Lang, {
       heading: "L'épidémie",
       headingEm: 'silencieuse.',
       cards: [
-        { label: 'Maladies cardiaques', desc: '80 % évitables par l\'alimentation' },
-        { label: 'Cancer',              desc: '40 % évitables par le mode de vie' },
-        { label: 'AVC',                 desc: '90 % évitables par le mode de vie' },
-        { label: 'Diabète',             desc: '70 % évitables par l\'alimentation' },
+        { label: 'Maladies cardiaques',      desc: "80 % évitables par l'alimentation" },
+        { label: 'Cancer',                   desc: '40 % évitables par le mode de vie' },
+        { label: 'Maladies respiratoires',   desc: '70 % évitables par le mode de vie' },
+        { label: 'Diabète',                  desc: "85 % évitables par l'alimentation" },
       ],
       callout: '+10–15 ans',
-      calloutSub: 'de vie en plus, en meilleure santé — grâce à une alimentation végétale à base d\'aliments complets.',
+      calloutSub: "de vie en plus, en meilleure santé — grâce à une alimentation végétale à base d'aliments complets.",
     },
     mission: {
       tag: 'Notre Mission',
@@ -283,7 +240,7 @@ const T: Record<Lang, {
       cards: [
         { title: 'Daily Dozen Tracker',      desc: 'Suivez les 12 groupes alimentaires du Dr Greger chaque jour. Cases simples, impact réel.' },
         { title: 'Recettes complètes',        desc: 'Recettes végétales adaptées au Daily Dozen. Rapides, délicieuses, saines.' },
-        { title: 'Biomarqueurs sanguins',     desc: '36 marqueurs sanguins professionnels sur 6 domaines de santé. À partir de CHF 149.' },
+        { title: 'Biomarqueurs sanguins',     desc: '6 domaines de santé. À partir de CHF 149.' },
         { title: 'Tableau de bord santé',     desc: 'Votre score de longévité : tous les résultats en un seul endroit. Voyez où vous en êtes.' },
       ],
     },
@@ -302,9 +259,9 @@ const T: Record<Lang, {
       heading: 'Fondé sur des preuves.',
       sub: 'Nos recommandations sont basées sur des recherches évaluées par des pairs, pas sur des tendances.',
       findings: [
-        { label: 'Réduction du risque de maladie cardiaque grâce au régime WFPB' },
-        { label: 'Années de vie supplémentaires grâce à une alimentation végétale complète' },
-        { label: 'Marqueurs du vieillissement qui répondent aux interventions sur le mode de vie' },
+        { label: 'Réduction des événements cardiaques avec un régime WFPB (Esselstyn 2014)' },
+        { label: "Années d'espérance de vie supplémentaires grâce aux changements de mode de vie" },
+        { label: 'Marqueurs du vieillissement influencés par l\'alimentation et le mode de vie' },
       ],
       link: 'Explorer la science',
     },
@@ -312,32 +269,9 @@ const T: Record<Lang, {
       tag: 'Tarifs',
       heading: 'Simple.',
       headingEm: 'Transparent.',
-      plans: [
-        {
-          name: 'Core',
-          price: 'Gratuit',
-          priceNote: 'Pour toujours',
-          features: ['Daily Dozen Tracker', 'Bibliothèque de recettes', 'Conseils nutritionnels', 'Accès communautaire'],
-          cta: 'Commencer gratuitement',
-          highlight: false,
-        },
-        {
-          name: 'Pro',
-          price: 'CHF 149',
-          priceNote: 'unique par test',
-          features: ['Tout dans Core', 'Panel de base (12 marqueurs)', 'Tableau de bord personnel', 'Interprétation des résultats'],
-          cta: 'Choisir Pro',
-          highlight: true,
-        },
-        {
-          name: 'Complete',
-          price: 'CHF 299',
-          priceNote: 'unique par test',
-          features: ['Tout dans Pro', 'Panel complet (36 marqueurs)', '6 domaines de santé', 'Score de longévité + historique'],
-          cta: 'Choisir Complete',
-          highlight: false,
-        },
-      ],
+      cta: 'Voir les détails',
+      freeNote: 'Le compte gratuit inclut le Daily Dozen Tracker, les recettes et la liste de courses.',
+      markersLabel: 'marqueurs sanguins',
     },
     cta: {
       title: 'Votre parcours de santé commence par un repas.',
@@ -359,10 +293,10 @@ const T: Record<Lang, {
       heading: 'La epidemia',
       headingEm: 'silenciosa.',
       cards: [
-        { label: 'Enfermedades cardíacas', desc: '80% prevenibles a través de la dieta' },
-        { label: 'Cáncer',                 desc: '40% prevenibles a través del estilo de vida' },
-        { label: 'Ictus',                  desc: '90% prevenibles a través del estilo de vida' },
-        { label: 'Diabetes',               desc: '70% prevenibles a través de la dieta' },
+        { label: 'Enfermedades cardíacas',      desc: '80% prevenibles a través de la dieta' },
+        { label: 'Cáncer',                      desc: '40% prevenibles a través del estilo de vida' },
+        { label: 'Enfermedades respiratorias',  desc: '70% prevenibles a través del estilo de vida' },
+        { label: 'Diabetes',                    desc: '85% prevenibles a través de la dieta' },
       ],
       callout: '+10–15 años',
       calloutSub: 'más de vida saludable — con una dieta integral a base de plantas.',
@@ -381,7 +315,7 @@ const T: Record<Lang, {
       cards: [
         { title: 'Daily Dozen Tracker',    desc: 'Registra los 12 grupos de alimentos del Dr. Greger cada día. Casillas simples, impacto real.' },
         { title: 'Recetas integrales',      desc: 'Recetas vegetales adaptadas al Daily Dozen. Rápidas, deliciosas, saludables.' },
-        { title: 'Biomarcadores en sangre', desc: '36 marcadores sanguíneos profesionales en 6 dominios de salud. Desde CHF 149.' },
+        { title: 'Biomarcadores en sangre', desc: '6 dominios de salud. Desde CHF 149.' },
         { title: 'Panel de salud',          desc: 'Tu puntuación de longevidad: todos los resultados en un lugar. Ve exactamente dónde estás.' },
       ],
     },
@@ -400,9 +334,9 @@ const T: Record<Lang, {
       heading: 'Respaldado por evidencia.',
       sub: 'Nuestras recomendaciones se basan en investigaciones revisadas por pares, no en tendencias.',
       findings: [
-        { label: 'Reducción del riesgo de enfermedad cardíaca con la dieta WFPB' },
-        { label: 'Años de vida adicionales con una dieta integral a base de plantas' },
-        { label: 'Marcas del envejecimiento que responden a intervenciones de estilo de vida' },
+        { label: 'Reducción de eventos cardíacos con una dieta WFPB (Esselstyn 2014)' },
+        { label: 'Años adicionales de esperanza de vida a través de cambios de estilo de vida' },
+        { label: 'Marcas del envejecimiento influenciadas por la dieta y el estilo de vida' },
       ],
       link: 'Explorar la ciencia',
     },
@@ -410,32 +344,9 @@ const T: Record<Lang, {
       tag: 'Precios',
       heading: 'Simple.',
       headingEm: 'Transparente.',
-      plans: [
-        {
-          name: 'Core',
-          price: 'Gratis',
-          priceNote: 'Para siempre',
-          features: ['Daily Dozen Tracker', 'Biblioteca de recetas', 'Consejos nutricionales', 'Acceso a la comunidad'],
-          cta: 'Empezar gratis',
-          highlight: false,
-        },
-        {
-          name: 'Pro',
-          price: 'CHF 149',
-          priceNote: 'único por prueba',
-          features: ['Todo en Core', 'Panel básico (12 marcadores)', 'Panel personal', 'Interpretación de resultados'],
-          cta: 'Elegir Pro',
-          highlight: true,
-        },
-        {
-          name: 'Complete',
-          price: 'CHF 299',
-          priceNote: 'único por prueba',
-          features: ['Todo en Pro', 'Panel completo (36 marcadores)', '6 dominios de salud', 'Puntuación de longevidad + historial'],
-          cta: 'Elegir Complete',
-          highlight: false,
-        },
-      ],
+      cta: 'Ver detalles',
+      freeNote: 'La cuenta gratuita incluye Daily Dozen Tracker, recetas y lista de compras.',
+      markersLabel: 'biomarcadores',
     },
     cta: {
       title: 'Tu viaje de salud comienza con una comida.',
@@ -457,10 +368,10 @@ const T: Record<Lang, {
       heading: "L'epidemia",
       headingEm: 'silenziosa.',
       cards: [
-        { label: 'Malattie cardiache', desc: "80% prevenibili attraverso l'alimentazione" },
-        { label: 'Cancro',             desc: '40% prevenibili attraverso lo stile di vita' },
-        { label: 'Ictus',              desc: '90% prevenibili attraverso lo stile di vita' },
-        { label: 'Diabete',            desc: "70% prevenibili attraverso l'alimentazione" },
+        { label: 'Malattie cardiache',         desc: "80% prevenibili attraverso l'alimentazione" },
+        { label: 'Cancro',                     desc: '40% prevenibili attraverso lo stile di vita' },
+        { label: 'Malattie respiratorie',      desc: '70% prevenibili attraverso lo stile di vita' },
+        { label: 'Diabete',                    desc: "85% prevenibili attraverso l'alimentazione" },
       ],
       callout: '+10–15 anni',
       calloutSub: 'di vita in più, più sana — con una dieta integrale a base vegetale.',
@@ -479,7 +390,7 @@ const T: Record<Lang, {
       cards: [
         { title: 'Daily Dozen Tracker',    desc: 'Traccia i 12 gruppi alimentari del Dr. Greger ogni giorno. Caselle semplici, impatto reale.' },
         { title: 'Ricette integrali',       desc: 'Ricette vegetali abbinate al Daily Dozen. Veloci, deliziose, sane.' },
-        { title: 'Biomarcatori nel sangue', desc: '36 marcatori del sangue professionali su 6 domini di salute. Da CHF 149.' },
+        { title: 'Biomarcatori nel sangue', desc: '6 domini di salute. Da CHF 149.' },
         { title: 'Dashboard salute',        desc: 'Il tuo Longevity Score: tutti i risultati in un unico posto. Vedi esattamente dove ti trovi.' },
       ],
     },
@@ -498,9 +409,9 @@ const T: Record<Lang, {
       heading: 'Supportato da evidenze.',
       sub: 'Le nostre raccomandazioni si basano su ricerche peer-reviewed, non su tendenze.',
       findings: [
-        { label: 'Riduzione del rischio di malattie cardiache con la dieta WFPB' },
-        { label: 'Anni di vita in più con una dieta integrale a base vegetale' },
-        { label: 'Segni distintivi dell\'invecchiamento che rispondono a interventi sullo stile di vita' },
+        { label: 'Riduzione degli eventi cardiaci con la dieta WFPB (Esselstyn 2014)' },
+        { label: "Anni di aspettativa di vita in più attraverso cambiamenti dello stile di vita" },
+        { label: "Segni distintivi dell'invecchiamento influenzati da dieta e stile di vita" },
       ],
       link: 'Esplora la scienza',
     },
@@ -508,32 +419,9 @@ const T: Record<Lang, {
       tag: 'Prezzi',
       heading: 'Semplice.',
       headingEm: 'Trasparente.',
-      plans: [
-        {
-          name: 'Core',
-          price: 'Gratuito',
-          priceNote: 'Per sempre',
-          features: ['Daily Dozen Tracker', 'Biblioteca ricette', 'Consigli nutrizionali', 'Accesso alla community'],
-          cta: 'Inizia gratis',
-          highlight: false,
-        },
-        {
-          name: 'Pro',
-          price: 'CHF 149',
-          priceNote: 'una tantum per test',
-          features: ['Tutto in Core', 'Panel base (12 marcatori)', 'Dashboard personale', 'Interpretazione risultati'],
-          cta: 'Scegli Pro',
-          highlight: true,
-        },
-        {
-          name: 'Complete',
-          price: 'CHF 299',
-          priceNote: 'una tantum per test',
-          features: ['Tutto in Pro', 'Panel completo (36 marcatori)', '6 domini di salute', 'Longevity Score + storico'],
-          cta: 'Scegli Complete',
-          highlight: false,
-        },
-      ],
+      cta: 'Vedi dettagli',
+      freeNote: 'Il conto gratuito include Daily Dozen Tracker, ricette e lista della spesa.',
+      markersLabel: 'biomarcatori',
     },
     cta: {
       title: 'Il tuo viaggio di salute inizia con un pasto.',
@@ -570,6 +458,26 @@ export default async function HomePage() {
   const locale = await getLocale();
   const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const t = T[lang];
+
+  // ─── Fetch real product data ───────────────────────────────────────────────
+  const supabase = await createClient();
+
+  const { data: products } = await supabase
+    .from('products')
+    .select('id, slug, name, short_description, price_chf, compare_at_price_chf, sort_order')
+    .eq('product_type', 'test_package')
+    .eq('is_active', true)
+    .order('sort_order');
+
+  const { data: itemCounts } = await supabase
+    .from('product_items')
+    .select('product_id, item_id')
+    .in('product_id', (products ?? []).map((p) => p.id));
+
+  const countMap: Record<string, number> = {};
+  for (const item of itemCounts ?? []) {
+    countMap[item.product_id] = (countMap[item.product_id] || 0) + 1;
+  }
 
   return (
     <div className="font-sans bg-[#fafaf8] text-[#1c2a2b] overflow-x-hidden">
@@ -760,7 +668,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ─── 7. PRICING TEASER ─── */}
+      {/* ─── 7. PRICING — live from DB ─── */}
       <section className="border-t border-[#0e393d]/10">
         <div className="max-w-[1060px] mx-auto px-8 md:px-12 py-20 md:py-28">
           <div className="mb-12 text-center">
@@ -774,48 +682,65 @@ export default async function HomePage() {
               <em className="italic font-normal text-[#0e393d]/60">{t.pricing.headingEm}</em>
             </h2>
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {t.pricing.plans.map((plan) => (
-              <div
-                key={plan.name}
-                className={`rounded-2xl p-8 flex flex-col ${
-                  plan.highlight
-                    ? 'bg-[#0e393d] ring-2 ring-[#ceab84]'
-                    : 'bg-white ring-1 ring-[#0e393d]/10'
-                }`}
-              >
-                <div className={`text-xs font-medium tracking-widest uppercase mb-2 ${plan.highlight ? 'text-[#ceab84]' : 'text-[#5a6e6f]'}`}>
-                  {plan.name}
-                </div>
-                <div className={`font-serif text-4xl font-normal mb-0.5 ${plan.highlight ? 'text-white' : 'text-[#0e393d]'}`}>
-                  {plan.price}
-                </div>
-                <div className={`text-xs mb-6 ${plan.highlight ? 'text-white/50' : 'text-[#5a6e6f]'}`}>
-                  {plan.priceNote}
-                </div>
-                <ul className="flex-1 space-y-2.5 mb-8">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2.5">
-                      <span className={`mt-0.5 text-[10px] ${plan.highlight ? 'text-[#ceab84]' : 'text-emerald-600'}`}>✓</span>
-                      <span className={`text-[0.82rem] font-light leading-snug ${plan.highlight ? 'text-white/80' : 'text-[#5a6e6f]'}`}>
-                        {f}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+            {(products ?? []).map((product, idx) => {
+              const name = (product.name as Record<string, string>)?.[lang]
+                ?? (product.name as Record<string, string>)?.en
+                ?? '';
+              const shortDesc = (product.short_description as Record<string, string>)?.[lang]
+                ?? (product.short_description as Record<string, string>)?.en
+                ?? '';
+              const count = countMap[product.id] || 0;
+              const isMiddle = idx === 1;
+
+              return (
                 <Link
-                  href="/login"
-                  className={`text-center font-medium text-[13px] tracking-wide px-6 py-3 rounded-full transition-colors whitespace-nowrap ${
-                    plan.highlight
-                      ? 'bg-[#ceab84] text-[#0e393d] hover:bg-[#dfc4a4]'
-                      : 'bg-[#0e393d]/8 text-[#0e393d] hover:bg-[#0e393d]/15'
+                  key={product.id}
+                  href={`/shop/${product.slug}`}
+                  className={`rounded-2xl p-8 flex flex-col hover:-translate-y-1 transition-transform duration-200 ${
+                    isMiddle
+                      ? 'bg-[#0e393d] ring-2 ring-[#ceab84]'
+                      : 'bg-white ring-1 ring-[#0e393d]/10'
                   }`}
                 >
-                  {plan.cta}
+                  <div className={`text-xs font-medium tracking-widest uppercase mb-2 ${isMiddle ? 'text-[#ceab84]' : 'text-[#5a6e6f]'}`}>
+                    {name}
+                  </div>
+                  <div className={`font-serif text-4xl font-normal mb-0.5 ${isMiddle ? 'text-white' : 'text-[#0e393d]'}`}>
+                    CHF {product.price_chf}
+                  </div>
+                  {product.compare_at_price_chf && (
+                    <div className={`text-xs line-through mb-1 ${isMiddle ? 'text-white/30' : 'text-[#5a6e6f]/50'}`}>
+                      CHF {product.compare_at_price_chf}
+                    </div>
+                  )}
+                  <div className={`text-xs mb-6 leading-relaxed ${isMiddle ? 'text-white/50' : 'text-[#5a6e6f]'}`}>
+                    {shortDesc}
+                  </div>
+                  {count > 0 && (
+                    <div className={`flex items-center gap-1.5 mb-auto ${isMiddle ? 'text-white/70' : 'text-[#5a6e6f]'}`}>
+                      <span className={`text-[10px] ${isMiddle ? 'text-[#ceab84]' : 'text-emerald-600'}`}>✓</span>
+                      <span className="text-[0.82rem] font-light">
+                        {count} {t.pricing.markersLabel}
+                      </span>
+                    </div>
+                  )}
+                  <div className="pt-6 mt-auto">
+                    <span className={`block text-center font-medium text-[13px] tracking-wide px-6 py-3 rounded-full transition-colors whitespace-nowrap ${
+                      isMiddle
+                        ? 'bg-[#ceab84] text-[#0e393d] hover:bg-[#dfc4a4]'
+                        : 'bg-[#0e393d]/8 text-[#0e393d] hover:bg-[#0e393d]/15'
+                    }`}>
+                      {t.pricing.cta}
+                    </span>
+                  </div>
                 </Link>
-              </div>
-            ))}
+              );
+            })}
           </div>
+
+          <p className="text-center text-sm text-[#5a6e6f] mt-6">{t.pricing.freeNote}</p>
         </div>
       </section>
 
