@@ -50,16 +50,6 @@ const NAV_GROUPS: NavGroup[] = [
         ),
       },
       {
-        label: 'Product Items',
-        href: '/admin/product-items',
-        icon: (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 11 12 14 22 4" />
-            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-          </svg>
-        ),
-      },
-      {
         label: 'Orders',
         href: '/admin/orders',
         icon: (
@@ -160,6 +150,16 @@ const NAV_GROUPS: NavGroup[] = [
         icon: (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11M9 14l-4 7h14l-4-7" />
+          </svg>
+        ),
+      },
+      {
+        label: 'Biomarker Registry',
+        href: '/admin/product-items',
+        icon: (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" />
           </svg>
         ),
       },
