@@ -3,6 +3,9 @@ import { Link } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import { buildMeta, PAGE_META } from '@/lib/seo';
+import { createClient } from '@/lib/supabase/server';
+
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -13,276 +16,300 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 type Lang = (typeof VALID_LANGS)[number];
 
+// ─── Clinical domain groupings (based on sort_order ranges from seed data) ───
+
+type DomainDef = {
+  key: string;
+  emoji: string;
+  sortMin: number;
+  sortMax: number;
+  label: Record<Lang, string>;
+};
+
+const DOMAINS: DomainDef[] = [
+  { key: 'heart_vessels',    emoji: '❤️',  sortMin: 1,   sortMax: 65,  label: { de: 'Herz & Gefässe',          en: 'Heart & Vessels',       fr: 'Cœur & Vaisseaux',      es: 'Corazón & Vasos',        it: 'Cuore & Vasi' } },
+  { key: 'metabolism',       emoji: '⚡',  sortMin: 66,  sortMax: 105, label: { de: 'Stoffwechsel',              en: 'Metabolism',            fr: 'Métabolisme',            es: 'Metabolismo',             it: 'Metabolismo' } },
+  { key: 'inflammation',     emoji: '🛡️',  sortMin: 106, sortMax: 155, label: { de: 'Entzündung & Immunsystem', en: 'Inflammation & Immune', fr: 'Inflammation & Immunité',es: 'Inflamación & Inmunidad', it: 'Infiammazione & Immun.' } },
+  { key: 'organ_function',   emoji: '🫀',  sortMin: 156, sortMax: 225, label: { de: 'Organfunktion',             en: 'Organ Function',        fr: 'Fonction Organique',     es: 'Función Orgánica',        it: 'Funzione Organica' } },
+  { key: 'nutrients',        emoji: '🥬',  sortMin: 226, sortMax: 315, label: { de: 'Nährstoffe',                en: 'Nutrients',             fr: 'Nutriments',             es: 'Nutrientes',              it: 'Nutrienti' } },
+  { key: 'hormones',         emoji: '⚖️',  sortMin: 316, sortMax: 355, label: { de: 'Hormone',                   en: 'Hormones',              fr: 'Hormones',               es: 'Hormonas',                it: 'Ormoni' } },
+  { key: 'body_composition', emoji: '🏋️', sortMin: 356, sortMax: 395, label: { de: 'Körperzusammensetzung',     en: 'Body Composition',      fr: 'Composition Corporelle', es: 'Composición Corporal',    it: 'Composizione Corporea' } },
+  { key: 'fitness',          emoji: '🏃',  sortMin: 396, sortMax: 445, label: { de: 'Fitness & Erholung',        en: 'Fitness & Recovery',    fr: 'Forme & Récupération',   es: 'Forma & Recuperación',    it: 'Forma & Recupero' } },
+  { key: 'epigenetics',      emoji: '🧬',  sortMin: 446, sortMax: 999, label: { de: 'Epigenetik',                en: 'Epigenetics',           fr: 'Épigénétique',           es: 'Epigenética',             it: 'Epigenetica' } },
+];
+
 // ─── UI strings ───────────────────────────────────────────────────────────────
 
 const T: Record<Lang, {
   tag: string;
   h1: string;
   sub: string;
-  packagesHeading: string;
-  recommended: string;
-  biomarkers: (n: number) => string;
-  vitalcheck: string;
-  viewShop: string;
+  matrixHeading: string;
+  markerCount: (n: number) => string;
+  buyNow: string;
+  included: string;
+  notIncluded: string;
+  total: string;
+  markers: string;
   addonsHeading: string;
-  addonsCombo: string;
-  trust: { title: string; body: string }[];
+  addonsSub: string;
+  detailHeading: string;
+  viewAll: string;
+  learnMore: string;
+  refRange: string;
+  optRange: string;
+  rangeTypes: Record<string, string>;
+  trust: { icon: string; title: string; body: string }[];
 }> = {
   de: {
-    tag: 'Longevity Testing',
-    h1: 'Kenne deine Biomarker.',
-    sub: 'Professionelle Bluttests über Partnerlabore – inklusive gratis Vitalcheck und persönlichem Longevity Dashboard.',
-    packagesHeading: 'Test-Pakete',
-    recommended: 'EMPFOHLEN',
-    biomarkers: (n) => `${n} Biomarker analysiert`,
-    vitalcheck: 'Gratis Vitalcheck inkl.',
-    viewShop: 'Im Shop ansehen →',
-    addonsHeading: 'Add-ons',
-    addonsCombo: 'Kombinierbar mit jedem Paket',
+    tag: 'LONGEVITY TESTING',
+    h1: 'Wissen, wo du stehst.',
+    sub: 'Professionelle Bluttests über zertifizierte Partnerlabore – inkl. gratis Vitalcheck und persönlichem Longevity Dashboard.',
+    matrixHeading: 'Paketvergleich',
+    markerCount: (n) => `${n} Biomarker`,
+    buyNow: 'Jetzt kaufen',
+    included: 'Enthalten',
+    notIncluded: 'Nicht enthalten',
+    total: 'Gesamt',
+    markers: 'Marker',
+    addonsHeading: 'Add-on Tests',
+    addonsSub: 'Kombinierbar mit jedem Paket',
+    detailHeading: 'Alle Biomarker',
+    viewAll: 'Alle ansehen',
+    learnMore: 'Mehr erfahren →',
+    refRange: 'Referenzbereich',
+    optRange: 'Optimalbereich',
+    rangeTypes: { range: 'Bereich', lower_is_better: 'Niedriger = besser', higher_is_better: 'Höher = besser' },
     trust: [
-      { title: 'Zertifizierte Partnerlabore', body: 'ISO-akkreditierte Labore in der Schweiz und Deutschland.' },
-      { title: 'Automatisches Dashboard', body: 'Alle Ergebnisse direkt in deinem Evida Life Profil.' },
-      { title: 'Datenschutz first', body: 'Schweizer Datenhaltung, vollständig DSGVO- & nDSG-konform.' },
+      { icon: '🔬', title: 'Zertifizierte Partnerlabore', body: 'ISO-akkreditierte Labore in der Schweiz und Deutschland.' },
+      { icon: '📊', title: 'Automatisches Dashboard', body: 'Alle Ergebnisse direkt in deinem Evida Life Profil.' },
+      { icon: '🔒', title: 'Datenschutz first', body: 'Schweizer Datenhaltung, vollständig DSGVO- & nDSG-konform.' },
     ],
   },
   en: {
-    tag: 'Longevity Testing',
-    h1: 'Know your biomarkers.',
-    sub: 'Professional blood tests via partner labs – including a free vitality check and personal Longevity Dashboard.',
-    packagesHeading: 'Test Packages',
-    recommended: 'RECOMMENDED',
-    biomarkers: (n) => `${n} biomarkers analysed`,
-    vitalcheck: 'Free vitality check incl.',
-    viewShop: 'View in Shop →',
-    addonsHeading: 'Add-ons',
-    addonsCombo: 'Combinable with any package',
+    tag: 'LONGEVITY TESTING',
+    h1: 'Know where you stand.',
+    sub: 'Professional blood tests via certified partner labs – including a free vitality check and personal Longevity Dashboard.',
+    matrixHeading: 'Package Comparison',
+    markerCount: (n) => `${n} biomarkers`,
+    buyNow: 'Buy Now',
+    included: 'Included',
+    notIncluded: 'Not included',
+    total: 'Total',
+    markers: 'markers',
+    addonsHeading: 'Add-on Tests',
+    addonsSub: 'Combinable with any package',
+    detailHeading: 'All Biomarkers',
+    viewAll: 'View all',
+    learnMore: 'Learn more →',
+    refRange: 'Reference range',
+    optRange: 'Optimal range',
+    rangeTypes: { range: 'Range', lower_is_better: 'Lower is better', higher_is_better: 'Higher is better' },
     trust: [
-      { title: 'Certified partner labs', body: 'ISO-accredited laboratories in Switzerland and Germany.' },
-      { title: 'Automatic dashboard', body: 'All results directly in your Evida Life profile.' },
-      { title: 'Privacy first', body: 'Swiss data storage, fully GDPR- & nDSG-compliant.' },
+      { icon: '🔬', title: 'Certified partner labs', body: 'ISO-accredited laboratories in Switzerland and Germany.' },
+      { icon: '📊', title: 'Automatic dashboard', body: 'All results directly in your Evida Life profile.' },
+      { icon: '🔒', title: 'Privacy first', body: 'Swiss data storage, fully GDPR- & nDSG-compliant.' },
     ],
   },
   fr: {
-    tag: 'Tests de longévité',
-    h1: 'Connaissez vos biomarqueurs.',
-    sub: 'Tests sanguins professionnels via des laboratoires partenaires – avec un bilan de vitalité gratuit et un tableau de bord de longévité personnel.',
-    packagesHeading: 'Forfaits de test',
-    recommended: 'RECOMMANDÉ',
-    biomarkers: (n) => `${n} biomarqueurs analysés`,
-    vitalcheck: 'Bilan de vitalité gratuit inclus',
-    viewShop: 'Voir dans la boutique →',
-    addonsHeading: 'Compléments',
-    addonsCombo: 'Combinable avec n\'importe quel forfait',
+    tag: 'TESTS DE LONGÉVITÉ',
+    h1: 'Savoir où vous en êtes.',
+    sub: 'Tests sanguins professionnels via des laboratoires partenaires certifiés – avec bilan de vitalité gratuit et tableau de bord de longévité personnel.',
+    matrixHeading: 'Comparaison des forfaits',
+    markerCount: (n) => `${n} biomarqueurs`,
+    buyNow: 'Acheter maintenant',
+    included: 'Inclus',
+    notIncluded: 'Non inclus',
+    total: 'Total',
+    markers: 'marqueurs',
+    addonsHeading: 'Tests complémentaires',
+    addonsSub: 'Combinable avec n\'importe quel forfait',
+    detailHeading: 'Tous les biomarqueurs',
+    viewAll: 'Tout voir',
+    learnMore: 'En savoir plus →',
+    refRange: 'Plage de référence',
+    optRange: 'Plage optimale',
+    rangeTypes: { range: 'Plage', lower_is_better: 'Plus bas = mieux', higher_is_better: 'Plus haut = mieux' },
     trust: [
-      { title: 'Laboratoires partenaires certifiés', body: 'Laboratoires accrédités ISO en Suisse et en Allemagne.' },
-      { title: 'Tableau de bord automatique', body: 'Tous les résultats directement dans votre profil Evida Life.' },
-      { title: 'Confidentialité d\'abord', body: 'Stockage des données en Suisse, entièrement conforme au RGPD et au nLPD.' },
+      { icon: '🔬', title: 'Laboratoires partenaires certifiés', body: 'Laboratoires accrédités ISO en Suisse et en Allemagne.' },
+      { icon: '📊', title: 'Tableau de bord automatique', body: 'Tous les résultats directement dans votre profil Evida Life.' },
+      { icon: '🔒', title: 'Confidentialité d\'abord', body: 'Stockage des données en Suisse, conforme au RGPD et au nLPD.' },
     ],
   },
   es: {
-    tag: 'Pruebas de longevidad',
-    h1: 'Conoce tus biomarcadores.',
-    sub: 'Análisis de sangre profesionales a través de laboratorios asociados – incluyendo un chequeo de vitalidad gratuito y un panel de longevidad personal.',
-    packagesHeading: 'Paquetes de prueba',
-    recommended: 'RECOMENDADO',
-    biomarkers: (n) => `${n} biomarcadores analizados`,
-    vitalcheck: 'Chequeo de vitalidad gratuito incl.',
-    viewShop: 'Ver en la tienda →',
-    addonsHeading: 'Complementos',
-    addonsCombo: 'Combinable con cualquier paquete',
+    tag: 'PRUEBAS DE LONGEVIDAD',
+    h1: 'Saber dónde estás.',
+    sub: 'Análisis de sangre profesionales a través de laboratorios asociados certificados – con chequeo de vitalidad gratuito y panel de longevidad personal.',
+    matrixHeading: 'Comparativa de paquetes',
+    markerCount: (n) => `${n} biomarcadores`,
+    buyNow: 'Comprar ahora',
+    included: 'Incluido',
+    notIncluded: 'No incluido',
+    total: 'Total',
+    markers: 'marcadores',
+    addonsHeading: 'Tests adicionales',
+    addonsSub: 'Combinable con cualquier paquete',
+    detailHeading: 'Todos los biomarcadores',
+    viewAll: 'Ver todos',
+    learnMore: 'Saber más →',
+    refRange: 'Rango de referencia',
+    optRange: 'Rango óptimo',
+    rangeTypes: { range: 'Rango', lower_is_better: 'Menor es mejor', higher_is_better: 'Mayor es mejor' },
     trust: [
-      { title: 'Laboratorios asociados certificados', body: 'Laboratorios acreditados por ISO en Suiza y Alemania.' },
-      { title: 'Panel automático', body: 'Todos los resultados directamente en tu perfil de Evida Life.' },
-      { title: 'Privacidad primero', body: 'Almacenamiento de datos suizo, totalmente conforme con el RGPD y la nLPD.' },
+      { icon: '🔬', title: 'Laboratorios asociados certificados', body: 'Laboratorios acreditados ISO en Suiza y Alemania.' },
+      { icon: '📊', title: 'Panel automático', body: 'Todos los resultados directamente en tu perfil de Evida Life.' },
+      { icon: '🔒', title: 'Privacidad primero', body: 'Almacenamiento de datos suizo, conforme con el RGPD y la nLPD.' },
     ],
   },
   it: {
-    tag: 'Test di longevità',
-    h1: 'Conosci i tuoi biomarcatori.',
-    sub: 'Esami del sangue professionali tramite laboratori partner – incluso un controllo di vitalità gratuito e una dashboard di longevità personale.',
-    packagesHeading: 'Pacchetti di test',
-    recommended: 'CONSIGLIATO',
-    biomarkers: (n) => `${n} biomarcatori analizzati`,
-    vitalcheck: 'Controllo di vitalità gratuito incluso',
-    viewShop: 'Vedi nel negozio →',
-    addonsHeading: 'Componenti aggiuntivi',
-    addonsCombo: 'Combinabile con qualsiasi pacchetto',
+    tag: 'TEST DI LONGEVITÀ',
+    h1: 'Sapere dove ti trovi.',
+    sub: 'Esami del sangue professionali tramite laboratori partner certificati – con controllo di vitalità gratuito e dashboard di longevità personale.',
+    matrixHeading: 'Confronto pacchetti',
+    markerCount: (n) => `${n} biomarcatori`,
+    buyNow: 'Acquista ora',
+    included: 'Incluso',
+    notIncluded: 'Non incluso',
+    total: 'Totale',
+    markers: 'marcatori',
+    addonsHeading: 'Test aggiuntivi',
+    addonsSub: 'Combinabile con qualsiasi pacchetto',
+    detailHeading: 'Tutti i biomarcatori',
+    viewAll: 'Vedi tutti',
+    learnMore: 'Scopri di più →',
+    refRange: 'Intervallo di riferimento',
+    optRange: 'Intervallo ottimale',
+    rangeTypes: { range: 'Intervallo', lower_is_better: 'Inferiore è meglio', higher_is_better: 'Superiore è meglio' },
     trust: [
-      { title: 'Laboratori partner certificati', body: 'Laboratori accreditati ISO in Svizzera e Germania.' },
-      { title: 'Dashboard automatica', body: 'Tutti i risultati direttamente nel tuo profilo Evida Life.' },
-      { title: 'Privacy prima di tutto', body: 'Archiviazione dei dati svizzera, pienamente conforme al GDPR e alla nLPD.' },
+      { icon: '🔬', title: 'Laboratori partner certificati', body: 'Laboratori accreditati ISO in Svizzera e Germania.' },
+      { icon: '📊', title: 'Dashboard automatica', body: 'Tutti i risultati direttamente nel tuo profilo Evida Life.' },
+      { icon: '🔒', title: 'Privacy prima di tutto', body: 'Archiviazione dei dati svizzera, pienamente conforme al GDPR e alla nLPD.' },
     ],
   },
 };
 
-// ─── Product data ─────────────────────────────────────────────────────────────
+// ─── Add-on data (static — prices shown for reference) ───────────────────────
 
-type L5 = Record<Lang, string>;
-type L5arr = Record<Lang, string[]>;
-
-type Package = {
-  slug: string;
-  name: string;
-  price: number;
-  markerCount: number;
-  featured: boolean;
-  description: L5;
-  features: L5arr;
-};
-
-type Addon = {
-  slug: string;
-  name: string;
-  price: number;
-  description: L5;
-  features: L5arr;
-};
-
-const PACKAGES: Package[] = [
+const ADDONS = [
   {
-    slug: 'longevity-core',
-    name: 'Longevity Core',
-    price: 149,
-    markerCount: 11,
-    featured: false,
-    description: {
-      de: 'Der ideale Einstieg – die wichtigsten Biomarker für deine Gesundheitsbasis.',
-      en: 'The ideal entry point – the most important biomarkers for your health baseline.',
-      fr: 'Le point de départ idéal – les biomarqueurs les plus importants pour votre base de santé.',
-      es: 'El punto de entrada ideal – los biomarcadores más importantes para tu base de salud.',
-      it: 'Il punto di partenza ideale – i biomarcatori più importanti per la tua base di salute.',
+    slug: 'assessments',
+    name: { de: 'Vitalcheck', en: 'Vitalcheck', fr: 'Vitalcheck', es: 'Vitalcheck', it: 'Vitalcheck' },
+    price: { de: 'Gratis', en: 'Free', fr: 'Gratuit', es: 'Gratis', it: 'Gratuito' },
+    desc: {
+      de: 'Blutdruck, Taillenumfang, Griffkraft, SpO₂, Ruhepuls & AGEs-Haut­scan – bei jedem Bluttest inklusive.',
+      en: 'Blood pressure, waist circumference, grip strength, SpO₂, resting heart rate & AGEs skin scan – included with every blood test.',
+      fr: 'Pression artérielle, tour de taille, force de préhension, SpO₂, FC repos & scan AGEs – inclus avec tout bilan sanguin.',
+      es: 'Tensión arterial, perímetro abdominal, fuerza de agarre, SpO₂, FC reposo & escáner AGEs – incluido con cualquier análisis.',
+      it: 'Pressione, circonferenza vita, forza presa, SpO₂, FC riposo & scan AGEs – incluso con ogni esame del sangue.',
     },
-    features: {
-      de: ['Blutbild (CBC)', 'Lipidprofil', 'Blutzucker & HbA1c', 'Schilddrüse (TSH)', 'Vitamin D', 'Leber- & Nierenwerte'],
-      en: ['Blood count (CBC)', 'Lipid profile', 'Blood sugar & HbA1c', 'Thyroid (TSH)', 'Vitamin D', 'Liver & kidney values'],
-      fr: ['Numération sanguine (CBC)', 'Profil lipidique', 'Glycémie & HbA1c', 'Thyroïde (TSH)', 'Vitamine D', 'Valeurs hépatiques & rénales'],
-      es: ['Hemograma (CBC)', 'Perfil lipídico', 'Glucosa & HbA1c', 'Tiroides (TSH)', 'Vitamina D', 'Valores hepáticos y renales'],
-      it: ['Emocromo (CBC)', 'Profilo lipidico', 'Glicemia & HbA1c', 'Tiroide (TSH)', 'Vitamina D', 'Valori epatici e renali'],
-    },
+    link: '/assessments',
   },
-  {
-    slug: 'longevity-pro',
-    name: 'Longevity Pro',
-    price: 299,
-    markerCount: 23,
-    featured: true,
-    description: {
-      de: 'Unser meistgewähltes Paket – umfassende Analyse für ernsthafte Longevity-Optimierung.',
-      en: 'Our most popular package – comprehensive analysis for serious longevity optimisation.',
-      fr: 'Notre forfait le plus populaire – analyse complète pour une optimisation sérieuse de la longévité.',
-      es: 'Nuestro paquete más popular – análisis completo para una optimización seria de la longevidad.',
-      it: 'Il nostro pacchetto più popolare – analisi completa per una seria ottimizzazione della longevità.',
-    },
-    features: {
-      de: ['Alles aus Core', 'Entzündungsmarker (hsCRP, IL-6)', 'Homocystein', 'Insulin & HOMA-IR', 'Omega-3-Index', 'Ferritin & Eisen', 'Cortisol', 'Testosteron / Östrogen'],
-      en: ['Everything from Core', 'Inflammation markers (hsCRP, IL-6)', 'Homocysteine', 'Insulin & HOMA-IR', 'Omega-3 index', 'Ferritin & iron', 'Cortisol', 'Testosterone / oestrogen'],
-      fr: ['Tout de Core', 'Marqueurs d\'inflammation (hsCRP, IL-6)', 'Homocystéine', 'Insuline & HOMA-IR', 'Index Oméga-3', 'Ferritine & fer', 'Cortisol', 'Testostérone / œstrogène'],
-      es: ['Todo de Core', 'Marcadores de inflamación (hsCRP, IL-6)', 'Homocisteína', 'Insulina & HOMA-IR', 'Índice Omega-3', 'Ferritina & hierro', 'Cortisol', 'Testosterona / estrógeno'],
-      it: ['Tutto di Core', 'Marcatori infiammatori (hsCRP, IL-6)', 'Omocisteina', 'Insulina & HOMA-IR', 'Indice Omega-3', 'Ferritina & ferro', 'Cortisolo', 'Testosterone / estrogeno'],
-    },
-  },
-  {
-    slug: 'longevity-complete',
-    name: 'Longevity Complete',
-    price: 499,
-    markerCount: 37,
-    featured: false,
-    description: {
-      de: 'Die umfassendste Analyse – für maximale Präzision und tiefe Einblicke in deine Gesundheit.',
-      en: 'The most comprehensive analysis – for maximum precision and deep insights into your health.',
-      fr: 'L\'analyse la plus complète – pour une précision maximale et des insights profonds sur votre santé.',
-      es: 'El análisis más completo – para máxima precisión y conocimientos profundos sobre tu salud.',
-      it: 'L\'analisi più completa – per la massima precisione e approfondimenti sulla tua salute.',
-    },
-    features: {
-      de: ['Alles aus Pro', 'Hormonstatus vollständig', 'Schwermetalle & Mineralien', 'Darmgesundheit', 'Genetische Risikomarker', 'Longevity Score Baseline'],
-      en: ['Everything from Pro', 'Full hormone status', 'Heavy metals & minerals', 'Gut health', 'Genetic risk markers', 'Longevity Score baseline'],
-      fr: ['Tout de Pro', 'Statut hormonal complet', 'Métaux lourds & minéraux', 'Santé intestinale', 'Marqueurs de risque génétique', 'Référence Longevity Score'],
-      es: ['Todo de Pro', 'Estado hormonal completo', 'Metales pesados & minerales', 'Salud intestinal', 'Marcadores de riesgo genético', 'Línea base Longevity Score'],
-      it: ['Tutto di Pro', 'Stato ormonale completo', 'Metalli pesanti & minerali', 'Salute intestinale', 'Marcatori di rischio genetico', 'Baseline Longevity Score'],
-    },
-  },
-];
-
-const ADDONS: Addon[] = [
   {
     slug: 'vo2max-cpet',
-    name: 'VO₂max CPET',
-    price: 149,
-    description: {
-      de: 'Kardiopulmonaler Belastungstest – misst deine maximale Sauerstoffaufnahme, den stärksten Prädiktor für Langlebigkeit.',
-      en: 'Cardiopulmonary exercise test – measures your maximum oxygen uptake, the strongest predictor of longevity.',
-      fr: 'Test d\'effort cardiopulmonaire – mesure votre absorption maximale d\'oxygène, le plus fort prédicteur de longévité.',
-      es: 'Test de ejercicio cardiopulmonar – mide tu absorción máxima de oxígeno, el predictor más fuerte de longevidad.',
-      it: 'Test da sforzo cardiopolmonare – misura il tuo massimo assorbimento di ossigeno, il più forte predittore di longevità.',
+    name: { de: 'VO₂max Test (CPET)', en: 'VO₂max Test (CPET)', fr: 'Test VO₂max (CPET)', es: 'Test VO₂max (CPET)', it: 'Test VO₂max (CPET)' },
+    price: { de: 'CHF 149', en: 'CHF 149', fr: 'CHF 149', es: 'CHF 149', it: 'CHF 149' },
+    desc: {
+      de: 'Kardiopulmonaler Belastungstest. Misst deine maximale Sauerstoffaufnahme – den stärksten Prädiktor für Langlebigkeit.',
+      en: 'Cardiopulmonary exercise test. Measures your VO₂max – the strongest single predictor of longevity.',
+      fr: 'Test d\'effort cardiopulmonaire. Mesure votre VO₂max – le plus puissant prédicteur de longévité.',
+      es: 'Test de esfuerzo cardiopulmonar. Mide tu VO₂max – el predictor individual más potente de longevidad.',
+      it: 'Test da sforzo cardiopolmonare. Misura il tuo VO₂max – il più potente predittore di longevità.',
     },
-    features: {
-      de: ['VO₂max-Messung', 'Anaerobe Schwelle', 'Herzfrequenzanalyse', 'Trainingsempfehlungen'],
-      en: ['VO₂max measurement', 'Anaerobic threshold', 'Heart rate analysis', 'Training recommendations'],
-      fr: ['Mesure VO₂max', 'Seuil anaérobie', 'Analyse de la fréquence cardiaque', 'Recommandations d\'entraînement'],
-      es: ['Medición VO₂max', 'Umbral anaeróbico', 'Análisis de frecuencia cardíaca', 'Recomendaciones de entrenamiento'],
-      it: ['Misurazione VO₂max', 'Soglia anaerobica', 'Analisi della frequenza cardiaca', 'Raccomandazioni di allenamento'],
-    },
+    link: '/assessments',
   },
   {
     slug: 'dexa-body-composition',
-    name: 'DEXA Body Composition',
-    price: 129,
-    description: {
-      de: 'Präzise Körperzusammensetzung via DEXA-Scan – Muskelmasse, Fettanteil und Knochendichte.',
-      en: 'Precise body composition via DEXA scan – muscle mass, body fat percentage, and bone density.',
-      fr: 'Composition corporelle précise via scan DEXA – masse musculaire, pourcentage de graisse et densité osseuse.',
-      es: 'Composición corporal precisa mediante escáner DEXA – masa muscular, porcentaje de grasa y densidad ósea.',
-      it: 'Composizione corporea precisa tramite scansione DEXA – massa muscolare, percentuale di grasso e densità ossea.',
+    name: { de: 'Körperanalyse (DEXA)', en: 'Body Composition (DEXA)', fr: 'Composition corporelle (DEXA)', es: 'Composición corporal (DEXA)', it: 'Composizione corporea (DEXA)' },
+    price: { de: 'CHF 129', en: 'CHF 129', fr: 'CHF 129', es: 'CHF 129', it: 'CHF 129' },
+    desc: {
+      de: 'Gold-Standard für Körperzusammensetzung: Körperfettanteil, Viszeralfett, Muskelmasse pro Segment & Knochendichte.',
+      en: 'Gold standard for body composition: body fat %, visceral fat, lean mass per segment & bone density.',
+      fr: 'Étalon-or pour la composition corporelle: % graisse, graisse viscérale, masse maigre par segment & densité osseuse.',
+      es: 'Estándar de oro para la composición corporal: % grasa, grasa visceral, masa magra por segmento & densidad ósea.',
+      it: 'Standard oro per la composizione corporea: % grasso, grasso viscerale, massa magra per segmento & densità ossea.',
     },
-    features: {
-      de: ['Viszeralfettmessung', 'Segmentale Muskelanalyse', 'Knochendichte (T-Score)', 'Fortschritts-Tracking'],
-      en: ['Visceral fat measurement', 'Segmental muscle analysis', 'Bone density (T-score)', 'Progress tracking'],
-      fr: ['Mesure de la graisse viscérale', 'Analyse musculaire segmentaire', 'Densité osseuse (T-score)', 'Suivi des progrès'],
-      es: ['Medición de grasa visceral', 'Análisis muscular segmental', 'Densidad ósea (T-score)', 'Seguimiento del progreso'],
-      it: ['Misurazione del grasso viscerale', 'Analisi muscolare segmentale', 'Densità ossea (T-score)', 'Monitoraggio dei progressi'],
-    },
+    link: '/assessments',
   },
   {
-    slug: 'biological-age',
-    name: 'Biological Age',
-    price: 349,
-    description: {
-      de: 'Dein biologisches Alter basierend auf epigenetischen Markern – wie alt ist dein Körper wirklich?',
-      en: 'Your biological age based on epigenetic markers – how old is your body really?',
-      fr: 'Votre âge biologique basé sur des marqueurs épigénétiques – quel est le vrai âge de votre corps?',
-      es: 'Tu edad biológica basada en marcadores epigenéticos – ¿qué tan viejo es tu cuerpo realmente?',
-      it: 'La tua età biologica basata su marcatori epigenetici – quanto è davvero vecchio il tuo corpo?',
+    slug: 'addon-biological-age',
+    name: { de: 'Biologisches Alter', en: 'Biological Age', fr: 'Âge biologique', es: 'Edad biológica', it: 'Età biologica' },
+    price: { de: 'CHF 349', en: 'CHF 349', fr: 'CHF 349', es: 'CHF 349', it: 'CHF 349' },
+    desc: {
+      de: 'Epigenetische Uhr (DunedinPACE & GrimAge v2) – wie schnell alterst du wirklich? Messbar und veränderbar.',
+      en: 'Epigenetic clock (DunedinPACE & GrimAge v2) – how fast are you really aging? Measurable and changeable.',
+      fr: 'Horloge épigénétique (DunedinPACE & GrimAge v2) – à quelle vitesse vieillissez-vous vraiment?',
+      es: 'Reloj epigenético (DunedinPACE & GrimAge v2) – ¿a qué velocidad estás envejeciendo realmente?',
+      it: 'Orologio epigenetico (DunedinPACE & GrimAge v2) – quanto velocemente stai invecchiando davvero?',
     },
-    features: {
-      de: ['Epigenetische Uhr (DNAm)', 'Biologisches vs. chronologisches Alter', 'Organ-Altersprofile', 'Interventionsempfehlungen'],
-      en: ['Epigenetic clock (DNAm)', 'Biological vs. chronological age', 'Organ age profiles', 'Intervention recommendations'],
-      fr: ['Horloge épigénétique (DNAm)', 'Âge biologique vs. chronologique', 'Profils d\'âge des organes', 'Recommandations d\'intervention'],
-      es: ['Reloj epigenético (DNAm)', 'Edad biológica vs. cronológica', 'Perfiles de edad de órganos', 'Recomendaciones de intervención'],
-      it: ['Orologio epigenetico (DNAm)', 'Età biologica vs. cronologica', 'Profili di età degli organi', 'Raccomandazioni di intervento'],
-    },
+    link: '/bioage',
   },
 ];
 
-// ─── Sub-components (server, no interactivity) ────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function CheckIcon({ featured }: { featured: boolean }) {
-  return (
-    <svg className={`mt-0.5 shrink-0 ${featured ? 'text-[#ceab84]' : 'text-[#0e393d]'}`} width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M2.5 7l3 3L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+function getName(nameObj: Record<string, string> | null, lang: Lang): string {
+  if (!nameObj) return '';
+  return nameObj[lang] ?? nameObj['en'] ?? nameObj['de'] ?? '';
 }
 
-function VitalcheckBadge({ label }: { label: string }) {
+function getDomainForItem(sortOrder: number | null): DomainDef | undefined {
+  if (sortOrder == null) return undefined;
+  return DOMAINS.find((d) => sortOrder >= d.sortMin && sortOrder <= d.sortMax);
+}
+
+function RangeBar({
+  refLow, refHigh, optLow, optHigh, rangeType,
+}: {
+  refLow: number | null;
+  refHigh: number | null;
+  optLow: number | null;
+  optHigh: number | null;
+  rangeType: string | null;
+}) {
+  if (!rangeType) return null;
+
+  // Determine display bounds
+  let minVal: number, maxVal: number;
+  if (rangeType === 'lower_is_better' && refHigh != null) {
+    minVal = 0;
+    maxVal = (optHigh ?? refHigh) * 2;
+  } else if (rangeType === 'higher_is_better' && refLow != null) {
+    minVal = Math.max(0, (optLow ?? refLow) * 0.3);
+    maxVal = (optLow ?? refLow) * 1.7;
+  } else if (refLow != null && refHigh != null) {
+    const span = refHigh - refLow;
+    minVal = Math.max(0, refLow - span * 0.4);
+    maxVal = refHigh + span * 0.4;
+  } else {
+    return null;
+  }
+
+  const range = maxVal - minVal;
+  const pct = (v: number) => Math.max(0, Math.min(100, ((v - minVal) / range) * 100));
+
+  const refLeftPct  = refLow  != null ? pct(refLow)  : (rangeType === 'lower_is_better' ? 0 : null);
+  const refRightPct = refHigh != null ? pct(refHigh) : (rangeType === 'higher_is_better' ? 100 : null);
+  const optLeftPct  = optLow  != null ? pct(optLow)  : (rangeType === 'lower_is_better' ? 0 : null);
+  const optRightPct = optHigh != null ? pct(optHigh) : (rangeType === 'higher_is_better' ? 100 : null);
+
+  const refW  = refLeftPct  != null && refRightPct  != null ? refRightPct  - refLeftPct  : null;
+  const optW  = optLeftPct  != null && optRightPct  != null ? optRightPct  - optLeftPct  : null;
+
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ceab84]/15 px-3 py-1 text-xs font-medium text-[#8a6a3e]">
-      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-        <circle cx="6" cy="6" r="5.5" stroke="#ceab84" />
-        <path d="M3.5 6l1.8 1.8L8.5 4" stroke="#ceab84" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-      {label}
-    </span>
+    <div className="relative h-3 rounded-full bg-[#0e393d]/8 overflow-hidden w-full">
+      {refW != null && refLeftPct != null && (
+        <div
+          className="absolute top-0 h-full rounded-full bg-emerald-100"
+          style={{ left: `${refLeftPct}%`, width: `${refW}%` }}
+        />
+      )}
+      {optW != null && optLeftPct != null && (
+        <div
+          className="absolute top-0 h-full rounded-full bg-emerald-400/70"
+          style={{ left: `${optLeftPct}%`, width: `${optW}%` }}
+        />
+      )}
+    </div>
   );
 }
 
@@ -293,18 +320,70 @@ export default async function BiomarkersPage() {
   const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const t = T[lang];
 
+  const supabase = await createClient();
+
+  // Fetch the 3 main test packages (sort_order 1–3)
+  const { data: allProducts } = await supabase
+    .from('products')
+    .select('id, slug, name, price_chf, sort_order, is_featured')
+    .eq('product_type', 'test_package')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
+
+  const packages = (allProducts ?? []).filter((p) => (p.sort_order ?? 99) <= 3);
+
+  // Fetch product_items (junction) for these packages
+  const packageIds = packages.map((p) => p.id);
+  const { data: productItems } = packageIds.length > 0
+    ? await supabase
+        .from('product_items')
+        .select('product_id, product_item_definition_id')
+        .in('product_id', packageIds)
+    : { data: [] };
+
+  // Build a map: product_id → Set of definition IDs
+  const pkgItemMap = new Map<string, Set<string>>();
+  for (const pkg of packages) pkgItemMap.set(pkg.id, new Set());
+  for (const pi of productItems ?? []) {
+    pkgItemMap.get(pi.product_id)?.add(pi.product_item_definition_id);
+  }
+
+  // Fetch active product_item_definitions (biomarker-relevant item types)
+  const { data: defs } = await supabase
+    .from('product_item_definitions')
+    .select('id, slug, name, description, unit, range_type, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, sort_order, he_domain, item_type')
+    .eq('is_active', true)
+    .in('item_type', ['biomarker', 'vitalcheck_measurement', 'vo2max_test', 'dexa_scan', 'biological_age_test', 'genetic_test'])
+    .order('sort_order', { ascending: true });
+
+  const allDefs = defs ?? [];
+
+  // Group defs by clinical domain (based on sort_order)
+  const domainGroups: { domain: DomainDef; items: typeof allDefs }[] = [];
+  for (const domain of DOMAINS) {
+    const items = allDefs.filter((d) => {
+      const so = d.sort_order ?? 0;
+      return so >= domain.sortMin && so <= domain.sortMax;
+    });
+    if (items.length > 0) domainGroups.push({ domain, items });
+  }
+
+  // Count biomarkers per package (only blood biomarker types)
+  const bloodTypes = ['biomarker'];
+  const bloodDefs = allDefs.filter((d) => bloodTypes.includes(d.item_type ?? ''));
+
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
       <main className="mx-auto w-full max-w-[1060px] px-6 pt-28 pb-16 flex-1">
 
-        {/* Hero */}
+        {/* ── Hero ──────────────────────────────────────────────────────────── */}
         <div className="mb-14 text-center">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">
             {t.tag}
           </p>
-          <h1 className="font-serif text-5xl text-[#0e393d] mb-4">
+          <h1 className="font-serif text-5xl text-[#0e393d] mb-4 leading-tight">
             {t.h1}
           </h1>
           <p className="mx-auto max-w-xl text-base text-[#1c2a2b]/60 leading-relaxed">
@@ -312,128 +391,248 @@ export default async function BiomarkersPage() {
           </p>
         </div>
 
-        {/* Test packages */}
+        {/* ── Package comparison matrix ──────────────────────────────────────── */}
+        {packages.length > 0 && (
+          <section className="mb-20">
+            <div className="mb-8 flex items-center gap-4">
+              <h2 className="font-serif text-2xl text-[#0e393d]">{t.matrixHeading}</h2>
+              <div className="flex-1 h-px bg-[#0e393d]/10" />
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                {/* Package header row */}
+                <thead>
+                  <tr>
+                    <th className="text-left pb-4 pr-4 w-[40%]" />
+                    {packages.map((pkg) => (
+                      <th key={pkg.id} className={`text-center pb-4 px-3 ${pkg.is_featured ? 'text-[#ceab84]' : 'text-[#0e393d]'}`}>
+                        <div className={`rounded-xl p-3 ${pkg.is_featured ? 'bg-[#0e393d]' : 'bg-white ring-1 ring-[#0e393d]/10'}`}>
+                          {pkg.is_featured && (
+                            <div className="text-[10px] font-semibold text-[#ceab84] uppercase tracking-wider mb-1">
+                              ★
+                            </div>
+                          )}
+                          <div className={`font-serif text-base font-medium ${pkg.is_featured ? 'text-white' : 'text-[#0e393d]'}`}>
+                            {getName(pkg.name as Record<string, string>, lang)}
+                          </div>
+                          <div className={`font-serif text-lg mt-0.5 ${pkg.is_featured ? 'text-[#ceab84]' : 'text-[#0e393d]'}`}>
+                            CHF {pkg.price_chf}
+                          </div>
+                          <div className={`text-[11px] mt-0.5 ${pkg.is_featured ? 'text-white/50' : 'text-[#1c2a2b]/40'}`}>
+                            {t.markerCount(bloodDefs.filter((d) => pkgItemMap.get(pkg.id)?.has(d.id)).length)}
+                          </div>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {/* Domain groups */}
+                  {domainGroups
+                    .filter((g) => g.items.some((item) => bloodTypes.includes(item.item_type ?? '')))
+                    .map(({ domain, items }) => {
+                      const bloodItems = items.filter((d) => bloodTypes.includes(d.item_type ?? ''));
+                      if (bloodItems.length === 0) return null;
+                      return (
+                        <>
+                          {/* Domain header */}
+                          <tr key={`hdr-${domain.key}`}>
+                            <td
+                              colSpan={1 + packages.length}
+                              className="pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#ceab84]"
+                            >
+                              {domain.emoji} {domain.label[lang]}
+                            </td>
+                          </tr>
+                          {/* Biomarker rows */}
+                          {bloodItems.map((def) => (
+                            <tr
+                              key={def.id}
+                              className="border-b border-[#0e393d]/6 hover:bg-[#0e393d]/2 transition-colors"
+                            >
+                              <td className="py-2.5 pr-4">
+                                <span className="text-[#1c2a2b]/80 text-sm">
+                                  {getName(def.name as Record<string, string>, lang)}
+                                </span>
+                                {def.unit && (
+                                  <span className="ml-1.5 text-[11px] text-[#1c2a2b]/35">{def.unit}</span>
+                                )}
+                              </td>
+                              {packages.map((pkg) => {
+                                const included = pkgItemMap.get(pkg.id)?.has(def.id) ?? false;
+                                return (
+                                  <td key={pkg.id} className="py-2.5 px-3 text-center">
+                                    {included ? (
+                                      <svg
+                                        className="inline text-emerald-500"
+                                        width="16" height="16" viewBox="0 0 16 16" fill="none"
+                                        aria-label={t.included}
+                                      >
+                                        <circle cx="8" cy="8" r="7" fill="currentColor" fillOpacity="0.12" />
+                                        <path d="M4.5 8l2.5 2.5 4.5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                    ) : (
+                                      <span className="inline-block w-4 h-px bg-[#0e393d]/15" aria-label={t.notIncluded} />
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </>
+                      );
+                    })}
+
+                  {/* Total row */}
+                  <tr className="border-t-2 border-[#0e393d]/15 bg-[#0e393d]/3">
+                    <td className="py-3 pr-4 text-sm font-semibold text-[#0e393d]">{t.total}</td>
+                    {packages.map((pkg) => (
+                      <td key={pkg.id} className="py-3 px-3 text-center text-sm font-semibold text-[#0e393d]">
+                        {bloodDefs.filter((d) => pkgItemMap.get(pkg.id)?.has(d.id)).length} {t.markers}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Price + CTA row */}
+                  <tr>
+                    <td className="pt-4 pb-2 pr-4" />
+                    {packages.map((pkg) => (
+                      <td key={pkg.id} className="pt-4 pb-2 px-3 text-center">
+                        <Link
+                          href={`/shop/${pkg.slug}`}
+                          className={`block rounded-xl py-2.5 text-sm font-medium transition-colors ${
+                            pkg.is_featured
+                              ? 'bg-[#ceab84] text-[#0e393d] hover:bg-[#ceab84]/90'
+                              : 'bg-[#0e393d] text-white hover:bg-[#0e393d]/90'
+                          }`}
+                        >
+                          {t.buyNow}
+                        </Link>
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {/* ── Biomarker detail cards ─────────────────────────────────────────── */}
         <section className="mb-20">
           <div className="mb-8 flex items-center gap-4">
-            <h2 className="font-serif text-2xl text-[#0e393d]">{t.packagesHeading}</h2>
+            <h2 className="font-serif text-2xl text-[#0e393d]">{t.detailHeading}</h2>
             <div className="flex-1 h-px bg-[#0e393d]/10" />
           </div>
-          <div className="grid gap-6 sm:grid-cols-3">
-            {PACKAGES.map((pkg, i) => (
-              <div
-                key={pkg.slug}
-                className={`relative flex flex-col rounded-2xl p-7 transition-shadow hover:shadow-lg ${
-                  pkg.featured
-                    ? 'bg-[#0e393d] text-white shadow-xl ring-2 ring-[#ceab84]/40'
-                    : 'bg-white text-[#1c2a2b] shadow-sm ring-1 ring-[#0e393d]/8'
-                }`}
-                style={{ animationDelay: `${i * 80}ms` }}
-              >
-                {pkg.featured && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                    <span className="inline-block rounded-full bg-[#ceab84] px-4 py-1 text-xs font-semibold text-[#0e393d] tracking-wide">
-                      {t.recommended}
-                    </span>
-                  </div>
-                )}
 
-                <div className="mb-5">
-                  <h3 className={`font-serif text-2xl mb-1 ${pkg.featured ? 'text-white' : 'text-[#0e393d]'}`}>
-                    {pkg.name}
-                  </h3>
-                  <p className={`text-sm leading-relaxed ${pkg.featured ? 'text-white/70' : 'text-[#1c2a2b]/60'}`}>
-                    {pkg.description[lang]}
-                  </p>
-                </div>
+          {domainGroups.map(({ domain, items }) => (
+            <div key={domain.key} className="mb-10">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#ceab84] mb-4">
+                {domain.emoji} {domain.label[lang]}
+              </h3>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {items.map((def) => {
+                  const name = getName(def.name as Record<string, string>, lang);
+                  const desc = getName(def.description as Record<string, string> | null ?? {}, lang);
+                  const rt = def.range_type;
 
-                <div className="mb-4">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className={`font-serif text-4xl font-medium ${pkg.featured ? 'text-[#ceab84]' : 'text-[#0e393d]'}`}>
-                      CHF {pkg.price}
-                    </span>
-                  </div>
-                  <p className={`mt-1 text-xs ${pkg.featured ? 'text-white/50' : 'text-[#1c2a2b]/40'}`}>
-                    {t.biomarkers(pkg.markerCount)}
-                  </p>
-                </div>
+                  return (
+                    <div
+                      key={def.id}
+                      className="rounded-xl bg-white ring-1 ring-[#0e393d]/8 p-5 flex flex-col gap-3 hover:shadow-sm transition-shadow"
+                    >
+                      {/* Name + unit + range type badge */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium text-sm text-[#0e393d]">{name}</p>
+                          {def.unit && (
+                            <p className="text-xs text-[#1c2a2b]/40 mt-0.5">{def.unit}</p>
+                          )}
+                        </div>
+                        {rt && (
+                          <span className="shrink-0 text-[10px] font-medium rounded-full px-2 py-0.5 bg-[#ceab84]/15 text-[#8a6a3e] whitespace-nowrap">
+                            {t.rangeTypes[rt] ?? rt}
+                          </span>
+                        )}
+                      </div>
 
-                <div className="mb-5">
-                  <VitalcheckBadge label={t.vitalcheck} />
-                </div>
+                      {/* Range bar */}
+                      <RangeBar
+                        refLow={def.ref_range_low}
+                        refHigh={def.ref_range_high}
+                        optLow={def.optimal_range_low}
+                        optHigh={def.optimal_range_high}
+                        rangeType={def.range_type}
+                      />
 
-                <ul className="mb-7 flex-1 space-y-2">
-                  {pkg.features[lang].map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm">
-                      <CheckIcon featured={pkg.featured} />
-                      <span className={pkg.featured ? 'text-white/80' : 'text-[#1c2a2b]/70'}>{f}</span>
-                    </li>
-                  ))}
-                </ul>
+                      {/* Range labels */}
+                      {(def.ref_range_low != null || def.ref_range_high != null) && (
+                        <div className="flex items-center gap-3 text-[10px] text-[#1c2a2b]/50">
+                          <span className="flex items-center gap-1">
+                            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-100" />
+                            {t.refRange}: {def.ref_range_low != null ? `≥${def.ref_range_low}` : ''}{def.ref_range_low != null && def.ref_range_high != null ? ' – ' : ''}{def.ref_range_high != null ? `≤${def.ref_range_high}` : ''} {def.unit}
+                          </span>
+                          {(def.optimal_range_low != null || def.optimal_range_high != null) && (
+                            <span className="flex items-center gap-1">
+                              <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-400/70" />
+                              {t.optRange}
+                            </span>
+                          )}
+                        </div>
+                      )}
 
-                <Link
-                  href="/shop"
-                  className={`block w-full rounded-xl py-3 text-center text-sm font-medium transition-colors ${
-                    pkg.featured
-                      ? 'bg-[#ceab84] text-[#0e393d] hover:bg-[#ceab84]/90'
-                      : 'bg-[#0e393d] text-white hover:bg-[#0e393d]/90'
-                  }`}
-                >
-                  {t.viewShop}
-                </Link>
+                      {/* Description */}
+                      {desc && (
+                        <p className="text-xs text-[#1c2a2b]/55 leading-relaxed">{desc}</p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </section>
 
-        {/* Add-ons */}
+        {/* ── Add-on tests ────────────────────────────────────────────────────── */}
         <section className="mb-20">
           <div className="mb-8 flex items-center gap-4">
             <h2 className="font-serif text-2xl text-[#0e393d]">{t.addonsHeading}</h2>
             <div className="flex-1 h-px bg-[#0e393d]/10" />
-            <p className="text-sm text-[#1c2a2b]/40">{t.addonsCombo}</p>
+            <p className="text-sm text-[#1c2a2b]/40">{t.addonsSub}</p>
           </div>
-          <div className="grid gap-6 sm:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {ADDONS.map((addon) => (
-              <div key={addon.slug} className="flex flex-col rounded-2xl bg-white p-6 shadow-sm ring-1 ring-[#0e393d]/8 hover:shadow-md transition-shadow">
-                <div className="mb-3 flex items-start justify-between gap-3">
-                  <h3 className="font-serif text-lg text-[#0e393d]">{addon.name}</h3>
-                  <span className="shrink-0 font-serif text-xl text-[#0e393d]">CHF {addon.price}</span>
+              <div
+                key={addon.slug}
+                className="flex flex-col rounded-2xl bg-white ring-1 ring-[#0e393d]/8 p-6 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <h3 className="font-serif text-base text-[#0e393d]">{addon.name[lang]}</h3>
+                  <span className="shrink-0 font-semibold text-sm text-[#ceab84]">{addon.price[lang]}</span>
                 </div>
-                <p className="mb-4 flex-1 text-sm leading-relaxed text-[#1c2a2b]/60">
-                  {addon.description[lang]}
+                <p className="text-sm text-[#1c2a2b]/60 leading-relaxed flex-1 mb-4">
+                  {addon.desc[lang]}
                 </p>
-                <div className="mb-5">
-                  <VitalcheckBadge label={t.vitalcheck} />
-                </div>
-                <ul className="mb-6 space-y-1.5">
-                  {addon.features[lang].map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-[#1c2a2b]/60">
-                      <svg className="mt-0.5 shrink-0 text-[#ceab84]" width="13" height="13" viewBox="0 0 14 14" fill="none">
-                        <path d="M2.5 7l3 3L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
                 <Link
-                  href="/shop"
-                  className="block w-full rounded-xl border border-[#0e393d]/20 py-2.5 text-center text-sm font-medium text-[#0e393d] hover:bg-[#0e393d] hover:text-white transition-colors"
+                  href={addon.link}
+                  className="block text-center rounded-xl border border-[#0e393d]/20 py-2.5 text-sm font-medium text-[#0e393d] hover:bg-[#0e393d] hover:text-white transition-colors"
                 >
-                  {t.viewShop}
+                  {t.learnMore}
                 </Link>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Trust strip */}
+        {/* ── Trust strip ────────────────────────────────────────────────────── */}
         <section className="rounded-2xl bg-[#0e393d]/5 px-8 py-8">
           <div className="grid gap-6 text-center sm:grid-cols-3">
-            {(['🔬', '📊', '🔒'] as const).map((icon, idx) => (
-              <div key={idx}>
-                <div className="text-2xl mb-2">{icon}</div>
-                <h3 className="font-serif text-base text-[#0e393d] mb-1">{t.trust[idx].title}</h3>
-                <p className="text-sm text-[#1c2a2b]/55 leading-relaxed">{t.trust[idx].body}</p>
+            {t.trust.map((item, i) => (
+              <div key={i}>
+                <div className="text-2xl mb-2">{item.icon}</div>
+                <h3 className="font-serif text-base text-[#0e393d] mb-1">{item.title}</h3>
+                <p className="text-sm text-[#1c2a2b]/55 leading-relaxed">{item.body}</p>
               </div>
             ))}
           </div>

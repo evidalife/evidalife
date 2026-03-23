@@ -15,12 +15,12 @@
         "Courses"
       ],
       "Health": [
-        "Health Engine",
+        "Health Overview",
         "Biomarkers",
         "BioAge",
-        "Interventions",
+        "Clinical Assessments",
         null,
-        "Dashboard",
+        "Health Engine",
         "Science"
       ],
       "Fit": [
