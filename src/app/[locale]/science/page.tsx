@@ -64,6 +64,14 @@ function cellCls(v: CellVal): string {
   return 'bg-red-600';
 }
 
+// ── Disease data (static, not translated — numbers are universal) ─────────────
+const DISEASES = [
+  { emoji: '❤️', deathsM: 20, pct: 32, preventPct: 80, preventLow: 70, preventHigh: 90, yearsLow: 6, yearsHigh: 10 },
+  { emoji: '🎗️', deathsM: 10, pct: 16, preventPct: 40, preventLow: 30, preventHigh: 50, yearsLow: 3, yearsHigh: 5  },
+  { emoji: '🫁', deathsM: 4,  pct: 6,  preventPct: 70, preventLow: 60, preventHigh: 80, yearsLow: 2, yearsHigh: 4  },
+  { emoji: '💉', deathsM: 2,  pct: 3,  preventPct: 85, preventLow: 80, preventHigh: 90, yearsLow: 3, yearsHigh: 6  },
+] as const;
+
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const lang = locale === 'de' ? 'de' : 'en';
@@ -201,6 +209,26 @@ const T = {
     disclaimerBody: 'Die Inhalte auf Evida Life dienen der allgemeinen Information und ersetzen keine ärztliche Beratung. Bei gesundheitlichen Beschwerden wende dich an eine qualifizierte medizinische Fachperson.',
     viewStudy: 'Studie ansehen',
     visitSite: 'Webseite besuchen',
+    factsTag: 'DIE FAKTEN',
+    factsTitle: 'Die häufigsten Todesursachen sind vermeidbar.',
+    factsSub: '57 % aller weltweiten Todesfälle werden durch nur vier Krankheitsgruppen verursacht – und Lebensstil ist der primäre Treiber.',
+    diseaseNames: ['Herz & Gefässe', 'Krebs', 'Chronische Atemwegserkrankungen', 'Diabetes'],
+    deathsLabel: 'Mio. Todesfälle/Jahr',
+    allDeaths: 'aller Todesfälle',
+    preventable: 'vermeidbar',
+    potential: 'Potenzial',
+    yearsUnit: 'Jahre mehr Leben',
+    factsBox: 'Zusammengenommen: Alle vier Erkrankungen durch Lebensstiländerungen zu reduzieren, verlängert die Lebenserwartung um +10 bis +15 Jahre. Fast jeder zweite Todesfall auf diesem Planeten hängt mit veränderbaren Risikofaktoren zusammen: Ernährung, Bewegung, Rauchen, Alkohol und Gewicht.',
+    agingTag: 'DER ECHTE RISIKOFAKTOR',
+    agingTitle: 'Niemand stirbt an Alter.',
+    agingSub: 'Menschen sterben an Krankheiten. Aber Altern ist der mit Abstand grösste Risikofaktor für nahezu alle davon.',
+    agingFacts: [
+      'Das Sterberisiko steigt exponentiell im Erwachsenenalter – es verdoppelt sich etwa alle 7 Jahre.',
+      'Wenn wir das biologische Altern nur um 7 Jahre verlangsamen, halbiert sich das Risiko für Tod, Gebrechlichkeit und Behinderung in jedem Lebensalter.',
+      'Ein 50-Jähriger hätte das Gesundheitsprofil eines heutigen 43-Jährigen. Ein 60-Jähriger würde einem heutigen 53-Jährigen ähneln.',
+    ],
+    agingHallmarksNote: 'Forscher haben 12 biologische Kennzeichen des Alterns identifiziert. Viele davon werden direkt durch die Ernährung beeinflusst.',
+    agingSource: 'Quelle: Kennedy et al. (2016), Cold Spring Harb Perspect Med',
     heatmapTag: 'ERNÄHRUNG & LONGEVITY',
     heatmapTitle: 'Was Forscher über Essen & gesundes Altern wissen',
     heatmapSub: 'Tessiere et al. (2025) in Nature Medicine verfolgten 105.015 Teilnehmer in zwei großen Kohorten (Nurses\' Health Study & Health Professionals Follow-up Study) über 30 Jahre – und identifizierten, welche Lebensmittel gesundes Altern in 6 Gesundheitsdomänen fördern oder beschleunigen.',
@@ -222,6 +250,26 @@ const T = {
     disclaimerBody: 'The content on Evida Life is for general information purposes and does not replace medical advice. For health concerns, consult a qualified healthcare professional.',
     viewStudy: 'View study',
     visitSite: 'Visit site',
+    factsTag: 'THE FACTS',
+    factsTitle: 'The leading causes of death are preventable.',
+    factsSub: '57% of all deaths worldwide are caused by just four disease groups — and lifestyle is the primary driver.',
+    diseaseNames: ['Heart & Cardiovascular', 'Cancer', 'Chronic Respiratory', 'Diabetes'],
+    deathsLabel: 'M deaths/year',
+    allDeaths: 'of all deaths',
+    preventable: 'preventable',
+    potential: 'Potential',
+    yearsUnit: 'extra years of life',
+    factsBox: 'Combined: reducing all four through lifestyle changes adds +10 to +15 years of life expectancy. Nearly every second death on this planet is linked to modifiable risk factors: diet, exercise, smoking, alcohol, and weight.',
+    agingTag: 'THE REAL RISK FACTOR',
+    agingTitle: 'Nobody dies of old age.',
+    agingSub: 'People die of diseases. But aging is the single biggest risk factor for nearly all of them.',
+    agingFacts: [
+      'The risk of death rises exponentially throughout adulthood — doubling approximately every 7 years.',
+      'If we slow biological aging by just 7 years, the risk of death, frailty, and disability is cut in half at every age.',
+      'A 50-year-old would have the health profile of today\'s 43-year-old. A 60-year-old would resemble a current 53-year-old.',
+    ],
+    agingHallmarksNote: 'Researchers have identified 12 biological hallmarks of aging. Many of them are directly influenced by diet.',
+    agingSource: 'Source: Kennedy et al. (2016), Cold Spring Harb Perspect Med',
     heatmapTag: 'FOOD & LONGEVITY',
     heatmapTitle: 'What researchers know about food & healthy aging',
     heatmapSub: 'Tessiere et al. (2025) in Nature Medicine followed 105,015 participants across two major cohorts (Nurses\' Health Study & Health Professionals Follow-up Study) for 30 years — identifying which foods promote or accelerate aging across 6 health outcomes.',
@@ -243,6 +291,26 @@ const T = {
     disclaimerBody: 'Le contenu d\'Evida Life est à des fins d\'information générale et ne remplace pas les conseils médicaux. Pour des problèmes de santé, consultez un professionnel de santé qualifié.',
     viewStudy: 'Voir l\'étude',
     visitSite: 'Visiter le site',
+    factsTag: 'LES FAITS',
+    factsTitle: 'Les principales causes de décès sont évitables.',
+    factsSub: '57 % de tous les décès dans le monde sont causés par seulement quatre groupes de maladies — et le mode de vie en est le principal facteur.',
+    diseaseNames: ['Cœur & Cardiovasculaire', 'Cancer', 'Maladies respiratoires chroniques', 'Diabète'],
+    deathsLabel: 'M décès/an',
+    allDeaths: 'de tous les décès',
+    preventable: 'évitables',
+    potential: 'Potentiel',
+    yearsUnit: 'années de vie supplémentaires',
+    factsBox: 'Combinées : réduire les quatre maladies par des changements de mode de vie ajoute +10 à +15 ans d\'espérance de vie. Près d\'un décès sur deux dans le monde est lié à des facteurs de risque modifiables : alimentation, exercice, tabagisme, alcool et poids.',
+    agingTag: 'LE VRAI FACTEUR DE RISQUE',
+    agingTitle: 'Personne ne meurt de vieillesse.',
+    agingSub: 'Les gens meurent de maladies. Mais le vieillissement est le plus grand facteur de risque pour presque toutes.',
+    agingFacts: [
+      'Le risque de décès augmente de façon exponentielle tout au long de l\'âge adulte — doublant environ tous les 7 ans.',
+      'Si nous ralentissons le vieillissement biologique de seulement 7 ans, le risque de décès, de fragilité et de handicap est réduit de moitié à chaque âge.',
+      'Un individu de 50 ans aurait le profil de santé d\'un individu de 43 ans d\'aujourd\'hui. Un individu de 60 ans ressemblerait à un individu actuel de 53 ans.',
+    ],
+    agingHallmarksNote: 'Les chercheurs ont identifié 12 caractéristiques biologiques du vieillissement. Beaucoup d\'entre elles sont directement influencées par l\'alimentation.',
+    agingSource: 'Source : Kennedy et al. (2016), Cold Spring Harb Perspect Med',
     heatmapTag: 'ALIMENTATION & LONGÉVITÉ',
     heatmapTitle: "Ce que les chercheurs savent sur l'alimentation & le vieillissement sain",
     heatmapSub: "Tessiere et al. (2025) dans Nature Medicine ont suivi 105 015 participants dans deux grandes cohortes (Nurses' Health Study & Health Professionals Follow-up Study) pendant 30 ans — identifiant les aliments qui favorisent ou accélèrent le vieillissement sur 6 résultats de santé.",
@@ -264,6 +332,26 @@ const T = {
     disclaimerBody: 'El contenido de Evida Life es para información general y no reemplaza el consejo médico. Para problemas de salud, consulta a un profesional de la salud cualificado.',
     viewStudy: 'Ver estudio',
     visitSite: 'Visitar sitio',
+    factsTag: 'LOS HECHOS',
+    factsTitle: 'Las principales causas de muerte son prevenibles.',
+    factsSub: 'El 57 % de todas las muertes en el mundo son causadas por solo cuatro grupos de enfermedades — y el estilo de vida es el principal factor.',
+    diseaseNames: ['Corazón & Cardiovascular', 'Cáncer', 'Enfermedades respiratorias crónicas', 'Diabetes'],
+    deathsLabel: 'M muertes/año',
+    allDeaths: 'de todas las muertes',
+    preventable: 'prevenible',
+    potential: 'Potencial',
+    yearsUnit: 'años de vida adicionales',
+    factsBox: 'Combinadas: reducir las cuatro enfermedades mediante cambios en el estilo de vida añade +10 a +15 años de esperanza de vida. Casi una de cada dos muertes en este planeta está relacionada con factores de riesgo modificables: dieta, ejercicio, tabaco, alcohol y peso.',
+    agingTag: 'EL FACTOR DE RIESGO REAL',
+    agingTitle: 'Nadie muere de vejez.',
+    agingSub: 'Las personas mueren de enfermedades. Pero el envejecimiento es el mayor factor de riesgo para casi todas ellas.',
+    agingFacts: [
+      'El riesgo de muerte aumenta exponencialmente a lo largo de la adultez — duplicándose aproximadamente cada 7 años.',
+      'Si ralentizamos el envejecimiento biológico solo 7 años, el riesgo de muerte, fragilidad y discapacidad se reduce a la mitad a cualquier edad.',
+      'Una persona de 50 años tendría el perfil de salud de un actual de 43. Una de 60 años se parecería a una actual de 53.',
+    ],
+    agingHallmarksNote: 'Los investigadores han identificado 12 características biológicas del envejecimiento. Muchas de ellas están directamente influenciadas por la dieta.',
+    agingSource: 'Fuente: Kennedy et al. (2016), Cold Spring Harb Perspect Med',
     heatmapTag: 'ALIMENTACIÓN & LONGEVIDAD',
     heatmapTitle: 'Lo que los investigadores saben sobre alimentación y envejecimiento saludable',
     heatmapSub: "Tessiere et al. (2025) en Nature Medicine siguieron a 105.015 participantes en dos grandes cohortes (Nurses' Health Study & Health Professionals Follow-up Study) durante 30 años — identificando qué alimentos promueven o aceleran el envejecimiento en 6 resultados de salud.",
@@ -285,6 +373,26 @@ const T = {
     disclaimerBody: 'Il contenuto di Evida Life è a scopo informativo generale e non sostituisce il parere medico. Per problemi di salute, consulta un professionista sanitario qualificato.',
     viewStudy: 'Vedi studio',
     visitSite: 'Visita il sito',
+    factsTag: 'I FATTI',
+    factsTitle: 'Le principali cause di morte sono prevenibili.',
+    factsSub: "Il 57% di tutti i decessi nel mondo è causato da soli quattro gruppi di malattie — e lo stile di vita è il principale fattore.",
+    diseaseNames: ['Cuore & Cardiovascolare', 'Cancro', 'Malattie respiratorie croniche', 'Diabete'],
+    deathsLabel: 'M decessi/anno',
+    allDeaths: 'di tutti i decessi',
+    preventable: 'prevenibile',
+    potential: 'Potenziale',
+    yearsUnit: 'anni di vita in più',
+    factsBox: "Combinate: ridurre tutte e quattro le malattie attraverso cambiamenti nello stile di vita aggiunge da +10 a +15 anni di aspettativa di vita. Quasi uno su due decessi su questo pianeta è legato a fattori di rischio modificabili: dieta, esercizio, fumo, alcol e peso.",
+    agingTag: 'IL VERO FATTORE DI RISCHIO',
+    agingTitle: 'Nessuno muore di vecchiaia.',
+    agingSub: 'Le persone muoiono di malattie. Ma l\'invecchiamento è il singolo maggiore fattore di rischio per quasi tutte.',
+    agingFacts: [
+      'Il rischio di morte aumenta esponenzialmente durante l\'età adulta — raddoppiando circa ogni 7 anni.',
+      'Se rallentiamo l\'invecchiamento biologico di soli 7 anni, il rischio di morte, fragilità e disabilità si dimezza ad ogni età.',
+      'Un 50enne avrebbe il profilo di salute di un attuale 43enne. Un 60enne assomiglierebbe a un attuale 53enne.',
+    ],
+    agingHallmarksNote: 'I ricercatori hanno identificato 12 caratteristiche biologiche dell\'invecchiamento. Molte di esse sono direttamente influenzate dall\'alimentazione.',
+    agingSource: 'Fonte: Kennedy et al. (2016), Cold Spring Harb Perspect Med',
     heatmapTag: 'ALIMENTAZIONE & LONGEVITÀ',
     heatmapTitle: 'Cosa sanno i ricercatori su alimentazione e invecchiamento sano',
     heatmapSub: "Tessiere et al. (2025) su Nature Medicine hanno seguito 105.015 partecipanti in due grandi coorti (Nurses' Health Study & Health Professionals Follow-up Study) per 30 anni — identificando gli alimenti che favoriscono o accelerano l'invecchiamento su 6 esiti di salute.",
@@ -388,6 +496,75 @@ export default async function SciencePage() {
                 <p className="text-xs text-[#1c2a2b]/50 leading-relaxed">{(s.desc as Record<string, string>)[lang] ?? s.desc.en}</p>
               </a>
             ))}
+          </div>
+        </section>
+
+        {/* ── Disease table ── */}
+        <section className="w-full max-w-5xl mx-auto px-6 py-16 border-b border-[#0e393d]/10">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-3">{t.factsTag}</p>
+          <h2 className="font-serif text-2xl sm:text-3xl text-[#0e393d] mb-3 leading-tight">{t.factsTitle}</h2>
+          <p className="text-sm text-[#1c2a2b]/60 mb-8 leading-relaxed max-w-2xl">{t.factsSub}</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            {DISEASES.map((d, i) => (
+              <div key={i} className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <span className="text-3xl">{d.emoji}</span>
+                  <span className="text-xs font-semibold text-[#0e393d]/40 uppercase tracking-wide">{d.pct}% {t.allDeaths}</span>
+                </div>
+                <p className="font-serif text-[1.1rem] text-[#0e393d] mb-1 leading-snug">{t.diseaseNames[i]}</p>
+                <p className="text-2xl font-light text-[#0e393d] mb-4">~{d.deathsM}M <span className="text-sm text-[#5a6e6f]">{t.deathsLabel}</span></p>
+
+                {/* Preventable bar */}
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-[10px] uppercase tracking-[0.12em] text-[#5a6e6f] font-medium">{t.preventable}</span>
+                  <span className="text-[10px] font-semibold text-emerald-600">{d.preventLow}–{d.preventHigh}%</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-[#0e393d]/8 mb-4">
+                  <div
+                    className="h-full rounded-full bg-emerald-500"
+                    style={{ width: `${d.preventPct}%` }}
+                  />
+                </div>
+
+                <p className="text-[11px] text-[#ceab84] font-medium">{t.potential}: +{d.yearsLow}–{d.yearsHigh} {t.yearsUnit}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl bg-[#0e393d]/5 border border-[#0e393d]/10 px-6 py-5">
+            <p className="text-sm text-[#1c2a2b]/70 leading-relaxed">{t.factsBox}</p>
+          </div>
+        </section>
+
+        {/* ── Aging section ── */}
+        <section className="w-full max-w-5xl mx-auto px-6 py-16 border-b border-[#0e393d]/10">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-3">{t.agingTag}</p>
+          <h2 className="font-serif text-2xl sm:text-3xl text-[#0e393d] mb-3 leading-tight">{t.agingTitle}</h2>
+          <p className="text-sm text-[#1c2a2b]/60 mb-8 leading-relaxed max-w-2xl">{t.agingSub}</p>
+
+          <div className="space-y-4 mb-8">
+            {t.agingFacts.map((fact, i) => (
+              <div key={i} className="flex gap-5 rounded-xl bg-white ring-1 ring-[#0e393d]/8 px-6 py-5">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-[#0e393d] flex items-center justify-center text-[11px] font-semibold text-white mt-0.5">{i + 1}</span>
+                <p className="text-[0.93rem] text-[#1c2a2b]/80 leading-relaxed">{fact}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-[#ceab84]/30 bg-[#ceab84]/6 px-6 py-5">
+            <p className="text-sm text-[#8a6a3e] leading-relaxed mb-3">{t.agingHallmarksNote}</p>
+            <p className="text-xs text-[#8a6a3e]/60">
+              {t.agingSource} ·{' '}
+              <a
+                href="https://pubmed.ncbi.nlm.nih.gov/26417092/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-[#8a6a3e] transition-colors"
+              >
+                PubMed
+              </a>
+            </p>
           </div>
         </section>
 
