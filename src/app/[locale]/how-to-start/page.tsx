@@ -8,68 +8,6 @@ export const metadata = { title: 'How to Start – Evida Life' };
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 type Lang = typeof VALID_LANGS[number];
 
-// ── Heatmap data ─────────────────────────────────────────────────────────────
-// Source: Tessiere et al. (2025), Nature Medicine, Figure 4
-// Columns: [Overall Healthy Aging, Cognitive, Physical, Mental Health, Free from Disease, Survived to 70]
-type CellVal = -4 | -3 | -2 | -1 | 0 | 1 | 2 | 3 | 4;
-interface HRow { food: string; cells: [CellVal, CellVal, CellVal, CellVal, CellVal, CellVal]; }
-
-const HP: HRow[] = [
-  { food: 'Fruit',                  cells: [ 4,  3,  3,  3,  4,  4] },
-  { food: 'MUFA:SFA ratio',         cells: [ 3,  2,  2,  2,  3,  3] },
-  { food: 'Whole grains',           cells: [ 3,  2,  3,  2,  3,  3] },
-  { food: 'Vegetables',             cells: [ 3,  2,  3,  2,  3,  3] },
-  { food: 'Added unsaturated fat',  cells: [ 2,  1,  2,  1,  2,  2] },
-  { food: 'Leafy greens',           cells: [ 2,  3,  2,  2,  2,  2] },
-  { food: 'Nuts',                   cells: [ 2,  2,  2,  1,  2,  2] },
-  { food: 'Nuts & legumes',         cells: [ 2,  2,  2,  1,  2,  2] },
-  { food: 'Dark-yellow vegetables', cells: [ 2,  2,  2,  1,  2,  2] },
-  { food: 'Vegetable oils',         cells: [ 2,  1,  2,  1,  2,  2] },
-  { food: 'Berries',                cells: [ 1,  2,  1,  2,  1,  1] },
-  { food: 'Yogurt',                 cells: [ 1,  1,  1,  1,  1,  1] },
-  { food: 'Low-fat dairy',          cells: [ 1,  1,  1,  0,  1,  1] },
-  { food: 'Olive oil',              cells: [ 1,  1,  1,  1,  1,  1] },
-  { food: 'Omega-3 fatty acids',    cells: [ 1,  2,  1,  1,  1,  1] },
-  { food: 'Beans',                  cells: [ 1,  1,  1,  1,  2,  1] },
-  { food: 'Soy',                    cells: [ 1,  1,  1,  1,  1,  1] },
-  { food: 'Legumes',                cells: [ 1,  1,  1,  1,  1,  1] },
-  { food: 'Coffee & tea',           cells: [ 1,  1,  0,  1,  1,  0] },
-];
-const HM: HRow[] = [
-  { food: 'Wine',           cells: [ 0,  0,  0, -1,  0,  0] },
-  { food: 'Fish & seafood', cells: [ 1,  1,  1,  0,  1,  0] },
-  { food: 'Total dairy',    cells: [ 0,  0,  0,  0,  0,  0] },
-  { food: 'Eggs',           cells: [ 0,  0,  0,  0, -1,  0] },
-  { food: 'Poultry',        cells: [-1,  0,  0,  0, -1,  0] },
-];
-const HA: HRow[] = [
-  { food: 'Trans fats',                  cells: [-4, -3, -3, -2, -4, -4] },
-  { food: 'Total meats',                 cells: [-3, -2, -2, -2, -3, -3] },
-  { food: 'Red & processed meats',       cells: [-3, -2, -2, -2, -3, -3] },
-  { food: 'Processed meat',             cells: [-3, -2, -2, -2, -3, -2] },
-  { food: 'Sodium',                      cells: [-2, -1, -1, -1, -2, -2] },
-  { food: 'Unprocessed red meat',        cells: [-2, -1, -1, -1, -2, -2] },
-  { food: 'Added sat. fat & trans fat', cells: [-3, -2, -2, -1, -3, -3] },
-  { food: 'French fries',               cells: [-2, -1, -1, -1, -2, -2] },
-  { food: 'Butter',                      cells: [-2, -1, -1, -1, -2, -1] },
-  { food: 'Sugar-sweetened beverages',  cells: [-2, -1, -1, -1, -2, -2] },
-  { food: 'High-fat dairy',             cells: [-1, -1, -1, -1, -1, -1] },
-  { food: 'Refined grains',             cells: [-1, -1, -1, -1, -1, -1] },
-  { food: 'Fast & fried foods',         cells: [-2, -1, -1, -1, -2, -1] },
-];
-
-function cellCls(v: CellVal): string {
-  if (v === 4)  return 'bg-emerald-700';
-  if (v === 3)  return 'bg-emerald-500';
-  if (v === 2)  return 'bg-emerald-300';
-  if (v === 1)  return 'bg-emerald-100';
-  if (v === 0)  return 'bg-gray-100';
-  if (v === -1) return 'bg-red-100';
-  if (v === -2) return 'bg-red-200';
-  if (v === -3) return 'bg-red-400';
-  return 'bg-red-600';
-}
-
 // ── Translations ──────────────────────────────────────────────────────────────
 const T: Record<Lang, {
   tag: string;
@@ -88,14 +26,10 @@ const T: Record<Lang, {
   whyText: string;
   ddBadgeNote: string;
   ddBadges: string[];
-  scienceTag: string;
-  scienceTitle: string;
-  scienceSub: string;
-  promoteLabel: string;
-  avoidLabel: string;
-  heatmapColHeaders: string[];
-  heatmapDividerLabel: string;
-  citation: string;
+  scienceCardTag: string;
+  scienceCardTitle: string;
+  scienceCardDesc: string;
+  scienceCardLink: string;
   rulesTag: string;
   rulesTitle: string;
   rules: { title: string; body: string }[];
@@ -141,14 +75,10 @@ const T: Record<Lang, {
       '🥜 Nüsse & Samen (Chia, Kürbis, Sonnenblume)',
       '🧂 Gewürze (Ceylon-Zimt)',
     ],
-    scienceTag: 'DIE WISSENSCHAFT',
-    scienceTitle: 'Was Forscher über Essen & Longevity wissen',
-    scienceSub: 'Tessiere et al. (2025) in Nature Medicine verfolgten 105.015 Teilnehmer in zwei großen Kohorten (Nurses\' Health Study & Health Professionals Follow-up Study) über 30 Jahre – und identifizierten, welche Lebensmittel gesundes Altern in 6 Gesundheitsdomänen fördern oder beschleunigen.',
-    promoteLabel: 'Fördert gesundes Altern',
-    avoidLabel: 'Beschleunigt Alterung',
-    heatmapColHeaders: ['Gesundes Altern', 'Kognitiv', 'Körperlich', 'Psychische Gesundheit', 'Krankheitsfrei', 'Bis 70 überleben'],
-    heatmapDividerLabel: 'Gemischt / neutral',
-    citation: 'Tessiere et al. (2025), Nature Medicine — 105.015 Teilnehmer, 30 Jahre Beobachtungszeitraum.',
+    scienceCardTag: 'DIE WISSENSCHAFT',
+    scienceCardTitle: 'Was sollte man für ein längeres Leben essen?',
+    scienceCardDesc: 'Eine 30-Jahres-Studie mit über 105.000 Personen identifizierte, welche Lebensmittel gesundes Altern fördern – und welche es beschleunigen.',
+    scienceCardLink: 'Die vollständige Forschung ansehen →',
     rulesTag: 'DREI EINFACHE REGELN',
     rulesTitle: 'So fängst du an',
     rules: [
@@ -202,14 +132,10 @@ const T: Record<Lang, {
       '🥜 Nuts & Seeds (chia, pumpkin, sunflower)',
       '🧂 Spices (Ceylon cinnamon)',
     ],
-    scienceTag: 'THE SCIENCE',
-    scienceTitle: 'What researchers know about food & longevity',
-    scienceSub: 'Tessiere et al. (2025) in Nature Medicine followed 105,015 participants across two major cohorts (Nurses\' Health Study & Health Professionals Follow-up Study) for 30 years — identifying which foods promote or accelerate aging across 6 health outcomes.',
-    promoteLabel: 'Promotes healthy aging',
-    avoidLabel: 'Accelerates aging',
-    heatmapColHeaders: ['Healthy aging', 'Cognitive', 'Physical', 'Mental health', 'Disease-free', 'Survived 70'],
-    heatmapDividerLabel: 'Mixed / neutral',
-    citation: 'Tessiere et al. (2025), Nature Medicine — 105,015 participants followed for 30 years.',
+    scienceCardTag: 'THE SCIENCE',
+    scienceCardTitle: 'What should you eat for a longer life?',
+    scienceCardDesc: 'A 30-year study of 105,000+ people identified which foods promote — and which accelerate — aging.',
+    scienceCardLink: 'See the full research →',
     rulesTag: 'THREE SIMPLE RULES',
     rulesTitle: 'How to begin',
     rules: [
@@ -263,14 +189,10 @@ const T: Record<Lang, {
       '🥜 Noix & graines (chia, courge, tournesol)',
       '🧂 Épices (cannelle de Ceylan)',
     ],
-    scienceTag: 'LA SCIENCE',
-    scienceTitle: "Ce que les chercheurs savent sur l'alimentation & la longévité",
-    scienceSub: "Tessiere et al. (2025) dans Nature Medicine ont suivi 105 015 participants dans deux grandes cohortes (Nurses' Health Study & Health Professionals Follow-up Study) pendant 30 ans — identifiant les aliments qui favorisent ou accélèrent le vieillissement sur 6 résultats de santé.",
-    promoteLabel: 'Favorise un vieillissement sain',
-    avoidLabel: 'Accélère le vieillissement',
-    heatmapColHeaders: ['Vieillissement sain', 'Cognitif', 'Physique', 'Santé mentale', 'Sans maladie', 'Survie à 70'],
-    heatmapDividerLabel: 'Mixte / neutre',
-    citation: "Tessiere et al. (2025), Nature Medicine — 105 015 participants suivis pendant 30 ans.",
+    scienceCardTag: 'LA SCIENCE',
+    scienceCardTitle: 'Que faut-il manger pour vivre plus longtemps ?',
+    scienceCardDesc: 'Une étude de 30 ans portant sur plus de 105 000 personnes a identifié quels aliments favorisent — et lesquels accélèrent — le vieillissement.',
+    scienceCardLink: 'Voir la recherche complète →',
     rulesTag: 'TROIS RÈGLES SIMPLES',
     rulesTitle: 'Comment commencer',
     rules: [
@@ -324,14 +246,10 @@ const T: Record<Lang, {
       '🥜 Frutos secos & semillas (chía, calabaza, girasol)',
       '🧂 Especias (canela de Ceilán)',
     ],
-    scienceTag: 'LA CIENCIA',
-    scienceTitle: 'Lo que los investigadores saben sobre alimentación y longevidad',
-    scienceSub: "Tessiere et al. (2025) en Nature Medicine siguieron a 105.015 participantes en dos grandes cohortes (Nurses' Health Study & Health Professionals Follow-up Study) durante 30 años — identificando qué alimentos promueven o aceleran el envejecimiento en 6 resultados de salud.",
-    promoteLabel: 'Promueve el envejecimiento saludable',
-    avoidLabel: 'Acelera el envejecimiento',
-    heatmapColHeaders: ['Envej. sano', 'Cognitivo', 'Físico', 'Salud mental', 'Sin enfermedad', 'Superv. a 70'],
-    heatmapDividerLabel: 'Mixto / neutro',
-    citation: "Tessiere et al. (2025), Nature Medicine — 105.015 participantes seguidos durante 30 años.",
+    scienceCardTag: 'LA CIENCIA',
+    scienceCardTitle: '¿Qué deberías comer para vivir más?',
+    scienceCardDesc: 'Un estudio de 30 años con más de 105.000 personas identificó qué alimentos promueven — y cuáles aceleran — el envejecimiento.',
+    scienceCardLink: 'Ver la investigación completa →',
     rulesTag: 'TRES REGLAS SIMPLES',
     rulesTitle: 'Cómo empezar',
     rules: [
@@ -385,14 +303,10 @@ const T: Record<Lang, {
       '🥜 Noci & semi (chia, zucca, girasole)',
       '🧂 Spezie (cannella di Ceylon)',
     ],
-    scienceTag: 'LA SCIENZA',
-    scienceTitle: 'Cosa sanno i ricercatori su alimentazione e longevità',
-    scienceSub: "Tessiere et al. (2025) su Nature Medicine hanno seguito 105.015 partecipanti in due grandi coorti (Nurses' Health Study & Health Professionals Follow-up Study) per 30 anni — identificando gli alimenti che favoriscono o accelerano l'invecchiamento su 6 esiti di salute.",
-    promoteLabel: "Favorisce l'invecchiamento sano",
-    avoidLabel: "Accelera l'invecchiamento",
-    heatmapColHeaders: ['Inv. sano', 'Cognitivo', 'Fisico', 'Mentale', 'Senza malattia', 'A 70 anni'],
-    heatmapDividerLabel: 'Misto / neutro',
-    citation: "Tessiere et al. (2025), Nature Medicine — 105.015 partecipanti seguiti per 30 anni.",
+    scienceCardTag: 'LA SCIENZA',
+    scienceCardTitle: 'Cosa dovresti mangiare per vivere più a lungo?',
+    scienceCardDesc: 'Uno studio di 30 anni su oltre 105.000 persone ha identificato quali alimenti favoriscono — e quali accelerano — l\'invecchiamento.',
+    scienceCardLink: 'Vedi la ricerca completa →',
     rulesTag: 'TRE REGOLE SEMPLICI',
     rulesTitle: 'Come iniziare',
     rules: [
@@ -505,153 +419,16 @@ export default async function HowToStartPage() {
           </div>
         </section>
 
-        {/* ── Section 2: Science heatmap ────────────────────────────────────── */}
+        {/* ── Section 2: Science teaser ─────────────────────────────────────── */}
         <section className="mb-20">
-          <div className="mb-8 flex items-center gap-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] shrink-0">{t.scienceTag}</p>
-            <div className="flex-1 h-px bg-[#0e393d]/10" />
+          <div className="rounded-2xl bg-[#0e393d] p-8 md:p-10">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-3">{t.scienceCardTag}</p>
+            <h2 className="font-serif text-2xl text-white mb-3">{t.scienceCardTitle}</h2>
+            <p className="text-sm text-white/50 leading-relaxed mb-6">{t.scienceCardDesc}</p>
+            <Link href="/science" className="text-sm font-medium text-[#ceab84] hover:text-[#ceab84]/80 transition-colors">
+              {t.scienceCardLink}
+            </Link>
           </div>
-
-          <h2 className="font-serif text-3xl text-[#0e393d] mb-3 max-w-2xl">{t.scienceTitle}</h2>
-          <p className="text-base text-[#1c2a2b]/60 mb-8 max-w-2xl leading-relaxed">{t.scienceSub}</p>
-
-          {/* Heatmap */}
-          <div className="overflow-x-auto -mx-6 px-6">
-            <div className="min-w-[620px]">
-
-              {/* Column headers */}
-              <div className="flex mb-0.5">
-                <div className="shrink-0" style={{ width: 164 }} />
-                {t.heatmapColHeaders.map((h, ci) => (
-                  <div key={ci} className="flex-1 flex items-end justify-center pb-1" style={{ height: 86 }}>
-                    <span
-                      className="text-[9px] font-semibold uppercase tracking-wide text-[#0e393d]/55 text-center leading-tight block"
-                      style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
-                    >
-                      {h}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Promote rows */}
-              {HP.map((row) => (
-                <div key={row.food} className="flex border-b border-gray-50 last:border-0">
-                  <div
-                    className="shrink-0 pr-2 text-right text-[10.5px] text-[#1c2a2b]/55 flex items-center justify-end leading-tight"
-                    style={{ width: 164, height: 22 }}
-                  >
-                    {row.food}
-                  </div>
-                  {row.cells.map((v, ci) => (
-                    <div
-                      key={ci}
-                      className={`flex-1 m-[2px] rounded-[2px] ${cellCls(v)}`}
-                      style={{ height: 18 }}
-                    />
-                  ))}
-                </div>
-              ))}
-
-              {/* Divider: mixed/neutral */}
-              <div className="flex items-center gap-3 my-2">
-                <div className="shrink-0" style={{ width: 164 }} />
-                <div className="flex-1 h-px bg-[#0e393d]/10" />
-                <span className="text-[9px] uppercase tracking-[0.14em] text-[#0e393d]/40 whitespace-nowrap shrink-0">
-                  {t.heatmapDividerLabel}
-                </span>
-                <div className="flex-1 h-px bg-[#0e393d]/10" />
-              </div>
-
-              {/* Mixed rows */}
-              {HM.map((row) => (
-                <div key={row.food} className="flex border-b border-gray-50 last:border-0">
-                  <div
-                    className="shrink-0 pr-2 text-right text-[10.5px] text-[#1c2a2b]/55 flex items-center justify-end leading-tight"
-                    style={{ width: 164, height: 22 }}
-                  >
-                    {row.food}
-                  </div>
-                  {row.cells.map((v, ci) => (
-                    <div
-                      key={ci}
-                      className={`flex-1 m-[2px] rounded-[2px] ${cellCls(v)}`}
-                      style={{ height: 18 }}
-                    />
-                  ))}
-                </div>
-              ))}
-
-              {/* Divider: avoid */}
-              <div className="flex items-center gap-3 my-2">
-                <div className="shrink-0" style={{ width: 164 }} />
-                <div className="flex-1 h-px bg-[#0e393d]/10" />
-              </div>
-
-              {/* Avoid rows */}
-              {HA.map((row) => (
-                <div key={row.food} className="flex border-b border-gray-50 last:border-0">
-                  <div
-                    className="shrink-0 pr-2 text-right text-[10.5px] text-[#1c2a2b]/55 flex items-center justify-end leading-tight"
-                    style={{ width: 164, height: 22 }}
-                  >
-                    {row.food}
-                  </div>
-                  {row.cells.map((v, ci) => (
-                    <div
-                      key={ci}
-                      className={`flex-1 m-[2px] rounded-[2px] ${cellCls(v)}`}
-                      style={{ height: 18 }}
-                    />
-                  ))}
-                </div>
-              ))}
-
-              {/* Legend */}
-              <div className="mt-4 flex items-center gap-3">
-                <div className="shrink-0" style={{ width: 164 }} />
-                <span className="text-[9px] font-semibold text-red-600 whitespace-nowrap shrink-0">← {t.avoidLabel}</span>
-                <div className="flex gap-0.5 flex-1">
-                  {([-4, -3, -2, -1, 0, 1, 2, 3, 4] as CellVal[]).map((v) => (
-                    <div key={v} className={`flex-1 h-3 rounded-[1px] ${cellCls(v)}`} />
-                  ))}
-                </div>
-                <span className="text-[9px] font-semibold text-emerald-700 whitespace-nowrap shrink-0">{t.promoteLabel} →</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Citation */}
-          <p className="mt-5 text-xs text-[#1c2a2b]/40 leading-relaxed">
-            {t.citation}
-            {' · '}
-            <a
-              href="https://pubmed.ncbi.nlm.nih.gov/40128348/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-[#1c2a2b]/60 transition-colors"
-            >
-              PubMed
-            </a>
-            {' · '}
-            <a
-              href="https://www.nature.com/articles/s41591-025-03570-5"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-[#1c2a2b]/60 transition-colors"
-            >
-              Nature Medicine
-            </a>
-            {' · '}
-            <a
-              href="https://www.nature.com/articles/s41591-025-03570-5/figures/4"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-[#1c2a2b]/60 transition-colors"
-            >
-              Figure 4
-            </a>
-          </p>
         </section>
 
         {/* ── Section 3: Three rules ────────────────────────────────────────── */}
