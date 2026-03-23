@@ -32,6 +32,7 @@ type FormState = {
   sort_order: string;
   is_active: boolean;
   unit: string;
+  range_type: string;
   ref_range_low: string;
   ref_range_high: string;
   optimal_range_low: string;
@@ -47,6 +48,7 @@ const EMPTY_FORM: FormState = {
   sort_order: '',
   is_active: true,
   unit: '',
+  range_type: 'range',
   ref_range_low: '',
   ref_range_high: '',
   optimal_range_low: '',
@@ -56,23 +58,29 @@ const EMPTY_FORM: FormState = {
 };
 
 const ITEM_TYPES = [
-  { value: 'biomarker', label: 'Biomarker' },
+  { value: 'biomarker', label: 'Blood Marker' },
   { value: 'vitalcheck_measurement', label: 'Vitalcheck' },
   { value: 'vo2max_test', label: 'VO₂max' },
   { value: 'dexa_scan', label: 'DEXA' },
   { value: 'biological_age_test', label: 'Bio Age' },
-  { value: 'coaching_hour', label: 'Coaching' },
-  { value: 'food_item', label: 'Food' },
   { value: 'genetic_test', label: 'Genetic' },
 ];
 
-const BODY_SYSTEMS = [
-  '', 'cardiovascular', 'metabolic', 'hormonal', 'immune', 'musculoskeletal',
-  'neurological', 'renal', 'hepatic', 'pulmonary', 'hematological', 'other',
+// New category values matching the health engine domains
+const BIOMARKER_CATEGORIES = [
+  '', 'heart_vessels', 'metabolism', 'inflammation', 'organ_function',
+  'nutrients', 'hormones', 'body_composition', 'fitness', 'epigenetics', 'vitalcheck',
 ];
 
 const HE_DOMAINS = [
   '', 'longevity', 'fitness', 'nutrition', 'mental_health', 'sleep', 'stress', 'other',
+];
+
+const RANGE_TYPES = [
+  { value: '', label: '— none —' },
+  { value: 'range', label: 'Range (has both bounds)' },
+  { value: 'lower_is_better', label: 'Lower is better (e.g. LDL, hs-CRP)' },
+  { value: 'higher_is_better', label: 'Higher is better (e.g. HDL, Vit D)' },
 ];
 
 const LANGS: Lang[] = ['de', 'en', 'fr', 'es', 'it'];
@@ -224,9 +232,9 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
   const [error, setError] = useState<string | null>(null);
   const [openSections, setOpenSections] = useState({
     names: true,
+    description: true,
     measurement: true,
     ranges: true,
-    description: true,
     settings: false,
   });
 
@@ -251,7 +259,7 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
     setDescLang('de');
     setForm(EMPTY_FORM);
     setError(null);
-    setOpenSections({ names: true, measurement: true, ranges: true, description: true, settings: false });
+    setOpenSections({ names: true, description: true, measurement: true, ranges: true, settings: false });
     setPanelOpen(true);
   };
 
@@ -278,15 +286,16 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
       sort_order: item.sort_order != null ? String(item.sort_order) : '',
       is_active: item.is_active ?? true,
       unit: item.unit ?? '',
+      range_type: (item as ItemDefinition & { range_type?: string }).range_type ?? 'range',
       ref_range_low: item.ref_range_low != null ? String(item.ref_range_low) : '',
       ref_range_high: item.ref_range_high != null ? String(item.ref_range_high) : '',
       optimal_range_low: item.optimal_range_low != null ? String(item.optimal_range_low) : '',
       optimal_range_high: item.optimal_range_high != null ? String(item.optimal_range_high) : '',
-      body_system: item.body_system ?? '',
+      body_system: '',
       he_domain: item.he_domain ?? '',
     });
     setError(null);
-    setOpenSections({ names: true, measurement: true, ranges: true, description: false, settings: false });
+    setOpenSections({ names: true, description: true, measurement: true, ranges: true, settings: false });
     setPanelOpen(true);
   };
 
@@ -375,6 +384,7 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
     setSaving(true);
     setError(null);
 
+    const rangeType = form.range_type || null;
     const payload = {
       name: { de: form.name.de, en: form.name.en, fr: form.name.fr, es: form.name.es, it: form.name.it },
       description: { de: form.description.de, en: form.description.en, fr: form.description.fr, es: form.description.es, it: form.description.it },
@@ -382,11 +392,11 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
       sort_order: form.sort_order ? Number(form.sort_order) : null,
       is_active: form.is_active,
       unit: form.unit || null,
-      ref_range_low: parseNum(form.ref_range_low),
-      ref_range_high: parseNum(form.ref_range_high),
-      optimal_range_low: parseNum(form.optimal_range_low),
-      optimal_range_high: parseNum(form.optimal_range_high),
-      body_system: form.body_system || null,
+      range_type: rangeType,
+      ref_range_low: rangeType === 'higher_is_better' ? null : parseNum(form.ref_range_low),
+      ref_range_high: rangeType === 'lower_is_better' ? null : parseNum(form.ref_range_high),
+      optimal_range_low: rangeType === 'higher_is_better' ? null : parseNum(form.optimal_range_low),
+      optimal_range_high: rangeType === 'lower_is_better' ? null : parseNum(form.optimal_range_high),
       he_domain: form.he_domain || null,
     };
 
@@ -584,7 +594,7 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
             {/* Panel body */}
             <div className="flex-1 overflow-y-auto">
 
-              {/* ── Names section ──────────────────────────────────────────── */}
+              {/* ── Names ─────────────────────────────────────────────────── */}
               <SectionBlock title="Names" open={openSections.names} onToggle={() => toggleSection('names')}>
                 {/* Lang tabs */}
                 <div className="flex rounded-lg border border-[#0e393d]/15 overflow-hidden text-xs w-fit">
@@ -622,7 +632,35 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
                 </Field>
               </SectionBlock>
 
-              {/* ── Measurement section ────────────────────────────────────── */}
+              {/* ── Description ───────────────────────────────────────────── */}
+              <SectionBlock title="Description" open={openSections.description} onToggle={() => toggleSection('description')}>
+                <div className="flex rounded-lg border border-[#0e393d]/15 overflow-hidden text-xs w-fit">
+                  {LANGS.map((l) => (
+                    <button
+                      key={l}
+                      onClick={() => setDescLang(l)}
+                      className={`px-3 py-1.5 font-medium transition ${descLang === l ? 'bg-[#0e393d] text-white' : 'text-[#1c2a2b]/60 hover:bg-[#0e393d]/5'}`}
+                    >
+                      {l.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+
+                <textarea
+                  className={`${inputCls} resize-none`}
+                  rows={4}
+                  value={form.description[descLang]}
+                  onChange={(e) => setForm((f) => ({ ...f, description: { ...f.description, [descLang]: e.target.value } }))}
+                  placeholder={descLang === 'de' ? 'Kurze Beschreibung…' : 'Short description…'}
+                />
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <AiBtn onClick={() => {}} loading={false} label="✦ Rewrite & Proofread" />
+                  <AiBtn onClick={() => {}} loading={false} label="✦ AI Style" />
+                  <AiBtn onClick={handleTranslate} loading={translating} label="✦ Translate to all" />
+                </div>
+              </SectionBlock>
+
+              {/* ── Measurement ────────────────────────────────────────────── */}
               <SectionBlock title="Measurement" open={openSections.measurement} onToggle={() => toggleSection('measurement')}>
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="Item Type">
@@ -646,13 +684,13 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
                     />
                   </Field>
 
-                  <Field label="Body System">
+                  <Field label="Category">
                     <select
                       className={selectCls}
                       value={form.body_system}
                       onChange={(e) => setForm((f) => ({ ...f, body_system: e.target.value }))}
                     >
-                      {BODY_SYSTEMS.map((s) => (
+                      {BIOMARKER_CATEGORIES.map((s) => (
                         <option key={s} value={s}>{s || '— none —'}</option>
                       ))}
                     </select>
@@ -672,8 +710,20 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
                 </div>
               </SectionBlock>
 
-              {/* ── Reference Ranges section ──────────────────────────────── */}
+              {/* ── Reference Ranges ──────────────────────────────────────── */}
               <SectionBlock title="Reference Ranges" open={openSections.ranges} onToggle={() => toggleSection('ranges')}>
+                <Field label="Range Logic">
+                  <select
+                    className={selectCls}
+                    value={form.range_type}
+                    onChange={(e) => setForm((f) => ({ ...f, range_type: e.target.value }))}
+                  >
+                    {RANGE_TYPES.map(({ value, label }) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </Field>
+
                 {/* Visual bar */}
                 <RangeBar
                   refLow={previewRanges.refLow}
@@ -683,46 +733,54 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
                 />
 
                 <div className="grid grid-cols-2 gap-4">
-                  <Field label="Ref Low" hint="Normal range lower bound">
-                    <input
-                      type="number"
-                      className={inputCls}
-                      value={form.ref_range_low}
-                      onChange={(e) => setForm((f) => ({ ...f, ref_range_low: e.target.value }))}
-                      placeholder="0"
-                      step="any"
-                    />
-                  </Field>
-                  <Field label="Ref High" hint="Normal range upper bound">
-                    <input
-                      type="number"
-                      className={inputCls}
-                      value={form.ref_range_high}
-                      onChange={(e) => setForm((f) => ({ ...f, ref_range_high: e.target.value }))}
-                      placeholder="100"
-                      step="any"
-                    />
-                  </Field>
-                  <Field label="Optimal Low" hint="Optimal lower bound">
-                    <input
-                      type="number"
-                      className={inputCls}
-                      value={form.optimal_range_low}
-                      onChange={(e) => setForm((f) => ({ ...f, optimal_range_low: e.target.value }))}
-                      placeholder="0"
-                      step="any"
-                    />
-                  </Field>
-                  <Field label="Optimal High" hint="Optimal upper bound">
-                    <input
-                      type="number"
-                      className={inputCls}
-                      value={form.optimal_range_high}
-                      onChange={(e) => setForm((f) => ({ ...f, optimal_range_high: e.target.value }))}
-                      placeholder="80"
-                      step="any"
-                    />
-                  </Field>
+                  {form.range_type !== 'higher_is_better' && (
+                    <Field label={form.range_type === 'lower_is_better' ? 'Upper Bound (max normal)' : 'Ref Low'} hint="Normal range lower bound">
+                      <input
+                        type="number"
+                        className={inputCls}
+                        value={form.ref_range_low}
+                        onChange={(e) => setForm((f) => ({ ...f, ref_range_low: e.target.value }))}
+                        placeholder="0"
+                        step="any"
+                      />
+                    </Field>
+                  )}
+                  {form.range_type !== 'lower_is_better' && (
+                    <Field label={form.range_type === 'higher_is_better' ? 'Lower Bound (min normal)' : 'Ref High'} hint="Normal range upper bound">
+                      <input
+                        type="number"
+                        className={inputCls}
+                        value={form.ref_range_high}
+                        onChange={(e) => setForm((f) => ({ ...f, ref_range_high: e.target.value }))}
+                        placeholder="100"
+                        step="any"
+                      />
+                    </Field>
+                  )}
+                  {form.range_type !== 'higher_is_better' && (
+                    <Field label="Optimal Low" hint="Optimal lower bound">
+                      <input
+                        type="number"
+                        className={inputCls}
+                        value={form.optimal_range_low}
+                        onChange={(e) => setForm((f) => ({ ...f, optimal_range_low: e.target.value }))}
+                        placeholder="0"
+                        step="any"
+                      />
+                    </Field>
+                  )}
+                  {form.range_type !== 'lower_is_better' && (
+                    <Field label="Optimal High" hint="Optimal upper bound">
+                      <input
+                        type="number"
+                        className={inputCls}
+                        value={form.optimal_range_high}
+                        onChange={(e) => setForm((f) => ({ ...f, optimal_range_high: e.target.value }))}
+                        placeholder="80"
+                        step="any"
+                      />
+                    </Field>
+                  )}
                 </div>
 
                 <div className="flex gap-3 text-xs text-[#1c2a2b]/50 pt-1">
@@ -735,30 +793,6 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
                     Optimal range
                   </span>
                 </div>
-              </SectionBlock>
-
-              {/* ── Description section ───────────────────────────────────── */}
-              <SectionBlock title="Description" open={openSections.description} onToggle={() => toggleSection('description')}>
-                <div className="flex rounded-lg border border-[#0e393d]/15 overflow-hidden text-xs w-fit">
-                  {LANGS.map((l) => (
-                    <button
-                      key={l}
-                      onClick={() => setDescLang(l)}
-                      className={`px-3 py-1.5 font-medium transition ${descLang === l ? 'bg-[#0e393d] text-white' : 'text-[#1c2a2b]/60 hover:bg-[#0e393d]/5'}`}
-                    >
-                      {l.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-
-                <textarea
-                  className={`${inputCls} resize-none`}
-                  rows={4}
-                  value={form.description[descLang]}
-                  onChange={(e) => setForm((f) => ({ ...f, description: { ...f.description, [descLang]: e.target.value } }))}
-                  placeholder={descLang === 'de' ? 'Kurze Beschreibung…' : 'Short description…'}
-                />
-                <p className="text-[11px] text-[#1c2a2b]/40">1–2 sentences. Used in product detail pages and reports.</p>
               </SectionBlock>
 
               {/* ── Settings section ──────────────────────────────────────── */}

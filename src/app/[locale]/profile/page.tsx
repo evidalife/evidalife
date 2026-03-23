@@ -33,7 +33,7 @@ export default async function ProfilePage() {
 
   const { data: profileRow } = await supabase
     .from('profiles')
-    .select('id, email, display_name, first_name, last_name, date_of_birth, sex, height_cm, phone, country, street_address, city, postal_code, avatar_url, onboarding_completed, is_admin, created_at')
+    .select('id, email, display_name, first_name, last_name, date_of_birth, sex, height_cm, weight_kg, blood_type, activity_level, diet, phone, country, street_address, city, postal_code, avatar_url, onboarding_completed, is_admin, created_at')
     .eq('id', user.id)
     .single();
 
@@ -46,6 +46,10 @@ export default async function ProfilePage() {
     date_of_birth:        profileRow?.date_of_birth ?? null,
     sex:                  profileRow?.sex           ?? null,
     height_cm:            profileRow?.height_cm     ?? null,
+    weight_kg:            profileRow?.weight_kg     ?? null,
+    blood_type:           profileRow?.blood_type    ?? null,
+    activity_level:       profileRow?.activity_level ?? null,
+    diet:                 profileRow?.diet          ?? null,
     phone:                profileRow?.phone         ?? null,
     country:              profileRow?.country       ?? null,
     street_address:       profileRow?.street_address ?? null,
