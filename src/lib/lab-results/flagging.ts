@@ -121,82 +121,312 @@ export function checkPlausibility(
 }
 
 // ─── Biomarker aliases for PDF extraction matching ────────────────────────────
+// Keys are DB slugs; values include all lab-reported names in DE/FR/IT/EN
+// and common abbreviations used by Swiss/German/EU labs.
 
 export const BIOMARKER_ALIASES: Record<string, string[]> = {
-  'Apolipoprotein B': ['ApoB', 'Apo B', 'Apolipoprotein-B'],
-  'HbA1c': ['Glycated Hemoglobin', 'Glycosylated Hemoglobin', 'Hämoglobin A1c', 'HbA1C', 'A1c'],
-  'hs-CRP': ['CRP', 'C-Reactive Protein', 'C-reaktives Protein', 'hsCRP', 'High-sensitivity CRP'],
-  '25-OH-Vitamin D': ['Vitamin D', 'Vitamin D3', '25-Hydroxyvitamin D', 'Calcidiol', '25(OH)D'],
-  'Vitamin B12': ['Cobalamin', 'B12', 'Cyanocobalamin'],
-  'Fasting Glucose': ['Glucose', 'Nüchternglukose', 'Blutzucker', 'Blood Sugar', 'Glukose'],
-  'Fasting Insulin': ['Insulin', 'Nüchterninsulin', 'Insuline'],
-  'Total Cholesterol': ['Cholesterol', 'Cholesterin', 'Gesamtcholesterin'],
-  'LDL Cholesterol': ['LDL', 'LDL-C', 'LDL-Cholesterin', 'Low Density Lipoprotein'],
-  'HDL Cholesterol': ['HDL', 'HDL-C', 'HDL-Cholesterin', 'High Density Lipoprotein'],
-  'Triglycerides': ['Triglyceride', 'Triglyzeride', 'TG'],
-  'TSH': ['Thyroid Stimulating Hormone', 'Thyreotropin', 'Thyrotropin'],
-  'fT3': ['Free T3', 'Freies T3', 'Triiodothyronine'],
-  'fT4': ['Free T4', 'Freies T4', 'Thyroxine'],
-  'Ferritin': ['Serum Ferritin', 'Ferritine'],
-  'Hemoglobin': ['Hb', 'Hämoglobin', 'Haemoglobin'],
-  'Creatinine': ['Kreatinin', 'Créatinine'],
-  'eGFR': ['GFR', 'Glomerular Filtration Rate', 'Glomeruläre Filtrationsrate'],
-  'GGT': ['Gamma-GT', 'Gamma-Glutamyltransferase', 'γ-GT'],
-  'ALT': ['GPT', 'ALAT', 'Alanine Aminotransferase'],
-  'AST': ['GOT', 'ASAT', 'Aspartate Aminotransferase'],
-  'Uric Acid': ['Harnsäure', 'Acide urique', 'Urate'],
-  'Homocysteine': ['Homocystein', 'Homocystéine'],
-  'Selenium': ['Selen', 'Sélénium', 'Se'],
-  'Magnesium': ['Mg', 'Magnésium'],
-  'IGF-1': ['Insulin-like Growth Factor 1', 'Somatomedin C'],
-  'Testosterone Total': ['Testosteron', 'Total Testosterone', 'Testostérone'],
-  'Lp(a)': ['Lipoprotein(a)', 'Lipoprotein a', 'Lp a'],
-  'Omega-3 Index': ['Omega-3', 'Omega 3 Index', 'EPA+DHA'],
-  'HOMA-IR': ['HOMA', 'Homeostatic Model Assessment'],
-  'ApoB': ['Apolipoprotein B', 'Apo B', 'Apolipoprotein-B'],
+  // === HEMATOLOGY ===
+  hemoglobin: [
+    'Hämoglobin', 'Hb', 'Hemoglobin', 'Hémoglobine', 'Emoglobina',
+    'Haemoglobin', 'Hgb',
+  ],
+  hematocrit: [
+    'Hämatokrit', 'Hkt', 'Hct', 'Hématocrite', 'Ematocrito', 'PCV',
+  ],
+  rbc: [
+    'Erythrozyten', 'Red Blood Cells', 'Érythrocytes', 'Eritrociti',
+    'Rote Blutkörperchen', 'RBC', 'Erythrocytes',
+  ],
+  wbc: [
+    'Leukozyten', 'White Blood Cells', 'Leucocytes', 'Leucociti',
+    'Weisse Blutkörperchen', 'Weisse Blutzellen', 'WBC',
+  ],
+  platelets: [
+    'Thrombozyten', 'Plättchen', 'Plaquettes', 'Piastrine', 'PLT',
+    'Thrombocytes',
+  ],
+  mcv: ['MCV', 'Mittleres Zellvolumen', 'VGM', 'Volume Globulaire Moyen'],
+  mch: ['MCH', 'Mittleres Zellhämoglobin', 'TCMH'],
+  mchc: ['MCHC'],
+  rdw: [
+    'RDW', 'RDW-CV', 'RDW-SD', 'Erythrozytenverteilungsbreite', 'IDR',
+    'Erythrocyte Distribution Width',
+  ],
+  neutrophils: [
+    'Neutrophile', 'Neutrophile %', 'Neutrophils', 'Neutrophiles',
+    'Segmentkernige', 'Granulozyten', 'NEUT',
+  ],
+  lymphocytes: [
+    'Lymphozyten', 'Lymphozyten %', 'Lymphocytes', 'Linfociti', 'LYMPH',
+  ],
+  monocytes: [
+    'Monozyten', 'Monozyten %', 'Monocytes', 'Monociti', 'MONO',
+  ],
+  eosinophils: [
+    'Eosinophile', 'Eosinophile %', 'Éosinophiles', 'Eosinofili', 'EOS',
+  ],
+  basophils: [
+    'Basophile', 'Basophile %', 'Basophiles', 'Basofili', 'BASO',
+  ],
+
+  // === ELECTROLYTES & MINERALS ===
+  potassium: [
+    'Kalium', 'Kalium (WI)', 'Potassium', 'Potassio', 'K', 'K+',
+  ],
+  sodium: [
+    'Natrium', 'Natrium (WI)', 'Sodium', 'Sodio', 'Na', 'Na+',
+  ],
+  calcium: [
+    'Calcium', 'Calcium (WI)', 'Kalzium', 'Calcio', 'Ca',
+  ],
+  magnesium: ['Magnesium', 'Mg', 'Magnésium', 'Magnesio'],
+  phosphate: [
+    'Phosphat', 'Phosphate', 'Phosphor', 'Fosfato', 'Phosphore', 'P',
+  ],
+  chloride: [
+    'Chlorid', 'Chloride', 'Chlorure', 'Cloruro', 'Cl', 'Cl-',
+  ],
+  zinc: ['Zink', 'Zinc', 'Zinco', 'Zn'],
+  selenium: ['Selen', 'Selenium', 'Sélénium', 'Selenio', 'Se'],
+
+  // === KIDNEY ===
+  creatinine: [
+    'Kreatinin', 'Kreatinin (WI)', 'Creatinine', 'Créatinine', 'Creatinina',
+  ],
+  egfr: [
+    'eGFR', 'eGFR CKD-EPI', 'GFR', 'Glomeruläre Filtrationsrate',
+    'eGFR CKD-EPI 2009', 'eGFR (CKD-EPI)', 'Estimated GFR',
+    'Geschätzte glomeruläre Filtrationsrate',
+  ],
+  uric_acid: [
+    'Harnsäure', 'Harnsäure (WI)', 'Uric Acid', 'Acide urique',
+    'Acido urico', 'Urate',
+  ],
+
+  // === LIVER ===
+  alt: [
+    'GPT (ALAT)', 'GPT', 'ALAT', 'ALT', 'GPT (ALAT) (WI)',
+    'Alanine Aminotransferase', 'Alanin-Aminotransferase',
+    'ALAT (GPT)', 'GPT/ALAT',
+  ],
+  ast: [
+    'GOT (ASAT)', 'GOT', 'ASAT', 'AST', 'GOT (ASAT) (WI)',
+    'Aspartate Aminotransferase', 'Aspartat-Aminotransferase',
+    'ASAT (GOT)', 'GOT/ASAT',
+  ],
+  ggt: [
+    'GGT', 'Gamma-GT', 'GGT (Gamma-glut.-transf.)', 'γ-GT',
+    'Gamma-Glutamyltransferase', 'Gamma-Glutamyl-Transferase',
+  ],
+  alp: [
+    'Alkalische Phosphatase', 'AP', 'ALP', 'Phosphatase alcaline',
+    'Fosfatasi alcalina', 'Alk. Phosphatase',
+  ],
+  ldh: [
+    'LDH', 'Laktatdehydrogenase', 'Lactate Déshydrogénase',
+    'Lattato Deidrogenasi', 'Lactate Dehydrogenase',
+  ],
+  ck: [
+    'CK', 'Kreatinkinase', 'Créatine Kinase', 'Creatina Chinasi',
+    'Creatine Kinase', 'CPK',
+  ],
+  albumin: ['Albumin', 'Albumine', 'Albumina'],
+  bilirubin_total: [
+    'Bilirubin', 'Bilirubin gesamt', 'Bilirubine', 'Bilirubina',
+    'Total Bilirubin', 'Gesamtbilirubin', 'Bilirubin total',
+  ],
+
+  // === GLUCOSE / DIABETES ===
+  fasting_glucose: [
+    'Glukose nüchtern', 'Glukose', 'Glucose', 'Nüchternglukose',
+    'Glycémie', 'Glicemia', 'Blutzucker', 'Nüchternblutzucker',
+    'Fasting Glucose', 'Glukose (WI)',
+  ],
+  hba1c: [
+    'HbA1c', 'HbA1c DCCT', 'HbA1c NGSP', 'Glykiertes Hämoglobin',
+    'Hémoglobine glyquée', 'Glycated Haemoglobin', 'A1c',
+  ],
+  fasting_insulin: [
+    'Nüchterninsulin', 'Insulin nüchtern', 'Fasting Insulin',
+    'Insuline à jeun', 'Insulina', 'Insulin',
+  ],
+  homa_ir: ['HOMA-IR', 'HOMA Index', 'HOMA', 'Homeostatic Model Assessment'],
+
+  // === LIPIDS ===
+  total_cholesterol: [
+    'Cholesterin', 'Cholesterin (WI)', 'Total Cholesterol', 'Cholestérol',
+    'Colesterolo', 'Gesamtcholesterin', 'Cholesterol',
+  ],
+  hdl_cholesterol: [
+    'HDL-Cholesterin', 'HDL', 'HDL-C', 'Cholestérol HDL',
+    'Colesterolo HDL', 'HDL Cholesterol',
+  ],
+  ldl_cholesterol: [
+    'LDL-Cholesterin', 'LDL', 'LDL-C', 'LDL-Cholesterin (berechnet)',
+    'Cholestérol LDL', 'Colesterolo LDL', 'LDL Cholesterol',
+  ],
+  triglycerides: [
+    'Triglyceride', 'Triglyceride (WI)', 'Triglycérides', 'Trigliceridi',
+    'TG', 'Triglyzeriden', 'Triglyzeride',
+  ],
+  apob: [
+    'ApoB', 'Apolipoprotein B', 'Apo B', 'Apolipoprotein-B',
+    'Apolipoprotéine B',
+  ],
+  lpa: [
+    'Lp(a)', 'Lipoprotein(a)', 'Lp a', 'Lipoprotéine(a)', 'Lipoprotein a',
+  ],
+
+  // === THYROID ===
+  tsh: [
+    'TSH', 'TSH basal', 'Thyreotropin', 'Thyroid Stimulating Hormone',
+    'Thyrotropin',
+  ],
+  ft3: [
+    'fT3', 'freies T3', 'Free T3', 'T3 libre', 'T3 libera',
+    'Freies Trijodthyronin', 'Freies Triiodthyronin',
+  ],
+  ft4: [
+    'fT4', 'freies T4', 'Free T4', 'T4 libre', 'T4 libera',
+    'Thyroxin frei', 'Freies Thyroxin',
+  ],
+
+  // === HORMONES ===
+  testosterone_total: [
+    'Testosteron total', 'Testosterone', 'Testostérone',
+    'Testosterone totale', 'Total Testosterone', 'Testosteron',
+  ],
+  testosterone_free: [
+    'Freies Testosteron', 'Free Testosterone', 'Testostérone libre',
+    'Testosterone libero',
+  ],
+  shbg: [
+    'SHBG', 'Sexualhormon-bindendes Globulin',
+    'Sex Hormone Binding Globulin', 'Globuline liant les hormones sexuelles',
+  ],
+  dhea_s: ['DHEA-S', 'DHEAS', 'DHEA-Sulfat', 'DHEA Sulfate'],
+  estradiol: ['Östradiol', 'Estradiol', 'E2', 'Estradiol (E2)', 'Œstradiol'],
+  igf_1: [
+    'IGF-1', 'IGF1', 'Insulin-like Growth Factor 1', 'Somatomedin C', 'IGF-I',
+  ],
+  cortisol: ['Cortisol', 'Kortisol', 'Hydrocortisone'],
+
+  // === VITAMINS ===
+  vitamin_d: [
+    '25-Hydroxy-Vitamin D', 'Vitamin D', '25-OH-Vitamin D',
+    '25-OH Vitamin D3', 'Vitamine D', 'Vitamina D',
+    '25(OH)D', '25-Hydroxyvitamin D', 'Calcidiol',
+    '25-OH-Vit. D', 'Vitamin D3',
+  ],
+  vitamin_b12: [
+    'Vitamin B12', 'Cobalamin', 'Vitamine B12', 'Vitamina B12',
+    'B12', 'Cyanocobalamin',
+  ],
+  vitamin_b6: [
+    'Vitamin B6', 'Pyridoxal-5-Phosphat', 'Vitamine B6',
+    'Vitamina B6', 'Pyridoxine',
+  ],
+  folate_b9: [
+    'Folsäure', 'Folsäure in Erythrozyten', 'Folate', 'Folat',
+    'Acide folique', 'Acido folico', 'Vitamin B9', 'Folic Acid',
+  ],
+
+  // === IRON ===
+  ferritin: [
+    'Ferritin', 'Ferritin (Roche)', 'Ferritin (WI)', 'Ferritine', 'Ferritina',
+  ],
+  iron_serum: [
+    'Eisen', 'Eisen (WI)', 'Iron', 'Fer', 'Ferro', 'Fe', 'Serumeisen',
+  ],
+  transferrin: ['Transferrin', 'Transferrine', 'Transferrina'],
+
+  // === INFLAMMATION ===
+  hs_crp: [
+    'hs-CRP', 'CRP', 'C-reaktives Protein', 'Protéine C réactive',
+    'hsCRP', 'CRP ultrasensibel', 'C-Reactive Protein',
+    'C-reaktives Protein (ultrasensitiv)', 'hsCRP (ultrasensitiv)',
+  ],
+  homocysteine: [
+    'Homocystein', 'Homocysteine', 'Homocystéine', 'Omocisteina',
+  ],
+
+  // === OTHER ===
+  omega_3_index: [
+    'Omega-3 Index', 'Omega-3-Index', 'Omega-3', 'EPA+DHA',
+  ],
+  iodine_urine: [
+    'Jod', 'Jod (Urin)', 'Iodine', 'Iode', 'Iodio', 'Iod im Urin',
+  ],
 };
 
-// Build reverse lookup: alias → canonical name
-export function buildAliasLookup(): Map<string, string> {
-  const lookup = new Map<string, string>();
-  for (const [canonical, aliases] of Object.entries(BIOMARKER_ALIASES)) {
-    lookup.set(canonical.toLowerCase(), canonical);
-    for (const alias of aliases) {
-      lookup.set(alias.toLowerCase(), canonical);
-    }
-  }
-  return lookup;
-}
+// ─── Biomarker name matching ──────────────────────────────────────────────────
 
+type MatchedBiomarker = {
+  id: string;
+  slug: string;
+  name: Record<string, string> | null;
+  unit: string | null;
+  [key: string]: unknown;
+};
+
+/**
+ * Match a lab-extracted name to a DB biomarker using 4-tier matching:
+ * 1. Slug (exact)
+ * 2. Name in any of 5 languages (exact)
+ * 3. BIOMARKER_ALIASES (case-insensitive)
+ * 4. Fuzzy stripped alphanumeric prefix match
+ */
 export function matchBiomarkerName(
   extractedName: string,
-  dbBiomarkers: { id: string; name_en: string }[],
-): { id: string; name: string; confidence: number } | null {
-  const aliasLookup = buildAliasLookup();
-  const extracted = extractedName.toLowerCase().trim();
+  biomarkers: MatchedBiomarker[],
+): { biomarker: MatchedBiomarker; confidence: 'exact' | 'alias' | 'fuzzy' } | null {
+  const norm = (s: string) =>
+    s.toLowerCase()
+      .replace(/\s*\(wi\)\s*/gi, '')
+      .replace(/\s*\(roche\)\s*/gi, '')
+      .replace(/\s*\(berechnet\)\s*/gi, '')
+      .replace(/\s*\(e\)\s*/gi, '')
+      .replace(/\s+%\s*$/, '')
+      .trim();
 
-  // Exact match on DB name
-  for (const bm of dbBiomarkers) {
-    if (bm.name_en.toLowerCase() === extracted) {
-      return { id: bm.id, name: bm.name_en, confidence: 1.0 };
+  const n = norm(extractedName);
+  if (!n) return null;
+
+  // 1. Slug match
+  const slugCandidate = n.replace(/[\s\-]/g, '_').replace(/[^a-z0-9_]/g, '');
+  const slugMatch = biomarkers.find((b) => b.slug === slugCandidate);
+  if (slugMatch) return { biomarker: slugMatch, confidence: 'exact' };
+
+  // 2. Exact name match in any of 5 languages
+  for (const b of biomarkers) {
+    if (!b.name) continue;
+    for (const lang of ['de', 'en', 'es', 'fr', 'it'] as const) {
+      const langName = norm((b.name as Record<string, string>)[lang] ?? '');
+      if (langName && langName === n) return { biomarker: b, confidence: 'exact' };
     }
   }
 
-  // Alias match → canonical name → DB name
-  const canonical = aliasLookup.get(extracted);
-  if (canonical) {
-    for (const bm of dbBiomarkers) {
-      if (bm.name_en.toLowerCase() === canonical.toLowerCase()) {
-        return { id: bm.id, name: bm.name_en, confidence: 0.9 };
+  // 3. Alias exact match (case-insensitive, after normalisation)
+  for (const [slug, aliases] of Object.entries(BIOMARKER_ALIASES)) {
+    for (const alias of aliases) {
+      if (norm(alias) === n) {
+        const bm = biomarkers.find((b) => b.slug === slug);
+        if (bm) return { biomarker: bm, confidence: 'alias' };
       }
     }
   }
 
-  // Partial contains match
-  for (const bm of dbBiomarkers) {
-    const dbName = bm.name_en.toLowerCase();
-    if (dbName.includes(extracted) || extracted.includes(dbName)) {
-      return { id: bm.id, name: bm.name_en, confidence: 0.7 };
+  // 4. Fuzzy: strip to alphanumeric and check prefix/equality (min length 4)
+  const stripped = n.replace(/[^a-z0-9äöüéèàùâêîôûñ]/gi, '').toLowerCase();
+  if (stripped.length >= 4) {
+    for (const [slug, aliases] of Object.entries(BIOMARKER_ALIASES)) {
+      for (const alias of aliases) {
+        const a = norm(alias).replace(/[^a-z0-9äöüéèàùâêîôûñ]/gi, '').toLowerCase();
+        if (a.length >= 4 && (stripped === a || stripped.startsWith(a) || a.startsWith(stripped))) {
+          const bm = biomarkers.find((b) => b.slug === slug);
+          if (bm) return { biomarker: bm, confidence: 'fuzzy' };
+        }
+      }
     }
   }
 
