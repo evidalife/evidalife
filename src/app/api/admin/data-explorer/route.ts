@@ -2,21 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 const ALLOWED_TABLES = new Set([
-  'profiles',
-  'products',
-  'product_item_definitions',
-  'product_items',
-  'orders',
-  'order_vouchers',
-  'order_test_items',
-  'order_status_log',
-  'order_notes',
-  'order_refunds',
-  'lab_results',
-  'lab_result_reviews',
-  'lab_pdf_uploads',
-  'email_log',
-  'discount_codes',
+  // Shop
+  'products', 'product_item_definitions', 'product_items',
+  'orders', 'order_vouchers', 'order_test_items', 'order_status_log',
+  'order_notes', 'order_refunds', 'discount_codes',
+  // Health
+  'lab_results', 'lab_result_reviews', 'lab_pdf_uploads',
+  // System
+  'profiles', 'email_log',
 ]);
 
 export async function GET(req: NextRequest) {

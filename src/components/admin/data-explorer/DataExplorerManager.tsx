@@ -15,23 +15,40 @@ import {
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const TABLES = [
-  { name: 'profiles',                 label: 'User Profiles' },
-  { name: 'products',                 label: 'Products' },
-  { name: 'product_item_definitions', label: 'Biomarker Definitions' },
-  { name: 'product_items',            label: 'Product ↔ Biomarker Links' },
-  { name: 'orders',                   label: 'Orders' },
-  { name: 'order_vouchers',           label: 'Vouchers' },
-  { name: 'order_test_items',         label: 'Order Test Items' },
-  { name: 'order_status_log',         label: 'Status Log' },
-  { name: 'order_notes',              label: 'Order Notes' },
-  { name: 'order_refunds',            label: 'Refunds' },
-  { name: 'lab_results',              label: 'Lab Results' },
-  { name: 'lab_result_reviews',       label: 'Result Reviews' },
-  { name: 'lab_pdf_uploads',          label: 'PDF Uploads' },
-  { name: 'email_log',                label: 'Email Log' },
-  { name: 'discount_codes',           label: 'Discount Codes' },
+const TABLE_CATEGORIES = [
+  {
+    label: 'Shop',
+    tables: [
+      { name: 'products',                 label: 'Products' },
+      { name: 'product_item_definitions', label: 'Biomarker Definitions' },
+      { name: 'product_items',            label: 'Product ↔ Biomarker Links' },
+      { name: 'orders',                   label: 'Orders' },
+      { name: 'order_vouchers',           label: 'Vouchers' },
+      { name: 'order_test_items',         label: 'Order Test Items' },
+      { name: 'order_status_log',         label: 'Order Status Log' },
+      { name: 'order_notes',             label: 'Order Notes' },
+      { name: 'order_refunds',            label: 'Refunds' },
+      { name: 'discount_codes',           label: 'Discount Codes' },
+    ],
+  },
+  {
+    label: 'Health',
+    tables: [
+      { name: 'lab_results',        label: 'Lab Results' },
+      { name: 'lab_result_reviews', label: 'Result Reviews' },
+      { name: 'lab_pdf_uploads',    label: 'PDF Uploads' },
+    ],
+  },
+  {
+    label: 'System',
+    tables: [
+      { name: 'profiles',  label: 'User Profiles' },
+      { name: 'email_log', label: 'Email Log' },
+    ],
+  },
 ];
+
+const ALL_TABLES = TABLE_CATEGORIES.flatMap((c) => c.tables);
 
 const PAGE_SIZES = [10, 25, 50, 100];
 const DEFAULT_PAGE_SIZE = 25;
@@ -39,11 +56,11 @@ const DEFAULT_PAGE_SIZE = 25;
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type Stats = {
-  users: number;
-  products: number;
-  biomarkers: number;
-  orders: number;
-  lab_results: number;
+  users: number | null;
+  products: number | null;
+  biomarkers: number | null;
+  orders: number | null;
+  lab_results: number | null;
 };
 
 type Row = Record<string, unknown>;
@@ -54,12 +71,12 @@ type FetchResult = {
   columns: string[];
 };
 
-// ── Cell type detection ────────────────────────────────────────────────────────
+// ── Cell type detection helpers ────────────────────────────────────────────────
 
-const UUID_RE    = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ISO_RE     = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
-const EMAIL_RE   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const URL_RE     = /^https?:\/\//;
+const UUID_RE  = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ISO_RE   = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const URL_RE   = /^https?:\/\//;
 
 function colInitialWidth(col: string): number {
   if (col === 'id' || col.endsWith('_id')) return 110;
@@ -74,8 +91,8 @@ function colInitialWidth(col: string): number {
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const secs = Math.floor(diff / 1000);
-  if (secs < 60)   return `${secs}s ago`;
-  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  if (secs < 60)    return `${secs}s ago`;
+  if (secs < 3600)  return `${Math.floor(secs / 60)}m ago`;
   if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
   return `${Math.floor(secs / 86400)}d ago`;
 }
@@ -148,7 +165,6 @@ function CellRenderer({ value, onJsonClick }: { value: unknown; onJsonClick: (v:
     return <span className="text-[#1c2a2b]/70">{String(value)}</span>;
   }
 
-  // String handling
   if (UUID_RE.test(value)) {
     return (
       <span title={value} className="font-mono text-[11px] text-[#1c2a2b]/60 cursor-default">
@@ -184,7 +200,6 @@ function CellRenderer({ value, onJsonClick }: { value: unknown; onJsonClick: (v:
       </a>
     );
   }
-  // Long text
   if (value.length > 100) {
     return expanded ? (
       <span className="text-[11px] text-[#1c2a2b]/75 leading-relaxed">
@@ -206,15 +221,20 @@ function CellRenderer({ value, onJsonClick }: { value: unknown; onJsonClick: (v:
 function RowDetail({ row, columns, onJsonClick }: {
   row: Row; columns: string[]; onJsonClick: (v: unknown) => void;
 }) {
-  const copyJson = () => navigator.clipboard.writeText(JSON.stringify(row, null, 2));
   return (
     <tr>
       <td colSpan={columns.length} className="px-0 py-0 bg-[#f7f5f0] border-b border-[#0e393d]/8">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84]">Row Detail</span>
-            <button onClick={copyJson} className="text-[11px] text-[#0e393d]/50 hover:text-[#0e393d] transition flex items-center gap-1">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <button
+              onClick={() => navigator.clipboard.writeText(JSON.stringify(row, null, 2))}
+              className="text-[11px] text-[#0e393d]/50 hover:text-[#0e393d] transition flex items-center gap-1"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
               Copy JSON
             </button>
           </div>
@@ -236,13 +256,17 @@ function RowDetail({ row, columns, onJsonClick }: {
 
 // ── Stat Card ──────────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, icon }: { label: string; value: number; icon: string }) {
+function StatCard({ label, value, icon }: { label: string; value: number | null; icon: string }) {
   return (
     <div className="bg-white rounded-xl border border-[#0e393d]/10 px-5 py-4 flex items-center gap-4">
       <span className="text-2xl">{icon}</span>
       <div>
         <p className="text-[10px] font-semibold text-[#1c2a2b]/40 uppercase tracking-wider">{label}</p>
-        <p className="text-2xl font-serif text-[#0e393d] leading-tight tabular-nums">{value.toLocaleString()}</p>
+        <p className="text-2xl font-serif text-[#0e393d] leading-tight tabular-nums">
+          {value === null
+            ? <span className="text-base text-[#1c2a2b]/20 animate-pulse">…</span>
+            : value.toLocaleString()}
+        </p>
       </div>
     </div>
   );
@@ -260,7 +284,9 @@ function ColumnVisibility({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
@@ -276,10 +302,13 @@ function ColumnVisibility({
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
           <line x1="8" y1="18" x2="21" y2="18"/>
-          <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/>
+          <line x1="3" y1="18" x2="3.01" y2="18"/>
         </svg>
         Columns
-        {hidden > 0 && <span className="rounded-full bg-[#ceab84] text-white text-[9px] px-1.5 py-px">{hidden}</span>}
+        {hidden > 0 && (
+          <span className="rounded-full bg-[#ceab84] text-white text-[9px] px-1.5 py-px">{hidden}</span>
+        )}
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-1 z-30 bg-white rounded-xl shadow-xl border border-[#0e393d]/10 w-52 max-h-72 overflow-y-auto">
@@ -304,26 +333,60 @@ function ColumnVisibility({
   );
 }
 
+// ── Pagination Button ──────────────────────────────────────────────────────────
+
+function PaginationBtn({
+  onClick, disabled, active, label,
+}: {
+  onClick: () => void; disabled?: boolean; active?: boolean; label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`px-2.5 py-1.5 rounded-md text-xs font-medium border transition
+        ${active
+          ? 'bg-[#ceab84] text-white border-[#ceab84]'
+          : 'border-[#0e393d]/15 text-[#1c2a2b]/60 hover:bg-[#fafaf8] hover:text-[#1c2a2b] disabled:opacity-30 disabled:cursor-not-allowed'
+        }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
-export default function DataExplorerManager({ initialStats }: { initialStats: Stats }) {
-  const [stats] = useState<Stats>(initialStats);
+export default function DataExplorerManager() {
+  // Stats (loaded client-side)
+  const [stats, setStats] = useState<Stats>({
+    users: null, products: null, biomarkers: null, orders: null, lab_results: null,
+  });
 
-  // Table selection
-  const [selectedTable, setSelectedTable] = useState(TABLES[0].name);
-  const [tableCounts, setTableCounts]     = useState<Record<string, number>>({});
+  // Category + table selection
+  const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [selectedTable, setSelectedTable]   = useState(ALL_TABLES[0].name);
 
-  // Data
+  // Visible tables based on active category
+  const visibleTables = useMemo(() =>
+    activeCategory === 'All'
+      ? ALL_TABLES
+      : TABLE_CATEGORIES.find((c) => c.label === activeCategory)?.tables ?? ALL_TABLES,
+    [activeCategory]
+  );
+
+  // Data fetching state
   const [fetchResult, setFetchResult] = useState<FetchResult | null>(null);
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState<string | null>(null);
+  const [tableCounts, setTableCounts] = useState<Record<string, number>>({});
 
   // Pagination
   const [page, setPage]         = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   // Sort (server-side)
-  const [sorting, setSorting]   = useState<SortingState>([{ id: 'created_at', desc: true }]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'created_at', desc: true }]);
 
   // Search (debounced)
   const [searchInput, setSearchInput] = useState('');
@@ -334,14 +397,35 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 
   // Expanded row & JSON modal
-  const [expandedRow, setExpandedRow]   = useState<number | null>(null);
-  const [jsonModal, setJsonModal]       = useState<unknown>(null);
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [jsonModal, setJsonModal]     = useState<unknown>(null);
 
-  // ── Fetch data ───────────────────────────────────────────────────────────────
+  // ── Fetch quick stats on mount ────────────────────────────────────────────
+
+  useEffect(() => {
+    const statTables = [
+      { key: 'users',       table: 'profiles' },
+      { key: 'products',    table: 'products' },
+      { key: 'biomarkers',  table: 'product_item_definitions' },
+      { key: 'orders',      table: 'orders' },
+      { key: 'lab_results', table: 'lab_results' },
+    ];
+    Promise.all(
+      statTables.map(({ table }) =>
+        fetch(`/api/admin/data-explorer?table=${table}&page=1&pageSize=1`)
+          .then((r) => r.json())
+          .then((j) => j.count ?? 0)
+          .catch(() => 0)
+      )
+    ).then(([users, products, biomarkers, orders, lab_results]) =>
+      setStats({ users, products, biomarkers, orders, lab_results })
+    );
+  }, []);
+
+  // ── Fetch table data ──────────────────────────────────────────────────────
 
   const fetchData = useCallback(async (
-    table: string, pg: number, sz: number, srch: string,
-    sort: SortingState,
+    table: string, pg: number, sz: number, srch: string, sort: SortingState,
   ) => {
     setLoading(true);
     setError(null);
@@ -353,7 +437,7 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
         sort: col, order: asc ? 'asc' : 'desc',
         ...(srch ? { search: srch } : {}),
       });
-      const res = await fetch(`/api/admin/data-explorer?${params}`);
+      const res  = await fetch(`/api/admin/data-explorer?${params}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Request failed');
       setFetchResult(json);
@@ -369,15 +453,7 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
     fetchData(selectedTable, page, pageSize, search, sorting);
   }, [selectedTable, page, pageSize, search, sorting, fetchData]);
 
-  // Debounce search
-  const handleSearchChange = (val: string) => {
-    setSearchInput(val);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      setSearch(val);
-      setPage(1);
-    }, 300);
-  };
+  // ── Handlers ─────────────────────────────────────────────────────────────
 
   const handleTableChange = (table: string) => {
     setSelectedTable(table);
@@ -390,7 +466,27 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
     setFetchResult(null);
   };
 
-  // ── Build TanStack columns ───────────────────────────────────────────────────
+  const handleCategoryChange = (category: string) => {
+    setActiveCategory(category);
+    const tables = category === 'All'
+      ? ALL_TABLES
+      : TABLE_CATEGORIES.find((c) => c.label === category)?.tables ?? ALL_TABLES;
+    // Keep current table if it's in the new category, else select first
+    if (!tables.find((t) => t.name === selectedTable)) {
+      handleTableChange(tables[0].name);
+    }
+  };
+
+  const handleSearchChange = (val: string) => {
+    setSearchInput(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setSearch(val);
+      setPage(1);
+    }, 300);
+  };
+
+  // ── Build TanStack columns ────────────────────────────────────────────────
 
   const columns = useMemo<ColumnDef<Row>[]>(() => {
     const cols = fetchResult?.columns ?? [];
@@ -406,36 +502,29 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
     }));
   }, [fetchResult?.columns]);
 
-  // ── TanStack table instance ──────────────────────────────────────────────────
+  // ── TanStack table instance ───────────────────────────────────────────────
 
   const table = useReactTable({
     data: fetchResult?.data ?? [],
     columns,
-    state: {
-      sorting,
-      columnVisibility,
-    },
+    state: { sorting, columnVisibility },
     columnResizeMode: 'onChange' as ColumnResizeMode,
     enableColumnResizing: true,
     manualSorting: true,
-    onSortingChange: (updater) => {
-      setSorting(updater);
-      setPage(1);
-    },
+    onSortingChange: (updater) => { setSorting(updater); setPage(1); },
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
   });
 
-  // ── Pagination helpers ───────────────────────────────────────────────────────
+  // ── Pagination helpers ────────────────────────────────────────────────────
 
   const totalCount = fetchResult?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const rowFrom    = (page - 1) * pageSize + 1;
   const rowTo      = Math.min(page * pageSize, totalCount);
 
-  const visibleColumns = table.getVisibleLeafColumns().map((c) => c.id);
+  const visibleColIds = table.getVisibleLeafColumns().map((c) => c.id);
 
-  // Page number pills: show up to 5 around current page
   const pagePills = useMemo(() => {
     const start = Math.max(1, Math.min(page - 2, totalPages - 4));
     const end   = Math.min(totalPages, start + 4);
@@ -444,18 +533,18 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
     return pills;
   }, [page, totalPages]);
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="p-8 space-y-6 min-h-screen">
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div>
         <h1 className="font-serif text-2xl text-[#0e393d]">Data Explorer</h1>
         <p className="text-sm text-[#1c2a2b]/40 mt-0.5">Browse and inspect platform tables</p>
       </div>
 
-      {/* ── Quick Stats ── */}
+      {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard label="Users"       value={stats.users}       icon="👤" />
         <StatCard label="Products"    value={stats.products}    icon="📦" />
@@ -464,27 +553,47 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
         <StatCard label="Lab Results" value={stats.lab_results} icon="🧪" />
       </div>
 
-      {/* ── Table Browser ── */}
+      {/* Table Browser */}
       <div className="bg-white rounded-xl border border-[#0e393d]/10 overflow-hidden flex flex-col">
 
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-3 px-5 py-3.5 border-b border-[#0e393d]/8 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 px-5 py-3.5 border-b border-[#0e393d]/8 shrink-0">
+
+          {/* Category pills */}
+          <div className="flex items-center gap-1.5">
+            {['All', ...TABLE_CATEGORIES.map((c) => c.label)].map((cat) => (
+              <button
+                key={cat}
+                onClick={() => handleCategoryChange(cat)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition whitespace-nowrap ${
+                  activeCategory === cat
+                    ? 'bg-[#ceab84] text-white'
+                    : 'bg-[#0e393d]/6 text-[#0e393d]/60 hover:bg-[#0e393d]/12 hover:text-[#0e393d]'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Divider */}
+          <div className="w-px h-5 bg-[#0e393d]/10 mx-1" />
 
           {/* Table selector */}
           <div className="flex items-center gap-2">
             <select
               value={selectedTable}
               onChange={(e) => handleTableChange(e.target.value)}
-              className="rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm text-[#1c2a2b] focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 cursor-pointer"
+              className="rounded-lg border border-[#0e393d]/15 bg-white px-3 py-1.5 text-sm text-[#1c2a2b] focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 cursor-pointer"
             >
-              {TABLES.map((t) => (
+              {visibleTables.map((t) => (
                 <option key={t.name} value={t.name}>
                   {t.label}{tableCounts[t.name] != null ? ` (${tableCounts[t.name].toLocaleString()})` : ''}
                 </option>
               ))}
             </select>
             {loading && (
-              <svg className="w-4 h-4 animate-spin text-[#0e393d]/40" viewBox="0 0 24 24" fill="none">
+              <svg className="w-4 h-4 animate-spin text-[#0e393d]/40 shrink-0" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
               </svg>
@@ -500,7 +609,7 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
             }
           />
 
-          {/* Search */}
+          {/* Search + page size */}
           <div className="flex items-center gap-2 ml-auto">
             <div className="relative">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#1c2a2b]/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -511,7 +620,7 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
                 value={searchInput}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder="Search…"
-                className="pl-8 pr-8 py-2 w-52 rounded-lg border border-[#0e393d]/15 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
+                className="pl-8 pr-8 py-1.5 w-48 rounded-lg border border-[#0e393d]/15 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
               />
               {searchInput && (
                 <button
@@ -522,12 +631,10 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
                 </button>
               )}
             </div>
-
-            {/* Page size */}
             <select
               value={pageSize}
               onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-              className="rounded-lg border border-[#0e393d]/15 bg-white px-2 py-2 text-sm text-[#1c2a2b]/70 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 cursor-pointer"
+              className="rounded-lg border border-[#0e393d]/15 bg-white px-2 py-1.5 text-sm text-[#1c2a2b]/70 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 cursor-pointer"
             >
               {PAGE_SIZES.map((s) => <option key={s} value={s}>{s} / page</option>)}
             </select>
@@ -549,8 +656,8 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id} className="border-b border-[#0e393d]/8 bg-[#f5f4f0]">
                   {headerGroup.headers.map((header) => {
-                    const sorted = header.column.getIsSorted();
-                    const canSort = header.column.getCanSort();
+                    const sorted   = header.column.getIsSorted();
+                    const canSort  = header.column.getCanSort();
                     return (
                       <th
                         key={header.id}
@@ -574,11 +681,11 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
                         <div
                           onMouseDown={header.getResizeHandler()}
                           onTouchStart={header.getResizeHandler()}
-                          className={`absolute right-0 top-0 h-full w-1.5 cursor-col-resize touch-none select-none
-                            ${header.column.getIsResizing()
+                          className={`absolute right-0 top-0 h-full w-1.5 cursor-col-resize touch-none select-none ${
+                            header.column.getIsResizing()
                               ? 'bg-[#ceab84]'
                               : 'bg-transparent hover:bg-[#0e393d]/20'
-                            }`}
+                          }`}
                         />
                       </th>
                     );
@@ -590,12 +697,12 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
               {/* Empty states */}
               {!loading && fetchResult?.data.length === 0 && (
                 <tr>
-                  <td colSpan={visibleColumns.length} className="px-4 py-16 text-center">
+                  <td colSpan={visibleColIds.length} className="px-4 py-16 text-center">
                     {search ? (
                       <div className="space-y-2">
                         <p className="text-sm font-medium text-[#1c2a2b]/50">No matching rows</p>
                         <button
-                          onClick={() => { handleSearchChange(''); }}
+                          onClick={() => handleSearchChange('')}
                           className="text-xs text-[#ceab84] hover:underline"
                         >
                           Clear search
@@ -610,11 +717,11 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
 
               {/* Loading skeleton */}
               {loading && !fetchResult && (
-                Array.from({ length: 5 }).map((_, ri) => (
+                Array.from({ length: 6 }).map((_, ri) => (
                   <tr key={ri} className="border-b border-[#0e393d]/5">
-                    {(fetchResult ? visibleColumns : Array.from({ length: 5 })).map((_, ci) => (
+                    {Array.from({ length: 5 }).map((__, ci) => (
                       <td key={ci} className="px-3 py-2.5">
-                        <div className="h-3 rounded bg-[#0e393d]/6 animate-pulse" style={{ width: `${40 + Math.random() * 40}%` }} />
+                        <div className="h-3 rounded bg-[#0e393d]/6 animate-pulse" style={{ width: `${50 + (ri * ci * 7) % 40}%` }} />
                       </td>
                     ))}
                   </tr>
@@ -680,25 +787,5 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
         <JsonModal value={jsonModal} onClose={() => setJsonModal(null)} />
       )}
     </div>
-  );
-}
-
-function PaginationBtn({
-  onClick, disabled, active, label,
-}: {
-  onClick: () => void; disabled?: boolean; active?: boolean; label: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`px-2.5 py-1.5 rounded-md text-xs font-medium border transition
-        ${active
-          ? 'bg-[#ceab84] text-white border-[#ceab84]'
-          : 'border-[#0e393d]/15 text-[#1c2a2b]/60 hover:bg-[#fafaf8] hover:text-[#1c2a2b] disabled:opacity-30 disabled:cursor-not-allowed'
-        }`}
-    >
-      {label}
-    </button>
   );
 }
