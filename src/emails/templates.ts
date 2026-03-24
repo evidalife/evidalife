@@ -71,7 +71,8 @@ function emailLayout(content: string, preheader: string): string {
 <div class="wrapper">
 <div class="container">
 <div class="header">
-  <a href="https://evidalife.com" class="logo">evida<span style="color:#ffffff">life</span></a>
+  <img src="https://evidalife.com/logo-email.png" width="44" height="44" alt="Evida Life" style="border-radius:50%;display:block;margin:0 auto 12px;" onerror="this.style.display='none'">
+  <div style="font-size:16px;font-weight:700;color:#ffffff;letter-spacing:4px;text-transform:uppercase;font-family:Georgia,'Times New Roman',serif;">EVIDA LIFE</div>
 </div>
 <div class="gold-bar"></div>
 ${content}
