@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { BIOMARKER_UNITS, BIOMARKER_UNIT_CATEGORIES } from '@/lib/biomarker-units';
+import { TEST_CATEGORIES, HE_DOMAINS as HE_DOMAINS_BASE } from '@/components/admin/lab-results/shared';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -75,27 +76,19 @@ const EMPTY_FORM: FormState = {
   he_domain: '',
 };
 
-const ITEM_TYPES = [
-  { value: 'biomarker', label: 'Blood Marker' },
-  { value: 'vitalcheck_measurement', label: 'Vitalcheck' },
-  { value: 'vo2max_test', label: 'VO₂max' },
-  { value: 'dexa_scan', label: 'DEXA' },
-  { value: 'biological_age_test', label: 'Bio Age' },
-  { value: 'genetic_test', label: 'Genetic' },
-];
+// Filter mapping: pill value → DB item_type values to match (handles legacy DB values)
+const FILTER_MAP: Record<string, string[]> = {
+  biomarker:           ['biomarker'],
+  clinical_assessment: ['clinical_assessment', 'vitalcheck_measurement', 'vo2max_test', 'dexa_scan'],
+  bio_age:             ['bio_age', 'biological_age_test'],
+  genetic:             ['genetic', 'genetic_test'],
+  microbiome:          ['microbiome'],
+  wearable:            ['wearable'],
+};
 
 export const HE_DOMAINS = [
-  { value: '',                label: '— none —' },
-  { value: 'heart_vessels',   label: 'Heart & Vessels' },
-  { value: 'metabolism',      label: 'Metabolism' },
-  { value: 'inflammation',    label: 'Inflammation & Immune' },
-  { value: 'organ_function',  label: 'Organ Function' },
-  { value: 'nutrients',       label: 'Nutrients' },
-  { value: 'hormones',        label: 'Hormones' },
-  { value: 'body_composition',label: 'Body Composition' },
-  { value: 'fitness',         label: 'Fitness & Recovery' },
-  { value: 'epigenetics',     label: 'Epigenetics / Bio Age' },
-  { value: 'genetics',        label: 'Genetics / DNA Risk' },
+  { value: '', label: '— none —', weight: 0 },
+  ...HE_DOMAINS_BASE,
 ];
 
 const RANGE_TYPES = [
@@ -817,7 +810,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
 
   const filtered = items.filter((item) => {
     if (showIncomplete && !getItemPriority(item)) return false;
-    if (typeFilter && item.item_type !== typeFilter) return false;
+    if (typeFilter && !FILTER_MAP[typeFilter]?.includes(item.item_type ?? '')) return false;
     if (domainFilter && item.he_domain !== domainFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
@@ -876,10 +869,10 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
       <div className="flex flex-wrap items-center gap-2 mb-4">
         {/* Type pills */}
         <div className="flex flex-wrap gap-1.5">
-          {[{ value: '', label: 'All' }, ...ITEM_TYPES].map(({ value, label }) => (
+          {[{ value: '', label: 'All', icon: '' }, ...TEST_CATEGORIES].map(({ value, label, icon }) => (
             <button key={value} onClick={() => setTypeFilter(value)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition ${typeFilter === value ? 'bg-[#0e393d] text-white' : 'bg-[#0e393d]/8 text-[#0e393d]/70 hover:bg-[#0e393d]/15'}`}>
-              {label}
+              {icon && <span className="mr-1">{icon}</span>}{label}
             </button>
           ))}
         </div>
@@ -935,7 +928,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
                   <td className="px-4 py-3">
                     {item.item_type ? (
                       <span className="inline-flex items-center rounded-full bg-[#ceab84]/15 px-2 py-0.5 text-[11px] font-medium text-[#8a6a3e] ring-1 ring-inset ring-[#ceab84]/30">
-                        {ITEM_TYPES.find((t) => t.value === item.item_type)?.label ?? item.item_type}
+                        {TEST_CATEGORIES.find((t) => t.value === item.item_type)?.label ?? item.item_type}
                       </span>
                     ) : <span className="text-[#1c2a2b]/30">—</span>}
                   </td>
@@ -1047,16 +1040,16 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
               {/* Measurement */}
               <SectionBlock title="Measurement" open={openSections.measurement} onToggle={() => toggleSection('measurement')}>
                 <div className="grid grid-cols-2 gap-4">
-                  <Field label="Item Type">
+                  <Field label="Test Category" hint="How this marker is measured">
                     <select className={selectCls} value={form.item_type} onChange={(e) => setForm((f) => ({ ...f, item_type: e.target.value }))}>
-                      {ITEM_TYPES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+                      {TEST_CATEGORIES.map(({ value, label, icon }) => <option key={value} value={value}>{icon} {label}</option>)}
                     </select>
                   </Field>
                   <Field label="Unit" hint="Swiss/EU clinical unit">
                     <UnitField value={form.unit} onChange={(v) => setForm((f) => ({ ...f, unit: v }))} />
                   </Field>
                   <div className="col-span-2">
-                    <Field label="Health Domain">
+                    <Field label="Health Domain" hint="Which Health Engine scoring domain this marker belongs to">
                       <select className={selectCls} value={form.he_domain} onChange={(e) => setForm((f) => ({ ...f, he_domain: e.target.value }))}>
                         {HE_DOMAINS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
                       </select>

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import SimpleCropModal from '@/components/admin/shared/SimpleCropModal';
 import GalleryUpload, { type GalleryItem } from '@/components/admin/recipes/GalleryUpload';
 import type { ParsedProduct } from '@/app/api/admin/parse-product/route';
+import { PRODUCT_TYPES } from '@/components/admin/lab-results/shared';
 
 async function compressImage(file: File, maxWidth = 800, quality = 0.85): Promise<{ blob: Blob; sizeKb: number }> {
   const bitmap = await createImageBitmap(file);
@@ -100,16 +101,6 @@ const EMPTY_FORM: FormState = {
 };
 
 const TAX_CLASSES = ['standard', 'reduced', 'zero'];
-const PRODUCT_TYPES: { value: string; label: string }[] = [
-  { value: 'blood_test',       label: 'Blood Test Package' },
-  { value: 'clinical_test',    label: 'Clinical Test' },
-  { value: 'epigenetic_test',  label: 'Epigenetic Test' },
-  { value: 'genetic_test',     label: 'Genetic Test' },
-  { value: 'microbiome_test',  label: 'Microbiome Test' },
-  { value: 'wearable',         label: 'Wearable / Device' },
-  { value: 'supplement',       label: 'Supplement' },
-  { value: 'program',          label: 'Program / Bundle' },
-];
 
 type LocalizedString = string | Record<string, string> | null | undefined;
 

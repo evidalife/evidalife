@@ -14,25 +14,46 @@ export function locName(field: LocalizedString | null | undefined): string {
   return field.en || field.de || '';
 }
 
-export const HE_DOMAIN_LABEL: Record<string, string> = {
-  heart_vessels:    'Heart & Vessels',
-  metabolism:       'Metabolism',
-  inflammation:     'Inflammation & Immune',
-  organ_function:   'Organ Function',
-  nutrients:        'Nutrients',
-  hormones:         'Hormones',
-  body_composition: 'Body Composition',
-  fitness:          'Fitness & Recovery',
-  epigenetics:      'Epigenetics / Bio Age',
-  genetics:         'Genetics / DNA Risk',
-  // legacy values kept for display compatibility
-  longevity:        'Longevity',
-};
+// ── Canonical constants — single source of truth ──────────────────────────────
 
-export const HE_DOMAIN_ORDER = [
-  'heart_vessels', 'metabolism', 'inflammation', 'organ_function',
-  'nutrients', 'hormones', 'body_composition', 'fitness', 'epigenetics', 'genetics',
-];
+export const TEST_CATEGORIES = [
+  { value: 'biomarker',           label: 'Blood Marker',         icon: '🩸' },
+  { value: 'clinical_assessment', label: 'Clinical Assessment',  icon: '🏥' },
+  { value: 'bio_age',             label: 'Epigenetic Clock',     icon: '🧬' },
+  { value: 'genetic',             label: 'Genetic',              icon: '🔬' },
+  { value: 'microbiome',          label: 'Microbiome',           icon: '🦠' },
+  { value: 'wearable',            label: 'Wearable',             icon: '⌚' },
+] as const;
+
+export const HE_DOMAINS = [
+  { value: 'heart_vessels',    label: 'Heart & Vessels',        weight: 20 },
+  { value: 'metabolism',       label: 'Metabolism',             weight: 18 },
+  { value: 'inflammation',     label: 'Inflammation & Immune',  weight: 15 },
+  { value: 'organ_function',   label: 'Organ Function',         weight: 15 },
+  { value: 'nutrients',        label: 'Nutrients',              weight: 12 },
+  { value: 'hormones',         label: 'Hormones',               weight: 10 },
+  { value: 'body_composition', label: 'Body Composition',       weight: 5  },
+  { value: 'fitness',          label: 'Fitness & Recovery',     weight: 5  },
+  { value: 'epigenetics',      label: 'Epigenetics',            weight: 0, meta: true },
+  { value: 'genetics',         label: 'Genetics',               weight: 0, meta: true },
+] as const;
+
+export const PRODUCT_TYPES = [
+  { value: 'blood_test',      label: 'Blood Test Package' },
+  { value: 'clinical_test',   label: 'Clinical Test' },
+  { value: 'epigenetic_test', label: 'Epigenetic Test' },
+  { value: 'genetic_test',    label: 'Genetic Test' },
+  { value: 'microbiome_test', label: 'Microbiome Test' },
+  { value: 'wearable',        label: 'Wearable / Device' },
+  { value: 'supplement',      label: 'Supplement' },
+  { value: 'program',         label: 'Program / Bundle' },
+] as const;
+
+export const HE_DOMAIN_LABEL: Record<string, string> = Object.fromEntries(
+  [...HE_DOMAINS.map((d) => [d.value, d.label]), ['longevity', 'Longevity']]
+);
+
+export const HE_DOMAIN_ORDER: string[] = HE_DOMAINS.map((d) => d.value);
 
 export function Badge({
   children,
