@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
         orderId, orderTestItemId, biomarkerDefinitionId, userId,
         value, unit, testDate, notes, biomarkerName,
         refRangeLow, refRangeHigh, optimalRangeLow, optimalRangeHigh, rangeType,
+        originalValue, originalUnit,
       } = item;
 
       const numericValue = parseFloat(value);
@@ -88,6 +89,8 @@ export async function POST(req: NextRequest) {
           entered_by: adminId || null,
           is_reviewed: true,
           notes: notes || null,
+          original_value: originalValue != null ? parseFloat(originalValue) : null,
+          original_unit: originalUnit || null,
         })
         .select('id')
         .single();

@@ -7,6 +7,7 @@ import {
   SectionHeading, Spinner, Toast, ToastContainer, fmtDate, locName, nextToastId, todayISO,
 } from './shared';
 import { computeStatusFlag, checkPlausibility, StatusFlag } from '@/lib/lab-results/flagging';
+import { convertToCanonical, UnitConversion } from '@/lib/biomarker-conversions';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -103,6 +104,8 @@ export default function OrderEntryTab() {
   const [loadingItems, setLoadingItems] = useState(false);
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [inputNotes, setInputNotes] = useState<Record<string, string>>({});
+  const [inputUnits, setInputUnits] = useState<Record<string, string>>({});
+  const [conversionsMap, setConversionsMap] = useState<Record<string, UnitConversion[]>>({});
   const [collapsedDomains, setCollapsedDomains] = useState<Set<string>>(new Set());
 
   // Date
@@ -146,6 +149,7 @@ export default function OrderEntryTab() {
     setLoadingItems(true);
     setTestItems([]);
     setInputValues({});
+    setInputUnits({});
     const { data } = await supabase
       .from('order_test_items')
       .select(`
@@ -159,6 +163,29 @@ export default function OrderEntryTab() {
       .order('created_at');
     const items = (data as unknown as TestItem[]) ?? [];
     setTestItems(items);
+
+    // Load unit conversions for all biomarker IDs
+    const biomarkerIds = [...new Set(items.map((i) => i.biomarkers?.id).filter(Boolean))] as string[];
+    if (biomarkerIds.length > 0) {
+      const { data: convRows } = await supabase
+        .from('biomarker_unit_conversions')
+        .select('biomarker_id, alt_unit, canonical_unit, multiplier, offset_value')
+        .in('biomarker_id', biomarkerIds);
+      const map: Record<string, UnitConversion[]> = {};
+      for (const row of convRows ?? []) {
+        if (!map[row.biomarker_id]) map[row.biomarker_id] = [];
+        map[row.biomarker_id].push(row as UnitConversion);
+      }
+      setConversionsMap(map);
+    }
+
+    // Pre-fill input units with canonical unit per item
+    const units: Record<string, string> = {};
+    for (const item of items) {
+      units[item.id] = item.biomarkers?.unit ?? '';
+    }
+    setInputUnits(units);
+
     setLoadingItems(false);
   }, [supabase]);
 
@@ -174,6 +201,8 @@ export default function OrderEntryTab() {
     setTestItems([]);
     setInputValues({});
     setInputNotes({});
+    setInputUnits({});
+    setConversionsMap({});
   };
 
   // ── Group items by domain ───────────────────────────────────────────────────
@@ -213,15 +242,33 @@ export default function OrderEntryTab() {
 
     const results = toSave.map((item) => {
       const def = item.biomarkers;
-      const value = editState?.itemId === item.id ? editState.value : inputValues[item.id];
+      const rawValue = editState?.itemId === item.id ? editState.value : inputValues[item.id];
       const notes = editState?.itemId === item.id ? editState.notes : (inputNotes[item.id] || '');
+      const selectedUnit = inputUnits[item.id] ?? def?.unit ?? '';
+      const canonicalUnit = def?.unit ?? '';
+
+      // Apply unit conversion if the user selected an alt unit
+      const numRaw = parseFloat(rawValue);
+      let finalValue = rawValue;
+      let originalValue: string | null = null;
+      let originalUnit: string | null = null;
+      if (!isNaN(numRaw) && selectedUnit && selectedUnit !== canonicalUnit && def?.id) {
+        const conversions = conversionsMap[def.id] ?? [];
+        const { convertedValue, wasConverted } = convertToCanonical(numRaw, selectedUnit, canonicalUnit, conversions);
+        if (wasConverted) {
+          finalValue = String(convertedValue);
+          originalValue = rawValue;
+          originalUnit = selectedUnit;
+        }
+      }
+
       return {
         orderId: selectedOrder.id,
         orderTestItemId: item.id,
         biomarkerDefinitionId: def?.id ?? null,
         userId,
-        value,
-        unit: def?.unit ?? null,
+        value: finalValue,
+        unit: canonicalUnit || null,
         testDate,
         notes,
         biomarkerName: locName(def?.name),
@@ -230,6 +277,8 @@ export default function OrderEntryTab() {
         optimalRangeLow: def?.optimal_range_low,
         optimalRangeHigh: def?.optimal_range_high,
         rangeType: def?.range_type,
+        originalValue,
+        originalUnit,
       };
     });
 
@@ -254,6 +303,7 @@ export default function OrderEntryTab() {
 
     setInputValues({});
     setInputNotes({});
+    setInputUnits({});
     setEditState(null);
     loadItems(selectedOrder.id);
   };
@@ -484,7 +534,23 @@ export default function OrderEntryTab() {
                                         </div>
                                       )}
                                     </div>
-                                    <span className="text-xs text-[#1c2a2b]/40 shrink-0">{def?.unit}</span>
+                                    {(() => {
+                                      const altUnits = def?.id ? (conversionsMap[def.id] ?? []).map((c) => c.alt_unit) : [];
+                                      const selectedUnit = inputUnits[item.id] ?? def?.unit ?? '';
+                                      if (altUnits.length === 0) {
+                                        return <span className="text-xs text-[#1c2a2b]/40 shrink-0">{def?.unit}</span>;
+                                      }
+                                      return (
+                                        <select
+                                          value={selectedUnit}
+                                          onChange={(e) => setInputUnits((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                                          className="rounded border border-[#0e393d]/15 bg-white px-1.5 py-1 text-xs text-[#1c2a2b]/60 focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
+                                        >
+                                          <option value={def?.unit ?? ''}>{def?.unit}</option>
+                                          {altUnits.map((u) => <option key={u} value={u}>{u}</option>)}
+                                        </select>
+                                      );
+                                    })()}
                                     {liveFlag && <FlagDot flag={liveFlag} />}
                                     {liveFlag && <FlagBadge flag={liveFlag} />}
                                   </div>

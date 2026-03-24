@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { matchBiomarkerName } from '@/lib/lab-results/flagging';
+import { convertToCanonical } from '@/lib/biomarker-conversions';
 
 export const maxDuration = 60;
 
@@ -21,7 +22,7 @@ For each result, return a JSON object with:
 - biomarker_name: the name as written on the report (original language)
 - biomarker_name_en: English translation of the biomarker name
 - value: the numeric value (number only, no units)
-- unit: the measurement unit (e.g. mg/dL, mmol/L, ng/mL, %)
+- unit: the measurement unit EXACTLY as printed on the report (e.g. mg/dL, mmol/L, ng/mL, %). Never omit or guess the unit.
 - reference_range_low: lower reference range if shown (number or null)
 - reference_range_high: upper reference range if shown (number or null)
 - test_date: the date of the test if shown (ISO format YYYY-MM-DD or null)
@@ -122,7 +123,7 @@ export async function POST(req: NextRequest) {
     }));
 
     // Match extracted biomarkers to DB
-    const matched = extracted.map((item: any) => {
+    const matchedRaw = extracted.map((item: any) => {
       const match = matchBiomarkerName(item.biomarker_name_en || item.biomarker_name || '', dbBiomarkers);
       const dbBm = match ? dbBiomarkers.find((b) => b.id === match.id) : null;
       return {
@@ -132,6 +133,32 @@ export async function POST(req: NextRequest) {
         confidence: match?.confidence ?? 0,
         db_biomarker: dbBm ?? null,
         include: (match?.confidence ?? 0) >= 0.7,
+      };
+    });
+
+    // Load unit conversions for all matched biomarker IDs
+    const matchedIds = matchedRaw.map((m: any) => m.matched_id).filter(Boolean);
+    const { data: allConversions } = matchedIds.length > 0
+      ? await supabase.from('biomarker_unit_conversions').select('*').in('biomarker_id', matchedIds)
+      : { data: [] };
+
+    // Apply unit conversion where needed
+    const matched = matchedRaw.map((item: any) => {
+      const dbBm = item.db_biomarker;
+      if (!dbBm || item.value == null || !item.unit) return item;
+
+      const conversions = (allConversions ?? []).filter((c: any) => c.biomarker_id === item.matched_id);
+      const { convertedValue, wasConverted } = convertToCanonical(
+        item.value, item.unit, dbBm.unit ?? '', conversions
+      );
+
+      return {
+        ...item,
+        original_value: item.value,
+        original_unit: item.unit,
+        value: convertedValue,
+        unit: wasConverted ? dbBm.unit : item.unit,
+        was_converted: wasConverted,
       };
     });
 
