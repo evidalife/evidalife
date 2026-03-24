@@ -487,7 +487,7 @@ const T = {
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
 const inputCls = 'w-full rounded-xl border border-[#0e393d]/15 bg-white px-4 py-3 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/35 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition-colors disabled:bg-[#0e393d]/4 disabled:text-[#1c2a2b]/40 disabled:cursor-not-allowed';
-const selectCls = inputCls + ' cursor-pointer';
+const selectCls = inputCls + ' cursor-pointer appearance-none';
 
 function FieldLabel({ text, hint }: { text: string; hint?: string }) {
   return (

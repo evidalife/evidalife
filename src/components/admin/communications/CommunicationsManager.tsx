@@ -9,11 +9,12 @@ import {
   buildProcessingEmail,
   buildResultsReadyEmail,
 } from '@/emails/templates';
+import { SUPABASE_TEMPLATES } from '@/emails/supabase-templates';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Lang = 'en' | 'de' | 'fr' | 'es' | 'it';
-type Tab = 'preview' | 'log';
+type Tab = 'preview' | 'log' | 'auth';
 type TemplateName = 'welcome' | 'order_confirmation' | 'voucher' | 'processing' | 'results_ready';
 
 type EmailLogEntry = {
@@ -151,6 +152,10 @@ export default function CommunicationsManager() {
   const [logSearch, setLogSearch] = useState('');
   const [logStatusFilter, setLogStatusFilter] = useState<'all' | 'sent' | 'failed' | 'bounced'>('all');
 
+  // Auth templates tab
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [authPreviewId, setAuthPreviewId] = useState<string>(SUPABASE_TEMPLATES[0].id);
+
   // Toasts
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -235,7 +240,7 @@ export default function CommunicationsManager() {
 
       {/* Tabs */}
       <div className="flex border-b border-[#0e393d]/10 mb-6">
-        {([['preview', 'Email Preview'], ['log', 'Email Log']] as const).map(([t, label]) => (
+        {([['preview', 'Email Preview'], ['auth', 'Auth Templates'], ['log', 'Email Log']] as const).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -350,6 +355,101 @@ export default function CommunicationsManager() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── AUTH TEMPLATES TAB ── */}
+      {tab === 'auth' && (
+        <div className="flex gap-6 h-[calc(100vh-220px)] min-h-[500px]">
+
+          {/* Left: template list */}
+          <div className="w-72 shrink-0 flex flex-col gap-4">
+            <div>
+              <p className="text-xs text-[#1c2a2b]/50 mb-3 leading-relaxed">
+                Paste these into <strong className="text-[#1c2a2b]/80">Supabase Dashboard → Authentication → Email Templates</strong>.
+              </p>
+              <div className="space-y-1">
+                {SUPABASE_TEMPLATES.map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    onClick={() => setAuthPreviewId(tpl.id)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
+                      authPreviewId === tpl.id
+                        ? 'bg-[#0e393d] text-white font-medium'
+                        : 'text-[#1c2a2b]/70 hover:bg-[#0e393d]/6'
+                    }`}
+                  >
+                    {tpl.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Selected template info + copy */}
+            {(() => {
+              const tpl = SUPABASE_TEMPLATES.find((t) => t.id === authPreviewId);
+              if (!tpl) return null;
+              return (
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-[#0e393d]/10 bg-[#fafaf8] px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-1">Template ID</p>
+                    <p className="text-xs font-mono text-[#0e393d]">{tpl.id}</p>
+                  </div>
+                  <div className="rounded-lg border border-[#0e393d]/10 bg-[#fafaf8] px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-1">Subject Line</p>
+                    <p className="text-xs text-[#1c2a2b]">{tpl.subject}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(tpl.html);
+                      setCopiedId(tpl.id);
+                      setTimeout(() => setCopiedId(null), 2000);
+                    }}
+                    className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
+                      copiedId === tpl.id
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-[#ceab84] text-white hover:bg-[#ceab84]/85'
+                    }`}
+                  >
+                    {copiedId === tpl.id ? (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </svg>
+                        Copy HTML
+                      </>
+                    )}
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Right: iframe preview */}
+          <div className="flex-1 rounded-xl border border-[#0e393d]/10 overflow-hidden bg-white">
+            {(() => {
+              const tpl = SUPABASE_TEMPLATES.find((t) => t.id === authPreviewId);
+              if (!tpl) return null;
+              return (
+                <iframe
+                  key={tpl.id}
+                  srcDoc={tpl.html}
+                  className="w-full h-full"
+                  title={tpl.name}
+                  sandbox="allow-same-origin"
+                />
+              );
+            })()}
+          </div>
+
         </div>
       )}
 
