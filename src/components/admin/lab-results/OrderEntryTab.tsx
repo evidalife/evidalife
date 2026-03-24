@@ -36,6 +36,7 @@ type TestItem = {
 type OrderOption = {
   id: string;
   order_number: string;
+  user_id: string;
   fulfilment_status: string | null;
   created_at: string;
   profiles: { first_name: string | null; last_name: string | null; email: string | null } | null;
@@ -126,7 +127,7 @@ export default function OrderEntryTab() {
       const { data } = await supabase
         .from('orders')
         .select(`
-          id, order_number, fulfilment_status, created_at,
+          id, order_number, user_id, fulfilment_status, created_at,
           profiles ( first_name, last_name, email ),
           order_items ( products ( name ) )
         `)
@@ -208,7 +209,7 @@ export default function OrderEntryTab() {
 
     setSaving(true);
 
-    const userId = (selectedOrder.profiles as any)?.id ?? null;
+    const userId = selectedOrder.user_id ?? null;
 
     const results = toSave.map((item) => {
       const def = item.product_item_definitions;

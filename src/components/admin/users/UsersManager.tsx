@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -128,10 +128,60 @@ function DetailRow({ label, value }: { label: string; value: string | null | und
   );
 }
 
+type UserStats = { orderCount: number; resultCount: number; lastOrderDate: string | null; heScore: number | null };
+
 function UserDetail({ profile }: { profile: Profile }) {
+  const supabase = createClient();
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      supabase.from('orders').select('id, created_at', { count: 'exact' }).eq('user_id', profile.id).order('created_at', { ascending: false }).limit(1),
+      supabase.from('lab_results').select('id', { count: 'exact', head: true }).eq('user_id', profile.id).is('deleted_at', null),
+      supabase.from('health_engine_scores').select('overall_score').eq('user_id', profile.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    ]).then(([ordersRes, resultsRes, scoreRes]) => {
+      setStats({
+        orderCount: ordersRes.count ?? 0,
+        resultCount: resultsRes.count ?? 0,
+        lastOrderDate: (ordersRes.data?.[0] as any)?.created_at ?? null,
+        heScore: (scoreRes.data as any)?.overall_score ?? null,
+      });
+      setLoadingStats(false);
+    });
+  }, [profile.id]);
+
   return (
     <tr className="bg-[#f5f4f0]/60 border-b border-[#0e393d]/8">
-      <td colSpan={7} className="px-6 py-5">
+      <td colSpan={7} className="px-6 py-5 space-y-5">
+        {/* Stats strip */}
+        <div className="flex flex-wrap gap-4 pb-4 border-b border-[#0e393d]/8">
+          {loadingStats ? (
+            <div className="flex items-center gap-1.5 text-xs text-[#1c2a2b]/40"><Spinner /> Loading stats…</div>
+          ) : (
+            <>
+              {[
+                { label: 'Orders', value: String(stats?.orderCount ?? 0) },
+                { label: 'Lab Results', value: String(stats?.resultCount ?? 0) },
+                { label: 'Last Order', value: formatDate(stats?.lastOrderDate) },
+                ...(stats?.heScore != null ? [{ label: 'HE Score', value: `${Math.round(stats.heScore)}` }] : []),
+              ].map(({ label, value }) => (
+                <div key={label} className="text-center min-w-[64px]">
+                  <p className="text-base font-semibold text-[#0e393d] tabular-nums">{value}</p>
+                  <p className="text-[10px] text-[#1c2a2b]/40 mt-0.5">{label}</p>
+                </div>
+              ))}
+              <a
+                href={`/admin/orders?search=${encodeURIComponent(profile.email ?? '')}`}
+                className="self-center ml-2 text-xs text-[#0e393d] hover:underline"
+              >
+                View orders →
+              </a>
+            </>
+          )}
+        </div>
+
+        {/* Profile data */}
         <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-4">
           <DetailRow label="Display name"  value={profile.display_name} />
           <DetailRow label="First name"    value={profile.first_name} />

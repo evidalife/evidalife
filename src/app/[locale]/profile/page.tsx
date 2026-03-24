@@ -2,7 +2,8 @@ import { getLocale } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
-import ProfileEditor, { type ProfileData } from '@/components/ProfileEditor';
+import { type ProfileData } from '@/components/ProfileEditor';
+import ProfileTabs from '@/components/ProfileTabs';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata = { title: 'Profil – Evida Life' };
@@ -72,7 +73,7 @@ export default async function ProfilePage() {
           <h1 className="font-serif text-3xl text-[#0e393d]">{t.heading}</h1>
         </div>
 
-        <ProfileEditor profile={profile} lang={lang} />
+        <ProfileTabs profile={profile} lang={lang} />
       </main>
 
       <PublicFooter />

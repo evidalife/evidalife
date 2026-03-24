@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1043,6 +1044,7 @@ const PAGE_SIZE = 50;
 
 export default function OrdersManager({ initialOrders }: { initialOrders: Order[] }) {
   const supabase = createClient();
+  const searchParams = useSearchParams();
 
   const [orders, setOrders] = useState<Order[]>(initialOrders);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -1053,7 +1055,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
   const [fulfilmentFilter, setFulfilmentFilter] = useState<FulfilmentStatus | 'all'>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => searchParams?.get('search') ?? '');
   const [page, setPage] = useState(0);
 
   // Bulk selection

@@ -1,7 +1,8 @@
+import { Suspense } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import OrdersManager from '@/components/admin/orders/OrdersManager';
 
-export default async function OrdersPage() {
+async function OrdersContent() {
   const supabase = await createClient();
 
   const { data: orders } = await supabase
@@ -15,4 +16,12 @@ export default async function OrdersPage() {
     .limit(500);
 
   return <OrdersManager initialOrders={orders ?? []} />;
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-[#1c2a2b]/40">Loading orders…</div>}>
+      <OrdersContent />
+    </Suspense>
+  );
 }

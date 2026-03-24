@@ -51,6 +51,8 @@ function ConfidenceBadge({ c }: { c: number }) {
 
 // ─── Main tab ─────────────────────────────────────────────────────────────────
 
+type UserOption = { id: string; email: string | null; first_name: string | null; last_name: string | null };
+
 export default function PdfUploadTab() {
   const supabase = createClient();
 
@@ -66,6 +68,13 @@ export default function PdfUploadTab() {
   const [loadingUploads, setLoadingUploads] = useState(true);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [dragging, setDragging] = useState(false);
+
+  // User assignment
+  const [userSearch, setUserSearch] = useState('');
+  const [userOptions, setUserOptions] = useState<UserOption[]>([]);
+  const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const userSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -94,6 +103,24 @@ export default function PdfUploadTab() {
       .then(({ data }) => setAllBiomarkers((data as AllBiomarker[]) ?? []));
   }, []);
 
+  // ── User search ──────────────────────────────────────────────────────────────
+
+  const searchUsers = (q: string) => {
+    setUserSearch(q);
+    if (userSearchTimer.current) clearTimeout(userSearchTimer.current);
+    if (!q.trim()) { setUserOptions([]); return; }
+    userSearchTimer.current = setTimeout(async () => {
+      setSearchingUsers(true);
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, email, first_name, last_name')
+        .or(`email.ilike.%${q}%,first_name.ilike.%${q}%,last_name.ilike.%${q}%`)
+        .limit(8);
+      setUserOptions((data as UserOption[]) ?? []);
+      setSearchingUsers(false);
+    }, 300);
+  };
+
   // ── Upload flow ─────────────────────────────────────────────────────────────
 
   const handleFile = (f: File) => {
@@ -105,6 +132,7 @@ export default function PdfUploadTab() {
 
   const handleUploadAndExtract = async () => {
     if (!file) return;
+    if (!selectedUser) { addToast('Please assign this PDF to a user first', 'error'); return; }
     setUploading(true);
     setUploadProgress(20);
 
@@ -126,6 +154,7 @@ export default function PdfUploadTab() {
     // Create upload record
     const { data: uploadRecord } = await supabase.from('lab_pdf_uploads').insert({
       uploaded_by: user.id,
+      user_id: selectedUser.id,
       file_name: file.name,
       file_url: fileUrl,
       extraction_status: 'pending',
@@ -177,7 +206,7 @@ export default function PdfUploadTab() {
       const def = r.db_biomarker;
       return {
         biomarkerDefinitionId: r.matched_id,
-        userId: null, // no user linked unless order is selected
+        userId: selectedUser?.id ?? null,
         value: String(r.value),
         unit: r.unit,
         testDate: r.test_date,
@@ -220,6 +249,51 @@ export default function PdfUploadTab() {
 
       {extracted.length === 0 ? (
         <>
+          {/* ── Assign to user ────────────────────────────────────────────── */}
+          <div>
+            <SectionHeading>Assign to User <span className="text-red-400">*</span></SectionHeading>
+            {selectedUser ? (
+              <div className="flex items-center justify-between rounded-lg border border-[#0C9C6C]/30 bg-[#0C9C6C]/5 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-[#1c2a2b]">
+                    {[selectedUser.first_name, selectedUser.last_name].filter(Boolean).join(' ') || selectedUser.email}
+                  </p>
+                  <p className="text-xs text-[#1c2a2b]/50">{selectedUser.email}</p>
+                </div>
+                <button onClick={() => { setSelectedUser(null); setUserSearch(''); }} className="text-xs text-[#1c2a2b]/40 hover:text-[#1c2a2b]">Change</button>
+              </div>
+            ) : (
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search by email or name…"
+                  value={userSearch}
+                  onChange={(e) => searchUsers(e.target.value)}
+                  className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                />
+                {searchingUsers && <div className="absolute right-3 top-2.5"><Spinner /></div>}
+                {userOptions.length > 0 && (
+                  <div className="absolute top-full mt-1 w-full rounded-lg border border-[#0e393d]/15 bg-white shadow-lg z-10 overflow-hidden">
+                    {userOptions.map((u) => (
+                      <button
+                        key={u.id}
+                        onClick={() => { setSelectedUser(u); setUserOptions([]); setUserSearch(''); }}
+                        className="w-full flex items-start px-4 py-2.5 text-left hover:bg-[#0e393d]/5 transition"
+                      >
+                        <div>
+                          <p className="text-sm text-[#1c2a2b]">{u.email}</p>
+                          {(u.first_name || u.last_name) && (
+                            <p className="text-xs text-[#1c2a2b]/40">{[u.first_name, u.last_name].filter(Boolean).join(' ')}</p>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* ── Drop zone ─────────────────────────────────────────────────── */}
           <div
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
