@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   const productIds = items.map((i: any) => i.productId);
   const { data: products, error: prodErr } = await supabase
     .from('products')
-    .select('id, name, price, currency')
+    .select('id, name, price_chf, price_eur')
     .in('id', productIds);
 
   if (prodErr || !products?.length) {
@@ -30,12 +30,12 @@ export async function POST(req: NextRequest) {
   const productMap = Object.fromEntries(products.map((p: any) => [p.id, p]));
 
   let totalAmount = 0;
-  const currency = products[0].currency ?? 'CHF';
+  const currency = 'CHF';
 
   for (const item of items) {
     const product = productMap[item.productId];
     if (!product) return NextResponse.json({ error: `Product ${item.productId} not found` }, { status: 400 });
-    totalAmount += product.price * item.quantity;
+    totalAmount += product.price_chf * item.quantity;
   }
 
   // Generate order number
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     order_id: order.id,
     product_id: item.productId,
     quantity: item.quantity,
-    unit_price: productMap[item.productId].price,
+    unit_price: productMap[item.productId].price_chf,
     currency,
   }));
 

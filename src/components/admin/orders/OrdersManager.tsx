@@ -804,7 +804,7 @@ function CustomerContext({ order }: { order: Order }) {
 
 // ─── New Order panel ──────────────────────────────────────────────────────────
 
-type ProductOption = { id: string; name: LocalizedString; price: number; currency: string; sku: string | null };
+type ProductOption = { id: string; name: LocalizedString; price_chf: number; price_eur: number | null; sku: string | null };
 type LineItem = { productId: string; productName: string; quantity: number; price: number };
 
 function NewOrderPanel({ onClose, onCreated, addToast }: {
@@ -826,9 +826,9 @@ function NewOrderPanel({ onClose, onCreated, addToast }: {
   useEffect(() => {
     supabase
       .from('products')
-      .select('id, name, price, currency, sku')
+      .select('id, name, price_chf, price_eur, sku')
       .eq('is_active', true)
-      .then(({ data }) => setProducts(data ?? []));
+      .then(({ data }) => setProducts((data as unknown as ProductOption[]) ?? []));
   }, []);
 
   const searchUsers = (q: string) => {
@@ -851,7 +851,7 @@ function NewOrderPanel({ onClose, onCreated, addToast }: {
     setLineItems((prev) => {
       const existing = prev.find((i) => i.productId === product.id);
       if (existing) return prev.map((i) => i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { productId: product.id, productName: locName(product.name), quantity: 1, price: product.price }];
+      return [...prev, { productId: product.id, productName: locName(product.name), quantity: 1, price: product.price_chf }];
     });
   };
 
@@ -862,7 +862,7 @@ function NewOrderPanel({ onClose, onCreated, addToast }: {
   };
 
   const total = lineItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const currency = products[0]?.currency ?? 'CHF';
+  const currency = 'CHF';
 
   const handleCreate = async () => {
     if (!selectedUser || !lineItems.length) return;
@@ -963,7 +963,7 @@ function NewOrderPanel({ onClose, onCreated, addToast }: {
                     {p.sku && <p className="text-[11px] font-mono text-[#1c2a2b]/40">{p.sku}</p>}
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-[#0e393d]">{fmt(p.price, p.currency)}</p>
+                    <p className="text-sm font-medium text-[#0e393d]">{fmt(p.price_chf, 'CHF')}</p>
                     <p className="text-[11px] text-[#1c2a2b]/40">+ Add</p>
                   </div>
                 </button>
