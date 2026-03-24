@@ -44,6 +44,23 @@ type UploadRecord = {
 
 type AllBiomarker = { id: string; name: any; unit: string | null; he_domain: string | null };
 
+// ─── Report language detection ────────────────────────────────────────────────
+
+function detectReportLanguage(extractedNames: string[]): string {
+  const scores: Record<string, number> = { de: 0, en: 0, fr: 0, it: 0, es: 0 };
+
+  for (const name of extractedNames) {
+    const l = name.toLowerCase();
+    if (['hämoglobin', 'hämatokrit', 'leukozyten', 'kalium', 'natrium', 'harnsäure', 'kreatinin', 'cholesterin', 'glukose', 'blut', 'thyreo', 'eisen'].some((w) => l.includes(w))) scores.de += 2;
+    if (['hémoglobine', 'leucocytes', 'potassium', 'cholestérol', 'glycémie', 'créatinine', 'sodium', 'globule'].some((w) => l.includes(w))) scores.fr += 2;
+    if (['emoglobina', 'leucociti', 'potassio', 'colesterolo', 'creatinina', 'glicemia', 'ematocrito', 'sodio'].some((w) => l.includes(w))) scores.it += 2;
+    if (['hemoglobina', 'leucocitos', 'potasio', 'colesterol', 'creatinina', 'glucosa', 'sodio'].some((w) => l.includes(w))) scores.es += 2;
+    if (['hemoglobin', 'white blood', 'potassium', 'cholesterol', 'glucose', 'creatinine', 'hematocrit', 'sodium', 'thyroid'].some((w) => l.includes(w))) scores.en += 1;
+  }
+
+  return Object.entries(scores).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'en';
+}
+
 // ─── Confidence badge ─────────────────────────────────────────────────────────
 
 function ConfidenceBadge({ c }: { c: Confidence }) {
@@ -529,7 +546,18 @@ export default function PdfUploadTab() {
             <span className="text-[#0e393d]">{extracted.filter(r => r.was_converted).length} converted</span>
           </div>
 
-          <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-x-auto">
+          {(() => {
+            const reportLang = detectReportLanguage(extracted.map((r) => r.extracted_name));
+            const locInLang = (name: any) => {
+              if (!name) return '—';
+              if (typeof name === 'string') return name;
+              return name[reportLang] || name.en || name.de || Object.values(name)[0] || '—';
+            };
+            return (
+        <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-x-auto">
+            <div className="px-3 pt-2 pb-0 text-[11px] text-[#1c2a2b]/40">
+              Detected report language: <span className="font-medium text-[#0e393d]/60 uppercase">{reportLang}</span>
+            </div>
             <table className="w-full text-xs min-w-[960px]">
               <thead>
                 <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
@@ -569,7 +597,7 @@ export default function PdfUploadTab() {
                           onChange={(e) => {
                             const bm = allBiomarkers.find((b) => b.id === e.target.value);
                             updateRow(idx, 'matched_id', e.target.value || null);
-                            updateRow(idx, 'matched_name', locName(bm?.name) || null);
+                            updateRow(idx, 'matched_name', locInLang(bm?.name) || null);
                             updateRow(idx, 'db_biomarker', bm ?? null);
                             updateRow(idx, 'confidence', e.target.value ? 'alias' : 'unmatched');
                           }}
@@ -577,7 +605,7 @@ export default function PdfUploadTab() {
                         >
                           <option value="">— Not mapped —</option>
                           {allBiomarkers.map((b) => (
-                            <option key={b.id} value={b.id}>{locName(b.name)}</option>
+                            <option key={b.id} value={b.id}>{locInLang(b.name)}</option>
                           ))}
                         </select>
                       </td>
@@ -613,6 +641,8 @@ export default function PdfUploadTab() {
               </tbody>
             </table>
           </div>
+            );
+          })()}
 
           <div className="flex gap-3">
             <button

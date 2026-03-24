@@ -410,6 +410,7 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
   const [formUnit, setFormUnit] = useState('');
   const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
+  const [bmAltUnits, setBmAltUnits] = useState<string[]>([]);
 
   const loadResults = () => {
     supabase
@@ -450,20 +451,26 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
   const handleSave = async () => {
     if (!selectedBm || !formValue || !formDate) return;
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setSaving(false); return; }
-    await supabase.from('lab_results').insert({
-      user_id: user.id,
-      biomarker_definition_id: selectedBm.id,
-      value_numeric: parseFloat(formValue),
-      unit: formUnit || selectedBm.unit || '',
-      test_date: formDate,
-      source: 'self_report',
+    const res = await fetch('/api/lab-results/self-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        biomarker_id: selectedBm.id,
+        value: parseFloat(formValue),
+        unit: formUnit || selectedBm.unit || '',
+        test_date: formDate,
+      }),
     });
+    const data = await res.json();
     setSaving(false);
+    if (!data.success) {
+      console.error('[self-report] save failed:', data.error);
+      return;
+    }
     setShowForm(false);
     setSelectedBm(null);
     setSearch('');
+    setBmAltUnits([]);
     setFormValue('');
     setFormUnit('');
     setFormDate(new Date().toISOString().slice(0, 10));
@@ -510,7 +517,17 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
                 {filteredBiomarkers.map((bm) => (
                   <button
                     key={bm.id}
-                    onClick={() => { setSelectedBm(bm); setSearch(''); setFormUnit(bm.unit ?? ''); }}
+                    onClick={async () => {
+                      setSelectedBm(bm);
+                      setSearch('');
+                      setFormUnit(bm.unit ?? '');
+                      // Load alt units for this biomarker
+                      const { data: convs } = await supabase
+                        .from('biomarker_unit_conversions')
+                        .select('alt_unit')
+                        .eq('biomarker_id', bm.id);
+                      setBmAltUnits((convs ?? []).map((c: any) => c.alt_unit));
+                    }}
                     className="w-full text-left px-3 py-2 text-sm hover:bg-[#0e393d]/5 transition flex items-center justify-between"
                   >
                     <span>{locName(bm.name, lang)}</span>
@@ -534,12 +551,28 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
               </div>
               <div>
                 <label className="block text-[11px] text-[#1c2a2b]/50 mb-1">{t.results.unit}</label>
-                <input
-                  type="text"
-                  value={formUnit}
-                  onChange={(e) => setFormUnit(e.target.value)}
-                  className="w-full rounded-lg border border-[#0e393d]/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/20"
-                />
+                {bmAltUnits.length > 0 ? (
+                  <select
+                    value={formUnit}
+                    onChange={(e) => setFormUnit(e.target.value)}
+                    className="w-full rounded-lg border border-[#0e393d]/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/20 bg-white"
+                  >
+                    <option value={selectedBm.unit ?? ''}>{selectedBm.unit}</option>
+                    {bmAltUnits.map((u) => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={formUnit}
+                    onChange={(e) => setFormUnit(e.target.value)}
+                    className="w-full rounded-lg border border-[#0e393d]/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/20"
+                  />
+                )}
+                {formUnit && selectedBm.unit && formUnit !== selectedBm.unit && (
+                  <p className="mt-1 text-[11px] text-amber-700 bg-amber-50 rounded px-2 py-1">
+                    Will be converted to {selectedBm.unit} on save
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-[11px] text-[#1c2a2b]/50 mb-1">{t.results.date}</label>

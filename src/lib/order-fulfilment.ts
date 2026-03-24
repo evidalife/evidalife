@@ -505,14 +505,6 @@ export async function sendFulfilmentEmail(
         .limit(1)
         .single();
 
-      const { data: bioAge } = await supabase
-        .from('biological_age_results')
-        .select('estimated_age')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
       const { data: profileAge } = await supabase
         .from('profiles')
         .select('date_of_birth')
@@ -534,7 +526,7 @@ export async function sendFulfilmentEmail(
         lang,
         firstName,
         longevityScore: score?.overall_score || 0,
-        bioAge: bioAge?.estimated_age,
+        bioAge: undefined,
         chronoAge,
         biomarkersCount: count || 0,
       });

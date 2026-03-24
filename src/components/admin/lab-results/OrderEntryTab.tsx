@@ -537,18 +537,26 @@ export default function OrderEntryTab() {
                                     {(() => {
                                       const altUnits = def?.id ? (conversionsMap[def.id] ?? []).map((c) => c.alt_unit) : [];
                                       const selectedUnit = inputUnits[item.id] ?? def?.unit ?? '';
+                                      const isAltUnit = selectedUnit !== (def?.unit ?? '');
                                       if (altUnits.length === 0) {
                                         return <span className="text-xs text-[#1c2a2b]/40 shrink-0">{def?.unit}</span>;
                                       }
                                       return (
-                                        <select
-                                          value={selectedUnit}
-                                          onChange={(e) => setInputUnits((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                                          className="rounded border border-[#0e393d]/15 bg-white px-1.5 py-1 text-xs text-[#1c2a2b]/60 focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
-                                        >
-                                          <option value={def?.unit ?? ''}>{def?.unit}</option>
-                                          {altUnits.map((u) => <option key={u} value={u}>{u}</option>)}
-                                        </select>
+                                        <div className="flex flex-col gap-1">
+                                          <select
+                                            value={selectedUnit}
+                                            onChange={(e) => setInputUnits((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                                            className="rounded border border-[#0e393d]/15 bg-white px-1.5 py-1 text-xs text-[#1c2a2b]/60 focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
+                                          >
+                                            <option value={def?.unit ?? ''}>{def?.unit}</option>
+                                            {altUnits.map((u) => <option key={u} value={u}>{u}</option>)}
+                                          </select>
+                                          {isAltUnit && (
+                                            <span className="text-[10px] text-amber-700 bg-amber-50 rounded px-1.5 py-0.5 leading-tight">
+                                              → {def?.unit} on save
+                                            </span>
+                                          )}
+                                        </div>
                                       );
                                     })()}
                                     {liveFlag && <FlagDot flag={liveFlag} />}
