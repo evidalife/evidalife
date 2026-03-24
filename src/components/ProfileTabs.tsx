@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import ProfileEditor, { type ProfileData } from './ProfileEditor';
 
@@ -575,6 +575,33 @@ function MyInvoicesTab({ t }: { t: typeof T['en'] }) {
 
 // ─── ProfileTabs (main export) ────────────────────────────────────────────────
 
+const TAB_ICONS: Record<Tab, React.ReactNode> = {
+  profile: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+    </svg>
+  ),
+  orders: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
+      <path d="M16 10a4 4 0 0 1-8 0"/>
+    </svg>
+  ),
+  results: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11m0 0H5m4 0h10m0-11v11m0 0h-4"/>
+      <path d="M3 9h18"/>
+    </svg>
+  ),
+  invoices: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+      <polyline points="10 9 9 9 8 9"/>
+    </svg>
+  ),
+};
+
 export default function ProfileTabs({ profile, lang }: { profile: ProfileData; lang: Lang }) {
   const [tab, setTab] = useState<Tab>('profile');
   const t = T[lang] ?? T.en;
@@ -588,21 +615,24 @@ export default function ProfileTabs({ profile, lang }: { profile: ProfileData; l
 
   return (
     <div>
-      {/* Tab bar */}
-      <div className="flex border-b border-[#0e393d]/10 mb-8">
-        {tabs.map(({ id, label }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`px-1 py-3 mr-8 text-sm font-medium border-b-2 transition ${
-              tab === id
-                ? 'border-[#0e393d] text-[#0e393d]'
-                : 'border-transparent text-[#1c2a2b]/40 hover:text-[#1c2a2b]'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      {/* Tab bar — horizontally scrollable on mobile */}
+      <div className="overflow-x-auto -mx-6 px-6 scrollbar-none">
+        <div className="flex border-b border-[#0e393d]/10 mb-8 min-w-max">
+          {tabs.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`flex items-center gap-1.5 px-1 py-3 mr-7 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+                tab === id
+                  ? 'border-[#0e393d] text-[#0e393d]'
+                  : 'border-transparent text-[#1c2a2b]/40 hover:text-[#1c2a2b]'
+              }`}
+            >
+              {TAB_ICONS[id]}
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {tab === 'profile'  && <ProfileEditor profile={profile} lang={lang} />}

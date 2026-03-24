@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { setOptions as setGMapsOptions, importLibrary as importGMapsLibrary } from '@googlemaps/js-api-loader';
 import type CropperType from 'react-easy-crop';
 const Cropper = dynamic(() => import('react-easy-crop').then((m) => m.default), { ssr: false }) as unknown as typeof CropperType;
 import { createClient } from '@/lib/supabase/client';
@@ -46,7 +47,6 @@ const DIET_VALUES = ['omnivore', 'vegetarian', 'vegan', 'pescatarian', 'other'] 
 
 type DialCountry = { code: string; flag: string; dialCode: string; name: string };
 
-// Priority countries for DACH market first
 const DIAL_COUNTRIES: DialCountry[] = [
   { code: 'CH', flag: '🇨🇭', dialCode: '+41',  name: 'Switzerland' },
   { code: 'DE', flag: '🇩🇪', dialCode: '+49',  name: 'Germany' },
@@ -97,11 +97,6 @@ function detectDialCountry(raw: string): DialCountry | undefined {
   if (stripped.startsWith('+')) {
     return DIAL_COUNTRIES.find((c) => stripped.startsWith(c.dialCode));
   }
-  if (stripped.startsWith('0041') || stripped.startsWith('0049') || stripped.startsWith('0043')) {
-    const dc = '00' + stripped.slice(2, 4);
-    return DIAL_COUNTRIES.find((c) => c.dialCode === '+' + stripped.slice(2, stripped.match(/^00\d{1,3}/)![0].length - 2 + 2));
-  }
-  // Swiss mobile prefixes (076, 077, 078, 079, 075)
   if (/^0(75|76|77|78|79)/.test(stripped)) return DIAL_COUNTRIES.find((c) => c.code === 'CH');
   return undefined;
 }
@@ -110,13 +105,12 @@ function toE164(local: string, dialCode: string): string {
   const stripped = local.replace(/[\s\-().]/g, '');
   if (stripped.startsWith('+')) return stripped;
   if (stripped.startsWith('00')) return '+' + stripped.slice(2);
-  // Swiss local: 079 → +4179
   if (/^0\d/.test(stripped)) return dialCode + stripped.slice(1);
   return dialCode + stripped;
 }
 
 function formatPhoneDisplay(e164: string): string {
-  return e164; // keep E.164 as-is for display; browser/OS handles formatting
+  return e164;
 }
 
 // ─── Date helpers (DD.MM.YYYY ↔ YYYY-MM-DD) ──────────────────────────────────
@@ -130,10 +124,8 @@ function isoToDisplay(iso: string): string {
 
 function displayToIso(display: string): string {
   const stripped = display.replace(/[^0-9./-]/g, '');
-  // Try DD.MM.YYYY or DD/MM/YYYY
   const match = stripped.match(/^(\d{1,2})[./\-](\d{1,2})[./\-](\d{4})$/);
   if (match) return `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
-  // Already ISO
   if (/^\d{4}-\d{2}-\d{2}$/.test(stripped)) return stripped;
   return '';
 }
@@ -142,7 +134,7 @@ function displayToIso(display: string): string {
 
 const T = {
   de: {
-    avatar: 'Profilbild', changeAvatar: 'Bild ändern', removeAvatar: 'Bild entfernen',
+    avatar: 'Profilbild', changeAvatar: 'Bild ändern', removeAvatar: 'Entfernen',
     uploading: 'Wird hochgeladen…', avatarTooBig: 'Das Bild muss kleiner als 5 MB sein.',
     avatarWrongType: 'Bitte lade ein JPEG, PNG oder WebP Bild hoch.',
     avatarUploadFailed: 'Upload fehlgeschlagen. Bitte erneut versuchen.',
@@ -157,7 +149,7 @@ const T = {
     contact: 'Kontakt',
     phone: 'Telefon', phoneHint: 'Internationale Vorwahl wählen, dann Nummer eingeben. Gespeichert als E.164.',
     phoneCountry: 'Land',
-    address: 'Adresse', streetAddress: 'Straße und Hausnummer',
+    address: 'Adresse', streetAddress: 'Straße und Hausnummer', streetPlaceholder: 'Musterstrasse 1',
     city: 'Stadt', postalCode: 'Postleitzahl', country: 'Land',
     health: 'Gesundheit',
     heightCm: 'Körpergröße (cm)', weightKg: 'Gewicht (kg)',
@@ -166,16 +158,18 @@ const T = {
     activityOptions: ['Sitzend', 'Leicht aktiv', 'Aktiv', 'Sehr aktiv'] as string[],
     diet: 'Ernährungsweise',
     dietOptions: ['Omnivor', 'Vegetarisch', 'Vegan', 'Pescetarisch', 'Andere'] as string[],
-    preferences: 'Einstellungen', language: 'Sprache', langDe: 'Deutsch', langEn: 'English',
     account: 'Konto', memberSince: 'Mitglied seit', adminBadge: 'Admin',
     onboarding: 'Onboarding', onboardingDone: 'Abgeschlossen', onboardingPending: 'Ausstehend',
+    onboardingLink: 'Onboarding starten →',
+    changePassword: 'Passwort ändern',
     save: 'Speichern', saving: 'Wird gespeichert…', saved: 'Gespeichert ✓', saveError: 'Fehler beim Speichern.',
+    unsavedChanges: 'Ungespeicherte Änderungen',
     deleteSection: 'Konto löschen',
     deleteInfo: 'Wenn du dein Konto löschen möchtest, wende dich bitte an unseren Support.',
     deleteContact: 'Support kontaktieren',
   },
   en: {
-    avatar: 'Profile picture', changeAvatar: 'Change photo', removeAvatar: 'Remove photo',
+    avatar: 'Profile picture', changeAvatar: 'Change photo', removeAvatar: 'Remove',
     uploading: 'Uploading…', avatarTooBig: 'Image must be smaller than 5 MB.',
     avatarWrongType: 'Please upload a JPEG, PNG, or WebP image.',
     avatarUploadFailed: 'Upload failed. Please try again.',
@@ -190,7 +184,7 @@ const T = {
     contact: 'Contact',
     phone: 'Phone number', phoneHint: 'Select country code, then enter your number. Stored as E.164.',
     phoneCountry: 'Country',
-    address: 'Address', streetAddress: 'Street address',
+    address: 'Address', streetAddress: 'Street address', streetPlaceholder: '123 Main St',
     city: 'City', postalCode: 'Postal code', country: 'Country',
     health: 'Health',
     heightCm: 'Height (cm)', weightKg: 'Weight (kg)',
@@ -199,16 +193,18 @@ const T = {
     activityOptions: ['Sedentary', 'Lightly active', 'Active', 'Very active'] as string[],
     diet: 'Diet',
     dietOptions: ['Omnivore', 'Vegetarian', 'Vegan', 'Pescatarian', 'Other'] as string[],
-    preferences: 'Preferences', language: 'Language', langDe: 'Deutsch', langEn: 'English',
     account: 'Account', memberSince: 'Member since', adminBadge: 'Admin',
     onboarding: 'Onboarding', onboardingDone: 'Completed', onboardingPending: 'Pending',
+    onboardingLink: 'Start onboarding →',
+    changePassword: 'Change password',
     save: 'Save changes', saving: 'Saving…', saved: 'Saved ✓', saveError: 'Failed to save.',
+    unsavedChanges: 'Unsaved changes',
     deleteSection: 'Delete account',
     deleteInfo: 'If you want to delete your account, please contact our support team.',
     deleteContact: 'Contact support',
   },
   fr: {
-    avatar: 'Photo de profil', changeAvatar: 'Changer la photo', removeAvatar: 'Supprimer la photo',
+    avatar: 'Photo de profil', changeAvatar: 'Changer', removeAvatar: 'Supprimer',
     uploading: 'Téléchargement…', avatarTooBig: "L'image doit être inférieure à 5 Mo.",
     avatarWrongType: 'Veuillez télécharger une image JPEG, PNG ou WebP.',
     avatarUploadFailed: 'Échec du téléchargement. Veuillez réessayer.',
@@ -223,7 +219,7 @@ const T = {
     contact: 'Contact',
     phone: 'Numéro de téléphone', phoneHint: 'Sélectionnez le code pays, puis entrez votre numéro.',
     phoneCountry: 'Pays',
-    address: 'Adresse', streetAddress: 'Adresse postale',
+    address: 'Adresse', streetAddress: 'Adresse postale', streetPlaceholder: '1 rue de la Paix',
     city: 'Ville', postalCode: 'Code postal', country: 'Pays',
     health: 'Santé',
     heightCm: 'Taille (cm)', weightKg: 'Poids (kg)',
@@ -232,16 +228,18 @@ const T = {
     activityOptions: ['Sédentaire', 'Légèrement actif', 'Actif', 'Très actif'] as string[],
     diet: 'Alimentation',
     dietOptions: ['Omnivore', 'Végétarien', 'Végétalien', 'Pescatarien', 'Autre'] as string[],
-    preferences: 'Préférences', language: 'Langue', langDe: 'Deutsch', langEn: 'English',
     account: 'Compte', memberSince: 'Membre depuis', adminBadge: 'Admin',
     onboarding: 'Onboarding', onboardingDone: 'Terminé', onboardingPending: 'En attente',
+    onboardingLink: "Démarrer l'onboarding →",
+    changePassword: 'Changer le mot de passe',
     save: 'Enregistrer les modifications', saving: 'Enregistrement…', saved: 'Enregistré ✓', saveError: "Échec de l'enregistrement.",
+    unsavedChanges: 'Modifications non enregistrées',
     deleteSection: 'Supprimer le compte',
     deleteInfo: 'Si vous souhaitez supprimer votre compte, veuillez contacter notre support.',
     deleteContact: 'Contacter le support',
   },
   es: {
-    avatar: 'Foto de perfil', changeAvatar: 'Cambiar foto', removeAvatar: 'Eliminar foto',
+    avatar: 'Foto de perfil', changeAvatar: 'Cambiar', removeAvatar: 'Eliminar',
     uploading: 'Subiendo…', avatarTooBig: 'La imagen debe ser menor de 5 MB.',
     avatarWrongType: 'Por favor sube una imagen JPEG, PNG o WebP.',
     avatarUploadFailed: 'Error al subir. Por favor inténtalo de nuevo.',
@@ -256,7 +254,7 @@ const T = {
     contact: 'Contacto',
     phone: 'Número de teléfono', phoneHint: 'Selecciona el código de país y luego ingresa tu número.',
     phoneCountry: 'País',
-    address: 'Dirección', streetAddress: 'Dirección postal',
+    address: 'Dirección', streetAddress: 'Dirección postal', streetPlaceholder: 'Calle Mayor 1',
     city: 'Ciudad', postalCode: 'Código postal', country: 'País',
     health: 'Salud',
     heightCm: 'Altura (cm)', weightKg: 'Peso (kg)',
@@ -265,16 +263,18 @@ const T = {
     activityOptions: ['Sedentario', 'Ligeramente activo', 'Activo', 'Muy activo'] as string[],
     diet: 'Dieta',
     dietOptions: ['Omnívoro', 'Vegetariano', 'Vegano', 'Pescatariano', 'Otro'] as string[],
-    preferences: 'Preferencias', language: 'Idioma', langDe: 'Deutsch', langEn: 'English',
     account: 'Cuenta', memberSince: 'Miembro desde', adminBadge: 'Admin',
     onboarding: 'Incorporación', onboardingDone: 'Completado', onboardingPending: 'Pendiente',
+    onboardingLink: 'Iniciar incorporación →',
+    changePassword: 'Cambiar contraseña',
     save: 'Guardar cambios', saving: 'Guardando…', saved: 'Guardado ✓', saveError: 'Error al guardar.',
+    unsavedChanges: 'Cambios sin guardar',
     deleteSection: 'Eliminar cuenta',
     deleteInfo: 'Si deseas eliminar tu cuenta, por favor contacta a nuestro soporte.',
     deleteContact: 'Contactar soporte',
   },
   it: {
-    avatar: 'Foto del profilo', changeAvatar: 'Cambia foto', removeAvatar: 'Rimuovi foto',
+    avatar: 'Foto del profilo', changeAvatar: 'Cambia', removeAvatar: 'Rimuovi',
     uploading: 'Caricamento…', avatarTooBig: "L'immagine deve essere inferiore a 5 MB.",
     avatarWrongType: "Per favore carica un'immagine JPEG, PNG o WebP.",
     avatarUploadFailed: 'Caricamento fallito. Riprova.',
@@ -289,7 +289,7 @@ const T = {
     contact: 'Contatti',
     phone: 'Numero di telefono', phoneHint: 'Seleziona il prefisso, poi inserisci il numero.',
     phoneCountry: 'Paese',
-    address: 'Indirizzo', streetAddress: 'Indirizzo postale',
+    address: 'Indirizzo', streetAddress: 'Indirizzo postale', streetPlaceholder: 'Via Roma 1',
     city: 'Città', postalCode: 'Codice postale', country: 'Paese',
     health: 'Salute',
     heightCm: 'Altezza (cm)', weightKg: 'Peso (kg)',
@@ -298,10 +298,12 @@ const T = {
     activityOptions: ['Sedentario', 'Leggermente attivo', 'Attivo', 'Molto attivo'] as string[],
     diet: 'Alimentazione',
     dietOptions: ['Onnivoro', 'Vegetariano', 'Vegano', 'Pescatariano', 'Altro'] as string[],
-    preferences: 'Preferenze', language: 'Lingua', langDe: 'Deutsch', langEn: 'English',
     account: 'Account', memberSince: 'Membro dal', adminBadge: 'Admin',
     onboarding: 'Onboarding', onboardingDone: 'Completato', onboardingPending: 'In attesa',
+    onboardingLink: "Inizia l'onboarding →",
+    changePassword: 'Cambia password',
     save: 'Salva modifiche', saving: 'Salvataggio…', saved: 'Salvato ✓', saveError: 'Salvataggio fallito.',
+    unsavedChanges: 'Modifiche non salvate',
     deleteSection: 'Elimina account',
     deleteInfo: 'Se vuoi eliminare il tuo account, contatta il nostro supporto.',
     deleteContact: 'Contatta il supporto',
@@ -310,7 +312,7 @@ const T = {
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
-const inputCls = 'w-full rounded-xl border border-[#0e393d]/15 bg-white px-4 py-2.5 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/35 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition disabled:bg-[#0e393d]/4 disabled:text-[#1c2a2b]/40 disabled:cursor-not-allowed';
+const inputCls = 'w-full rounded-xl border border-[#0e393d]/15 bg-white px-4 py-3 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/35 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition-colors disabled:bg-[#0e393d]/4 disabled:text-[#1c2a2b]/40 disabled:cursor-not-allowed';
 const selectCls = inputCls + ' cursor-pointer';
 
 function FieldLabel({ text, hint }: { text: string; hint?: string }) {
@@ -322,14 +324,48 @@ function FieldLabel({ text, hint }: { text: string; hint?: string }) {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, icon }: { title: string; children: React.ReactNode; icon?: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-[#0e393d]/10 bg-white p-6">
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-[#ceab84] mb-5">{title}</h2>
+    <section className="rounded-2xl border border-[#0e393d]/10 border-l-2 border-l-[#ceab84] bg-white p-6 shadow-sm">
+      <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#ceab84] mb-5">
+        {icon && <span className="opacity-80">{icon}</span>}
+        {title}
+      </h2>
       {children}
     </section>
   );
 }
+
+// ─── Section icons ────────────────────────────────────────────────────────────
+
+const IconCamera = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+    <circle cx="12" cy="13" r="4"/>
+  </svg>
+);
+const IconUser = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+const IconMail = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+    <polyline points="22,6 12,13 2,6"/>
+  </svg>
+);
+const IconHeart = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+  </svg>
+);
+const IconShield = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+  </svg>
+);
 
 // ─── Crop helper ──────────────────────────────────────────────────────────────
 
@@ -349,12 +385,10 @@ async function getCroppedImg(imageSrc: string, pixelCrop: { x: number; y: number
 function PhoneField({
   value, onChange, label, hint,
 }: { value: string; onChange: (e164: string) => void; label: string; hint: string }) {
-  // Parse the stored E.164 to detect country and local number
   const findCountry = (v: string): DialCountry => {
     const detected = detectDialCountry(v);
     return detected ?? DIAL_COUNTRIES[0];
   };
-
   const extractLocal = (v: string, dc: string): string => {
     if (!v) return '';
     const stripped = v.replace(/[\s\-().]/g, '');
@@ -371,19 +405,14 @@ function PhoneField({
   const handleCountryChange = (code: string) => {
     const c = DIAL_COUNTRIES.find((d) => d.code === code) ?? DIAL_COUNTRIES[0];
     setSelectedCountry(c);
-    if (localNumber) {
-      onChange(toE164(localNumber, c.dialCode));
-    }
+    if (localNumber) onChange(toE164(localNumber, c.dialCode));
   };
 
   const handleNumberChange = (raw: string) => {
     setLocalNumber(raw);
     if (!raw.trim()) { onChange(''); return; }
-    // Auto-detect country from raw input
     const detected = detectDialCountry(raw);
-    if (detected && detected.code !== selectedCountry.code) {
-      setSelectedCountry(detected);
-    }
+    if (detected && detected.code !== selectedCountry.code) setSelectedCountry(detected);
     onChange(toE164(raw, selectedCountry.dialCode));
   };
 
@@ -394,13 +423,11 @@ function PhoneField({
         <select
           value={selectedCountry.code}
           onChange={(e) => handleCountryChange(e.target.value)}
-          className="rounded-xl border border-[#0e393d]/15 bg-white px-2 py-2.5 text-sm text-[#1c2a2b] focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition cursor-pointer w-24 shrink-0"
+          className="rounded-xl border border-[#0e393d]/15 bg-white px-2 py-3 text-sm text-[#1c2a2b] focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition-colors cursor-pointer w-28 shrink-0"
           title="Country code"
         >
           {DIAL_COUNTRIES.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.flag} {c.dialCode}
-            </option>
+            <option key={c.code} value={c.code}>{c.flag} {c.dialCode}</option>
           ))}
         </select>
         <input
@@ -431,7 +458,6 @@ function BirthdayField({
     if (iso || raw === '') onChange(iso);
   };
 
-  // Auto-insert dots
   const handleKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const v = (e.target as HTMLInputElement).value;
     if (e.key !== 'Backspace' && (v.length === 2 || v.length === 5)) {
@@ -447,10 +473,95 @@ function BirthdayField({
         value={display}
         onChange={(e) => handleChange(e.target.value)}
         onKeyUp={handleKeyUp}
-        placeholder="TT.MM.JJJJ"
+        placeholder="DD.MM.YYYY"
         maxLength={10}
         className={inputCls}
       />
+    </div>
+  );
+}
+
+// ─── Address Autocomplete ─────────────────────────────────────────────────────
+
+type AddressData = { street: string; city: string; postalCode: string; country: string };
+
+function AddressAutocomplete({
+  value, onChange, onAddressSelect, label, placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onAddressSelect: (data: AddressData) => void;
+  label: string;
+  placeholder: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listenerRef = useRef<google.maps.MapsEventListener | null>(null);
+
+  useEffect(() => {
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) return;
+
+    setGMapsOptions({ key: apiKey, v: 'weekly' });
+
+    importGMapsLibrary('places').then((placesLib) => {
+      if (!inputRef.current) return;
+      const { Autocomplete } = placesLib as google.maps.PlacesLibrary;
+      const autocomplete = new Autocomplete(inputRef.current, {
+        types: ['address'],
+        componentRestrictions: {
+          country: ['ch', 'de', 'at', 'fr', 'it', 'es', 'gb', 'nl', 'be', 'lu', 'pt', 'se', 'no', 'dk', 'fi', 'ie', 'pl', 'cz', 'sk', 'hu', 'ro', 'gr'],
+        },
+        fields: ['address_components'],
+      });
+
+      listenerRef.current = autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        if (!place?.address_components) return;
+
+        let streetNumber = '', route = '', city = '', postalCode = '', countryCode = '';
+        for (const comp of place.address_components) {
+          const t = comp.types;
+          if (t.includes('street_number')) streetNumber = comp.long_name;
+          if (t.includes('route')) route = comp.long_name;
+          if (t.includes('locality') || t.includes('postal_town')) city = comp.long_name;
+          if (t.includes('postal_code')) postalCode = comp.long_name;
+          if (t.includes('country')) countryCode = comp.short_name;
+        }
+
+        const street = [route, streetNumber].filter(Boolean).join(' ');
+        onChange(street);
+        onAddressSelect({ street, city, postalCode, country: countryCode });
+      });
+    }).catch(() => {
+      // Maps API failed to load — field degrades gracefully to plain input
+    });
+
+    return () => {
+      listenerRef.current?.remove();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div>
+      <FieldLabel text={label} />
+      <div className="relative">
+        <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0e393d" strokeWidth="1.75" className="opacity-35">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          autoComplete="off"
+          className="w-full rounded-xl border border-[#0e393d]/15 bg-white pl-10 pr-4 py-3 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/35 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition-colors"
+        />
+      </div>
     </div>
   );
 }
@@ -486,7 +597,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
   const [sex,         setSex]         = useState(profile.sex ?? '');
 
   // Contact
-  const [phone,   setPhone]   = useState(profile.phone ?? '');
+  const [phone, setPhone] = useState(profile.phone ?? '');
 
   // Address
   const [streetAddress, setStreetAddress] = useState(profile.street_address ?? '');
@@ -502,13 +613,10 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
   const [diet,          setDiet]          = useState(profile.diet ?? '');
 
   // UI
-  const [langPref,  setLangPref]  = useState<'de' | 'en'>(lang === 'de' ? 'de' : 'en');
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [isDirty,   setIsDirty]   = useState(false);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('evida-lang');
-    if (stored === 'de' || stored === 'en') setLangPref(stored);
-  }, []);
+  const dirty = () => setIsDirty(true);
 
   // ── Avatar ──────────────────────────────────────────────────────────────────
 
@@ -570,6 +678,19 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
     await refreshProfile();
   };
 
+  // ── Address autocomplete callback ────────────────────────────────────────────
+
+  const handleAddressSelect = (data: AddressData) => {
+    setStreetAddress(data.street);
+    if (data.city) setCity(data.city);
+    if (data.postalCode) setPostalCode(data.postalCode);
+    if (data.country) {
+      const match = EUROPEAN_COUNTRIES.find((c) => c.code === data.country);
+      if (match) setCountry(match.code);
+    }
+    setIsDirty(true);
+  };
+
   // ── Save ────────────────────────────────────────────────────────────────────
 
   const handleSave = async (e: React.FormEvent) => {
@@ -594,16 +715,20 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
     }).eq('id', profile.id);
 
     if (error) { setSaveState('error'); setTimeout(() => setSaveState('idle'), 3000); return; }
-    localStorage.setItem('evida-lang', langPref);
-    if (langPref !== lang) { window.location.href = `/${langPref}/profile`; return; }
     setSaveState('saved');
+    setIsDirty(false);
     setTimeout(() => setSaveState('idle'), 2500);
   };
 
   // ── Derived ─────────────────────────────────────────────────────────────────
 
   const showAvatar = !!avatarUrl && !avatarBroken;
-  const initials = (firstName && lastName ? `${firstName[0]}${lastName[0]}` : firstName ? firstName[0] : displayName ? displayName[0] : profile.email[0] ?? '?').toUpperCase();
+  const initials = (
+    firstName && lastName ? `${firstName[0]}${lastName[0]}`
+    : firstName ? firstName[0]
+    : displayName ? displayName[0]
+    : profile.email[0] ?? '?'
+  ).toUpperCase();
   const LOCALE_MAP: Record<Lang, string> = { de: 'de-DE', en: 'en-US', fr: 'fr-FR', es: 'es-ES', it: 'it-IT' };
   const memberSince = new Date(profile.created_at).toLocaleDateString(LOCALE_MAP[lang], { year: 'numeric', month: 'long' });
 
@@ -633,23 +758,23 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
         </div>
       )}
 
-      <form onSubmit={handleSave} className="space-y-5">
+      <form onSubmit={handleSave} className="space-y-5 pb-24">
 
-        {/* Avatar */}
-        <Section title={t.avatar}>
-          <div className="flex items-center gap-6">
-            <div className="relative shrink-0">
-              <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-[#0e393d]/15 bg-[#0e393d]/8 flex items-center justify-center">
+        {/* ── Profile Picture ── */}
+        <Section title={t.avatar} icon={<IconCamera />}>
+          <div className="flex flex-col items-center gap-4 py-2">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-full overflow-hidden ring-2 ring-[#ceab84]/30 bg-[#0e393d]/8 flex items-center justify-center">
                 {showAvatar ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={avatarUrl.includes('/storage/v1/object/public/') ? avatarUrl.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=96&height=96&resize=cover' : avatarUrl}
+                    src={avatarUrl.includes('/storage/v1/object/public/') ? avatarUrl.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + '?width=192&height=192&resize=cover' : avatarUrl}
                     alt={firstName || 'Avatar'}
                     className="w-full h-full object-cover"
                     onError={() => setAvatarBroken(true)}
                   />
                 ) : (
-                  <span className="font-serif text-xl text-[#0e393d]/50">{initials}</span>
+                  <span className="font-serif text-2xl font-semibold text-[#0e393d]/60">{initials}</span>
                 )}
               </div>
               {uploading && (
@@ -658,47 +783,48 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                 </div>
               )}
             </div>
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="inline-flex items-center gap-2 rounded-xl border border-[#0e393d]/20 bg-white px-4 py-2 text-sm font-medium text-[#0e393d] hover:bg-[#0e393d]/5 hover:border-[#0e393d]/35 transition disabled:opacity-50">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  {uploading ? t.uploading : t.changeAvatar}
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="inline-flex items-center gap-2 rounded-xl border border-[#0e393d]/20 bg-white px-4 py-2 text-sm font-medium text-[#0e393d] hover:bg-[#0e393d]/5 hover:border-[#0e393d]/35 transition disabled:opacity-50">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                {uploading ? t.uploading : t.changeAvatar}
+              </button>
+              {avatarUrl && (
+                <button type="button" onClick={handleRemoveAvatar} disabled={uploading} className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 hover:border-red-300 transition disabled:opacity-50">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round"/></svg>
+                  {t.removeAvatar}
                 </button>
-                {avatarUrl && (
-                  <button type="button" onClick={handleRemoveAvatar} disabled={uploading} className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 hover:border-red-300 transition disabled:opacity-50">
-                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round"/></svg>
-                    {t.removeAvatar}
-                  </button>
-                )}
-              </div>
-              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarFileChange} />
-              {avatarError ? <p className="text-[11px] text-red-500">{avatarError}</p> : <p className="text-[11px] text-[#1c2a2b]/35">JPG, PNG, WebP — max 5 MB</p>}
+              )}
             </div>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarFileChange} />
+            {avatarError
+              ? <p className="text-[11px] text-red-500">{avatarError}</p>
+              : <p className="text-[11px] text-[#1c2a2b]/35">JPG, PNG, WebP — max 5 MB</p>
+            }
           </div>
         </Section>
 
-        {/* Personal info */}
-        <Section title={t.personalInfo}>
+        {/* ── Personal Information ── */}
+        <Section title={t.personalInfo} icon={<IconUser />}>
           <div className="space-y-4">
             <div>
               <FieldLabel text={t.displayName} hint={t.displayNameHint} />
-              <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="e.g. Max" className={inputCls} />
+              <input type="text" value={displayName} onChange={(e) => { setDisplayName(e.target.value); dirty(); }} placeholder="e.g. Max" className={inputCls} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <FieldLabel text={t.firstName} />
-                <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder={t.firstName} className={inputCls} />
+                <input type="text" value={firstName} onChange={(e) => { setFirstName(e.target.value); dirty(); }} placeholder={t.firstName} className={inputCls} />
               </div>
               <div>
                 <FieldLabel text={t.lastName} />
-                <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder={t.lastName} className={inputCls} />
+                <input type="text" value={lastName} onChange={(e) => { setLastName(e.target.value); dirty(); }} placeholder={t.lastName} className={inputCls} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <BirthdayField value={dateOfBirth} onChange={setDateOfBirth} label={t.dateOfBirth} hint={t.dateOfBirthHint} />
+              <BirthdayField value={dateOfBirth} onChange={(v) => { setDateOfBirth(v); dirty(); }} label={t.dateOfBirth} hint={t.dateOfBirthHint} />
               <div>
                 <FieldLabel text={t.sex} />
-                <select value={sex} onChange={(e) => setSex(e.target.value)} className={selectCls}>
+                <select value={sex} onChange={(e) => { setSex(e.target.value); dirty(); }} className={selectCls}>
                   <option value="">—</option>
                   {SEX_VALUES.map((v, i) => <option key={v} value={v}>{t.sexOptions[i]}</option>)}
                 </select>
@@ -707,32 +833,35 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
           </div>
         </Section>
 
-        {/* Contact */}
-        <Section title={t.contact}>
+        {/* ── Contact ── */}
+        <Section title={t.contact} icon={<IconMail />}>
           <div className="space-y-4">
             <div>
               <FieldLabel text={t.email} />
               <input type="email" value={profile.email} disabled className={inputCls} />
               <p className="mt-1 text-[11px] text-[#1c2a2b]/35">{t.emailHint}</p>
             </div>
-            <PhoneField value={phone} onChange={setPhone} label={t.phone} hint={t.phoneHint} />
-            <div>
-              <FieldLabel text={t.streetAddress} />
-              <input type="text" value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} placeholder={lang === 'de' ? 'Musterstrasse 1' : '123 Main St'} className={inputCls} />
-            </div>
+            <PhoneField value={phone} onChange={(v) => { setPhone(v); dirty(); }} label={t.phone} hint={t.phoneHint} />
+            <AddressAutocomplete
+              value={streetAddress}
+              onChange={(v) => { setStreetAddress(v); dirty(); }}
+              onAddressSelect={handleAddressSelect}
+              label={t.streetAddress}
+              placeholder={t.streetPlaceholder}
+            />
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <FieldLabel text={t.postalCode} />
-                <input type="text" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="8001" className={inputCls} />
+                <input type="text" value={postalCode} onChange={(e) => { setPostalCode(e.target.value); dirty(); }} placeholder="8001" className={inputCls} />
               </div>
               <div className="col-span-2">
                 <FieldLabel text={t.city} />
-                <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Zurich" className={inputCls} />
+                <input type="text" value={city} onChange={(e) => { setCity(e.target.value); dirty(); }} placeholder="Zurich" className={inputCls} />
               </div>
             </div>
             <div>
               <FieldLabel text={t.country} />
-              <select value={country} onChange={(e) => setCountry(e.target.value)} className={selectCls}>
+              <select value={country} onChange={(e) => { setCountry(e.target.value); dirty(); }} className={selectCls}>
                 <option value="">—</option>
                 {EUROPEAN_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
               </select>
@@ -740,22 +869,22 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
           </div>
         </Section>
 
-        {/* Health */}
-        <Section title={t.health}>
+        {/* ── Health ── */}
+        <Section title={t.health} icon={<IconHeart />}>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <FieldLabel text={t.heightCm} />
-                <input type="number" value={heightCm} onChange={(e) => setHeightCm(e.target.value)} placeholder="170" min={50} max={250} className={inputCls} />
+                <input type="number" value={heightCm} onChange={(e) => { setHeightCm(e.target.value); dirty(); }} placeholder="170" min={50} max={250} className={inputCls} />
               </div>
               <div>
                 <FieldLabel text={t.weightKg} />
-                <input type="number" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} placeholder="70" min={20} max={300} step="0.1" className={inputCls} />
+                <input type="number" value={weightKg} onChange={(e) => { setWeightKg(e.target.value); dirty(); }} placeholder="70" min={20} max={300} step="0.1" className={inputCls} />
               </div>
             </div>
             <div>
               <FieldLabel text={t.bloodType} hint={t.bloodTypeHint} />
-              <select value={bloodType} onChange={(e) => setBloodType(e.target.value)} className={selectCls}>
+              <select value={bloodType} onChange={(e) => { setBloodType(e.target.value); dirty(); }} className={selectCls}>
                 <option value="">—</option>
                 {BLOOD_TYPES.map((bt) => <option key={bt} value={bt}>{bt}</option>)}
               </select>
@@ -763,14 +892,14 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <FieldLabel text={t.activityLevel} />
-                <select value={activityLevel} onChange={(e) => setActivityLevel(e.target.value)} className={selectCls}>
+                <select value={activityLevel} onChange={(e) => { setActivityLevel(e.target.value); dirty(); }} className={selectCls}>
                   <option value="">—</option>
                   {ACTIVITY_LEVELS.map((v, i) => <option key={v} value={v}>{t.activityOptions[i]}</option>)}
                 </select>
               </div>
               <div>
                 <FieldLabel text={t.diet} />
-                <select value={diet} onChange={(e) => setDiet(e.target.value)} className={selectCls}>
+                <select value={diet} onChange={(e) => { setDiet(e.target.value); dirty(); }} className={selectCls}>
                   <option value="">—</option>
                   {DIET_VALUES.map((v, i) => <option key={v} value={v}>{t.dietOptions[i]}</option>)}
                 </select>
@@ -779,23 +908,8 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
           </div>
         </Section>
 
-        {/* Preferences */}
-        <Section title={t.preferences}>
-          <div>
-            <p className="text-xs font-medium text-[#0e393d]/70 mb-2">{t.language}</p>
-            <div className="flex gap-2">
-              {(['de', 'en'] as const).map((l) => (
-                <button key={l} type="button" onClick={() => setLangPref(l)} className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition ${langPref === l ? 'border-[#0e393d] bg-[#0e393d] text-white' : 'border-[#0e393d]/15 bg-white text-[#1c2a2b]/60 hover:border-[#0e393d]/35 hover:text-[#1c2a2b]'}`}>
-                  <span>{l === 'de' ? '🇩🇪' : '🇬🇧'}</span>
-                  {l === 'de' ? t.langDe : t.langEn}
-                </button>
-              ))}
-            </div>
-          </div>
-        </Section>
-
-        {/* Account info */}
-        <Section title={t.account}>
+        {/* ── Account ── */}
+        <Section title={t.account} icon={<IconShield />}>
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
               <span className="text-[#1c2a2b]/50">{t.memberSince}</span>
@@ -803,9 +917,16 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-[#1c2a2b]/50">{t.onboarding}</span>
-              <span className={`inline-flex items-center gap-1 text-xs font-medium ${profile.onboarding_completed ? 'text-emerald-600' : 'text-[#1c2a2b]/40'}`}>
-                {profile.onboarding_completed ? (<><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6.5l3 3 5-5.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/></svg>{t.onboardingDone}</>) : t.onboardingPending}
-              </span>
+              {profile.onboarding_completed ? (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6.5l3 3 5-5.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  {t.onboardingDone}
+                </span>
+              ) : (
+                <a href="/how-to-start" className="text-xs font-medium text-[#ceab84] hover:text-[#0e393d] transition-colors">
+                  {t.onboardingLink}
+                </a>
+              )}
             </div>
             {profile.is_admin && (
               <div className="flex items-center justify-between text-sm">
@@ -813,17 +934,17 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                 <span className="inline-flex items-center rounded-full bg-[#0e393d] px-2.5 py-0.5 text-[10px] font-semibold text-white">{t.adminBadge}</span>
               </div>
             )}
+            <div className="flex items-center justify-between text-sm pt-1 border-t border-[#0e393d]/6">
+              <span className="text-[#1c2a2b]/50">{t.changePassword}</span>
+              <a href="/reset-password" className="text-xs font-medium text-[#0e393d]/60 hover:text-[#0e393d] transition-colors">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="inline mr-1 -mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                →
+              </a>
+            </div>
           </div>
         </Section>
 
-        {/* Save */}
-        <div className="flex items-center gap-3">
-          <button type="submit" disabled={saveState === 'saving' || uploading} className={`inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold transition ${saveState === 'saved' ? 'bg-emerald-500 text-white' : saveState === 'error' ? 'bg-red-500 text-white' : 'bg-[#0e393d] text-white hover:bg-[#0e393d]/85 disabled:opacity-60'}`}>
-            {saveState === 'saving' ? t.saving : saveState === 'saved' ? t.saved : saveState === 'error' ? t.saveError : t.save}
-          </button>
-        </div>
-
-        {/* Delete account */}
+        {/* ── Delete account ── */}
         <section className="rounded-2xl border border-red-200/60 bg-red-50/40 p-6">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-red-500/70 mb-3">{t.deleteSection}</h2>
           <p className="text-sm text-[#1c2a2b]/60 mb-4">{t.deleteInfo}</p>
@@ -834,6 +955,35 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
         </section>
 
       </form>
+
+      {/* ── Sticky Save Bar ── */}
+      <div className={`fixed bottom-0 inset-x-0 z-40 transition-all duration-300 ${isDirty || saveState !== 'idle' ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}`}>
+        <div className="bg-white/90 backdrop-blur-md border-t border-[#0e393d]/10 shadow-lg">
+          <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+            <p className="text-xs text-[#1c2a2b]/50">
+              {saveState === 'saved' ? t.saved : saveState === 'error' ? t.saveError : t.unsavedChanges}
+            </p>
+            <button
+              type="submit"
+              form=""
+              onClick={(e) => { e.preventDefault(); handleSave(e as unknown as React.FormEvent); }}
+              disabled={saveState === 'saving' || uploading}
+              className={`inline-flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-semibold transition-all ${
+                saveState === 'saved' ? 'bg-emerald-500 text-white'
+                : saveState === 'error' ? 'bg-red-500 text-white'
+                : 'bg-[#0e393d] text-white hover:bg-[#0e393d]/85 disabled:opacity-60'
+              }`}
+            >
+              {saveState === 'saving' ? (
+                <>
+                  <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
+                  {t.saving}
+                </>
+              ) : saveState === 'saved' ? t.saved : saveState === 'error' ? t.saveError : t.save}
+            </button>
+          </div>
+        </div>
+      </div>
     </>
   );
 }
