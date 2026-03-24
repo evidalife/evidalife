@@ -6,16 +6,14 @@ import { Badge, FlagBadge, HE_DOMAIN_LABEL, Spinner, Toast, ToastContainer, fmtD
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type LabResult = {
+type ReportSource = 'admin_import' | 'pdf_upload' | 'manual_entry';
+
+type LabResultSummary = {
   id: string;
   value_numeric: number | null;
   unit: string | null;
   status_flag: string | null;
-  source: string | null;
-  is_reviewed: boolean | null;
-  measured_at: string | null;
   test_date: string | null;
-  notes: string | null;
   biomarkers: {
     name: Record<string, string> | string | null;
     he_domain: string | null;
@@ -25,39 +23,119 @@ type LabResult = {
     optimal_range_high: number | null;
     unit: string | null;
   } | null;
-  profiles: { first_name: string | null; last_name: string | null; email: string | null } | null;
-  orders: { order_number: string | null } | null;
 };
 
-type SortKey = 'measured_at' | 'value_numeric' | 'status_flag';
-type SourceFilter = 'all' | 'manual' | 'pdf_upload' | 'lab_api' | 'user_upload';
-type FlagFilter = 'all' | 'optimal' | 'good' | 'moderate' | 'risk';
-type DomainFilter = 'all' | string;
-type ReviewedFilter = 'all' | 'reviewed' | 'pending';
+type LabReport = {
+  id: string;
+  title: string;
+  test_date: string | null;
+  source: string;
+  report_number: string | null;
+  archived_at: string | null;
+  created_at: string;
+  lab_address: string | null;
+  lab_email: string | null;
+  lab_phone: string | null;
+  profiles: { id: string; first_name: string | null; last_name: string | null; email: string | null } | null;
+  results_count: number;
+  // Loaded lazily when expanded
+  lab_results?: LabResultSummary[];
+};
+
+type SourceFilter = 'all' | 'admin_import' | 'self_reported' | 'archived';
+
+// ─── Source label helper ──────────────────────────────────────────────────────
+
+function sourceBadge(source: string) {
+  if (source === 'admin_import') {
+    return (
+      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#0C9C6C]/10 text-[#0C9C6C] ring-1 ring-[#0C9C6C]/20 whitespace-nowrap">
+        🌿 Evida Life
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#CEAB84]/15 text-[#7a5e20] ring-1 ring-[#CEAB84]/30 whitespace-nowrap">
+      📝 Self-Reported
+    </span>
+  );
+}
+
+// ─── Results grouped by domain ────────────────────────────────────────────────
+
+const HE_DOMAIN_ORDER = [
+  'heart_vessels', 'metabolism', 'hormones', 'inflammation',
+  'nutrients', 'organ_function', 'longevity', 'fitness',
+];
+
+function ReportResults({ results }: { results: LabResultSummary[] }) {
+  const byDomain: Record<string, LabResultSummary[]> = {};
+  for (const r of results) {
+    const domain = r.biomarkers?.he_domain ?? 'other';
+    if (!byDomain[domain]) byDomain[domain] = [];
+    byDomain[domain].push(r);
+  }
+  const presentDomains = [...HE_DOMAIN_ORDER, ...Object.keys(byDomain).filter((d) => !HE_DOMAIN_ORDER.includes(d))]
+    .filter((d) => byDomain[d]?.length);
+
+  return (
+    <div className="divide-y divide-[#0e393d]/6">
+      {presentDomains.map((domain) => (
+        <div key={domain}>
+          <div className="px-5 py-1.5 bg-[#0e393d]/3">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#ceab84]/80">
+              {HE_DOMAIN_LABEL[domain] ?? domain}
+            </span>
+          </div>
+          <div className="divide-y divide-[#0e393d]/5">
+            {byDomain[domain].map((r) => {
+              const def = r.biomarkers;
+              const name = locName(def?.name) || '—';
+              return (
+                <div key={r.id} className="px-5 py-2.5 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-[#1c2a2b]">{name}</span>
+                    {(def?.ref_range_low != null || def?.ref_range_high != null) && (
+                      <span className="ml-2 text-[11px] text-[#1c2a2b]/35">
+                        Ref: {def?.ref_range_low ?? '—'}–{def?.ref_range_high ?? '—'} {def?.unit}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="tabular-nums text-sm font-semibold text-[#0e393d]">
+                      {r.value_numeric}{' '}
+                      <span className="font-normal text-[#1c2a2b]/50 text-xs">{r.unit || def?.unit || ''}</span>
+                    </span>
+                    <FlagBadge flag={r.status_flag} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function AllResultsTab() {
   const supabase = createClient();
 
-  const [results, setResults] = useState<LabResult[]>([]);
+  const [reports, setReports] = useState<LabReport[]>([]);
+  const [orphanCount, setOrphanCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const PAGE_SIZE = 50;
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedResults, setExpandedResults] = useState<Record<string, LabResultSummary[]>>({});
+  const [loadingResults, setLoadingResults] = useState<string | null>(null);
 
-  const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
-  const [flagFilter, setFlagFilter] = useState<FlagFilter>('all');
-  const [domainFilter, setDomainFilter] = useState<DomainFilter>('all');
-  const [reviewedFilter, setReviewedFilter] = useState<ReviewedFilter>('all');
+  const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('measured_at');
-  const [sortAsc, setSortAsc] = useState(false);
 
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [bulkLoading, setBulkLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const addToast = useCallback((msg: string, type: Toast['type'] = 'success') => {
@@ -66,285 +144,304 @@ export default function AllResultsTab() {
     setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 5000);
   }, []);
 
-  const load = useCallback(async () => {
+  const loadReports = useCallback(async () => {
     setLoading(true);
-    let query = supabase
-      .from('lab_results')
-      .select(`
-        id, value_numeric, unit, status_flag, source, is_reviewed, measured_at, test_date, notes,
-        biomarkers:biomarker_definition_id (
-          name, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, unit
-        ),
-        profiles:user_id ( first_name, last_name, email ),
-        orders:order_id ( order_number )
-      `)
-      .is('deleted_at', null)
-      .order(sortKey, { ascending: sortAsc })
-      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
-    if (sourceFilter !== 'all') query = query.eq('source', sourceFilter);
-    if (flagFilter !== 'all') query = query.eq('status_flag', flagFilter);
-    if (reviewedFilter !== 'all') query = query.eq('is_reviewed', reviewedFilter === 'reviewed');
-    if (dateFrom) query = query.gte('test_date', dateFrom);
-    if (dateTo) query = query.lte('test_date', dateTo);
+    let query = supabase
+      .from('lab_reports')
+      .select(`
+        id, title, test_date, source, report_number, archived_at, created_at,
+        lab_address, lab_email, lab_phone,
+        profiles:user_id (id, first_name, last_name, email),
+        lab_results(count)
+      `)
+      .order('created_at', { ascending: false });
+
+    // Apply source filter
+    if (sourceFilter === 'archived') {
+      query = query.not('archived_at', 'is', null);
+    } else {
+      query = query.is('archived_at', null).is('deleted_at', null);
+      if (sourceFilter === 'admin_import') {
+        query = query.eq('source', 'admin_import');
+      } else if (sourceFilter === 'self_reported') {
+        query = query.in('source', ['pdf_upload', 'manual_entry']);
+      }
+    }
 
     const { data } = await query;
-    let rows = (data as unknown as LabResult[]) ?? [];
+    const raw = (data ?? []) as any[];
 
-    // Client-side filter: domain (joined field) and search
-    if (domainFilter !== 'all') rows = rows.filter((r) => r.biomarkers?.he_domain === domainFilter);
-    if (search) {
+    let rows: LabReport[] = raw.map((r) => ({
+      ...r,
+      profiles: Array.isArray(r.profiles) ? r.profiles[0] ?? null : r.profiles,
+      results_count: Array.isArray(r.lab_results) ? (r.lab_results[0]?.count ?? 0) : 0,
+    }));
+
+    // Client-side search
+    if (search.trim()) {
       const q = search.toLowerCase();
       rows = rows.filter((r) => {
-        const name = locName(r.biomarkers?.name).toLowerCase();
+        const user = [r.profiles?.first_name, r.profiles?.last_name].filter(Boolean).join(' ').toLowerCase();
         const email = r.profiles?.email?.toLowerCase() ?? '';
-        const fname = `${r.profiles?.first_name ?? ''} ${r.profiles?.last_name ?? ''}`.toLowerCase();
-        const orderNum = r.orders?.order_number?.toLowerCase() ?? '';
-        return name.includes(q) || email.includes(q) || fname.includes(q) || orderNum.includes(q);
+        const title = r.title.toLowerCase();
+        const num = r.report_number?.toLowerCase() ?? '';
+        const addr = r.lab_address?.toLowerCase() ?? '';
+        return user.includes(q) || email.includes(q) || title.includes(q) || num.includes(q) || addr.includes(q);
       });
     }
 
-    setResults(rows);
+    if (dateFrom) rows = rows.filter((r) => r.test_date && r.test_date >= dateFrom);
+    if (dateTo)   rows = rows.filter((r) => r.test_date && r.test_date <= dateTo);
+
+    setReports(rows);
+
+    // Count orphan results
+    const { count } = await supabase
+      .from('lab_results')
+      .select('id', { count: 'exact', head: true })
+      .is('lab_report_id', null)
+      .is('deleted_at', null);
+    setOrphanCount(count ?? 0);
+
     setLoading(false);
-  }, [supabase, page, sortKey, sortAsc, sourceFilter, flagFilter, domainFilter, reviewedFilter, dateFrom, dateTo, search]);
+  }, [supabase, sourceFilter, search, dateFrom, dateTo]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadReports(); }, [loadReports]);
 
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) setSortAsc((a) => !a);
-    else { setSortKey(key); setSortAsc(false); }
-    setPage(0);
+  // ── Expand: lazy-load results ─────────────────────────────────────────────────
+
+  const toggleExpand = async (reportId: string) => {
+    if (expandedId === reportId) { setExpandedId(null); return; }
+    setExpandedId(reportId);
+    if (expandedResults[reportId]) return; // already loaded
+
+    setLoadingResults(reportId);
+    const { data } = await supabase
+      .from('lab_results')
+      .select(`
+        id, value_numeric, unit, status_flag, test_date,
+        biomarkers:biomarker_definition_id(name, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, unit)
+      `)
+      .eq('lab_report_id', reportId)
+      .is('deleted_at', null)
+      .order('test_date', { ascending: false });
+
+    setExpandedResults((prev) => ({ ...prev, [reportId]: (data as unknown as LabResultSummary[]) ?? [] }));
+    setLoadingResults(null);
   };
 
-  const toggleSelect = (id: string) => {
-    setSelected((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  // ── Archive ───────────────────────────────────────────────────────────────────
+
+  const handleArchive = async (report: LabReport) => {
+    setActionLoading(report.id);
+    const { error } = await supabase
+      .from('lab_reports')
+      .update({ archived_at: new Date().toISOString() })
+      .eq('id', report.id);
+    setActionLoading(null);
+    if (error) { addToast('Archive failed: ' + error.message, 'error'); return; }
+    addToast(`"${report.title}" archived`, 'success');
+    loadReports();
   };
 
-  const toggleSelectAll = () => {
-    if (selected.size === results.length) setSelected(new Set());
-    else setSelected(new Set(results.map((r) => r.id)));
+  // ── Reactivate ────────────────────────────────────────────────────────────────
+
+  const handleReactivate = async (report: LabReport) => {
+    setActionLoading(report.id);
+    const { error } = await supabase
+      .from('lab_reports')
+      .update({ archived_at: null })
+      .eq('id', report.id);
+    setActionLoading(null);
+    if (error) { addToast('Reactivate failed: ' + error.message, 'error'); return; }
+    addToast(`"${report.title}" reactivated`, 'success');
+    loadReports();
   };
 
-  // Bulk delete
-  const handleBulkDelete = async () => {
-    if (!selected.size) return;
-    if (!confirm(`Delete ${selected.size} selected results?`)) return;
-    setBulkLoading(true);
-    await supabase.from('lab_results').update({ deleted_at: new Date().toISOString() }).in('id', Array.from(selected));
-    setSelected(new Set());
-    setBulkLoading(false);
-    addToast(`${selected.size} results deleted`, 'success');
-    load();
+  // ── Permanent delete (archived only) ─────────────────────────────────────────
+
+  const handlePermanentDelete = async (report: LabReport) => {
+    const msg = `Permanently delete "${report.title}"${report.report_number ? ` (${report.report_number})` : ''}?\n\nThis will delete:\n• The report record\n• All ${report.results_count} lab results\n\nThis cannot be undone.`;
+    if (!confirm(msg)) return;
+
+    setActionLoading(report.id);
+
+    // Hard-delete results
+    await supabase.from('lab_results').delete().eq('lab_report_id', report.id);
+
+    // Hard-delete report
+    const { error } = await supabase.from('lab_reports').delete().eq('id', report.id);
+    setActionLoading(null);
+
+    if (error) { addToast('Delete failed: ' + error.message, 'error'); return; }
+    addToast(`"${report.title}" permanently deleted`, 'success');
+    loadReports();
   };
-
-  // Bulk mark reviewed
-  const handleBulkReview = async () => {
-    setBulkLoading(true);
-    await supabase.from('lab_results').update({ is_reviewed: true }).in('id', Array.from(selected));
-    setBulkLoading(false);
-    setSelected(new Set());
-    addToast('Marked as reviewed', 'success');
-    load();
-  };
-
-  // CSV Export
-  const handleExport = () => {
-    const params = new URLSearchParams();
-    if (sourceFilter !== 'all') params.set('source', sourceFilter);
-    if (flagFilter !== 'all') params.set('status_flag', flagFilter);
-    if (domainFilter !== 'all') params.set('domain', domainFilter);
-    if (dateFrom) params.set('dateFrom', dateFrom);
-    if (dateTo) params.set('dateTo', dateTo);
-    window.location.href = `/api/admin/lab-results/export?format=csv&${params.toString()}`;
-  };
-
-  const SortHeader = ({ label, col }: { label: string; col: SortKey }) => (
-    <th
-      className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider cursor-pointer hover:text-[#0e393d] select-none"
-      onClick={() => toggleSort(col)}
-    >
-      {label}
-      {sortKey === col ? (sortAsc ? ' ↑' : ' ↓') : ''}
-    </th>
-  );
-
-  const DOMAIN_OPTIONS = ['all', 'heart_vessels', 'metabolism', 'inflammation', 'organ_function', 'nutrients', 'hormones', 'fitness', 'longevity'];
 
   // ─────────────────────────────────────────────────────────────────────────────
+
+  const FILTER_PILLS: { id: SourceFilter; label: string }[] = [
+    { id: 'all',          label: 'All' },
+    { id: 'admin_import', label: '🌿 Evida Life' },
+    { id: 'self_reported',label: '📝 Self-Reported' },
+    { id: 'archived',     label: '📦 Archived' },
+  ];
 
   return (
     <div className="space-y-4">
       <ToastContainer toasts={toasts} dismiss={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
 
-      {/* Search + export */}
+      {/* Search + dates */}
       <div className="flex flex-wrap gap-3 items-center">
         <input
           type="text"
-          placeholder="Search user, biomarker, order…"
+          placeholder="Search user, report number, lab name…"
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-          className="rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition w-64"
+          onChange={(e) => setSearch(e.target.value)}
+          className="rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 w-64 transition"
         />
         <div className="flex items-center gap-2">
           <label className="text-xs text-[#1c2a2b]/40">From</label>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition" />
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+            className="rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition" />
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs text-[#1c2a2b]/40">To</label>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition" />
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+            className="rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition" />
         </div>
-        <button onClick={handleExport} className="ml-auto px-3 py-2 rounded-lg text-xs font-medium text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition flex items-center gap-1.5">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Export CSV
-        </button>
       </div>
 
-      {/* Filter pills */}
+      {/* Source filter pills */}
       <div className="flex flex-wrap gap-2">
-        {/* Source */}
-        {(['all', 'manual', 'pdf_upload', 'lab_api', 'user_upload'] as SourceFilter[]).map((s) => (
-          <button key={s} onClick={() => { setSourceFilter(s); setPage(0); }}
-            className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition ${sourceFilter === s ? 'bg-[#0e393d] text-white' : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'}`}>
-            {s === 'all' ? 'All sources' : s.replace('_', ' ')}
+        {FILTER_PILLS.map(({ id, label }) => (
+          <button
+            key={id}
+            onClick={() => setSourceFilter(id)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+              sourceFilter === id
+                ? 'bg-[#0e393d] text-white'
+                : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'
+            }`}
+          >
+            {label}
           </button>
         ))}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {/* Flag */}
-        {(['all', 'optimal', 'good', 'moderate', 'risk'] as FlagFilter[]).map((f) => (
-          <button key={f} onClick={() => { setFlagFilter(f); setPage(0); }}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${flagFilter === f ? 'bg-[#0e393d] text-white' : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'}`}>
-            {f === 'all' ? 'All flags' : f}
-          </button>
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {/* Domain */}
-        {DOMAIN_OPTIONS.map((d) => (
-          <button key={d} onClick={() => { setDomainFilter(d); setPage(0); }}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${domainFilter === d ? 'bg-[#CEAB84] text-white' : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#CEAB84]/30 hover:ring-[#CEAB84]/50'}`}>
-            {d === 'all' ? 'All domains' : (HE_DOMAIN_LABEL[d] ?? d)}
-          </button>
-        ))}
+        {orphanCount > 0 && (
+          <span className="rounded-full px-3 py-1 text-xs text-[#1c2a2b]/40 ring-1 ring-[#0e393d]/10">
+            {orphanCount} orphan results (no report)
+          </span>
+        )}
       </div>
 
-      {/* Bulk action bar */}
-      {selected.size > 0 && (
-        <div className="flex items-center gap-3 rounded-lg bg-[#0e393d]/6 border border-[#0e393d]/15 px-4 py-2.5">
-          <span className="text-xs font-medium text-[#0e393d]">{selected.size} selected</span>
-          <button onClick={handleBulkReview} disabled={bulkLoading} className="text-xs px-3 py-1 rounded bg-[#0e393d] text-white hover:bg-[#0e393d]/85 transition disabled:opacity-50">Mark reviewed</button>
-          <button onClick={handleBulkDelete} disabled={bulkLoading} className="text-xs px-3 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition disabled:opacity-50 flex items-center gap-1">
-            {bulkLoading && <Spinner size={3} />} Delete selected
-          </button>
-          <button onClick={() => setSelected(new Set())} className="text-xs text-[#1c2a2b]/40 hover:text-[#1c2a2b] ml-auto">Clear</button>
+      {/* Report cards */}
+      {loading ? (
+        <div className="flex justify-center py-12"><Spinner size={5} /></div>
+      ) : reports.length === 0 ? (
+        <div className="rounded-xl border border-[#0e393d]/10 bg-white px-6 py-10 text-center text-sm text-[#1c2a2b]/40">
+          No reports match the current filters.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {reports.map((report) => {
+            const isExpanded = expandedId === report.id;
+            const isArchived = !!report.archived_at;
+            const isLoading = actionLoading === report.id;
+            const userName = [report.profiles?.first_name, report.profiles?.last_name].filter(Boolean).join(' ')
+              || report.profiles?.email || '—';
+
+            return (
+              <div key={report.id} className={`rounded-xl border overflow-hidden transition ${
+                isArchived ? 'border-gray-200 bg-gray-50/50' : 'border-[#0e393d]/10 bg-white'
+              }`}>
+                {/* Card header */}
+                <div className="px-5 py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    {/* Left: title + meta */}
+                    <button
+                      onClick={() => toggleExpand(report.id)}
+                      className="flex-1 min-w-0 text-left"
+                    >
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        {isArchived
+                          ? <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-gray-100 text-gray-500 ring-1 ring-gray-300/50">📦 Archived</span>
+                          : sourceBadge(report.source)
+                        }
+                        <span className="font-semibold text-[#0e393d] text-sm">{report.title}</span>
+                        {report.report_number && (
+                          <span className="font-mono text-[11px] text-[#1c2a2b]/40">{report.report_number}</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#1c2a2b]/50">
+                        {report.lab_address ? `${report.lab_address} · ` : ''}
+                        {fmtDate(report.test_date)} · {userName} · {report.results_count} biomarkers
+                      </p>
+                    </button>
+
+                    {/* Right: actions + chevron */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {isLoading ? (
+                        <Spinner size={4} />
+                      ) : isArchived ? (
+                        <>
+                          <button
+                            onClick={() => handleReactivate(report)}
+                            className="text-xs text-emerald-600 hover:text-emerald-700 font-medium transition"
+                          >
+                            Reactivate
+                          </button>
+                          <button
+                            onClick={() => handlePermanentDelete(report)}
+                            className="text-xs text-red-500 hover:text-red-700 font-medium transition"
+                          >
+                            Delete permanently
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => handleArchive(report)}
+                          className="text-xs text-[#1c2a2b]/40 hover:text-[#1c2a2b]/70 font-medium transition"
+                        >
+                          Archive
+                        </button>
+                      )}
+                      <button onClick={() => toggleExpand(report.id)}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
+                          className={`text-[#1c2a2b]/30 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expanded results */}
+                {isExpanded && (
+                  <div className="border-t border-[#0e393d]/8">
+                    {loadingResults === report.id ? (
+                      <div className="flex justify-center py-6"><Spinner size={4} /></div>
+                    ) : (expandedResults[report.id]?.length ?? 0) > 0 ? (
+                      <ReportResults results={expandedResults[report.id]!} />
+                    ) : (
+                      <p className="px-5 py-4 text-sm text-[#1c2a2b]/40 text-center">No results in this report.</p>
+                    )}
+
+                    {/* Lab contact info */}
+                    {(report.lab_address || report.lab_email || report.lab_phone) && (
+                      <div className="border-t border-[#0e393d]/6 px-5 py-3 flex flex-wrap gap-4 text-xs text-[#1c2a2b]/50">
+                        {report.lab_address && <span>📍 {report.lab_address}</span>}
+                        {report.lab_email   && <span>✉️ {report.lab_email}</span>}
+                        {report.lab_phone   && <span>📞 {report.lab_phone}</span>}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
-
-      {/* Table */}
-      <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-x-auto">
-        <table className="w-full text-sm min-w-[900px]">
-          <thead>
-            <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-              <th className="px-4 py-3 w-8">
-                <input type="checkbox" checked={selected.size === results.length && results.length > 0} onChange={toggleSelectAll} className="rounded border-[#0e393d]/30 accent-[#0e393d]" />
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">User</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Biomarker</th>
-              <SortHeader label="Value" col="value_numeric" />
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Domain</th>
-              <SortHeader label="Flag" col="status_flag" />
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Source</th>
-              <SortHeader label="Date" col="measured_at" />
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Order</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Reviewed</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#0e393d]/6">
-            {loading && (
-              <tr><td colSpan={10} className="px-4 py-10 text-center"><div className="inline-flex justify-center"><Spinner size={5} /></div></td></tr>
-            )}
-            {!loading && results.length === 0 && (
-              <tr><td colSpan={10} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">No results match the current filters.</td></tr>
-            )}
-            {!loading && results.map((r) => {
-              const pid = r.biomarkers;
-              const userName = [r.profiles?.first_name, r.profiles?.last_name].filter(Boolean).join(' ') || r.profiles?.email || '—';
-              const bmName = locName(pid?.name) || '—';
-              const isExpanded = expandedRow === r.id;
-
-              return (
-                <>
-                  <tr key={r.id}
-                    onClick={() => setExpandedRow(isExpanded ? null : r.id)}
-                    className="hover:bg-[#fafaf8] transition-colors cursor-pointer"
-                  >
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} className="rounded border-[#0e393d]/30 accent-[#0e393d]" />
-                    </td>
-                    <td className="px-4 py-3 text-xs text-[#1c2a2b]">{userName}</td>
-                    <td className="px-4 py-3 text-xs font-medium text-[#1c2a2b]">{bmName}</td>
-                    <td className="px-4 py-3 text-xs tabular-nums text-[#0e393d] font-medium">{r.value_numeric} <span className="text-[#1c2a2b]/40 font-normal">{r.unit || pid?.unit}</span></td>
-                    <td className="px-4 py-3 text-xs text-[#1c2a2b]/60">{HE_DOMAIN_LABEL[pid?.he_domain ?? ''] ?? '—'}</td>
-                    <td className="px-4 py-3"><FlagBadge flag={r.status_flag} /></td>
-                    <td className="px-4 py-3 text-xs text-[#1c2a2b]/50 capitalize">{r.source?.replace('_', ' ') || 'manual'}</td>
-                    <td className="px-4 py-3 text-xs text-[#1c2a2b]/50 whitespace-nowrap">{fmtDate(r.test_date || r.measured_at)}</td>
-                    <td className="px-4 py-3 text-xs font-mono text-[#1c2a2b]/50">{r.orders?.order_number || '—'}</td>
-                    <td className="px-4 py-3">
-                      {r.is_reviewed
-                        ? <span className="text-[11px] text-emerald-600">✓ Reviewed</span>
-                        : <Badge className="bg-amber-50 text-amber-700 ring-amber-600/20">Pending</Badge>
-                      }
-                    </td>
-                  </tr>
-                  {isExpanded && (
-                    <tr key={r.id + '-expanded'}>
-                      <td colSpan={10} className="px-8 py-4 bg-[#fafaf8] border-b border-[#0e393d]/6">
-                        <div className="flex flex-wrap gap-8">
-                          {pid?.ref_range_low != null && (
-                            <div>
-                              <div className="text-[10px] text-[#1c2a2b]/40 uppercase tracking-wider mb-0.5">Reference Range</div>
-                              <div className="text-xs text-[#1c2a2b]">{pid.ref_range_low} – {pid.ref_range_high ?? '—'} {pid.unit}</div>
-                            </div>
-                          )}
-                          {pid?.optimal_range_low != null && (
-                            <div>
-                              <div className="text-[10px] text-[#1c2a2b]/40 uppercase tracking-wider mb-0.5">Optimal Range</div>
-                              <div className="text-xs text-[#1c2a2b]">{pid.optimal_range_low} – {pid.optimal_range_high ?? '—'} {pid.unit}</div>
-                            </div>
-                          )}
-                          {r.notes && (
-                            <div>
-                              <div className="text-[10px] text-[#1c2a2b]/40 uppercase tracking-wider mb-0.5">Notes</div>
-                              <div className="text-xs text-[#1c2a2b]">{r.notes}</div>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      <div className="flex items-center justify-between text-xs text-[#1c2a2b]/50">
-        <span>Page {page + 1}</span>
-        <div className="flex gap-2">
-          <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}
-            className="px-3 py-1 rounded bg-white ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30 disabled:opacity-40 transition">
-            ← Previous
-          </button>
-          <button onClick={() => setPage((p) => p + 1)} disabled={results.length < PAGE_SIZE}
-            className="px-3 py-1 rounded bg-white ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30 disabled:opacity-40 transition">
-            Next →
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

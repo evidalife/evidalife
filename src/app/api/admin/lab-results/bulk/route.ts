@@ -1,10 +1,13 @@
 // src/app/api/admin/lab-results/bulk/route.ts
 // POST bulk create lab results + update order test items
+// Optional labReport param: { title, test_date, lab_address?, lab_email?, lab_phone?, user_id }
+// When provided, creates a lab_reports record and links all results via lab_report_id.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { transitionOrder } from '@/lib/order-fulfilment';
 import { computeStatusFlag, checkPlausibility } from '@/lib/lab-results/flagging';
+import { generateReportNumber } from '@/lib/lab-results/report-number';
 
 function adminClient() {
   return createClient(
@@ -16,13 +19,35 @@ function adminClient() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { results, adminId } = body;
+    const { results, adminId, labReport } = body;
 
     if (!results?.length) {
       return NextResponse.json({ error: 'No results provided' }, { status: 400 });
     }
 
     const supabase = adminClient();
+
+    // Optionally create a lab_reports record to group these results
+    let labReportId: string | null = null;
+    if (labReport?.title && labReport?.test_date && labReport?.user_id) {
+      const reportNumber = await generateReportNumber(supabase, 'admin_import');
+      const { data: reportRecord } = await supabase
+        .from('lab_reports')
+        .insert({
+          user_id:       labReport.user_id,
+          title:         labReport.title.trim(),
+          test_date:     labReport.test_date,
+          source:        'admin_import',
+          report_number: reportNumber,
+          lab_address:   labReport.lab_address || null,
+          lab_email:     labReport.lab_email   || null,
+          lab_phone:     labReport.lab_phone   || null,
+        })
+        .select('id')
+        .single();
+      labReportId = reportRecord?.id ?? null;
+    }
+
     let created = 0;
     let warnings = 0;
     const ordersToCheck = new Set<string>();
@@ -77,20 +102,21 @@ export async function POST(req: NextRequest) {
       const { data: newResult, error: insertError } = await supabase
         .from('lab_results')
         .insert({
-          user_id: userId || null,
-          order_id: orderId || null,
+          user_id:                 userId || null,
+          order_id:                orderId || null,
+          lab_report_id:           labReportId || null,
           biomarker_definition_id: biomarkerDefinitionId,
-          value_numeric: numericValue,
-          unit: unit || null,
-          status_flag: flag,
-          measured_at: testDate ? new Date(testDate).toISOString() : new Date().toISOString(),
-          test_date: testDate || null,
-          source: 'manual',
-          entered_by: adminId || null,
-          is_reviewed: true,
-          notes: notes || null,
-          original_value: originalValue != null ? parseFloat(originalValue) : null,
-          original_unit: originalUnit || null,
+          value_numeric:           numericValue,
+          unit:                    unit || null,
+          status_flag:             flag,
+          measured_at:             testDate ? new Date(testDate).toISOString() : new Date().toISOString(),
+          test_date:               testDate || null,
+          source:                  labReportId ? 'admin_import' : 'manual',
+          entered_by:              adminId || null,
+          is_reviewed:             true,
+          notes:                   notes || null,
+          original_value:          originalValue != null ? parseFloat(originalValue) : null,
+          original_unit:           originalUnit || null,
         })
         .select('id')
         .single();
@@ -154,7 +180,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, created, warnings, orderCompleted });
+    return NextResponse.json({ success: true, created, warnings, orderCompleted, labReportId });
   } catch (err: any) {
     console.error('Bulk lab results error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });

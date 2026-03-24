@@ -12,6 +12,14 @@ import { computeStatusFlag } from '@/lib/lab-results/flagging';
 
 type Confidence = 'exact' | 'alias' | 'fuzzy' | 'unmatched';
 
+type LabMetadata = {
+  title: string;
+  test_date: string;
+  lab_address: string;
+  lab_email: string;
+  lab_phone: string;
+};
+
 type ExtractedRow = {
   extracted_name: string;
   value: number;
@@ -91,6 +99,7 @@ export default function PdfUploadTab() {
   const [extracted, setExtracted] = useState<ExtractedRow[]>([]);
   const [allBiomarkers, setAllBiomarkers] = useState<AllBiomarker[]>([]);
   const [saving, setSaving] = useState(false);
+  const [labMetadata, setLabMetadata] = useState<LabMetadata>({ title: '', test_date: '', lab_address: '', lab_email: '', lab_phone: '' });
   const [uploads, setUploads] = useState<UploadRecord[]>([]);
   const [loadingUploads, setLoadingUploads] = useState(true);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -210,6 +219,13 @@ export default function PdfUploadTab() {
     }
 
     setExtracted(data.extracted ?? []);
+    setLabMetadata({
+      title:       data.metadata?.lab_name ?? file?.name.replace(/\.[^.]+$/, '') ?? '',
+      test_date:   data.metadata?.test_date ?? '',
+      lab_address: data.metadata?.lab_address ?? '',
+      lab_email:   data.metadata?.lab_email ?? '',
+      lab_phone:   data.metadata?.lab_phone ?? '',
+    });
     loadUploads();
   };
 
@@ -247,6 +263,13 @@ export default function PdfUploadTab() {
     }
 
     setExtracted(data.extracted ?? []);
+    setLabMetadata({
+      title:       data.metadata?.lab_name ?? '',
+      test_date:   data.metadata?.test_date ?? '',
+      lab_address: data.metadata?.lab_address ?? '',
+      lab_email:   data.metadata?.lab_email ?? '',
+      lab_phone:   data.metadata?.lab_phone ?? '',
+    });
     loadUploads();
   };
 
@@ -290,6 +313,8 @@ export default function PdfUploadTab() {
   const handleSaveExtracted = async () => {
     const toSave = extracted.filter((r) => r.include && r.matched_id);
     if (!toSave.length) { addToast('No matched results selected', 'error'); return; }
+    if (!labMetadata.title.trim()) { addToast('Report title is required', 'error'); return; }
+    if (!labMetadata.test_date) { addToast('Test date is required', 'error'); return; }
     setSaving(true);
 
     const userId = selectedUser?.id ?? reanalyzingUserId ?? null;
@@ -301,7 +326,7 @@ export default function PdfUploadTab() {
         userId,
         value: String(r.value),
         unit: r.unit,
-        testDate: r.test_date,
+        testDate: labMetadata.test_date || r.test_date,
         biomarkerName: r.matched_name || r.extracted_name,
         refRangeLow: def?.ref_range_low ?? r.ref_low,
         refRangeHigh: def?.ref_range_high ?? r.ref_high,
@@ -313,10 +338,19 @@ export default function PdfUploadTab() {
       };
     });
 
+    const labReport = userId ? {
+      user_id:     userId,
+      title:       labMetadata.title.trim(),
+      test_date:   labMetadata.test_date,
+      lab_address: labMetadata.lab_address || null,
+      lab_email:   labMetadata.lab_email   || null,
+      lab_phone:   labMetadata.lab_phone   || null,
+    } : null;
+
     const res = await fetch('/api/admin/lab-results/bulk', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ results }),
+      body: JSON.stringify({ results, labReport }),
     });
     const data = await res.json();
     setSaving(false);
@@ -333,6 +367,7 @@ export default function PdfUploadTab() {
     setFile(null);
     setUploadId(null);
     setReanalyzingUserId(null);
+    setLabMetadata({ title: '', test_date: '', lab_address: '', lab_email: '', lab_phone: '' });
     loadUploads();
   };
 
@@ -341,6 +376,7 @@ export default function PdfUploadTab() {
     setFile(null);
     setUploadId(null);
     setReanalyzingUserId(null);
+    setLabMetadata({ title: '', test_date: '', lab_address: '', lab_email: '', lab_phone: '' });
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -536,6 +572,62 @@ export default function PdfUploadTab() {
             </div>
           </div>
 
+          {/* Lab report metadata */}
+          <div className="rounded-xl border border-[#0e393d]/10 bg-white p-4">
+            <p className="text-xs font-medium text-[#0e393d]/70 uppercase tracking-wider mb-3">Lab Report Details</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2 sm:col-span-1">
+                <label className="block text-xs text-[#1c2a2b]/50 mb-1">Report Title <span className="text-red-400">*</span></label>
+                <input
+                  type="text"
+                  value={labMetadata.title}
+                  onChange={(e) => setLabMetadata((m) => ({ ...m, title: e.target.value }))}
+                  placeholder="e.g. Blood Panel – Synlab Jan 2025"
+                  className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-[#1c2a2b]/50 mb-1">Test Date <span className="text-red-400">*</span></label>
+                <input
+                  type="date"
+                  value={labMetadata.test_date}
+                  onChange={(e) => setLabMetadata((m) => ({ ...m, test_date: e.target.value }))}
+                  className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-[#1c2a2b]/50 mb-1">Lab Address</label>
+                <input
+                  type="text"
+                  value={labMetadata.lab_address}
+                  onChange={(e) => setLabMetadata((m) => ({ ...m, lab_address: e.target.value }))}
+                  placeholder="Optional"
+                  className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-[#1c2a2b]/50 mb-1">Lab Email</label>
+                <input
+                  type="email"
+                  value={labMetadata.lab_email}
+                  onChange={(e) => setLabMetadata((m) => ({ ...m, lab_email: e.target.value }))}
+                  placeholder="Optional"
+                  className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-[#1c2a2b]/50 mb-1">Lab Phone</label>
+                <input
+                  type="tel"
+                  value={labMetadata.lab_phone}
+                  onChange={(e) => setLabMetadata((m) => ({ ...m, lab_phone: e.target.value }))}
+                  placeholder="Optional"
+                  className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Stats summary */}
           <div className="flex gap-4 text-xs text-[#1c2a2b]/60">
             <span>{extracted.length} extracted</span>
@@ -618,20 +710,15 @@ export default function PdfUploadTab() {
                           className="w-20 rounded border border-[#0e393d]/15 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
                         />
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className="px-3 py-2.5 text-xs text-[#1c2a2b]">
                         {row.was_converted ? (
-                          <span className="text-[#1c2a2b]/50">
+                          <span>
                             <span className="text-[#1c2a2b]/40">{row.original_value} {row.original_unit}</span>
                             {' → '}
                             <span className="text-emerald-700 font-medium">{row.unit}</span>
                           </span>
                         ) : (
-                          <input
-                            type="text"
-                            value={row.unit}
-                            onChange={(e) => updateRow(idx, 'unit', e.target.value)}
-                            className="w-20 rounded border border-[#0e393d]/15 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
-                          />
+                          <span className="font-medium">{row.unit || '—'}</span>
                         )}
                       </td>
                       <td className="px-3 py-2.5"><FlagBadge flag={flag} /></td>

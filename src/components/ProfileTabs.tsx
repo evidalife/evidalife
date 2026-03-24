@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import ProfileEditor, { type ProfileData } from './ProfileEditor';
+import LabReportsTab from './LabReportsTab';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -864,7 +865,7 @@ export default function ProfileTabs({ profile, lang }: { profile: ProfileData; l
 
       {tab === 'profile'  && <ProfileEditor profile={profile} lang={lang} />}
       {tab === 'orders'   && <MyOrdersTab t={t} lang={lang} />}
-      {tab === 'results'  && <MyResultsTab t={t} lang={lang} />}
+      {tab === 'results'  && <LabReportsTab lang={lang} />}
       {tab === 'invoices' && <MyInvoicesTab t={t} />}
     </div>
   );

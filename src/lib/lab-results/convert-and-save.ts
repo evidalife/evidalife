@@ -91,3 +91,73 @@ export async function convertLabResult(
     was_converted: wasConverted,
   };
 }
+
+// ─── Batch conversion ─────────────────────────────────────────────────────────
+
+export interface SimpleLabInput {
+  biomarker_id: string;
+  value: number;
+  unit: string;
+}
+
+export interface SimplifiedConvertedResult {
+  biomarker_id: string;
+  value_numeric: number;
+  unit: string;
+  original_value: number;
+  original_unit: string;
+  was_converted: boolean;
+}
+
+/**
+ * Batch-convert multiple results efficiently (one DB round-trip each for
+ * biomarkers and conversions rather than N round-trips).
+ */
+export async function convertLabResultsBatch(
+  inputs: SimpleLabInput[],
+  supabase: SupabaseClient,
+): Promise<SimplifiedConvertedResult[]> {
+  if (inputs.length === 0) return [];
+
+  const biomarkerIds = [...new Set(inputs.map((i) => i.biomarker_id))];
+
+  const [{ data: biomarkers }, { data: conversions }] = await Promise.all([
+    supabase.from('biomarkers').select('id, unit').in('id', biomarkerIds),
+    supabase.from('biomarker_unit_conversions').select('biomarker_id, alt_unit, canonical_unit, multiplier, offset_value').in('biomarker_id', biomarkerIds),
+  ]);
+
+  const bmMap = new Map<string, string>((biomarkers ?? []).map((b: any) => [b.id, b.unit]));
+  const convMap = new Map<string, any[]>();
+  for (const c of (conversions ?? [])) {
+    if (!convMap.has(c.biomarker_id)) convMap.set(c.biomarker_id, []);
+    convMap.get(c.biomarker_id)!.push(c);
+  }
+
+  return inputs.map((input) => {
+    const canonicalUnit = bmMap.get(input.biomarker_id) ?? input.unit;
+
+    if (normalizeUnit(input.unit) === normalizeUnit(canonicalUnit)) {
+      return {
+        biomarker_id:   input.biomarker_id,
+        value_numeric:  input.value,
+        unit:           canonicalUnit,
+        original_value: input.value,
+        original_unit:  input.unit,
+        was_converted:  false,
+      };
+    }
+
+    const { convertedValue, wasConverted } = convertToCanonical(
+      input.value, input.unit, canonicalUnit, convMap.get(input.biomarker_id) ?? [],
+    );
+
+    return {
+      biomarker_id:   input.biomarker_id,
+      value_numeric:  wasConverted ? convertedValue : input.value,
+      unit:           wasConverted ? canonicalUnit  : input.unit,
+      original_value: input.value,
+      original_unit:  input.unit,
+      was_converted:  wasConverted,
+    };
+  });
+}
