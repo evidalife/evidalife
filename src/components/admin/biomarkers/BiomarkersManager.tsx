@@ -57,8 +57,6 @@ type AiSuggestion = {
   description_it?: string;
 } | null;
 
-type ItemPriority = 'critical' | 'warning' | 'info' | null;
-
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const EMPTY_FORM: FormState = {
@@ -106,19 +104,6 @@ function parseNum(v: string): number | null {
 
 function domainLabel(v: string | null | undefined): string {
   return HE_DOMAINS.find((d) => d.value === v)?.label ?? v ?? '—';
-}
-
-function getItemPriority(item: ItemDefinition): ItemPriority {
-  if (!item.unit || !item.he_domain) return 'critical';
-  const rt = item.range_type;
-  if (!rt) return 'warning';
-  if (rt === 'lower_is_better'  && (item.ref_range_high == null || item.optimal_range_high == null)) return 'warning';
-  if (rt === 'higher_is_better' && (item.ref_range_low  == null || item.optimal_range_low  == null)) return 'warning';
-  if (rt === 'range' && (
-    item.ref_range_low == null || item.ref_range_high == null ||
-    item.optimal_range_low == null || item.optimal_range_high == null
-  )) return 'warning';
-  return null;
 }
 
 async function callAutocomplete(nameEn: string): Promise<AiSuggestion> {
@@ -203,12 +188,6 @@ function AiBtn({ onClick, loading, label, gold }: { onClick: () => void; loading
       {loading ? '…' : label}
     </button>
   );
-}
-
-function PriorityDot({ priority }: { priority: ItemPriority }) {
-  if (!priority) return null;
-  const colors = { critical: 'bg-red-500', warning: 'bg-amber-400', info: 'bg-sky-400' };
-  return <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${colors[priority]}`} title={priority} />;
 }
 
 function WarningIcon({ title }: { title: string }) {
@@ -427,215 +406,6 @@ function AiSuggestionModal({
   );
 }
 
-// ─── AI Wizard Modal ──────────────────────────────────────────────────────────
-
-function WizardModal({
-  items, onClose, onPatchItem,
-}: {
-  items: ItemDefinition[];
-  onClose: () => void;
-  onPatchItem: (id: string, patch: Partial<Record<string, unknown>>) => Promise<void>;
-}) {
-  const queue = items.filter((i) => getItemPriority(i) !== null);
-  const criticalCount = queue.filter((i) => getItemPriority(i) === 'critical').length;
-  const warningCount  = queue.filter((i) => getItemPriority(i) === 'warning').length;
-  const infoCount     = queue.filter((i) => getItemPriority(i) === 'info').length;
-
-  const [step, setStep]         = useState<'scan' | 'walk' | 'done'>('scan');
-  const [idx, setIdx]           = useState(0);
-  const [loading, setLoading]   = useState(false);
-  const [suggestion, setSuggestion] = useState<AiSuggestion>(null);
-  const [applied, setApplied]   = useState(0);
-  const [skipped, setSkipped]   = useState(0);
-
-  const currentItem = queue[idx];
-
-  const fetchNext = async (i: number) => {
-    const item = queue[i];
-    if (!item) return;
-    const nameEn = (item.name?.en || item.name?.de || '').trim();
-    if (!nameEn) { setSuggestion(null); return; }
-    setLoading(true);
-    try {
-      const result = await callAutocomplete(nameEn);
-      setSuggestion(result);
-    } catch {
-      setSuggestion(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const startWalk = () => { setStep('walk'); setIdx(0); fetchNext(0); };
-
-  const moveNext = (wasApplied: boolean) => {
-    if (wasApplied) setApplied((n) => n + 1); else setSkipped((n) => n + 1);
-    const next = idx + 1;
-    if (next >= queue.length) { setStep('done'); }
-    else { setIdx(next); setSuggestion(null); fetchNext(next); }
-  };
-
-  const handleApply = async (checked: Set<string>) => {
-    if (!suggestion || !currentItem) return;
-    const patch: Record<string, unknown> = {};
-    if (checked.has('unit') && suggestion.unit != null) patch.unit = suggestion.unit;
-    if (checked.has('range_logic') && suggestion.range_logic) patch.range_type = suggestion.range_logic;
-    if (checked.has('ref_range_low') && suggestion.ref_range_low != null) patch.ref_range_low = suggestion.ref_range_low;
-    if (checked.has('ref_range_high') && suggestion.ref_range_high != null) patch.ref_range_high = suggestion.ref_range_high;
-    if (checked.has('optimal_range_low') && suggestion.optimal_range_low != null) patch.optimal_range_low = suggestion.optimal_range_low;
-    if (checked.has('optimal_range_high') && suggestion.optimal_range_high != null) patch.optimal_range_high = suggestion.optimal_range_high;
-    if (checked.has('he_domain') && suggestion.he_domain) patch.he_domain = suggestion.he_domain;
-    const desc: Record<string, string> = { ...(currentItem.description ?? {}) };
-    if (checked.has('description_en') && suggestion.description_en) desc.en = suggestion.description_en;
-    if (checked.has('description_de') && suggestion.description_de) desc.de = suggestion.description_de;
-    if (checked.has('description_fr') && suggestion.description_fr) desc.fr = suggestion.description_fr;
-    if (checked.has('description_es') && suggestion.description_es) desc.es = suggestion.description_es;
-    if (checked.has('description_it') && suggestion.description_it) desc.it = suggestion.description_it;
-    if (Object.keys(desc).length) patch.description = desc;
-    if (Object.keys(patch).length) await onPatchItem(currentItem.id, patch);
-    moveNext(true);
-  };
-
-  // Derive form-like state from current item for AiSuggestionModal
-  const wizardForm: FormState = currentItem ? {
-    name: { de: currentItem.name?.de ?? '', en: currentItem.name?.en ?? '', fr: currentItem.name?.fr ?? '', es: currentItem.name?.es ?? '', it: currentItem.name?.it ?? '' },
-    description: { de: currentItem.description?.de ?? '', en: currentItem.description?.en ?? '', fr: currentItem.description?.fr ?? '', es: currentItem.description?.es ?? '', it: currentItem.description?.it ?? '' },
-    item_type: currentItem.item_type ?? 'biomarker',
-    sort_order: '',
-    is_active: currentItem.is_active ?? true,
-    unit: currentItem.unit ?? '',
-    range_type: currentItem.range_type ?? '',
-    ref_range_low: currentItem.ref_range_low != null ? String(currentItem.ref_range_low) : '',
-    ref_range_high: currentItem.ref_range_high != null ? String(currentItem.ref_range_high) : '',
-    optimal_range_low: currentItem.optimal_range_low != null ? String(currentItem.optimal_range_low) : '',
-    optimal_range_high: currentItem.optimal_range_high != null ? String(currentItem.optimal_range_high) : '',
-    he_domain: currentItem.he_domain ?? '',
-  } : EMPTY_FORM;
-
-  return (
-    <>
-      <div className="fixed inset-0 bg-black/50 z-[60] backdrop-blur-[2px]" onClick={step === 'scan' ? onClose : undefined} />
-      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
-
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-[#0e393d]/10">
-            <div>
-              <h3 className="font-serif text-lg text-[#0e393d]">
-                {step === 'scan' ? '✨ AI Fill Missing' : step === 'walk' ? `Filling ${idx + 1} of ${queue.length}` : '✓ Done'}
-              </h3>
-              {step === 'walk' && (
-                <p className="text-xs text-[#1c2a2b]/40 mt-0.5">
-                  {currentItem?.name?.en || currentItem?.name?.de || '…'}
-                </p>
-              )}
-            </div>
-            <button onClick={onClose} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" /></svg>
-            </button>
-          </div>
-
-          {/* Scan step */}
-          {step === 'scan' && (
-            <div className="p-6 space-y-5">
-              {queue.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="text-3xl mb-3">✓</div>
-                  <p className="text-sm font-medium text-[#0e393d]">All biomarkers look complete!</p>
-                  <p className="text-xs text-[#1c2a2b]/40 mt-1">No missing fields detected.</p>
-                </div>
-              ) : (
-                <>
-                  <p className="text-sm text-[#1c2a2b]/70">Found <strong className="text-[#0e393d]">{queue.length}</strong> biomarkers with missing data:</p>
-                  <div className="flex gap-4">
-                    {criticalCount > 0 && <div className="flex items-center gap-2 text-sm"><span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" /><span className="text-[#1c2a2b]/70">{criticalCount} critical <span className="text-[#1c2a2b]/40">(unit/domain missing)</span></span></div>}
-                    {warningCount > 0  && <div className="flex items-center gap-2 text-sm"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" /><span className="text-[#1c2a2b]/70">{warningCount} ranges missing</span></div>}
-                    {infoCount > 0     && <div className="flex items-center gap-2 text-sm"><span className="w-2.5 h-2.5 rounded-full bg-sky-400 shrink-0" /><span className="text-[#1c2a2b]/70">{infoCount} descriptions only</span></div>}
-                  </div>
-                  <div className="max-h-48 overflow-y-auto rounded-lg border border-[#0e393d]/10 divide-y divide-[#0e393d]/6">
-                    {queue.map((item) => {
-                      const p = getItemPriority(item);
-                      const colors = { critical: 'bg-red-500', warning: 'bg-amber-400', info: 'bg-sky-400' };
-                      return (
-                        <div key={item.id} className="flex items-center gap-3 px-4 py-2.5">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${p ? colors[p] : 'bg-gray-300'}`} />
-                          <span className="text-sm text-[#1c2a2b]">{item.name?.en || item.name?.de || '—'}</span>
-                          <span className="ml-auto text-xs text-[#1c2a2b]/40">{!item.unit ? 'no unit' : !item.he_domain ? 'no domain' : 'ranges/desc'}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-              <div className="flex gap-3 pt-1">
-                <button onClick={onClose} className="flex-1 rounded-lg border border-[#0e393d]/15 py-2.5 text-sm font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition">Cancel</button>
-                {queue.length > 0 && (
-                  <button onClick={startWalk} className="flex-1 rounded-lg bg-[#ceab84] py-2.5 text-sm font-medium text-white hover:bg-[#b8965e] transition">
-                    Start filling ({queue.length})
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Walk step */}
-          {step === 'walk' && (
-            <div className="p-6 space-y-4">
-              {/* Progress bar */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-xs text-[#1c2a2b]/40">
-                  <span>{idx + 1} of {queue.length}</span>
-                  <span>{applied} applied · {skipped} skipped</span>
-                </div>
-                <div className="h-1.5 bg-[#0e393d]/8 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#ceab84] rounded-full transition-all" style={{ width: `${((idx) / queue.length) * 100}%` }} />
-                </div>
-              </div>
-
-              {loading ? (
-                <div className="flex items-center justify-center gap-3 py-8 text-sm text-[#1c2a2b]/40">
-                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
-                  Asking AI…
-                </div>
-              ) : suggestion ? (
-                <div className="text-xs text-[#1c2a2b]/50 mb-1">Review AI suggestions below — check fields to apply:</div>
-              ) : (
-                <div className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">No name available — skipping this item.</div>
-              )}
-
-              <div className="flex gap-3">
-                <button onClick={onClose} className="px-3 py-2 rounded-lg border border-[#0e393d]/15 text-xs font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition">Stop</button>
-                <button onClick={() => moveNext(false)} className="px-3 py-2 rounded-lg border border-[#0e393d]/15 text-xs font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition">Skip →</button>
-              </div>
-            </div>
-          )}
-
-          {/* Done step */}
-          {step === 'done' && (
-            <div className="p-6 space-y-4 text-center">
-              <div className="text-4xl">✓</div>
-              <p className="text-base font-medium text-[#0e393d]">All done!</p>
-              <p className="text-sm text-[#1c2a2b]/50">{applied} biomarkers updated · {skipped} skipped</p>
-              <button onClick={onClose} className="w-full rounded-lg bg-[#0e393d] py-2.5 text-sm font-medium text-white hover:bg-[#0e393d]/90 transition">Close</button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Suggestion modal rendered on top of wizard */}
-      {step === 'walk' && suggestion && !loading && (
-        <AiSuggestionModal
-          suggestion={suggestion}
-          form={wizardForm}
-          initialSelectEmpty
-          onApply={handleApply}
-          onClose={() => moveNext(false)}
-        />
-      )}
-    </>
-  );
-}
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function BiomarkersManager({ initialItems }: { initialItems: ItemDefinition[] }) {
@@ -647,7 +417,6 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   type SortCol = 'name' | 'type' | 'domain' | 'unit' | 'ranges' | 'status' | null;
   const [sortCol, setSortCol] = useState<SortCol>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [showIncomplete, setShowIncomplete] = useState(false);
   const [panelOpen, setPanelOpen]   = useState(false);
   const [editingId, setEditingId]   = useState<string | null>(null);
   const [nameLang, setNameLang]     = useState<Lang>('en');
@@ -655,7 +424,6 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   const [translating, setTranslating]   = useState(false);
   const [autocompleting, setAutocompleting] = useState(false);
   const [suggestion, setSuggestion] = useState<AiSuggestion>(null);
-  const [wizardOpen, setWizardOpen] = useState(false);
   const [form, setForm]             = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving]         = useState(false);
   const [error, setError]           = useState<string | null>(null);
@@ -762,17 +530,17 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
     setSuggestion(null);
   };
 
-  // ── Wizard patch ──────────────────────────────────────────────────────────
-
-  const handleWizardPatch = async (id: string, patch: Partial<Record<string, unknown>>) => {
-    await supabase.from('biomarkers').update(patch).eq('id', id);
-    await refresh();
-  };
-
   // ── Save ──────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
-    if (!form.name.de.trim() && !form.name.en.trim()) { setError('Name (DE or EN) is required.'); return; }
+    const missing: string[] = [];
+    if (!form.name.en.trim()) missing.push('Name (EN)');
+    if (!form.name.de.trim()) missing.push('Name (DE)');
+    if (!form.item_type) missing.push('Test Category');
+    if (!form.he_domain) missing.push('Health Domain');
+    if (!form.unit.trim()) missing.push('Unit');
+    if (!form.range_type) missing.push('Range Type');
+    if (missing.length > 0) { setError(`Please fill all required fields: ${missing.join(', ')}`); return; }
     setSaving(true); setError(null);
     const rt = form.range_type || null;
     const payload = {
@@ -812,10 +580,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
     else { setSortCol(null); setSortDir('asc'); }
   };
 
-  const incompleteCount = items.filter((i) => getItemPriority(i) !== null).length;
-
   const filtered = items.filter((item) => {
-    if (showIncomplete && !getItemPriority(item)) return false;
     if (typeFilter && item.item_type !== typeFilter) return false;
     if (domainFilter && item.he_domain !== domainFilter) return false;
     if (!search) return true;
@@ -829,8 +594,6 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
     );
   });
 
-  const priorityOrder = (p: ItemPriority) => p === 'critical' ? 0 : p === 'warning' ? 1 : 2;
-
   const sorted = sortCol === null ? filtered : [...filtered].sort((a, b) => {
     let cmp = 0;
     if (sortCol === 'name')   cmp = (a.name?.en || a.name?.de || '').localeCompare(b.name?.en || b.name?.de || '');
@@ -838,7 +601,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
     if (sortCol === 'domain') cmp = (a.he_domain || '').localeCompare(b.he_domain || '');
     if (sortCol === 'unit')   cmp = (a.unit || '').localeCompare(b.unit || '');
     if (sortCol === 'ranges') cmp = (a.ref_range_low ?? -Infinity) - (b.ref_range_low ?? -Infinity);
-    if (sortCol === 'status') cmp = priorityOrder(getItemPriority(a)) - priorityOrder(getItemPriority(b));
+    if (sortCol === 'status') cmp = (a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1);
     return sortDir === 'asc' ? cmp : -cmp;
   });
 
@@ -855,7 +618,6 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
           <h1 className="font-serif text-2xl text-[#0e393d]">Biomarker Registry</h1>
         </div>
         <div className="flex items-center gap-2">
-          <AiBtn gold onClick={() => setWizardOpen(true)} loading={false} label="✨ AI Fill Missing" />
           <button
             onClick={openCreate}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 transition"
@@ -870,18 +632,6 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
         <span>{items.length} total</span>
         <span className="text-[#0e393d]/20">·</span>
         <span>{items.filter((i) => i.is_active).length} active</span>
-        {incompleteCount > 0 && (
-          <>
-            <span className="text-[#0e393d]/20">·</span>
-            <button
-              onClick={() => setShowIncomplete((v) => !v)}
-              className={`flex items-center gap-1.5 transition ${showIncomplete ? 'text-amber-600 font-medium' : 'text-amber-500 hover:text-amber-600'}`}
-            >
-              <span>⚠</span>
-              <span>{incompleteCount} incomplete</span>
-            </button>
-          </>
-        )}
       </div>
 
       {/* ── Filters ── */}
@@ -943,12 +693,10 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
               <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">No biomarkers found.</td></tr>
             )}
             {sorted.map((item) => {
-              const priority = getItemPriority(item);
               return (
                 <tr key={item.id} className="hover:bg-[#fafaf8] transition-colors cursor-pointer" onClick={() => openEdit(item)}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      {priority && <PriorityDot priority={priority} />}
                       <div>
                         <div className="font-medium text-[#0e393d]">{item.name?.en || item.name?.de || <span className="text-[#1c2a2b]/30">—</span>}</div>
                         {item.name?.en && item.name?.de && <div className="text-xs text-[#1c2a2b]/40 mt-0.5">{item.name.de}</div>}
@@ -992,11 +740,6 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
         </table>
       </div>
 
-      {/* ── Wizard ── */}
-      {wizardOpen && (
-        <WizardModal items={items} onClose={() => { setWizardOpen(false); refresh(); }} onPatchItem={handleWizardPatch} />
-      )}
-
       {/* ── AI Suggestion Modal ── */}
       {suggestion && (
         <AiSuggestionModal suggestion={suggestion} form={form} onApply={applySuggestion} onClose={() => setSuggestion(null)} />
@@ -1034,9 +777,6 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
                       {l.toUpperCase()}
                     </button>
                   ))}
-                  <div className="border-l border-[#0e393d]/15 flex items-center px-2">
-                    <AiBtn onClick={handleTranslate} loading={translating} label="✦ Translate" />
-                  </div>
                 </div>
                 <Field label={`Name (${nameLang.toUpperCase()}) *`}>
                   <input className={inputCls} value={form.name[nameLang]}
