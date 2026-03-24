@@ -241,10 +241,14 @@ export default function PdfUploadTab() {
     // Delete linked lab_results (by pdf_url matching file_url)
     await supabase.from('lab_results').delete().eq('pdf_url', upload.file_url);
 
-    // Delete file from storage (only if we have a clean path, not a signed URL)
-    const path = upload.file_url?.startsWith('http') ? null : upload.file_url;
-    if (path) {
-      await supabase.storage.from('lab-pdfs').remove([path]);
+    // Delete file from storage — extract path from signed URL if needed
+    let storagePath = upload.file_url ?? '';
+    if (storagePath.startsWith('http')) {
+      const match = storagePath.match(/lab-pdfs\/(.+?)(?:\?|$)/);
+      storagePath = match?.[1] ?? '';
+    }
+    if (storagePath) {
+      await supabase.storage.from('lab-pdfs').remove([storagePath]);
     }
 
     // Delete the upload record
