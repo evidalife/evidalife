@@ -128,22 +128,25 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
   // === HEMATOLOGY ===
   hemoglobin: [
     'Hämoglobin', 'Hb', 'Hemoglobin', 'Hémoglobine', 'Emoglobina',
-    'Haemoglobin', 'Hgb',
+    'Haemoglobin', 'Hgb', 'Hemoglobina',
   ],
   hematocrit: [
     'Hämatokrit', 'Hkt', 'Hct', 'Hématocrite', 'Ematocrito', 'PCV',
+    'Hematocrito',
   ],
   rbc: [
     'Erythrozyten', 'Red Blood Cells', 'Érythrocytes', 'Eritrociti',
     'Rote Blutkörperchen', 'RBC', 'Erythrocytes',
+    'Glóbulos rojos', 'Eritrocitos',
   ],
   wbc: [
     'Leukozyten', 'White Blood Cells', 'Leucocytes', 'Leucociti',
     'Weisse Blutkörperchen', 'Weisse Blutzellen', 'WBC',
+    'Glóbulos blancos', 'Leucocitos',
   ],
   platelets: [
     'Thrombozyten', 'Plättchen', 'Plaquettes', 'Piastrine', 'PLT',
-    'Thrombocytes',
+    'Thrombocytes', 'Plaquetas', 'Trombocitos',
   ],
   mcv: ['MCV', 'Mittleres Zellvolumen', 'VGM', 'Volume Globulaire Moyen'],
   mch: ['MCH', 'Mittleres Zellhämoglobin', 'TCMH'],
@@ -154,24 +157,29 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
   ],
   neutrophils: [
     'Neutrophile', 'Neutrophile %', 'Neutrophils', 'Neutrophiles',
-    'Segmentkernige', 'Granulozyten', 'NEUT',
+    'Segmentkernige', 'Granulozyten', 'NEUT', 'Neutrófilos',
   ],
   lymphocytes: [
     'Lymphozyten', 'Lymphozyten %', 'Lymphocytes', 'Linfociti', 'LYMPH',
+    'Linfocitos',
   ],
   monocytes: [
     'Monozyten', 'Monozyten %', 'Monocytes', 'Monociti', 'MONO',
+    'Monocitos',
   ],
   eosinophils: [
     'Eosinophile', 'Eosinophile %', 'Éosinophiles', 'Eosinofili', 'EOS',
+    'Eosinófilos',
   ],
   basophils: [
     'Basophile', 'Basophile %', 'Basophiles', 'Basofili', 'BASO',
+    'Basófilos',
   ],
 
   // === ELECTROLYTES & MINERALS ===
   potassium: [
     'Kalium', 'Kalium (WI)', 'Potassium', 'Potassio', 'K', 'K+',
+    'Potasio',
   ],
   sodium: [
     'Natrium', 'Natrium (WI)', 'Sodium', 'Sodio', 'Na', 'Na+',
@@ -182,11 +190,13 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
   magnesium: ['Magnesium', 'Mg', 'Magnésium', 'Magnesio'],
   phosphate: [
     'Phosphat', 'Phosphate', 'Phosphor', 'Fosfato', 'Phosphore', 'P',
+    'Fósforo',
   ],
   chloride: [
     'Chlorid', 'Chloride', 'Chlorure', 'Cloruro', 'Cl', 'Cl-',
+    'Cloruro',
   ],
-  zinc: ['Zink', 'Zinc', 'Zinco', 'Zn'],
+  zinc: ['Zink', 'Zinc', 'Zinco', 'Zn', 'Cinc'],
   selenium: ['Selen', 'Selenium', 'Sélénium', 'Selenio', 'Se'],
 
   // === KIDNEY ===
@@ -197,43 +207,45 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
     'eGFR', 'eGFR CKD-EPI', 'GFR', 'Glomeruläre Filtrationsrate',
     'eGFR CKD-EPI 2009', 'eGFR (CKD-EPI)', 'Estimated GFR',
     'Geschätzte glomeruläre Filtrationsrate',
+    'Tasa de filtración glomerular', 'TFG estimada',
   ],
   uric_acid: [
     'Harnsäure', 'Harnsäure (WI)', 'Uric Acid', 'Acide urique',
-    'Acido urico', 'Urate',
+    'Acido urico', 'Urate', 'Ácido úrico',
   ],
 
   // === LIVER ===
   alt: [
     'GPT (ALAT)', 'GPT', 'ALAT', 'ALT', 'GPT (ALAT) (WI)',
     'Alanine Aminotransferase', 'Alanin-Aminotransferase',
-    'ALAT (GPT)', 'GPT/ALAT',
+    'ALAT (GPT)', 'GPT/ALAT', 'Transaminasa GPT',
   ],
   ast: [
     'GOT (ASAT)', 'GOT', 'ASAT', 'AST', 'GOT (ASAT) (WI)',
     'Aspartate Aminotransferase', 'Aspartat-Aminotransferase',
-    'ASAT (GOT)', 'GOT/ASAT',
+    'ASAT (GOT)', 'GOT/ASAT', 'Transaminasa GOT',
   ],
   ggt: [
     'GGT', 'Gamma-GT', 'GGT (Gamma-glut.-transf.)', 'γ-GT',
-    'Gamma-Glutamyltransferase', 'Gamma-Glutamyl-Transferase',
+    'Gamma-Glutamyltransferase', 'Gamma-Glutamyl-Transferase', 'Gamma-GT',
   ],
   alp: [
     'Alkalische Phosphatase', 'AP', 'ALP', 'Phosphatase alcaline',
-    'Fosfatasi alcalina', 'Alk. Phosphatase',
+    'Fosfatasi alcalina', 'Alk. Phosphatase', 'Fosfatasa alcalina',
   ],
   ldh: [
     'LDH', 'Laktatdehydrogenase', 'Lactate Déshydrogénase',
-    'Lattato Deidrogenasi', 'Lactate Dehydrogenase',
+    'Lattato Deidrogenasi', 'Lactate Dehydrogenase', 'Lactato Deshidrogenasa',
   ],
   ck: [
     'CK', 'Kreatinkinase', 'Créatine Kinase', 'Creatina Chinasi',
-    'Creatine Kinase', 'CPK',
+    'Creatine Kinase', 'CPK', 'Creatina Quinasa',
   ],
-  albumin: ['Albumin', 'Albumine', 'Albumina'],
+  albumin: ['Albumin', 'Albumine', 'Albumina', 'Albúmina'],
   bilirubin_total: [
     'Bilirubin', 'Bilirubin gesamt', 'Bilirubine', 'Bilirubina',
     'Total Bilirubin', 'Gesamtbilirubin', 'Bilirubin total',
+    'Bilirrubina total',
   ],
 
   // === GLUCOSE / DIABETES ===
@@ -241,14 +253,16 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
     'Glukose nüchtern', 'Glukose', 'Glucose', 'Nüchternglukose',
     'Glycémie', 'Glicemia', 'Blutzucker', 'Nüchternblutzucker',
     'Fasting Glucose', 'Glukose (WI)',
+    'Glucosa en ayunas', 'Glucemia', 'Glucosa',
   ],
   hba1c: [
     'HbA1c', 'HbA1c DCCT', 'HbA1c NGSP', 'Glykiertes Hämoglobin',
     'Hémoglobine glyquée', 'Glycated Haemoglobin', 'A1c',
+    'Hemoglobina glicosilada', 'Hemoglobina glucosilada',
   ],
   fasting_insulin: [
     'Nüchterninsulin', 'Insulin nüchtern', 'Fasting Insulin',
-    'Insuline à jeun', 'Insulina', 'Insulin',
+    'Insuline à jeun', 'Insulina', 'Insulin', 'Insulina en ayunas',
   ],
   homa_ir: ['HOMA-IR', 'HOMA Index', 'HOMA', 'Homeostatic Model Assessment'],
 
@@ -256,58 +270,64 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
   total_cholesterol: [
     'Cholesterin', 'Cholesterin (WI)', 'Total Cholesterol', 'Cholestérol',
     'Colesterolo', 'Gesamtcholesterin', 'Cholesterol',
+    'Colesterol total',
   ],
   hdl_cholesterol: [
     'HDL-Cholesterin', 'HDL', 'HDL-C', 'Cholestérol HDL',
-    'Colesterolo HDL', 'HDL Cholesterol',
+    'Colesterolo HDL', 'HDL Cholesterol', 'Colesterol HDL',
   ],
   ldl_cholesterol: [
     'LDL-Cholesterin', 'LDL', 'LDL-C', 'LDL-Cholesterin (berechnet)',
     'Cholestérol LDL', 'Colesterolo LDL', 'LDL Cholesterol',
+    'Colesterol LDL',
   ],
   triglycerides: [
     'Triglyceride', 'Triglyceride (WI)', 'Triglycérides', 'Trigliceridi',
-    'TG', 'Triglyzeriden', 'Triglyzeride',
+    'TG', 'Triglyzeriden', 'Triglyzeride', 'Triglicéridos',
   ],
   apob: [
     'ApoB', 'Apolipoprotein B', 'Apo B', 'Apolipoprotein-B',
-    'Apolipoprotéine B',
+    'Apolipoprotéine B', 'Apolipoproteína B',
   ],
   lpa: [
     'Lp(a)', 'Lipoprotein(a)', 'Lp a', 'Lipoprotéine(a)', 'Lipoprotein a',
+    'Lipoproteína(a)',
   ],
 
   // === THYROID ===
   tsh: [
     'TSH', 'TSH basal', 'Thyreotropin', 'Thyroid Stimulating Hormone',
-    'Thyrotropin',
+    'Thyrotropin', 'Tirotropina',
   ],
   ft3: [
     'fT3', 'freies T3', 'Free T3', 'T3 libre', 'T3 libera',
-    'Freies Trijodthyronin', 'Freies Triiodthyronin',
+    'Freies Trijodthyronin', 'Freies Triiodthyronin', 'T3 libre',
   ],
   ft4: [
     'fT4', 'freies T4', 'Free T4', 'T4 libre', 'T4 libera',
-    'Thyroxin frei', 'Freies Thyroxin',
+    'Thyroxin frei', 'Freies Thyroxin', 'T4 libre',
   ],
 
   // === HORMONES ===
   testosterone_total: [
     'Testosteron total', 'Testosterone', 'Testostérone',
     'Testosterone totale', 'Total Testosterone', 'Testosteron',
+    'Testosterona total', 'Testosterona',
   ],
   testosterone_free: [
     'Freies Testosteron', 'Free Testosterone', 'Testostérone libre',
-    'Testosterone libero',
+    'Testosterone libero', 'Testosterona libre',
   ],
   shbg: [
     'SHBG', 'Sexualhormon-bindendes Globulin',
     'Sex Hormone Binding Globulin', 'Globuline liant les hormones sexuelles',
+    'Globulina transportadora de hormonas sexuales',
   ],
   dhea_s: ['DHEA-S', 'DHEAS', 'DHEA-Sulfat', 'DHEA Sulfate'],
   estradiol: ['Östradiol', 'Estradiol', 'E2', 'Estradiol (E2)', 'Œstradiol'],
   igf_1: [
     'IGF-1', 'IGF1', 'Insulin-like Growth Factor 1', 'Somatomedin C', 'IGF-I',
+    'Factor de crecimiento insulínico tipo 1',
   ],
   cortisol: ['Cortisol', 'Kortisol', 'Hydrocortisone'],
 
@@ -329,6 +349,7 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
   folate_b9: [
     'Folsäure', 'Folsäure in Erythrozyten', 'Folate', 'Folat',
     'Acide folique', 'Acido folico', 'Vitamin B9', 'Folic Acid',
+    'Ácido fólico', 'Folato',
   ],
 
   // === IRON ===
@@ -337,6 +358,7 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
   ],
   iron_serum: [
     'Eisen', 'Eisen (WI)', 'Iron', 'Fer', 'Ferro', 'Fe', 'Serumeisen',
+    'Hierro sérico', 'Hierro',
   ],
   transferrin: ['Transferrin', 'Transferrine', 'Transferrina'],
 
@@ -345,17 +367,21 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
     'hs-CRP', 'CRP', 'C-reaktives Protein', 'Protéine C réactive',
     'hsCRP', 'CRP ultrasensibel', 'C-Reactive Protein',
     'C-reaktives Protein (ultrasensitiv)', 'hsCRP (ultrasensitiv)',
+    'Proteína C reactiva', 'PCR ultrasensible',
   ],
   homocysteine: [
     'Homocystein', 'Homocysteine', 'Homocystéine', 'Omocisteina',
+    'Homocisteína',
   ],
 
   // === OTHER ===
   omega_3_index: [
     'Omega-3 Index', 'Omega-3-Index', 'Omega-3', 'EPA+DHA',
+    'Índice Omega-3',
   ],
   iodine_urine: [
     'Jod', 'Jod (Urin)', 'Iodine', 'Iode', 'Iodio', 'Iod im Urin',
+    'Yodo', 'Yodo en orina',
   ],
 };
 

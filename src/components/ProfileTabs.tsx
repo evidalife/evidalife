@@ -47,6 +47,16 @@ const T = {
       resultsFrom: 'Ergebnisse vom',
       ref: 'Ref',
       opt: 'Opt',
+      addResult: '+ Wert erfassen',
+      addResultTitle: 'Eigenen Wert erfassen',
+      biomarker: 'Biomarker',
+      value: 'Wert',
+      unit: 'Einheit',
+      date: 'Datum',
+      save: 'Speichern',
+      cancel: 'Abbrechen',
+      delete: 'Löschen',
+      searchBiomarker: 'Biomarker suchen…',
     },
     invoices: {
       empty: 'Noch keine Rechnungen vorhanden.',
@@ -75,6 +85,16 @@ const T = {
       resultsFrom: 'Results from',
       ref: 'Ref',
       opt: 'Opt',
+      addResult: '+ Add Result',
+      addResultTitle: 'Add a Result',
+      biomarker: 'Biomarker',
+      value: 'Value',
+      unit: 'Unit',
+      date: 'Date',
+      save: 'Save',
+      cancel: 'Cancel',
+      delete: 'Delete',
+      searchBiomarker: 'Search biomarker…',
     },
     invoices: {
       empty: 'No invoices yet.',
@@ -89,21 +109,21 @@ const T = {
   fr: {
     tabs: { profile: 'Profil', orders: 'Commandes', results: 'Résultats', invoices: 'Factures' },
     orders: { empty: 'Aucune commande.', emptySub: '', shop: 'Boutique', invoice: 'Facture (PDF)', dashboard: 'Tableau de santé', voucher: 'Code bon' },
-    results: { empty: 'Aucun résultat.', emptySub: '', shop: 'Se faire tester', resultsFrom: 'Résultats du', ref: 'Réf', opt: 'Opt' },
+    results: { empty: 'Aucun résultat.', emptySub: '', shop: 'Se faire tester', resultsFrom: 'Résultats du', ref: 'Réf', opt: 'Opt', addResult: '+ Ajouter', addResultTitle: 'Ajouter un résultat', biomarker: 'Biomarqueur', value: 'Valeur', unit: 'Unité', date: 'Date', save: 'Enregistrer', cancel: 'Annuler', delete: 'Supprimer', searchBiomarker: 'Rechercher…' },
     invoices: { empty: 'Aucune facture.', download: 'Télécharger PDF', number: 'N° facture', date: 'Date', amount: 'Montant', status: 'Statut' },
     loading: 'Chargement…',
   },
   es: {
     tabs: { profile: 'Perfil', orders: 'Pedidos', results: 'Resultados', invoices: 'Facturas' },
     orders: { empty: 'Sin pedidos.', emptySub: '', shop: 'Tienda', invoice: 'Factura (PDF)', dashboard: 'Panel de salud', voucher: 'Código bono' },
-    results: { empty: 'Sin resultados.', emptySub: '', shop: 'Hacerse el test', resultsFrom: 'Resultados del', ref: 'Ref', opt: 'Opt' },
+    results: { empty: 'Sin resultados.', emptySub: '', shop: 'Hacerse el test', resultsFrom: 'Resultados del', ref: 'Ref', opt: 'Opt', addResult: '+ Añadir', addResultTitle: 'Añadir resultado', biomarker: 'Biomarcador', value: 'Valor', unit: 'Unidad', date: 'Fecha', save: 'Guardar', cancel: 'Cancelar', delete: 'Eliminar', searchBiomarker: 'Buscar…' },
     invoices: { empty: 'Sin facturas.', download: 'Descargar PDF', number: 'N.º factura', date: 'Fecha', amount: 'Importe', status: 'Estado' },
     loading: 'Cargando…',
   },
   it: {
     tabs: { profile: 'Profilo', orders: 'Ordini', results: 'Risultati', invoices: 'Fatture' },
     orders: { empty: 'Nessun ordine.', emptySub: '', shop: 'Negozio', invoice: 'Fattura (PDF)', dashboard: 'Dashboard salute', voucher: 'Codice voucher' },
-    results: { empty: 'Nessun risultato.', emptySub: '', shop: 'Effettua il test', resultsFrom: 'Risultati del', ref: 'Rif', opt: 'Opt' },
+    results: { empty: 'Nessun risultato.', emptySub: '', shop: 'Effettua il test', resultsFrom: 'Risultati del', ref: 'Rif', opt: 'Opt', addResult: '+ Aggiungi', addResultTitle: 'Aggiungi risultato', biomarker: 'Biomarcatore', value: 'Valore', unit: 'Unità', date: 'Data', save: 'Salva', cancel: 'Annulla', delete: 'Elimina', searchBiomarker: 'Cerca…' },
     invoices: { empty: 'Nessuna fattura.', download: 'Scarica PDF', number: 'N. fattura', date: 'Data', amount: 'Importo', status: 'Stato' },
     loading: 'Caricamento…',
   },
@@ -346,7 +366,8 @@ function MyOrdersTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
 
 type LabResult = {
   id: string; value_numeric: number; unit: string | null; status_flag: string | null;
-  test_date: string | null; measured_at: string;
+  test_date: string | null; measured_at: string; source: string | null;
+  biomarker_definition_id: string | null;
   biomarkers: {
     name: LocalizedString; unit: string | null; he_domain: string | null;
     ref_range_low: number | null; ref_range_high: number | null;
@@ -354,16 +375,47 @@ type LabResult = {
   } | null;
 };
 
+type BiomarkerOption = {
+  id: string; slug: string; unit: string | null;
+  name: Record<string, string> | null;
+};
+
+function SourceBadge({ source }: { source: string | null }) {
+  if (!source || source === 'pdf_upload' || source === 'manual') {
+    return (
+      <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[#0e393d]/8 text-[#0e393d]/60 whitespace-nowrap">
+        Lab
+      </span>
+    );
+  }
+  if (source === 'self_report') {
+    return (
+      <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[#ceab84]/20 text-[#7a5e20] whitespace-nowrap">
+        Self
+      </span>
+    );
+  }
+  return null;
+}
+
 function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
   const supabase = createClient();
   const [results, setResults] = useState<LabResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [biomarkers, setBiomarkers] = useState<BiomarkerOption[]>([]);
+  const [search, setSearch] = useState('');
+  const [selectedBm, setSelectedBm] = useState<BiomarkerOption | null>(null);
+  const [formValue, setFormValue] = useState('');
+  const [formUnit, setFormUnit] = useState('');
+  const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  const loadResults = () => {
     supabase
       .from('lab_results')
       .select(`
-        id, value_numeric, unit, status_flag, test_date, measured_at,
+        id, value_numeric, unit, status_flag, test_date, measured_at, source, biomarker_definition_id,
         biomarkers:biomarker_definition_id (
           name, unit, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high
         )
@@ -375,127 +427,269 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
         setResults((data as unknown as LabResult[]) ?? []);
         setLoading(false);
       });
-  }, []);
+  };
+
+  useEffect(() => { loadResults(); }, []);
+
+  useEffect(() => {
+    if (!showForm || biomarkers.length > 0) return;
+    supabase
+      .from('biomarkers')
+      .select('id, slug, name, unit')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .then(({ data }) => setBiomarkers((data as unknown as BiomarkerOption[]) ?? []));
+  }, [showForm]);
+
+  const filteredBiomarkers = search.trim().length < 1 ? [] : biomarkers.filter((bm) => {
+    const q = search.toLowerCase();
+    const n = bm.name ? Object.values(bm.name).join(' ').toLowerCase() : '';
+    return n.includes(q) || bm.slug.includes(q);
+  }).slice(0, 8);
+
+  const handleSave = async () => {
+    if (!selectedBm || !formValue || !formDate) return;
+    setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setSaving(false); return; }
+    await supabase.from('lab_results').insert({
+      user_id: user.id,
+      biomarker_definition_id: selectedBm.id,
+      value_numeric: parseFloat(formValue),
+      unit: formUnit || selectedBm.unit || '',
+      test_date: formDate,
+      source: 'self_report',
+    });
+    setSaving(false);
+    setShowForm(false);
+    setSelectedBm(null);
+    setSearch('');
+    setFormValue('');
+    setFormUnit('');
+    setFormDate(new Date().toISOString().slice(0, 10));
+    loadResults();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm(t.results.delete + '?')) return;
+    await supabase.from('lab_results').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+    setResults((prev) => prev.filter((r) => r.id !== id));
+  };
 
   if (loading) return <div className="flex justify-center py-12"><Spinner /></div>;
 
-  if (!results.length) return (
-    <div className="text-center py-16">
-      <div className="text-5xl mb-4">🧬</div>
-      <p className="font-medium text-[#0e393d] mb-2">{t.results.empty}</p>
-      <p className="text-sm text-[#1c2a2b]/50 mb-6">{t.results.emptySub}</p>
-      <a href="/shop" className="inline-block rounded-full bg-[#0e393d] text-white px-6 py-2.5 text-sm font-medium hover:bg-[#0e393d]/85 transition">
-        {t.results.shop}
-      </a>
-    </div>
-  );
-
-  // Group by test_date
-  const byDate: Record<string, LabResult[]> = {};
-  for (const r of results) {
-    const key = r.test_date ?? r.measured_at.slice(0, 10);
-    if (!byDate[key]) byDate[key] = [];
-    byDate[key].push(r);
-  }
-
-  // Build previous values map for trend arrows (keyed by biomarker def id)
-  const prevValues: Record<string, number> = {};
-  const dates = Object.keys(byDate).sort().reverse();
-
   return (
     <div className="space-y-6">
-      {dates.map((date, dateIdx) => {
-        const dateResults = byDate[date];
+      {/* Header with + Add Result */}
+      <div className="flex items-center justify-between">
+        <span />
+        <button
+          onClick={() => setShowForm((v) => !v)}
+          className="inline-flex items-center gap-1.5 rounded-full bg-[#0e393d] text-white px-4 py-2 text-xs font-medium hover:bg-[#0e393d]/85 transition"
+        >
+          {t.results.addResult}
+        </button>
+      </div>
 
-        // Group by HE domain
-        const byDomain: Record<string, LabResult[]> = {};
-        for (const r of dateResults) {
-          const domain = r.biomarkers?.he_domain ?? 'other';
-          if (!byDomain[domain]) byDomain[domain] = [];
-          byDomain[domain].push(r);
-        }
-        const domainOrder = [...HE_DOMAIN_ORDER, ...Object.keys(byDomain).filter((d) => !HE_DOMAIN_ORDER.includes(d))];
-        const presentDomains = domainOrder.filter((d) => byDomain[d]?.length);
+      {/* Self-report form */}
+      {showForm && (
+        <div className="rounded-xl border border-[#0e393d]/15 bg-white p-4 space-y-3">
+          <p className="text-sm font-semibold text-[#0e393d]">{t.results.addResultTitle}</p>
 
-        // Collect prev values from older dates
-        const olderResults = dates.slice(dateIdx + 1).flatMap((d) => byDate[d]);
-        for (const r of olderResults) {
-          if (r.biomarkers && !(r.id in prevValues)) {
-            prevValues[r.id] = r.value_numeric;
-          }
-        }
-
-        return (
-          <div key={date}>
-            <h3 className="text-sm font-semibold text-[#0e393d] mb-3 flex items-center gap-2">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#ceab84]">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-              {t.results.resultsFrom} {fmtDate(date)}
-              <span className="text-[11px] font-normal text-[#1c2a2b]/40">({dateResults.length} biomarkers)</span>
-            </h3>
-
-            <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
-              {presentDomains.map((domain, di) => (
-                <div key={domain}>
-                  {di > 0 && <div className="border-t border-[#0e393d]/6" />}
-                  <div className="px-4 py-2 bg-[#0e393d]/3">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#ceab84]/80">
-                      {HE_DOMAIN_LABEL[domain] ?? domain}
-                    </span>
-                  </div>
-                  <div className="divide-y divide-[#0e393d]/5">
-                    {byDomain[domain].map((r) => {
-                      const def = r.biomarkers;
-                      const name = def ? locName(def.name, lang) : '—';
-                      const prevMatch = olderResults.find((pr) =>
-                        pr.biomarkers &&
-                        locName(pr.biomarkers.name, lang) === name
-                      );
-                      const trend = prevMatch
-                        ? r.value_numeric > prevMatch.value_numeric ? '↑'
-                        : r.value_numeric < prevMatch.value_numeric ? '↓'
-                        : '→'
-                        : null;
-                      const trendColor = trend === '↑' ? 'text-emerald-600' : trend === '↓' ? 'text-red-500' : 'text-[#1c2a2b]/40';
-
-                      const refText = (() => {
-                        const parts: string[] = [];
-                        if (def?.ref_range_low != null || def?.ref_range_high != null) {
-                          parts.push(`${t.results.ref}: ${def?.ref_range_low ?? '—'}–${def?.ref_range_high ?? '—'}`);
-                        }
-                        if (def?.optimal_range_low != null || def?.optimal_range_high != null) {
-                          parts.push(`${t.results.opt}: ${def?.optimal_range_low ?? '—'}–${def?.optimal_range_high ?? '—'}`);
-                        }
-                        return parts.join(' · ');
-                      })();
-
-                      return (
-                        <div key={r.id} className="px-4 py-3 flex items-center gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-[#1c2a2b]">{name}</span>
-                              {trend && <span className={`text-xs font-semibold ${trendColor}`}>{trend}</span>}
-                            </div>
-                            {refText && <p className="text-[11px] text-[#1c2a2b]/35 mt-0.5">{refText}</p>}
-                          </div>
-                          <div className="text-right shrink-0 flex items-center gap-2">
-                            <span className="tabular-nums text-sm font-semibold text-[#0e393d]">
-                              {r.value_numeric} <span className="font-normal text-[#1c2a2b]/50 text-xs">{r.unit || def?.unit || ''}</span>
-                            </span>
-                            <FlagBadge flag={r.status_flag} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+          {/* Biomarker search */}
+          <div className="relative">
+            <input
+              type="text"
+              value={selectedBm ? locName(selectedBm.name, lang) : search}
+              onChange={(e) => { setSearch(e.target.value); setSelectedBm(null); }}
+              placeholder={t.results.searchBiomarker}
+              className="w-full rounded-lg border border-[#0e393d]/20 px-3 py-2 text-sm text-[#1c2a2b] placeholder-[#1c2a2b]/35 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/20"
+            />
+            {filteredBiomarkers.length > 0 && !selectedBm && (
+              <div className="absolute z-10 mt-1 w-full rounded-lg border border-[#0e393d]/12 bg-white shadow-lg overflow-hidden">
+                {filteredBiomarkers.map((bm) => (
+                  <button
+                    key={bm.id}
+                    onClick={() => { setSelectedBm(bm); setSearch(''); setFormUnit(bm.unit ?? ''); }}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-[#0e393d]/5 transition flex items-center justify-between"
+                  >
+                    <span>{locName(bm.name, lang)}</span>
+                    <span className="text-[11px] text-[#1c2a2b]/40">{bm.unit}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        );
-      })}
+
+          {selectedBm && (
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="block text-[11px] text-[#1c2a2b]/50 mb-1">{t.results.value}</label>
+                <input
+                  type="number"
+                  value={formValue}
+                  onChange={(e) => setFormValue(e.target.value)}
+                  className="w-full rounded-lg border border-[#0e393d]/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/20"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-[#1c2a2b]/50 mb-1">{t.results.unit}</label>
+                <input
+                  type="text"
+                  value={formUnit}
+                  onChange={(e) => setFormUnit(e.target.value)}
+                  className="w-full rounded-lg border border-[#0e393d]/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/20"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-[#1c2a2b]/50 mb-1">{t.results.date}</label>
+                <input
+                  type="date"
+                  value={formDate}
+                  onChange={(e) => setFormDate(e.target.value)}
+                  className="w-full rounded-lg border border-[#0e393d]/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/20"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={() => { setShowForm(false); setSelectedBm(null); setSearch(''); }}
+              className="rounded-full border border-[#0e393d]/20 px-4 py-1.5 text-xs font-medium text-[#0e393d]/60 hover:bg-[#0e393d]/5 transition"
+            >
+              {t.results.cancel}
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!selectedBm || !formValue || saving}
+              className="rounded-full bg-[#0e393d] text-white px-4 py-1.5 text-xs font-medium hover:bg-[#0e393d]/85 transition disabled:opacity-40"
+            >
+              {saving ? '…' : t.results.save}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!results.length && (
+        <div className="text-center py-16">
+          <div className="text-5xl mb-4">🧬</div>
+          <p className="font-medium text-[#0e393d] mb-2">{t.results.empty}</p>
+          <p className="text-sm text-[#1c2a2b]/50 mb-6">{t.results.emptySub}</p>
+          <a href="/shop" className="inline-block rounded-full bg-[#0e393d] text-white px-6 py-2.5 text-sm font-medium hover:bg-[#0e393d]/85 transition">
+            {t.results.shop}
+          </a>
+        </div>
+      )}
+
+      {/* Group by test_date */}
+      {(() => {
+        const byDate: Record<string, LabResult[]> = {};
+        for (const r of results) {
+          const key = r.test_date ?? r.measured_at.slice(0, 10);
+          if (!byDate[key]) byDate[key] = [];
+          byDate[key].push(r);
+        }
+        const dates = Object.keys(byDate).sort().reverse();
+
+        return dates.map((date, dateIdx) => {
+          const dateResults = byDate[date];
+          const byDomain: Record<string, LabResult[]> = {};
+          for (const r of dateResults) {
+            const domain = r.biomarkers?.he_domain ?? 'other';
+            if (!byDomain[domain]) byDomain[domain] = [];
+            byDomain[domain].push(r);
+          }
+          const domainOrder = [...HE_DOMAIN_ORDER, ...Object.keys(byDomain).filter((d) => !HE_DOMAIN_ORDER.includes(d))];
+          const presentDomains = domainOrder.filter((d) => byDomain[d]?.length);
+          const olderResults = dates.slice(dateIdx + 1).flatMap((d) => byDate[d]);
+
+          return (
+            <div key={date}>
+              <h3 className="text-sm font-semibold text-[#0e393d] mb-3 flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#ceab84]">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                {t.results.resultsFrom} {fmtDate(date)}
+                <span className="text-[11px] font-normal text-[#1c2a2b]/40">({dateResults.length} biomarkers)</span>
+              </h3>
+
+              <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
+                {presentDomains.map((domain, di) => (
+                  <div key={domain}>
+                    {di > 0 && <div className="border-t border-[#0e393d]/6" />}
+                    <div className="px-4 py-2 bg-[#0e393d]/3">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#ceab84]/80">
+                        {HE_DOMAIN_LABEL[domain] ?? domain}
+                      </span>
+                    </div>
+                    <div className="divide-y divide-[#0e393d]/5">
+                      {byDomain[domain].map((r) => {
+                        const def = r.biomarkers;
+                        const name = def ? locName(def.name, lang) : '—';
+                        const prevMatch = olderResults.find((pr) =>
+                          pr.biomarkers && locName(pr.biomarkers.name, lang) === name
+                        );
+                        const trend = prevMatch
+                          ? r.value_numeric > prevMatch.value_numeric ? '↑'
+                          : r.value_numeric < prevMatch.value_numeric ? '↓'
+                          : '→'
+                          : null;
+                        const trendColor = trend === '↑' ? 'text-emerald-600' : trend === '↓' ? 'text-red-500' : 'text-[#1c2a2b]/40';
+
+                        const refText = (() => {
+                          const parts: string[] = [];
+                          if (def?.ref_range_low != null || def?.ref_range_high != null) {
+                            parts.push(`${t.results.ref}: ${def?.ref_range_low ?? '—'}–${def?.ref_range_high ?? '—'}`);
+                          }
+                          if (def?.optimal_range_low != null || def?.optimal_range_high != null) {
+                            parts.push(`${t.results.opt}: ${def?.optimal_range_low ?? '—'}–${def?.optimal_range_high ?? '—'}`);
+                          }
+                          return parts.join(' · ');
+                        })();
+
+                        const isSelfReport = r.source === 'self_report';
+
+                        return (
+                          <div key={r.id} className="px-4 py-3 flex items-center gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-[#1c2a2b]">{name}</span>
+                                {trend && <span className={`text-xs font-semibold ${trendColor}`}>{trend}</span>}
+                                <SourceBadge source={r.source} />
+                              </div>
+                              {refText && <p className="text-[11px] text-[#1c2a2b]/35 mt-0.5">{refText}</p>}
+                            </div>
+                            <div className="text-right shrink-0 flex items-center gap-2">
+                              <span className="tabular-nums text-sm font-semibold text-[#0e393d]">
+                                {r.value_numeric} <span className="font-normal text-[#1c2a2b]/50 text-xs">{r.unit || def?.unit || ''}</span>
+                              </span>
+                              <FlagBadge flag={r.status_flag} />
+                              {isSelfReport && (
+                                <button
+                                  onClick={() => handleDelete(r.id)}
+                                  title={t.results.delete}
+                                  className="ml-1 p-1 rounded text-[#1c2a2b]/25 hover:text-red-500 hover:bg-red-50 transition"
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                                    <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        });
+      })()}
     </div>
   );
 }

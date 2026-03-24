@@ -199,7 +199,16 @@ export default function PdfUploadTab() {
   // ── Re-analyze existing upload ───────────────────────────────────────────────
 
   const handleReanalyze = async (upload: UploadRecord) => {
-    if (!upload.file_url) { addToast('No storage path for this upload', 'error'); return; }
+    if (!upload.file_url) { addToast('No file path for this upload', 'error'); return; }
+
+    // Old records stored a signed URL instead of a storage path — extract the path
+    let storagePath = upload.file_url;
+    if (storagePath.startsWith('http')) {
+      const match = storagePath.match(/lab-pdfs\/(.+?)(?:\?|$)/);
+      storagePath = match?.[1] ?? '';
+    }
+    if (!storagePath) { addToast('Could not determine storage path. Please re-upload.', 'error'); return; }
+
     setExtracting(true);
     setUploadId(upload.id);
     setReanalyzingUserId(upload.user_id);
@@ -208,7 +217,7 @@ export default function PdfUploadTab() {
     const res = await fetch('/api/admin/parse-lab-results', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ storagePath: upload.file_url, uploadId: upload.id }),
+      body: JSON.stringify({ storagePath, uploadId: upload.id }),
     });
     const data = await res.json();
     setExtracting(false);
@@ -221,6 +230,27 @@ export default function PdfUploadTab() {
     }
 
     setExtracted(data.extracted ?? []);
+    loadUploads();
+  };
+
+  // ── Delete upload ────────────────────────────────────────────────────────────
+
+  const handleDeleteUpload = async (upload: UploadRecord) => {
+    if (!confirm(`Delete "${upload.file_name}" and all its extracted data?`)) return;
+
+    // Delete linked lab_results (by pdf_url matching file_url)
+    await supabase.from('lab_results').delete().eq('pdf_url', upload.file_url);
+
+    // Delete file from storage (only if we have a clean path, not a signed URL)
+    const path = upload.file_url?.startsWith('http') ? null : upload.file_url;
+    if (path) {
+      await supabase.storage.from('lab-pdfs').remove([path]);
+    }
+
+    // Delete the upload record
+    await supabase.from('lab_pdf_uploads').delete().eq('id', upload.id);
+
+    addToast('Upload deleted', 'success');
     loadUploads();
   };
 
@@ -445,12 +475,20 @@ export default function PdfUploadTab() {
                       </td>
                       <td className="px-4 py-3 text-xs text-[#0e393d] font-medium">{u.results_created ?? 0}</td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleReanalyze(u)}
-                          className="text-xs text-[#ceab84] hover:text-[#b8965e] font-medium transition"
-                        >
-                          Re-analyze
-                        </button>
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => handleReanalyze(u)}
+                            className="text-xs text-[#ceab84] hover:text-[#b8965e] font-medium transition"
+                          >
+                            Re-analyze
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUpload(u)}
+                            className="text-xs text-red-400 hover:text-red-600 font-medium transition"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

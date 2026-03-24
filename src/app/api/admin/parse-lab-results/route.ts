@@ -46,6 +46,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'storagePath and uploadId are required' }, { status: 400 });
     }
 
+    console.log('[parse-lab] storagePath:', storagePath);
+
     const supabase = adminClient();
 
     // Mark upload as processing
@@ -56,6 +58,7 @@ export async function POST(req: NextRequest) {
       .from('lab-pdfs')
       .createSignedUrl(storagePath, 300);
 
+    console.log('[parse-lab] signed URL generated:', !!signedData?.signedUrl);
     if (signError || !signedData?.signedUrl) {
       await supabase.from('lab_pdf_uploads').update({
         extraction_status: 'failed',
@@ -122,6 +125,8 @@ export async function POST(req: NextRequest) {
     const claudeData = await claudeRes.json();
     const rawText = claudeData.content?.[0]?.text ?? '';
 
+    console.log('[parse-lab] Claude raw response length:', rawText.length);
+
     // Parse JSON from response
     let extracted: any[] = [];
     try {
@@ -136,6 +141,8 @@ export async function POST(req: NextRequest) {
       }).eq('id', uploadId);
       return NextResponse.json({ error: 'Parse error', raw: rawText }, { status: 500 });
     }
+
+    console.log('[parse-lab] Extracted items:', extracted.length);
 
     // Fetch all biomarkers for matching (include slug for alias lookup)
     const { data: allBiomarkers } = await supabase
@@ -207,6 +214,9 @@ export async function POST(req: NextRequest) {
         was_converted: true,
       };
     });
+
+    console.log('[parse-lab] Matched:', matched.filter((m) => m.matched_id).length, 'of', matched.length);
+    console.log('[parse-lab] Converted:', matched.filter((m) => m.was_converted).length);
 
     // Save extraction results to upload record
     await supabase.from('lab_pdf_uploads').update({
