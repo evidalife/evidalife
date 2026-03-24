@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  useCallback, useEffect, useMemo, useRef, useState,
+  Fragment, useCallback, useEffect, useMemo, useRef, useState,
 } from 'react';
 import {
   ColumnDef,
@@ -623,9 +623,8 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
 
               {/* Data rows */}
               {table.getRowModel().rows.map((row, ri) => (
-                <>
+                <Fragment key={row.id}>
                   <tr
-                    key={row.id}
                     onClick={() => setExpandedRow(expandedRow === ri ? null : ri)}
                     className={`border-b border-[#0e393d]/5 cursor-pointer transition-colors
                       ${expandedRow === ri ? 'bg-[#0e393d]/[0.03]' : 'hover:bg-[#0e393d]/[0.015]'}
@@ -646,13 +645,12 @@ export default function DataExplorerManager({ initialStats }: { initialStats: St
                   </tr>
                   {expandedRow === ri && (
                     <RowDetail
-                      key={`${row.id}-detail`}
                       row={row.original}
                       columns={fetchResult?.columns ?? []}
                       onJsonClick={setJsonModal}
                     />
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
