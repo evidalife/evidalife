@@ -21,6 +21,11 @@ body {
   color: var(--foreground);
 }
 
+/* Google Places autocomplete dropdown — must appear above modals/overlays */
+.pac-container {
+  z-index: 9999 !important;
+}
+
 /* Legal page prose */
 .prose-legal h2 {
   font-family: var(--font-playfair);

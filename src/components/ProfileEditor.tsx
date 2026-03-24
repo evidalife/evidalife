@@ -160,8 +160,14 @@ const T = {
     dietOptions: ['Omnivor', 'Vegetarisch', 'Vegan', 'Pescetarisch', 'Andere'] as string[],
     account: 'Konto', memberSince: 'Mitglied seit', adminBadge: 'Admin',
     onboarding: 'Onboarding', onboardingDone: 'Abgeschlossen', onboardingPending: 'Ausstehend',
-    onboardingLink: 'Onboarding starten →',
+    changeEmail: 'E-Mail ändern', changeEmailNew: 'Neue E-Mail-Adresse', changeEmailSave: 'Bestätigung senden',
+    changeEmailSent: 'Bestätigungs-E-Mail gesendet. Bitte überprüfe dein Postfach.',
+    changeEmailError: 'E-Mail konnte nicht geändert werden.',
     changePassword: 'Passwort ändern',
+    passwordResetSent: 'Passwort-Reset-E-Mail wurde gesendet.',
+    passwordResetError: 'Fehler beim Senden der Reset-E-Mail.',
+    useInvoiceAddress: 'Abweichende Rechnungsadresse verwenden',
+    invoiceAddress: 'Rechnungsadresse',
     save: 'Speichern', saving: 'Wird gespeichert…', saved: 'Gespeichert ✓', saveError: 'Fehler beim Speichern.',
     unsavedChanges: 'Ungespeicherte Änderungen',
     deleteSection: 'Konto löschen',
@@ -195,8 +201,14 @@ const T = {
     dietOptions: ['Omnivore', 'Vegetarian', 'Vegan', 'Pescatarian', 'Other'] as string[],
     account: 'Account', memberSince: 'Member since', adminBadge: 'Admin',
     onboarding: 'Onboarding', onboardingDone: 'Completed', onboardingPending: 'Pending',
-    onboardingLink: 'Start onboarding →',
+    changeEmail: 'Change email', changeEmailNew: 'New email address', changeEmailSave: 'Send verification',
+    changeEmailSent: 'Verification email sent. Check your inbox.',
+    changeEmailError: 'Could not update email.',
     changePassword: 'Change password',
+    passwordResetSent: 'Password reset email sent.',
+    passwordResetError: 'Failed to send reset email.',
+    useInvoiceAddress: 'Use a different invoice address',
+    invoiceAddress: 'Invoice address',
     save: 'Save changes', saving: 'Saving…', saved: 'Saved ✓', saveError: 'Failed to save.',
     unsavedChanges: 'Unsaved changes',
     deleteSection: 'Delete account',
@@ -230,8 +242,14 @@ const T = {
     dietOptions: ['Omnivore', 'Végétarien', 'Végétalien', 'Pescatarien', 'Autre'] as string[],
     account: 'Compte', memberSince: 'Membre depuis', adminBadge: 'Admin',
     onboarding: 'Onboarding', onboardingDone: 'Terminé', onboardingPending: 'En attente',
-    onboardingLink: "Démarrer l'onboarding →",
+    changeEmail: "Modifier l'e-mail", changeEmailNew: 'Nouvelle adresse e-mail', changeEmailSave: 'Envoyer la vérification',
+    changeEmailSent: "E-mail de vérification envoyé. Consultez votre boîte.",
+    changeEmailError: "Impossible de modifier l'e-mail.",
     changePassword: 'Changer le mot de passe',
+    passwordResetSent: 'E-mail de réinitialisation envoyé.',
+    passwordResetError: "Échec de l'envoi de l'e-mail.",
+    useInvoiceAddress: 'Utiliser une adresse de facturation différente',
+    invoiceAddress: 'Adresse de facturation',
     save: 'Enregistrer les modifications', saving: 'Enregistrement…', saved: 'Enregistré ✓', saveError: "Échec de l'enregistrement.",
     unsavedChanges: 'Modifications non enregistrées',
     deleteSection: 'Supprimer le compte',
@@ -265,8 +283,14 @@ const T = {
     dietOptions: ['Omnívoro', 'Vegetariano', 'Vegano', 'Pescatariano', 'Otro'] as string[],
     account: 'Cuenta', memberSince: 'Miembro desde', adminBadge: 'Admin',
     onboarding: 'Incorporación', onboardingDone: 'Completado', onboardingPending: 'Pendiente',
-    onboardingLink: 'Iniciar incorporación →',
+    changeEmail: 'Cambiar correo', changeEmailNew: 'Nuevo correo electrónico', changeEmailSave: 'Enviar verificación',
+    changeEmailSent: 'Correo de verificación enviado. Revisa tu bandeja.',
+    changeEmailError: 'No se pudo actualizar el correo.',
     changePassword: 'Cambiar contraseña',
+    passwordResetSent: 'Correo de restablecimiento enviado.',
+    passwordResetError: 'Error al enviar el correo.',
+    useInvoiceAddress: 'Usar una dirección de facturación diferente',
+    invoiceAddress: 'Dirección de facturación',
     save: 'Guardar cambios', saving: 'Guardando…', saved: 'Guardado ✓', saveError: 'Error al guardar.',
     unsavedChanges: 'Cambios sin guardar',
     deleteSection: 'Eliminar cuenta',
@@ -300,8 +324,14 @@ const T = {
     dietOptions: ['Onnivoro', 'Vegetariano', 'Vegano', 'Pescatariano', 'Altro'] as string[],
     account: 'Account', memberSince: 'Membro dal', adminBadge: 'Admin',
     onboarding: 'Onboarding', onboardingDone: 'Completato', onboardingPending: 'In attesa',
-    onboardingLink: "Inizia l'onboarding →",
+    changeEmail: 'Cambia e-mail', changeEmailNew: 'Nuovo indirizzo e-mail', changeEmailSave: 'Invia verifica',
+    changeEmailSent: 'E-mail di verifica inviata. Controlla la tua casella.',
+    changeEmailError: "Impossibile aggiornare l'e-mail.",
     changePassword: 'Cambia password',
+    passwordResetSent: 'E-mail di reset inviata.',
+    passwordResetError: "Invio dell'e-mail fallito.",
+    useInvoiceAddress: 'Usa un indirizzo di fatturazione diverso',
+    invoiceAddress: 'Indirizzo di fatturazione',
     save: 'Salva modifiche', saving: 'Salvataggio…', saved: 'Salvato ✓', saveError: 'Salvataggio fallito.',
     unsavedChanges: 'Modifiche non salvate',
     deleteSection: 'Elimina account',
@@ -571,8 +601,9 @@ function AddressAutocomplete({
 export default function ProfileEditor({ profile, lang }: { profile: ProfileData; lang: Lang }) {
   const t = T[lang];
   const supabase = createClient();
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
+  const isOAuthUser = user?.app_metadata?.provider === 'google' || (user?.app_metadata?.providers ?? []).includes('google');
 
   // Avatar state
   const [avatarUrl,   setAvatarUrl]   = useState(profile.avatar_url ?? '');
@@ -615,8 +646,25 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
   // UI
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [isDirty,   setIsDirty]   = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Change email
+  const [showEmailChange, setShowEmailChange] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+
+  // Invoice address
+  const [showInvoiceAddress, setShowInvoiceAddress] = useState(false);
+  const [invoiceStreet, setInvoiceStreet] = useState('');
+  const [invoiceCity, setInvoiceCity] = useState('');
+  const [invoicePostalCode, setInvoicePostalCode] = useState('');
+  const [invoiceCountry, setInvoiceCountry] = useState('');
 
   const dirty = () => setIsDirty(true);
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   // ── Avatar ──────────────────────────────────────────────────────────────────
 
@@ -691,6 +739,33 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
     setIsDirty(true);
   };
 
+  // ── Change email ─────────────────────────────────────────────────────────────
+
+  const handleChangeEmail = async () => {
+    if (!newEmail.trim() || !newEmail.includes('@')) return;
+    const { error } = await supabase.auth.updateUser({ email: newEmail.trim() });
+    if (error) {
+      showToast(t.changeEmailError, 'error');
+    } else {
+      showToast(t.changeEmailSent, 'success');
+      setShowEmailChange(false);
+      setNewEmail('');
+    }
+  };
+
+  // ── Reset password ────────────────────────────────────────────────────────────
+
+  const handleResetPassword = async () => {
+    const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) {
+      showToast(t.passwordResetError, 'error');
+    } else {
+      showToast(t.passwordResetSent, 'success');
+    }
+  };
+
   // ── Save ────────────────────────────────────────────────────────────────────
 
   const handleSave = async (e: React.FormEvent) => {
@@ -706,8 +781,6 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
       height_cm:      heightCm  ? Number(heightCm)  : null,
       weight_kg:      weightKg  ? Number(weightKg)  : null,
       blood_type:     bloodType          || null,
-      activity_level: activityLevel      || null,
-      diet:           diet               || null,
       country:        country            || null,
       street_address: streetAddress.trim() || null,
       city:           city.trim()          || null,
@@ -755,6 +828,17 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
               <button type="button" onClick={handleCropSave} className="rounded-xl bg-[#0e393d] px-4 py-2 text-sm font-medium text-white hover:bg-[#0e393d]/85 transition">{t.cropSave}</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 rounded-xl px-4 py-3 shadow-lg text-sm font-medium transition-all ${toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
+          {toast.type === 'success'
+            ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/></svg>
+          }
+          {toast.message}
         </div>
       )}
 
@@ -866,6 +950,45 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                 {EUROPEAN_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
               </select>
             </div>
+
+            {/* Invoice address toggle */}
+            <label className="flex items-center gap-3 cursor-pointer pt-1">
+              <button
+                type="button"
+                onClick={() => setShowInvoiceAddress((v) => !v)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none shrink-0 ${showInvoiceAddress ? 'bg-[#0e393d]' : 'bg-gray-200'}`}
+              >
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${showInvoiceAddress ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+              </button>
+              <span className="text-sm text-[#1c2a2b]/60">{t.useInvoiceAddress}</span>
+            </label>
+
+            {showInvoiceAddress && (
+              <div className="space-y-4 pl-3 border-l-2 border-[#ceab84]/30">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">{t.invoiceAddress}</p>
+                <div>
+                  <FieldLabel text={t.streetAddress} />
+                  <input type="text" value={invoiceStreet} onChange={(e) => setInvoiceStreet(e.target.value)} placeholder={t.streetPlaceholder} className={inputCls} />
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <FieldLabel text={t.postalCode} />
+                    <input type="text" value={invoicePostalCode} onChange={(e) => setInvoicePostalCode(e.target.value)} placeholder="8001" className={inputCls} />
+                  </div>
+                  <div className="col-span-2">
+                    <FieldLabel text={t.city} />
+                    <input type="text" value={invoiceCity} onChange={(e) => setInvoiceCity(e.target.value)} placeholder="Zurich" className={inputCls} />
+                  </div>
+                </div>
+                <div>
+                  <FieldLabel text={t.country} />
+                  <select value={invoiceCountry} onChange={(e) => setInvoiceCountry(e.target.value)} className={selectCls}>
+                    <option value="">—</option>
+                    {EUROPEAN_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
         </Section>
 
@@ -882,28 +1005,12 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                 <input type="number" value={weightKg} onChange={(e) => { setWeightKg(e.target.value); dirty(); }} placeholder="70" min={20} max={300} step="0.1" className={inputCls} />
               </div>
             </div>
-            <div>
+            <div className="w-1/2">
               <FieldLabel text={t.bloodType} hint={t.bloodTypeHint} />
               <select value={bloodType} onChange={(e) => { setBloodType(e.target.value); dirty(); }} className={selectCls}>
                 <option value="">—</option>
                 {BLOOD_TYPES.map((bt) => <option key={bt} value={bt}>{bt}</option>)}
               </select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <FieldLabel text={t.activityLevel} />
-                <select value={activityLevel} onChange={(e) => { setActivityLevel(e.target.value); dirty(); }} className={selectCls}>
-                  <option value="">—</option>
-                  {ACTIVITY_LEVELS.map((v, i) => <option key={v} value={v}>{t.activityOptions[i]}</option>)}
-                </select>
-              </div>
-              <div>
-                <FieldLabel text={t.diet} />
-                <select value={diet} onChange={(e) => { setDiet(e.target.value); dirty(); }} className={selectCls}>
-                  <option value="">—</option>
-                  {DIET_VALUES.map((v, i) => <option key={v} value={v}>{t.dietOptions[i]}</option>)}
-                </select>
-              </div>
             </div>
           </div>
         </Section>
@@ -923,9 +1030,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                   {t.onboardingDone}
                 </span>
               ) : (
-                <a href="/how-to-start" className="text-xs font-medium text-[#ceab84] hover:text-[#0e393d] transition-colors">
-                  {t.onboardingLink}
-                </a>
+                <span className="text-xs text-[#1c2a2b]/40">{t.onboardingPending}</span>
               )}
             </div>
             {profile.is_admin && (
@@ -934,21 +1039,57 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                 <span className="inline-flex items-center rounded-full bg-[#0e393d] px-2.5 py-0.5 text-[10px] font-semibold text-white">{t.adminBadge}</span>
               </div>
             )}
-            <div className="flex items-center justify-between text-sm pt-1 border-t border-[#0e393d]/6">
-              <span className="text-[#1c2a2b]/50">{t.changePassword}</span>
-              <a href="/reset-password" className="text-xs font-medium text-[#0e393d]/60 hover:text-[#0e393d] transition-colors">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="inline mr-1 -mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                →
-              </a>
+            <div className="flex flex-col gap-2 pt-1 border-t border-[#0e393d]/6">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-[#1c2a2b]/50">{t.changeEmail}</span>
+                <button
+                  type="button"
+                  onClick={() => setShowEmailChange((v) => !v)}
+                  className="text-xs font-medium text-[#0e393d]/60 hover:text-[#0e393d] transition-colors"
+                >→</button>
+              </div>
+              {showEmailChange && (
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder={t.changeEmailNew}
+                    className="flex-1 rounded-xl border border-[#0e393d]/15 bg-white px-3 py-2 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/35 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition-colors"
+                    onKeyDown={(e) => e.key === 'Enter' && handleChangeEmail()}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleChangeEmail}
+                    disabled={!newEmail.includes('@')}
+                    className="rounded-xl bg-[#0e393d] px-3 py-2 text-xs font-medium text-white hover:bg-[#0e393d]/85 disabled:opacity-40 transition"
+                  >
+                    {t.changeEmailSave}
+                  </button>
+                </div>
+              )}
             </div>
+            {!isOAuthUser && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-[#1c2a2b]/50">{t.changePassword}</span>
+                <button
+                  type="button"
+                  onClick={handleResetPassword}
+                  className="text-xs font-medium text-[#0e393d]/60 hover:text-[#0e393d] transition-colors"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="inline mr-1 -mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  →
+                </button>
+              </div>
+            )}
           </div>
         </Section>
 
         {/* ── Delete account ── */}
-        <section className="rounded-2xl border border-red-200/60 bg-red-50/40 p-6">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-red-500/70 mb-3">{t.deleteSection}</h2>
-          <p className="text-sm text-[#1c2a2b]/60 mb-4">{t.deleteInfo}</p>
-          <a href="mailto:support@evidalife.com" className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition">
+        <section className="rounded-2xl border border-[#0e393d]/8 bg-white p-6">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-[#1c2a2b]/35 mb-3">{t.deleteSection}</h2>
+          <p className="text-sm text-[#1c2a2b]/50 mb-4">{t.deleteInfo}</p>
+          <a href="mailto:support@evidalife.com" className="inline-flex items-center gap-1.5 rounded-xl border border-[#0e393d]/15 bg-white px-4 py-2 text-sm font-medium text-[#1c2a2b]/60 hover:bg-[#0e393d]/5 hover:text-[#1c2a2b] transition">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             {t.deleteContact}
           </a>
