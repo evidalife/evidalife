@@ -76,15 +76,6 @@ const EMPTY_FORM: FormState = {
   he_domain: '',
 };
 
-// Filter mapping: pill value → DB item_type values to match (handles legacy DB values)
-const FILTER_MAP: Record<string, string[]> = {
-  biomarker:           ['biomarker'],
-  clinical_assessment: ['clinical_assessment', 'vitalcheck_measurement', 'vo2max_test', 'dexa_scan'],
-  bio_age:             ['bio_age', 'biological_age_test'],
-  genetic:             ['genetic', 'genetic_test'],
-  microbiome:          ['microbiome'],
-  wearable:            ['wearable'],
-};
 
 export const HE_DOMAINS = [
   { value: '', label: '— none —', weight: 0 },
@@ -670,7 +661,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
 
   const refresh = useCallback(async () => {
     const { data } = await supabase
-      .from('product_item_definitions')
+      .from('biomarkers')
       .select('id, slug, name, description, item_type, is_active, sort_order, unit, range_type, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, he_domain')
       .order('sort_order', { ascending: true });
     if (data) setItems(data as ItemDefinition[]);
@@ -765,7 +756,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   // ── Wizard patch ──────────────────────────────────────────────────────────
 
   const handleWizardPatch = async (id: string, patch: Partial<Record<string, unknown>>) => {
-    await supabase.from('product_item_definitions').update(patch).eq('id', id);
+    await supabase.from('biomarkers').update(patch).eq('id', id);
     await refresh();
   };
 
@@ -791,10 +782,10 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
     };
     try {
       if (editingId) {
-        const { error: err } = await supabase.from('product_item_definitions').update(payload).eq('id', editingId);
+        const { error: err } = await supabase.from('biomarkers').update(payload).eq('id', editingId);
         if (err) throw err;
       } else {
-        const { error: err } = await supabase.from('product_item_definitions').insert({ ...payload, slug: slugify(form.name.en || form.name.de) });
+        const { error: err } = await supabase.from('biomarkers').insert({ ...payload, slug: slugify(form.name.en || form.name.de) });
         if (err) throw err;
       }
       await refresh();
@@ -810,7 +801,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
 
   const filtered = items.filter((item) => {
     if (showIncomplete && !getItemPriority(item)) return false;
-    if (typeFilter && !FILTER_MAP[typeFilter]?.includes(item.item_type ?? '')) return false;
+    if (typeFilter && item.item_type !== typeFilter) return false;
     if (domainFilter && item.he_domain !== domainFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();

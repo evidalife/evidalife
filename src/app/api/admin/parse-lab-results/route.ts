@@ -110,9 +110,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Parse error', raw: rawText }, { status: 500 });
     }
 
-    // Fetch all product_item_definitions for matching
+    // Fetch all biomarkers for matching
     const { data: allBiomarkers } = await supabase
-      .from('product_item_definitions')
+      .from('biomarkers')
       .select('id, name, unit, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, range_type')
       .eq('is_active', true);
 

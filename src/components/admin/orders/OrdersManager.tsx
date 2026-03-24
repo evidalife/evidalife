@@ -63,7 +63,7 @@ type Voucher = {
 type TestItem = {
   id: string; status: string; result_value: number | null; result_unit: string | null;
   status_flag: string | null;
-  product_item_definitions: { name: LocalizedString; biomarker_key: string } | null;
+  biomarkers: { name: LocalizedString; biomarker_key: string } | null;
 };
 
 type ValidTransition = { to: FulfilmentStatus; trigger: string; willSendEmail: boolean; autoActions: string[] };
@@ -428,7 +428,7 @@ function TestItemsChecklist({ orderId }: { orderId: string }) {
   useEffect(() => {
     supabase
       .from('order_test_items')
-      .select('id, status, result_value, result_unit, status_flag, product_item_definitions(name, biomarker_key)')
+      .select('id, status, result_value, result_unit, status_flag, biomarkers(name, biomarker_key)')
       .eq('order_id', orderId)
       .then(({ data }) => { setItems((data as unknown as TestItem[]) ?? []); setLoading(false); });
   }, [orderId]);
@@ -461,7 +461,7 @@ function TestItemsChecklist({ orderId }: { orderId: string }) {
             {items.map((item) => (
               <tr key={item.id} className="bg-white">
                 <td className="px-3 py-2 text-[#1c2a2b]">
-                  {locName(item.product_item_definitions?.name) || item.product_item_definitions?.biomarker_key || '—'}
+                  {locName(item.biomarkers?.name) || item.biomarkers?.biomarker_key || '—'}
                 </td>
                 <td className="px-3 py-2 text-center">
                   <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${TEST_ITEM_STATUS_COLOR[item.status] ?? 'text-gray-500 bg-gray-50'}`}>

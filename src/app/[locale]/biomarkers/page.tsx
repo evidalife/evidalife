@@ -331,8 +331,8 @@ export default async function BiomarkersPage() {
   const packageIds = packages.map((p) => p.id);
   const { data: productItems } = packageIds.length > 0
     ? await supabase
-        .from('product_items')
-        .select('product_id, product_item_definition_id')
+        .from('product_biomarkers')
+        .select('product_id, biomarker_id')
         .in('product_id', packageIds)
     : { data: [] };
 
@@ -340,15 +340,15 @@ export default async function BiomarkersPage() {
   const pkgItemMap = new Map<string, Set<string>>();
   for (const pkg of packages) pkgItemMap.set(pkg.id, new Set());
   for (const pi of productItems ?? []) {
-    pkgItemMap.get(pi.product_id)?.add(pi.product_item_definition_id);
+    pkgItemMap.get(pi.product_id)?.add(pi.biomarker_id);
   }
 
-  // Fetch active product_item_definitions (biomarker-relevant item types)
+  // Fetch active biomarkers (biomarker-relevant item types)
   const { data: defs } = await supabase
-    .from('product_item_definitions')
+    .from('biomarkers')
     .select('id, slug, name, description, unit, range_type, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, sort_order, he_domain, item_type')
     .eq('is_active', true)
-    .in('item_type', ['biomarker', 'vitalcheck_measurement', 'vo2max_test', 'dexa_scan', 'biological_age_test', 'genetic_test'])
+    .in('item_type', ['biomarker', 'clinical_assessment', 'bio_age', 'genetic', 'genetic_test', 'microbiome', 'wearable'])
     .order('sort_order', { ascending: true });
 
   const allDefs = defs ?? [];

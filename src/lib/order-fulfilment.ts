@@ -128,7 +128,7 @@ CREATE POLICY "Service role can manage vouchers"
 CREATE TABLE IF NOT EXISTS order_test_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-  product_item_id UUID NOT NULL REFERENCES product_item_definitions(id),
+  biomarker_id UUID NOT NULL REFERENCES biomarkers(id),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'collected', 'processing', 'completed', 'failed')),
   result_value NUMERIC,
   result_unit TEXT,
@@ -315,8 +315,8 @@ async function executeAction(
       // Get product item definitions (biomarkers) for each product
       const productIds = orderItems.map((i: any) => i.product_id);
       const { data: productItems } = await supabase
-        .from('product_items')
-        .select('product_item_definition_id')
+        .from('product_biomarkers')
+        .select('biomarker_id')
         .in('product_id', productIds);
 
       if (!productItems?.length) break;
@@ -324,7 +324,7 @@ async function executeAction(
       // Create a test item row for each biomarker
       const testItems = productItems.map((pi: any) => ({
         order_id: orderId,
-        product_item_id: pi.product_item_definition_id,
+        biomarker_id: pi.biomarker_id,
         status: 'pending',
       }));
 

@@ -393,7 +393,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   // Load biomarker counts per product once on mount
   useEffect(() => {
     supabase
-      .from('product_items')
+      .from('product_biomarkers')
       .select('product_id')
       .then(({ data }) => {
         if (!data) return;
@@ -408,7 +408,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   // Load all definitions once on mount
   useEffect(() => {
     supabase
-      .from('product_item_definitions')
+      .from('biomarkers')
       .select('id, name, item_type, sort_order')
       .eq('is_active', true)
       .order('sort_order', { ascending: true })
@@ -419,11 +419,11 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   useEffect(() => {
     if (!editingId) { setIncludedItemIds(new Set()); return; }
     supabase
-      .from('product_items')
-      .select('product_item_definition_id')
+      .from('product_biomarkers')
+      .select('biomarker_id')
       .eq('product_id', editingId)
       .then(({ data }) => {
-        setIncludedItemIds(new Set(data?.map((r) => r.product_item_definition_id) ?? []));
+        setIncludedItemIds(new Set(data?.map((r) => r.biomarker_id) ?? []));
       });
   }, [editingId, supabase]);
 
@@ -681,17 +681,17 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       return next;
     });
     if (checked) {
-      await supabase.from('product_items').insert({
+      await supabase.from('product_biomarkers').insert({
         product_id: editingId!,
-        product_item_definition_id: definitionId,
+        biomarker_id: definitionId,
         quantity: 1,
         sort_order: 0,
       });
     } else {
-      await supabase.from('product_items')
+      await supabase.from('product_biomarkers')
         .delete()
         .eq('product_id', editingId!)
-        .eq('product_item_definition_id', definitionId);
+        .eq('biomarker_id', definitionId);
     }
   };
 

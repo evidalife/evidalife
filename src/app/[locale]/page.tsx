@@ -504,7 +504,7 @@ export default async function HomePage() {
     .order('sort_order');
 
   const { data: itemCounts } = await supabase
-    .from('product_items')
+    .from('product_biomarkers')
     .select('product_id, item_id')
     .in('product_id', (products ?? []).map((p) => p.id));
 

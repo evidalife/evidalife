@@ -16,7 +16,7 @@ type LabResult = {
   measured_at: string | null;
   test_date: string | null;
   notes: string | null;
-  product_item_definitions: {
+  biomarkers: {
     name: Record<string, string> | string | null;
     he_domain: string | null;
     ref_range_low: number | null;
@@ -72,7 +72,7 @@ export default function AllResultsTab() {
       .from('lab_results')
       .select(`
         id, value_numeric, unit, status_flag, source, is_reviewed, measured_at, test_date, notes,
-        product_item_definitions:biomarker_definition_id (
+        biomarkers:biomarker_definition_id (
           name, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, unit
         ),
         profiles:user_id ( first_name, last_name, email ),
@@ -92,11 +92,11 @@ export default function AllResultsTab() {
     let rows = (data as unknown as LabResult[]) ?? [];
 
     // Client-side filter: domain (joined field) and search
-    if (domainFilter !== 'all') rows = rows.filter((r) => r.product_item_definitions?.he_domain === domainFilter);
+    if (domainFilter !== 'all') rows = rows.filter((r) => r.biomarkers?.he_domain === domainFilter);
     if (search) {
       const q = search.toLowerCase();
       rows = rows.filter((r) => {
-        const name = locName(r.product_item_definitions?.name).toLowerCase();
+        const name = locName(r.biomarkers?.name).toLowerCase();
         const email = r.profiles?.email?.toLowerCase() ?? '';
         const fname = `${r.profiles?.first_name ?? ''} ${r.profiles?.last_name ?? ''}`.toLowerCase();
         const orderNum = r.orders?.order_number?.toLowerCase() ?? '';
@@ -269,7 +269,7 @@ export default function AllResultsTab() {
               <tr><td colSpan={10} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">No results match the current filters.</td></tr>
             )}
             {!loading && results.map((r) => {
-              const pid = r.product_item_definitions;
+              const pid = r.biomarkers;
               const userName = [r.profiles?.first_name, r.profiles?.last_name].filter(Boolean).join(' ') || r.profiles?.email || '—';
               const bmName = locName(pid?.name) || '—';
               const isExpanded = expandedRow === r.id;

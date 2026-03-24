@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
       .from('lab_results')
       .select(`
         id, value_numeric, unit, status_flag, test_date, measured_at, source, is_reviewed, notes,
-        product_item_definitions:biomarker_definition_id ( name, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, unit ),
+        biomarkers:biomarker_definition_id ( name, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, unit ),
         profiles:user_id ( email, first_name, last_name ),
         orders:order_id ( order_number )
       `)
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     // Filter by domain (can't easily do in query with joined data)
     let rows = (data ?? []) as any[];
     if (domain) {
-      rows = rows.filter((r) => r.product_item_definitions?.he_domain === domain);
+      rows = rows.filter((r) => r.biomarkers?.he_domain === domain);
     }
 
     // Build CSV
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
 
     const csvLines = [headers.join(',')];
     for (const r of rows) {
-      const pid = r.product_item_definitions;
+      const pid = r.biomarkers;
       const prof = r.profiles;
       const bmName = typeof pid?.name === 'object' ? (pid.name?.en || '') : (pid?.name || '');
       const userEmail = prof?.email || '';

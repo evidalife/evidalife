@@ -71,15 +71,15 @@ export default async function ProductSlugPage({ params }: { params: Params }) {
 
   if (isTestProduct) {
     const { data: rows } = await supabase
-      .from('product_items')
-      .select('sort_order, product_item_definitions(id, name, item_type)')
+      .from('product_biomarkers')
+      .select('sort_order, biomarkers(id, name, item_type)')
       .eq('product_id', product.id)
       .order('sort_order', { ascending: true });
 
     if (rows) {
       testItems = rows
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .map((r: any) => r.product_item_definitions)
+        .map((r: any) => r.biomarkers)
         .filter(Boolean) as TestItem[];
     }
   }

@@ -99,7 +99,7 @@ export default function PdfUploadTab() {
   // Load all biomarker definitions for the mapping dropdown
   useEffect(() => {
     loadUploads();
-    supabase.from('product_item_definitions').select('id, name, unit, he_domain').eq('is_active', true)
+    supabase.from('biomarkers').select('id, name, unit, he_domain').eq('is_active', true)
       .then(({ data }) => setAllBiomarkers((data as AllBiomarker[]) ?? []));
   }, []);
 

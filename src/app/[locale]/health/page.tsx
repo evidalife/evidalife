@@ -220,7 +220,7 @@ export default async function HealthPage() {
     .single();
   const { count: itemCount } = completePkg
     ? await supabase
-        .from('product_items')
+        .from('product_biomarkers')
         .select('id', { count: 'exact', head: true })
         .eq('product_id', completePkg.id)
     : { count: null };

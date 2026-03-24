@@ -22,7 +22,7 @@ type Review = {
     status_flag: string | null;
     source: string | null;
     measured_at: string | null;
-    product_item_definitions: {
+    biomarkers: {
       name: Record<string, string> | string | null;
     } | null;
     profiles: {
@@ -86,7 +86,7 @@ export default function ReviewQueueTab({ onCountChange }: { onCountChange?: (n: 
         id, review_type, severity, message, original_value, suggested_value, is_resolved, created_at,
         lab_results:lab_result_id (
           id, value_numeric, unit, status_flag, source, measured_at,
-          product_item_definitions:biomarker_definition_id ( name ),
+          biomarkers:biomarker_definition_id ( name ),
           profiles:user_id ( first_name, last_name, email )
         )
       `)
@@ -185,7 +185,7 @@ export default function ReviewQueueTab({ onCountChange }: { onCountChange?: (n: 
         <div className="space-y-3">
           {filtered.map((review) => {
             const lr = review.lab_results;
-            const bmName = locName(lr?.product_item_definitions?.name) || '—';
+            const bmName = locName(lr?.biomarkers?.name) || '—';
             const userName = lr?.profiles
               ? [lr.profiles.first_name, lr.profiles.last_name].filter(Boolean).join(' ') || lr.profiles.email
               : '—';

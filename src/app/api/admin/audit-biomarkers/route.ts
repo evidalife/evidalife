@@ -24,9 +24,9 @@ export async function GET() {
 
   const issues: AuditIssue[] = [];
 
-  // ── 1. Fetch product_item_definitions ──────────────────────────────────────
+  // ── 1. Fetch biomarkers ──────────────────────────────────────
   const { data: pids } = await admin
-    .from('product_item_definitions')
+    .from('biomarkers')
     .select('id, slug, name, item_type, unit, ref_range_low, ref_range_high, he_domain, is_active');
 
   const items = pids ?? [];
@@ -38,7 +38,7 @@ export async function GET() {
     if (item.item_type === 'coaching_hour' || item.item_type === 'food_item') {
       issues.push({
         severity: 'error',
-        table: 'product_item_definitions',
+        table: 'biomarkers',
         id: item.id,
         name: nameStr,
         issue: `item_type "${item.item_type}" does not belong in a biomarker registry`,
@@ -46,11 +46,11 @@ export async function GET() {
     }
 
     // Missing unit for numeric biomarker types
-    const numericTypes = ['biomarker', 'vitalcheck_measurement', 'vo2max_test'];
+    const numericTypes = ['biomarker', 'clinical_assessment'];
     if (numericTypes.includes(item.item_type ?? '') && !item.unit) {
       issues.push({
         severity: 'warning',
-        table: 'product_item_definitions',
+        table: 'biomarkers',
         id: item.id,
         name: nameStr,
         issue: 'Missing unit (required for numeric biomarkers)',
@@ -61,7 +61,7 @@ export async function GET() {
     if (item.item_type === 'biomarker' && item.ref_range_low == null && item.ref_range_high == null) {
       issues.push({
         severity: 'warning',
-        table: 'product_item_definitions',
+        table: 'biomarkers',
         id: item.id,
         name: nameStr,
         issue: 'Missing reference ranges (ref_range_low / ref_range_high)',
@@ -72,7 +72,7 @@ export async function GET() {
     if (!item.he_domain && item.is_active) {
       issues.push({
         severity: 'info',
-        table: 'product_item_definitions',
+        table: 'biomarkers',
         id: item.id,
         name: nameStr,
         issue: 'No he_domain assigned',
@@ -80,7 +80,7 @@ export async function GET() {
     }
   }
 
-  // ── 2. Duplicate name check within product_item_definitions ───────────────
+  // ── 2. Duplicate name check within biomarkers ───────────────
   const nameIndex = new Map<string, string[]>();
   for (const item of items) {
     const nameObj = item.name as Record<string, string> | null;
@@ -96,7 +96,7 @@ export async function GET() {
     if (ids.length > 1) {
       issues.push({
         severity: 'error',
-        table: 'product_item_definitions',
+        table: 'biomarkers',
         id: ids.join(', '),
         name: nameKey,
         issue: `Duplicate name across ${ids.length} items (IDs: ${ids.join(', ')})`,
@@ -135,7 +135,7 @@ export async function GET() {
     }
   }
 
-  // ── 4. Check for names in biomarker_definitions that also exist in product_item_definitions ──
+  // ── 4. Check for names in biomarker_definitions that also exist in biomarkers ──
   const pidNames = new Set<string>();
   for (const item of items) {
     const nameObj = item.name as Record<string, string> | null;
@@ -156,7 +156,7 @@ export async function GET() {
           table: 'biomarker_definitions',
           id: bd.id,
           name: nameStr,
-          issue: `Name "${v}" also exists in product_item_definitions — possible duplicate across tables`,
+          issue: `Name "${v}" also exists in biomarkers — possible duplicate across tables`,
         });
         break;
       }
@@ -169,7 +169,7 @@ export async function GET() {
     errors: issues.filter((i) => i.severity === 'error').length,
     warnings: issues.filter((i) => i.severity === 'warning').length,
     info: issues.filter((i) => i.severity === 'info').length,
-    product_item_definitions_count: items.length,
+    biomarkers_count: items.length,
     biomarker_definitions_count: bdList.length,
   };
 

@@ -30,7 +30,7 @@ type TestItem = {
   status_flag: string | null;
   lab_result_id: string | null;
   notes: string | null;
-  product_item_definitions: ProductItemDef | null;
+  biomarkers: ProductItemDef | null;
 };
 
 type OrderOption = {
@@ -150,7 +150,7 @@ export default function OrderEntryTab() {
       .from('order_test_items')
       .select(`
         id, status, result_value, result_unit, status_flag, lab_result_id, notes,
-        product_item_definitions:product_item_id (
+        biomarkers:biomarker_id (
           id, name, unit, he_domain, ref_range_low, ref_range_high,
           optimal_range_low, optimal_range_high, range_type
         )
@@ -180,7 +180,7 @@ export default function OrderEntryTab() {
 
   const grouped: Record<string, TestItem[]> = {};
   for (const item of testItems) {
-    const domain = item.product_item_definitions?.he_domain ?? 'other';
+    const domain = item.biomarkers?.he_domain ?? 'other';
     if (!grouped[domain]) grouped[domain] = [];
     grouped[domain].push(item);
   }
@@ -212,7 +212,7 @@ export default function OrderEntryTab() {
     const userId = selectedOrder.user_id ?? null;
 
     const results = toSave.map((item) => {
-      const def = item.product_item_definitions;
+      const def = item.biomarkers;
       const value = editState?.itemId === item.id ? editState.value : inputValues[item.id];
       const notes = editState?.itemId === item.id ? editState.notes : (inputNotes[item.id] || '');
       return {
@@ -436,7 +436,7 @@ export default function OrderEntryTab() {
                     {!collapsed && (
                       <div className="divide-y divide-[#0e393d]/6">
                         {items.map((item) => {
-                          const def = item.product_item_definitions;
+                          const def = item.biomarkers;
                           const isCompleted = item.status === 'completed';
                           const isEditing = editState?.itemId === item.id;
                           const currentVal = isEditing ? editState.value : inputValues[item.id] ?? '';

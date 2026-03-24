@@ -347,7 +347,7 @@ function MyOrdersTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
 type LabResult = {
   id: string; value_numeric: number; unit: string | null; status_flag: string | null;
   test_date: string | null; measured_at: string;
-  product_item_definitions: {
+  biomarkers: {
     name: LocalizedString; unit: string | null; he_domain: string | null;
     ref_range_low: number | null; ref_range_high: number | null;
     optimal_range_low: number | null; optimal_range_high: number | null;
@@ -364,7 +364,7 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
       .from('lab_results')
       .select(`
         id, value_numeric, unit, status_flag, test_date, measured_at,
-        product_item_definitions:biomarker_definition_id (
+        biomarkers:biomarker_definition_id (
           name, unit, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high
         )
       `)
@@ -410,7 +410,7 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
         // Group by HE domain
         const byDomain: Record<string, LabResult[]> = {};
         for (const r of dateResults) {
-          const domain = r.product_item_definitions?.he_domain ?? 'other';
+          const domain = r.biomarkers?.he_domain ?? 'other';
           if (!byDomain[domain]) byDomain[domain] = [];
           byDomain[domain].push(r);
         }
@@ -420,7 +420,7 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
         // Collect prev values from older dates
         const olderResults = dates.slice(dateIdx + 1).flatMap((d) => byDate[d]);
         for (const r of olderResults) {
-          if (r.product_item_definitions && !(r.id in prevValues)) {
+          if (r.biomarkers && !(r.id in prevValues)) {
             prevValues[r.id] = r.value_numeric;
           }
         }
@@ -447,11 +447,11 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
                   </div>
                   <div className="divide-y divide-[#0e393d]/5">
                     {byDomain[domain].map((r) => {
-                      const def = r.product_item_definitions;
+                      const def = r.biomarkers;
                       const name = def ? locName(def.name, lang) : '—';
                       const prevMatch = olderResults.find((pr) =>
-                        pr.product_item_definitions &&
-                        locName(pr.product_item_definitions.name, lang) === name
+                        pr.biomarkers &&
+                        locName(pr.biomarkers.name, lang) === name
                       );
                       const trend = prevMatch
                         ? r.value_numeric > prevMatch.value_numeric ? '↑'

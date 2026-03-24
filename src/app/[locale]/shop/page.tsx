@@ -26,7 +26,7 @@ export default async function ShopPage() {
 
   if (testPackageIds.length > 0) {
     const { data: piRows } = await supabase
-      .from('product_items')
+      .from('product_biomarkers')
       .select('product_id')
       .in('product_id', testPackageIds);
 
