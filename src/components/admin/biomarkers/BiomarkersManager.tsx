@@ -110,8 +110,14 @@ function domainLabel(v: string | null | undefined): string {
 
 function getItemPriority(item: ItemDefinition): ItemPriority {
   if (!item.unit || !item.he_domain) return 'critical';
-  if (item.range_type && item.range_type !== '' && item.ref_range_low == null && item.ref_range_high == null) return 'warning';
-  if (!item.description?.en && !item.description?.de) return 'info';
+  const rt = item.range_type;
+  if (!rt) return 'warning';
+  if (rt === 'lower_is_better'  && (item.ref_range_high == null || item.optimal_range_high == null)) return 'warning';
+  if (rt === 'higher_is_better' && (item.ref_range_low  == null || item.optimal_range_low  == null)) return 'warning';
+  if (rt === 'range' && (
+    item.ref_range_low == null || item.ref_range_high == null ||
+    item.optimal_range_low == null || item.optimal_range_high == null
+  )) return 'warning';
   return null;
 }
 
@@ -638,6 +644,9 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   const [search, setSearch]         = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [domainFilter, setDomainFilter] = useState('');
+  type SortCol = 'name' | 'type' | 'domain' | 'unit' | 'ranges' | 'status' | null;
+  const [sortCol, setSortCol] = useState<SortCol>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [showIncomplete, setShowIncomplete] = useState(false);
   const [panelOpen, setPanelOpen]   = useState(false);
   const [editingId, setEditingId]   = useState<string | null>(null);
@@ -797,6 +806,12 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
 
   // ── Filtering ─────────────────────────────────────────────────────────────
 
+  const handleSort = (col: SortCol) => {
+    if (sortCol !== col) { setSortCol(col); setSortDir('asc'); }
+    else if (sortDir === 'asc') setSortDir('desc');
+    else { setSortCol(null); setSortDir('asc'); }
+  };
+
   const incompleteCount = items.filter((i) => getItemPriority(i) !== null).length;
 
   const filtered = items.filter((item) => {
@@ -812,6 +827,19 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
       item.slug?.toLowerCase().includes(q) ||
       item.unit?.toLowerCase().includes(q)
     );
+  });
+
+  const priorityOrder = (p: ItemPriority) => p === 'critical' ? 0 : p === 'warning' ? 1 : 2;
+
+  const sorted = sortCol === null ? filtered : [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sortCol === 'name')   cmp = (a.name?.en || a.name?.de || '').localeCompare(b.name?.en || b.name?.de || '');
+    if (sortCol === 'type')   cmp = (a.item_type || '').localeCompare(b.item_type || '');
+    if (sortCol === 'domain') cmp = (a.he_domain || '').localeCompare(b.he_domain || '');
+    if (sortCol === 'unit')   cmp = (a.unit || '').localeCompare(b.unit || '');
+    if (sortCol === 'ranges') cmp = (a.ref_range_low ?? -Infinity) - (b.ref_range_low ?? -Infinity);
+    if (sortCol === 'status') cmp = priorityOrder(getItemPriority(a)) - priorityOrder(getItemPriority(b));
+    return sortDir === 'asc' ? cmp : -cmp;
   });
 
   const previewRanges = { refLow: parseNum(form.ref_range_low), refHigh: parseNum(form.ref_range_high), optLow: parseNum(form.optimal_range_low), optHigh: parseNum(form.optimal_range_high) };
@@ -890,20 +918,31 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Name</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Type</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Health Domain</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Unit</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Ranges</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Status</th>
+              {(['name', 'type', 'domain', 'unit', 'ranges', 'status'] as const).map((col) => {
+                const labels: Record<string, string> = { name: 'Name', type: 'Type', domain: 'Health Domain', unit: 'Unit', ranges: 'Ranges', status: 'Status' };
+                const active = sortCol === col;
+                return (
+                  <th key={col} className="px-4 py-3 text-left">
+                    <button
+                      onClick={() => handleSort(col)}
+                      className={`flex items-center gap-1 text-xs font-medium uppercase tracking-wider transition hover:text-[#0e393d] ${active ? 'text-[#0e393d]' : 'text-[#0e393d]/60'}`}
+                    >
+                      {labels[col]}
+                      <span className="text-[10px] leading-none">
+                        {active && sortDir === 'asc' ? '▲' : active && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}
+                      </span>
+                    </button>
+                  </th>
+                );
+              })}
               <th className="px-4 py-3 text-right text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#0e393d]/6">
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">No biomarkers found.</td></tr>
             )}
-            {filtered.map((item) => {
+            {sorted.map((item) => {
               const priority = getItemPriority(item);
               return (
                 <tr key={item.id} className="hover:bg-[#fafaf8] transition-colors cursor-pointer" onClick={() => openEdit(item)}>
