@@ -105,7 +105,7 @@ const RANGE_TYPES = [
   { value: 'higher_is_better', label: 'Higher is better (HDL, Vit D, eGFR…)' },
 ];
 
-const LANGS: Lang[] = ['de', 'en', 'fr', 'es', 'it'];
+const LANGS: Lang[] = ['de', 'en', 'es', 'fr', 'it'];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

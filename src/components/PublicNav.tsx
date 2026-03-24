@@ -196,7 +196,7 @@ export default function PublicNav() {
                   className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.14)] border border-[#0e393d]/8 min-w-[140px] py-1.5"
                   style={{ animation: 'dropdownIn 0.15s ease-out' }}
                 >
-                  {([['de', 'Deutsch'], ['en', 'English'], ['fr', 'Français'], ['es', 'Español'], ['it', 'Italiano']] as [Locale, string][]).map(([l, label]) => (
+                  {([['de', 'Deutsch'], ['en', 'English'], ['es', 'Español'], ['fr', 'Français'], ['it', 'Italiano']] as [Locale, string][]).map(([l, label]) => (
                     <button
                       key={l}
                       onClick={() => changeLang(l)}

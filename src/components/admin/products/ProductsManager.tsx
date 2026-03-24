@@ -943,7 +943,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
               <div className="flex items-center gap-2 flex-wrap justify-end">
                 {/* Lang tabs */}
                 <div className="flex rounded-lg border border-[#0e393d]/15 overflow-hidden text-xs">
-                  {(['de', 'en', 'fr', 'es', 'it'] as Lang[]).map((l) => (
+                  {(['de', 'en', 'es', 'fr', 'it'] as Lang[]).map((l) => (
                     <button key={l} onClick={() => setLang(l)}
                       className={`px-2.5 py-1.5 font-medium transition ${lang === l ? 'bg-[#0e393d] text-white' : 'text-[#1c2a2b]/60 hover:bg-[#0e393d]/5'}`}>
                       {l.toUpperCase()}

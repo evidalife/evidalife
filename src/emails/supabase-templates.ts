@@ -7,6 +7,8 @@
 // Admin preview + copy: /admin/communications → Auth Emails tab
 // ============================================================================
 
+import { buildEmailShell } from '@/emails/templates';
+
 export type Lang = 'en' | 'de' | 'fr' | 'es' | 'it';
 
 export type AuthEmailContent = {
@@ -218,106 +220,45 @@ const AUTH_T: Record<AuthTemplateId, Record<Lang, AuthEmailContent>> = {
   },
 };
 
-// ── Layout (fully inline CSS for Supabase compatibility) ──────────────────────
+// ── Builder helpers ───────────────────────────────────────────────────────────
 
-const LOGO_URL = 'https://evidalife.com/logo-email.png';
 const PREVIEW_URL = 'https://evidalife.com/auth/confirm?token=preview-token&type=preview';
 
-function authLayout(content: AuthEmailContent, confirmationUrl: string): string {
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin:0;padding:0;background-color:#f7f5f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f7f5f0;">
-    <tr><td align="center" style="padding:40px 20px;">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-
-        <!-- Header -->
-        <tr><td style="background-color:#0e393d;padding:32px 40px;text-align:center;border-radius:16px 16px 0 0;">
-          <img src="${LOGO_URL}" width="44" height="44" alt="Evida Life" style="border-radius:50%;display:block;margin:0 auto 12px;" onerror="this.style.display='none'">
-          <span style="font-size:16px;font-weight:700;color:#ffffff;letter-spacing:4px;text-transform:uppercase;font-family:Georgia,'Times New Roman',serif;">EVIDA LIFE</span>
-        </td></tr>
-
-        <!-- Gold accent bar -->
-        <tr><td style="height:3px;background:linear-gradient(90deg,transparent,#ceab84,transparent);"></td></tr>
-
-        <!-- Body -->
-        <tr><td style="background-color:#ffffff;padding:48px 40px;border-radius:0 0 16px 16px;">
-          <h1 style="margin:0 0 16px;font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;color:#0e393d;line-height:1.25;">
-            ${content.heading}
-          </h1>
-          <p style="margin:0 0 32px;font-size:16px;line-height:1.7;color:#1c2a2b;">
-            ${content.body}
-          </p>
-
-          <!-- CTA Button -->
-          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
-            <tr><td style="background-color:#ceab84;border-radius:12px;text-align:center;">
-              <a href="${confirmationUrl}" style="display:inline-block;padding:14px 40px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.3px;">
-                ${content.buttonText}
-              </a>
-            </td></tr>
-          </table>
-
-          <!-- Fallback link -->
-          <p style="margin:0 0 24px;font-size:12px;line-height:1.5;color:rgba(28,42,43,0.45);text-align:center;">
-            If the button doesn't work, copy this link:<br>
-            <a href="${confirmationUrl}" style="color:#ceab84;text-decoration:none;word-break:break-all;">${confirmationUrl}</a>
-          </p>
-
-          <p style="margin:0;font-size:13px;line-height:1.6;color:rgba(28,42,43,0.5);">
-            ${content.footerNote}
-          </p>
-        </td></tr>
-
-        <!-- Footer -->
-        <tr><td style="padding:24px 40px;text-align:center;">
-          <p style="margin:0;font-size:12px;color:rgba(28,42,43,0.4);line-height:1.8;">
-            Evida Life AG &middot; Switzerland<br>
-            <a href="https://evidalife.com" style="color:#ceab84;text-decoration:none;">evidalife.com</a>
-          </p>
-        </td></tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+function buildAuthHtml(content: AuthEmailContent, preview: boolean): string {
+  return buildEmailShell({
+    heading: content.heading,
+    bodyHtml: `<p style="margin:0 0 8px;font-size:16px;line-height:1.7;color:#1c2a2b;">${content.body}</p>`,
+    ctaUrl: preview ? PREVIEW_URL : '{{ .ConfirmationURL }}',
+    ctaText: content.buttonText,
+    footerNote: content.footerNote,
+  });
 }
 
 // ── Exported builder functions ────────────────────────────────────────────────
 
 export function buildConfirmSignupEmail(lang: Lang, overrides?: Partial<AuthEmailContent>, preview?: boolean): { subject: string; html: string } {
-  const defaults = AUTH_T.confirm_signup[lang] ?? AUTH_T.confirm_signup.en;
-  const content = { ...defaults, ...overrides };
-  return { subject: content.subject, html: authLayout(content, preview ? PREVIEW_URL : '{{ .ConfirmationURL }}') };
+  const content = { ...AUTH_T.confirm_signup[lang] ?? AUTH_T.confirm_signup.en, ...overrides };
+  return { subject: content.subject, html: buildAuthHtml(content, !!preview) };
 }
 
 export function buildResetPasswordEmail(lang: Lang, overrides?: Partial<AuthEmailContent>, preview?: boolean): { subject: string; html: string } {
-  const defaults = AUTH_T.reset_password[lang] ?? AUTH_T.reset_password.en;
-  const content = { ...defaults, ...overrides };
-  return { subject: content.subject, html: authLayout(content, preview ? PREVIEW_URL : '{{ .ConfirmationURL }}') };
+  const content = { ...AUTH_T.reset_password[lang] ?? AUTH_T.reset_password.en, ...overrides };
+  return { subject: content.subject, html: buildAuthHtml(content, !!preview) };
 }
 
 export function buildMagicLinkEmail(lang: Lang, overrides?: Partial<AuthEmailContent>, preview?: boolean): { subject: string; html: string } {
-  const defaults = AUTH_T.magic_link[lang] ?? AUTH_T.magic_link.en;
-  const content = { ...defaults, ...overrides };
-  return { subject: content.subject, html: authLayout(content, preview ? PREVIEW_URL : '{{ .ConfirmationURL }}') };
+  const content = { ...AUTH_T.magic_link[lang] ?? AUTH_T.magic_link.en, ...overrides };
+  return { subject: content.subject, html: buildAuthHtml(content, !!preview) };
 }
 
 export function buildChangeEmailEmail(lang: Lang, overrides?: Partial<AuthEmailContent>, preview?: boolean): { subject: string; html: string } {
-  const defaults = AUTH_T.change_email_address[lang] ?? AUTH_T.change_email_address.en;
-  const content = { ...defaults, ...overrides };
-  return { subject: content.subject, html: authLayout(content, preview ? PREVIEW_URL : '{{ .ConfirmationURL }}') };
+  const content = { ...AUTH_T.change_email_address[lang] ?? AUTH_T.change_email_address.en, ...overrides };
+  return { subject: content.subject, html: buildAuthHtml(content, !!preview) };
 }
 
 export function buildInviteUserEmail(lang: Lang, overrides?: Partial<AuthEmailContent>, preview?: boolean): { subject: string; html: string } {
-  const defaults = AUTH_T.invite_user[lang] ?? AUTH_T.invite_user.en;
-  const content = { ...defaults, ...overrides };
-  return { subject: content.subject, html: authLayout(content, preview ? PREVIEW_URL : '{{ .ConfirmationURL }}') };
+  const content = { ...AUTH_T.invite_user[lang] ?? AUTH_T.invite_user.en, ...overrides };
+  return { subject: content.subject, html: buildAuthHtml(content, !!preview) };
 }
 
 // ── Helpers used by admin UI ──────────────────────────────────────────────────

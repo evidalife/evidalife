@@ -15,9 +15,29 @@ interface BaseEmailData {
   siteUrl?: string;
 }
 
-// ── Shared layout wrapper ──────────────────────────────────────────────
+// ── Shared layout shell (used by all 10 templates) ────────────────────
 
-function emailLayout(content: string, preheader: string): string {
+export function buildEmailShell(opts: {
+  heading: string;
+  bodyHtml: string;
+  ctaUrl?: string;
+  ctaText?: string;
+  footerNote?: string;
+  preheader?: string;
+}): string {
+  const ctaBlock = opts.ctaUrl ? `
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:32px auto 0;">
+        <tr><td style="background-color:#ceab84;border-radius:12px;text-align:center;">
+          <a href="${opts.ctaUrl}" target="_blank" style="display:inline-block;padding:14px 40px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.5px;">${opts.ctaText ?? 'Continue'}</a>
+        </td></tr>
+      </table>
+      <p style="margin:16px 0 0;font-size:11px;line-height:1.5;color:rgba(28,42,43,0.35);text-align:center;">
+        If the button doesn't work, copy this link:<br>
+        <a href="${opts.ctaUrl}" style="color:#ceab84;word-break:break-all;">${opts.ctaUrl}</a>
+      </p>` : '';
+  const footerNoteBlock = opts.footerNote ? `
+      <p style="margin:28px 0 0;font-size:13px;line-height:1.6;color:rgba(28,42,43,0.5);">${opts.footerNote}</p>` : '';
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -27,32 +47,20 @@ function emailLayout(content: string, preheader: string): string {
 <meta name="supported-color-schemes" content="light">
 <!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
 <style>
-  body{margin:0;padding:0;background:#f5f4f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
-  .wrapper{width:100%;background:#f5f4f0;padding:40px 0}
-  .container{max-width:580px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid rgba(14,57,61,0.08)}
-  .header{background:#0e393d;padding:32px 40px;text-align:center}
-  .logo{color:#C4A96A;font-size:22px;font-weight:700;letter-spacing:2px;text-decoration:none;text-transform:uppercase}
-  .body{padding:40px}
-  .greeting{font-size:24px;color:#0e393d;font-weight:700;margin:0 0 8px}
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
+  body{margin:0;padding:0;background:#f7f5f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
   .subtext{font-size:16px;color:#5f5e5a;line-height:1.6;margin:0 0 28px}
-  .section-title{font-size:12px;color:#C4A96A;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:32px 0 16px;padding-bottom:8px;border-bottom:1px solid rgba(14,57,61,0.08)}
+  .section-title{font-size:12px;color:#ceab84;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:32px 0 16px;padding-bottom:8px;border-bottom:1px solid rgba(14,57,61,0.08)}
   .card{background:#fafaf8;border-radius:12px;padding:20px 24px;margin:0 0 16px;border:1px solid rgba(14,57,61,0.06)}
-  .card-row{display:flex;justify-content:space-between;margin:4px 0}
-  .card-label{font-size:14px;color:#888780}
-  .card-value{font-size:14px;color:#0e393d;font-weight:600}
   .btn{display:inline-block;background:#0e393d;color:#ffffff !important;padding:14px 32px;border-radius:50px;font-size:15px;font-weight:600;text-decoration:none;text-align:center;margin:8px 0}
   .btn-outline{display:inline-block;background:transparent;color:#0e393d !important;padding:12px 28px;border-radius:50px;font-size:14px;font-weight:600;text-decoration:none;border:2px solid rgba(14,57,61,0.15)}
-  .btn-gold{display:inline-block;background:#C4A96A;color:#ffffff !important;padding:14px 32px;border-radius:50px;font-size:15px;font-weight:600;text-decoration:none}
+  .btn-gold{display:inline-block;background:#ceab84;color:#ffffff !important;padding:14px 32px;border-radius:50px;font-size:15px;font-weight:600;text-decoration:none}
   .divider{height:1px;background:rgba(14,57,61,0.08);margin:28px 0}
   .highlight-box{background:linear-gradient(135deg,#0e393d 0%,#145a54 100%);border-radius:12px;padding:24px;text-align:center;margin:24px 0}
   .highlight-score{font-size:48px;font-weight:800;color:#0C9C6C;margin:0}
   .highlight-label{font-size:14px;color:rgba(255,255,255,0.7);margin:4px 0 0}
-  .footer{padding:24px 40px;text-align:center;border-top:1px solid rgba(14,57,61,0.06)}
-  .footer-text{font-size:12px;color:#888780;line-height:1.5;margin:0}
-  .footer-link{color:#C4A96A;text-decoration:none}
-  .gold-bar{height:3px;background:linear-gradient(90deg,transparent,#C4A96A,transparent)}
   .badge{display:inline-block;background:#0C9C6C;color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:0.5px}
-  .badge-gold{background:#C4A96A}
+  .badge-gold{background:#ceab84}
   .badge-warn{background:#ef9f27}
   .item-row{padding:12px 0;border-bottom:1px solid rgba(14,57,61,0.05)}
   .item-row:last-child{border-bottom:none}
@@ -62,30 +70,35 @@ function emailLayout(content: string, preheader: string): string {
   .total-row{padding:16px 0;border-top:2px solid #0e393d}
   .total-label{font-size:16px;color:#0e393d;font-weight:700}
   .total-price{font-size:20px;color:#0e393d;font-weight:800}
-  .preheader{display:none !important;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#f5f4f0}
-  @media(max-width:620px){.container{margin:0 16px;border-radius:12px}.body{padding:28px 24px}.header{padding:24px}.greeting{font-size:20px}}
+  .preheader{display:none !important;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#f7f5f0}
+  @media(max-width:620px){.inner-td{padding:28px 24px !important}}
 </style>
 </head>
 <body>
-<div class="preheader">${preheader}</div>
-<div class="wrapper">
-<div class="container">
-<div class="header">
-  <img src="https://evidalife.com/logo-email.png" width="44" height="44" alt="Evida Life" style="border-radius:50%;display:block;margin:0 auto 12px;" onerror="this.style.display='none'">
-  <div style="font-size:16px;font-weight:700;color:#ffffff;letter-spacing:4px;text-transform:uppercase;font-family:Georgia,'Times New Roman',serif;">EVIDA LIFE</div>
-</div>
-<div class="gold-bar"></div>
-${content}
-<div class="footer">
-  <p class="footer-text">
-    Evida Life AG · Zürich, Switzerland<br>
-    <a href="https://evidalife.com/privacy" class="footer-link">Privacy</a> ·
-    <a href="https://evidalife.com/terms" class="footer-link">Terms</a> ·
-    <a href="https://evidalife.com/contact" class="footer-link">Contact</a>
-  </p>
-</div>
-</div>
-</div>
+<div class="preheader">${opts.preheader ?? ''}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f5f0;">
+  <tr><td align="center" style="padding:40px 20px;">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+      <tr><td style="background:#0e393d;padding:28px 40px;text-align:center;border-radius:16px 16px 0 0;">
+        <img src="https://evidalife.com/logo-email.png" width="44" height="44" alt="Evida Life" style="border-radius:50%;display:block;margin:0 auto 12px;" onerror="this.style.display='none'">
+        <span style="font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-size:16px;font-weight:700;color:#ffffff;letter-spacing:4px;text-transform:uppercase;">EVIDA LIFE</span>
+      </td></tr>
+      <tr><td style="background:#ceab84;height:3px;font-size:0;line-height:0;">&nbsp;</td></tr>
+      <tr><td class="inner-td" style="background:#ffffff;padding:44px 40px;border-radius:0 0 16px 16px;">
+        <h1 style="margin:0 0 20px;font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;color:#0e393d;line-height:1.3;">${opts.heading}</h1>
+        ${opts.bodyHtml}
+        ${ctaBlock}
+        ${footerNoteBlock}
+      </td></tr>
+      <tr><td style="padding:24px 40px;text-align:center;">
+        <p style="margin:0;font-size:12px;line-height:1.6;color:rgba(28,42,43,0.4);">
+          Evida Life AG &middot; Switzerland<br>
+          <a href="https://evidalife.com" style="color:#ceab84;text-decoration:none;">evidalife.com</a>
+        </p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
 </body>
 </html>`;
 }
@@ -197,9 +210,7 @@ export function buildWelcomeEmail({ lang, firstName }: WelcomeEmailData) {
   const t = WELCOME_T[lang] || WELCOME_T.en;
   const url = 'https://evidalife.com';
 
-  const content = `
-<div class="body">
-  <h1 class="greeting">${t.greeting}, ${firstName} 👋</h1>
+  const bodyHtml = `
   <p class="subtext">${t.intro}</p>
 
   <div class="section-title">${t.whatNext}</div>
@@ -225,12 +236,11 @@ export function buildWelcomeEmail({ lang, firstName }: WelcomeEmailData) {
   </div>
 
   <div class="divider"></div>
-  <p style="font-size:14px;color:#888780;text-align:center;margin:0">${t.closing}</p>
-</div>`;
+  <p style="font-size:14px;color:#888780;text-align:center;margin:0">${t.closing}</p>`;
 
   return {
     subject: t.subject,
-    html: emailLayout(content, t.preheader),
+    html: buildEmailShell({ heading: `${t.greeting}, ${firstName} 👋`, bodyHtml, preheader: t.preheader }),
   };
 }
 
@@ -382,12 +392,7 @@ export function buildOrderConfirmationEmail(data: OrderEmailData) {
       <div class="item-price">${fmt(item.price * item.quantity)}</div>
     </div>`).join('');
 
-  const content = `
-<div class="body">
-  <div style="text-align:center;margin-bottom:24px">
-    <span class="badge">✓ ${t.greeting}</span>
-  </div>
-  <h1 class="greeting" style="text-align:center">${t.greeting}, ${data.firstName}!</h1>
+  const bodyHtml = `
   <p class="subtext" style="text-align:center">${t.intro}</p>
 
   <div class="section-title">${t.orderDetails} · #${data.orderNumber}</div>
@@ -410,20 +415,19 @@ export function buildOrderConfirmationEmail(data: OrderEmailData) {
 
   <div class="section-title">${t.nextSteps}</div>
   <div class="card">
-    <div style="padding:6px 0"><span style="color:#C4A96A;font-weight:700;margin-right:8px">1.</span> ${t.step1}</div>
-    <div style="padding:6px 0"><span style="color:#C4A96A;font-weight:700;margin-right:8px">2.</span> ${t.step2}</div>
-    <div style="padding:6px 0"><span style="color:#C4A96A;font-weight:700;margin-right:8px">3.</span> ${t.step3}</div>
+    <div style="padding:6px 0"><span style="color:#ceab84;font-weight:700;margin-right:8px">1.</span> ${t.step1}</div>
+    <div style="padding:6px 0"><span style="color:#ceab84;font-weight:700;margin-right:8px">2.</span> ${t.step2}</div>
+    <div style="padding:6px 0"><span style="color:#ceab84;font-weight:700;margin-right:8px">3.</span> ${t.step3}</div>
   </div>
 
   <div style="text-align:center;margin:28px 0 16px">
     <a href="${url}/${data.lang}/orders" class="btn">${t.ctaOrders}</a>
   </div>
-  <p style="font-size:13px;color:#888780;text-align:center;margin:0">${t.invoiceNote}</p>
-</div>`;
+  <p style="font-size:13px;color:#888780;text-align:center;margin:0">${t.invoiceNote}</p>`;
 
   return {
     subject: t.subject(data.orderNumber),
-    html: emailLayout(content, t.preheader),
+    html: buildEmailShell({ heading: `${t.greeting}, ${data.firstName}!`, bodyHtml, preheader: t.preheader }),
   };
 }
 
@@ -548,9 +552,7 @@ export function buildVoucherEmail(data: VoucherEmailData) {
   const t = VOUCHER_T[data.lang] || VOUCHER_T.en;
   const url = 'https://evidalife.com';
 
-  const content = `
-<div class="body">
-  <h1 class="greeting">${t.greeting}, ${data.firstName}!</h1>
+  const bodyHtml = `
   <p class="subtext">${t.intro(data.packageName)}</p>
 
   <div class="highlight-box">
@@ -568,10 +570,10 @@ export function buildVoucherEmail(data: VoucherEmailData) {
 
   <div class="section-title">${t.howTo}</div>
   <div class="card">
-    <div style="padding:6px 0"><span style="color:#C4A96A;font-weight:700;margin-right:8px">1.</span> ${t.step1}</div>
-    <div style="padding:6px 0"><span style="color:#C4A96A;font-weight:700;margin-right:8px">2.</span> ${t.step2(data.labPartnerName)}</div>
-    <div style="padding:6px 0"><span style="color:#C4A96A;font-weight:700;margin-right:8px">3.</span> ${t.step3}</div>
-    <div style="padding:6px 0"><span style="color:#C4A96A;font-weight:700;margin-right:8px">4.</span> ${t.step4}</div>
+    <div style="padding:6px 0"><span style="color:#ceab84;font-weight:700;margin-right:8px">1.</span> ${t.step1}</div>
+    <div style="padding:6px 0"><span style="color:#ceab84;font-weight:700;margin-right:8px">2.</span> ${t.step2(data.labPartnerName)}</div>
+    <div style="padding:6px 0"><span style="color:#ceab84;font-weight:700;margin-right:8px">3.</span> ${t.step3}</div>
+    <div style="padding:6px 0"><span style="color:#ceab84;font-weight:700;margin-right:8px">4.</span> ${t.step4}</div>
   </div>
 
   <div class="card" style="border-left:3px solid #ef9f27;border-radius:0 12px 12px 0">
@@ -581,12 +583,11 @@ export function buildVoucherEmail(data: VoucherEmailData) {
 
   <div style="text-align:center;margin:28px 0">
     <a href="${url}/${data.lang}/partner-labs" class="btn">${t.ctaLabs}</a>
-  </div>
-</div>`;
+  </div>`;
 
   return {
     subject: t.subject,
-    html: emailLayout(content, t.preheader),
+    html: buildEmailShell({ heading: `${t.greeting}, ${data.firstName}!`, bodyHtml, preheader: t.preheader }),
   };
 }
 
@@ -709,9 +710,7 @@ export function buildResultsReadyEmail(data: ResultsEmailData) {
   ${ageDiff !== null ? `<p style="text-align:center;font-size:14px;color:${ageDiff <= 0 ? '#0C9C6C' : '#E24B4A'};font-weight:600;margin:8px 0 0">${t.yearsDiff(ageDiff)}</p>` : ''}
   ` : '';
 
-  const content = `
-<div class="body">
-  <h1 class="greeting">${t.greeting}, ${data.firstName}!</h1>
+  const bodyHtml = `
   <p class="subtext">${t.intro}</p>
 
   <div class="highlight-box">
@@ -732,13 +731,12 @@ export function buildResultsReadyEmail(data: ResultsEmailData) {
   </div>
 
   <div class="divider"></div>
-  <div style="font-size:13px;font-weight:700;color:#C4A96A;margin-bottom:6px">${t.tip}</div>
-  <p style="font-size:14px;color:#5f5e5a;line-height:1.5;margin:0">${t.tipText}</p>
-</div>`;
+  <div style="font-size:13px;font-weight:700;color:#ceab84;margin-bottom:6px">${t.tip}</div>
+  <p style="font-size:14px;color:#5f5e5a;line-height:1.5;margin:0">${t.tipText}</p>`;
 
   return {
     subject: t.subject,
-    html: emailLayout(content, t.preheader(data.longevityScore)),
+    html: buildEmailShell({ heading: `${t.greeting}, ${data.firstName}!`, bodyHtml, preheader: t.preheader(data.longevityScore) }),
   };
 }
 
@@ -842,12 +840,10 @@ export function buildProcessingEmail(data: ProcessingEmailData) {
   const t = PROCESSING_T[data.lang] || PROCESSING_T.en;
   const url = 'https://evidalife.com';
 
-  const content = `
-<div class="body">
+  const bodyHtml = `
   <div style="text-align:center;margin-bottom:24px">
     <span class="badge badge-gold">${t.processing}</span>
   </div>
-  <h1 class="greeting">${t.greeting}, ${data.firstName}!</h1>
   <p class="subtext">${t.intro}</p>
 
   <div class="section-title">${t.status}</div>
@@ -863,7 +859,7 @@ export function buildProcessingEmail(data: ProcessingEmailData) {
     </div>
     <div style="margin-left:12px;width:1px;height:20px;background:rgba(14,57,61,0.1)"></div>
     <div style="padding:8px 0;display:flex;align-items:center">
-      <div style="width:24px;height:24px;border-radius:50%;background:#C4A96A;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0">
+      <div style="width:24px;height:24px;border-radius:50%;background:#ceab84;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0">
         <span style="color:#fff;font-size:14px">⏳</span>
       </div>
       <div>
@@ -890,11 +886,10 @@ export function buildProcessingEmail(data: ProcessingEmailData) {
 
   <div style="text-align:center;margin:28px 0">
     <a href="${url}/${data.lang}/daily-dozen" class="btn">${t.ctaTracker}</a>
-  </div>
-</div>`;
+  </div>`;
 
   return {
     subject: t.subject,
-    html: emailLayout(content, t.preheader),
+    html: buildEmailShell({ heading: `${t.greeting}, ${data.firstName}!`, bodyHtml, preheader: t.preheader }),
   };
 }

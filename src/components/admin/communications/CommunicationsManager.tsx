@@ -101,8 +101,8 @@ const TRANS_TEMPLATE_OPTIONS: { value: TemplateName; label: string }[] = [
 const LANG_OPTIONS: { value: Lang; label: string }[] = [
   { value: 'de', label: 'DE' },
   { value: 'en', label: 'EN' },
-  { value: 'fr', label: 'FR' },
   { value: 'es', label: 'ES' },
+  { value: 'fr', label: 'FR' },
   { value: 'it', label: 'IT' },
 ];
 
