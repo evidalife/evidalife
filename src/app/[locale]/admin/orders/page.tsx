@@ -8,11 +8,8 @@ export default async function OrdersPage() {
     .from('orders')
     .select(`
       *,
-      profiles ( email, full_name ),
-      order_items (
-        id, quantity, unit_price, currency,
-        products ( name, sku, image_url )
-      )
+      profiles(email, first_name, last_name),
+      order_items(id, quantity, unit_price, currency, products(name, sku, image_url))
     `)
     .order('created_at', { ascending: false })
     .limit(500);

@@ -379,7 +379,7 @@ async function executeAction(
 
 // ── Email dispatcher ───────────────────────────────────────────────────
 
-async function sendFulfilmentEmail(
+export async function sendFulfilmentEmail(
   template: string,
   orderId: string,
   userId: string,
