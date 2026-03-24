@@ -19,16 +19,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'name_en is required' }, { status: 400 });
   }
 
-  const prompt = `You are a clinical laboratory and precision medicine expert. Given the biomarker or health measurement named "${name_en}", provide complete registry data.
+  const prompt = `You are a clinical laboratory expert specializing in Swiss, German, and Austrian precision medicine labs. Given the biomarker or health measurement named "${name_en}", provide complete registry data.
 
 Return ONLY valid JSON matching this exact structure:
 {
   "unit": string | null,
+  "range_logic": "lower_is_better" | "higher_is_better" | "range" | null,
   "ref_range_low": number | null,
   "ref_range_high": number | null,
   "optimal_range_low": number | null,
   "optimal_range_high": number | null,
-  "body_system": string | null,
   "he_domain": string | null,
   "description_de": string,
   "description_en": string,
@@ -38,12 +38,16 @@ Return ONLY valid JSON matching this exact structure:
 }
 
 Rules:
-- unit: standard SI or conventional unit used in clinical labs (e.g. "mg/dL", "mmol/L", "µg/L", "pg/mL", "IU/L", "bpm", "%", "kg/m²"). Use null if not applicable.
-- ref_range_low / ref_range_high: standard adult clinical reference range (typical lab normal range). Use the most widely accepted values. Use null if not a numeric biomarker.
-- optimal_range_low / optimal_range_high: evidence-based optimal/longevity-focused range (may be narrower than reference range). Use null if unknown or not applicable.
-- body_system: MUST be exactly one of these or null: heart_vessels, metabolism, inflammation, organ_function, nutrients, hormones, body_composition, fitness, epigenetics
-- he_domain: MUST be exactly one of these or null: heart_vessels, metabolism, inflammation, organ_function, nutrients, hormones, fitness, longevity
-- description_*: 1–2 clear, accessible sentences explaining what this biomarker measures and why it matters for health. Write in the target language (de=German, en=English, fr=French, es=Spanish, it=Italian). Keep it patient-friendly, not overly clinical.
+- unit: IMPORTANT — use the unit most commonly reported in Swiss/German/Austrian clinical labs. Examples: mg/dL for lipids (LDL, HDL, total cholesterol, triglycerides), µmol/L for homocysteine and uric acid, nmol/L for vitamin D (25-OH), pmol/L for fT3/fT4, mIU/L for TSH, µg/L for ferritin and B12, U/L for ALT/AST/GGT/ALP, g/dL for haemoglobin, g/L for albumin/total protein, ×10⁹/L for WBC/platelets, ×10¹²/L for red blood cells, % for HbA1c and haematocrit, mmol/L for glucose/HbA1c (if SI preferred), mL/min/1.73m² for eGFR, mL/kg/min for VO₂max. Use null only if truly not applicable.
+- range_logic: "lower_is_better" if lower values are healthier (e.g. LDL, hs-CRP, HbA1c, ApoB, homocysteine, triglycerides), "higher_is_better" if higher is healthier (e.g. HDL, vitamin D, eGFR, VO₂max, testosterone), "range" if both bounds define normal (e.g. TSH, fT3/fT4, haemoglobin, glucose, sodium). Use null if not a numeric measurement.
+- ref_range_low: only provide if range_logic is "higher_is_better" or "range". Set null for "lower_is_better".
+- ref_range_high: only provide if range_logic is "lower_is_better" or "range". Set null for "higher_is_better".
+- optimal_range_low: only provide if range_logic is "higher_is_better" or "range". Set null for "lower_is_better".
+- optimal_range_high: only provide if range_logic is "lower_is_better" or "range". Set null for "higher_is_better".
+- Use standard adult clinical reference ranges (most widely accepted values for Swiss/EU labs).
+- optimal ranges should reflect evidence-based longevity/performance targets (may differ from lab normals).
+- he_domain: MUST be exactly one of these or null: heart_vessels, metabolism, inflammation, organ_function, nutrients, hormones, body_composition, fitness, epigenetics, genetics
+- description_*: 1–2 clear, accessible sentences explaining what this biomarker measures and why it matters for health. Write in the target language (de=German, en=English, fr=French, es=Spanish, it=Italian). Patient-friendly, not overly clinical.
 - Return ONLY the JSON object, no markdown, no explanation`;
 
   const client = new Anthropic({ apiKey });

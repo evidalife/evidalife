@@ -15,19 +15,23 @@ export function locName(field: LocalizedString | null | undefined): string {
 }
 
 export const HE_DOMAIN_LABEL: Record<string, string> = {
-  heart_vessels:  'Heart & Vessels',
-  metabolism:     'Metabolism',
-  inflammation:   'Inflammation',
-  organ_function: 'Organ Function',
-  nutrients:      'Nutrients',
-  hormones:       'Hormones',
-  fitness:        'Fitness & Body',
-  longevity:      'Longevity',
+  heart_vessels:    'Heart & Vessels',
+  metabolism:       'Metabolism',
+  inflammation:     'Inflammation & Immune',
+  organ_function:   'Organ Function',
+  nutrients:        'Nutrients',
+  hormones:         'Hormones',
+  body_composition: 'Body Composition',
+  fitness:          'Fitness & Recovery',
+  epigenetics:      'Epigenetics / Bio Age',
+  genetics:         'Genetics / DNA Risk',
+  // legacy values kept for display compatibility
+  longevity:        'Longevity',
 };
 
 export const HE_DOMAIN_ORDER = [
   'heart_vessels', 'metabolism', 'inflammation', 'organ_function',
-  'nutrients', 'hormones', 'fitness', 'longevity',
+  'nutrients', 'hormones', 'body_composition', 'fitness', 'epigenetics', 'genetics',
 ];
 
 export function Badge({
