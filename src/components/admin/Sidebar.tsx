@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -216,6 +217,16 @@ const NAV_GROUPS: NavGroup[] = [
 export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [reviewCount, setReviewCount] = useState(0);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from('lab_result_reviews')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_resolved', false)
+      .then(({ count }) => setReviewCount(count ?? 0));
+  }, []);
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -244,6 +255,7 @@ export default function AdminSidebar() {
             )}
             {group.items.map(({ label, href, icon }) => {
               const isActive = href === '/' ? false : href === '/admin' ? pathname === '/admin' : pathname.startsWith(href);
+              const isLabResults = href === '/admin/lab-results';
               return (
                 <Link
                   key={href}
@@ -256,6 +268,11 @@ export default function AdminSidebar() {
                 >
                   <span className={isActive ? 'text-[#ceab84]' : 'text-white/50'}>{icon}</span>
                   {label}
+                  {isLabResults && reviewCount > 0 && (
+                    <span className="ml-auto inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold">
+                      {reviewCount > 9 ? '9+' : reviewCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}
