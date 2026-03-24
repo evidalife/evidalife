@@ -41,8 +41,8 @@ Rules:
 - unit: standard SI or conventional unit used in clinical labs (e.g. "mg/dL", "mmol/L", "µg/L", "pg/mL", "IU/L", "bpm", "%", "kg/m²"). Use null if not applicable.
 - ref_range_low / ref_range_high: standard adult clinical reference range (typical lab normal range). Use the most widely accepted values. Use null if not a numeric biomarker.
 - optimal_range_low / optimal_range_high: evidence-based optimal/longevity-focused range (may be narrower than reference range). Use null if unknown or not applicable.
-- body_system: MUST be exactly one of these or null: cardiovascular, metabolic, hormonal, immune, musculoskeletal, neurological, renal, hepatic, pulmonary, hematological, other
-- he_domain: MUST be exactly one of these or null: longevity, fitness, nutrition, mental_health, sleep, stress, other
+- body_system: MUST be exactly one of these or null: heart_vessels, metabolism, inflammation, organ_function, nutrients, hormones, body_composition, fitness, epigenetics
+- he_domain: MUST be exactly one of these or null: heart_vessels, metabolism, inflammation, organ_function, nutrients, hormones, fitness, longevity
 - description_*: 1–2 clear, accessible sentences explaining what this biomarker measures and why it matters for health. Write in the target language (de=German, en=English, fr=French, es=Spanish, it=Italian). Keep it patient-friendly, not overly clinical.
 - Return ONLY the JSON object, no markdown, no explanation`;
 

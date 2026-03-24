@@ -41,6 +41,21 @@ type FormState = {
   he_domain: string;
 };
 
+type AiSuggestion = {
+  unit?: string | null;
+  ref_range_low?: number | null;
+  ref_range_high?: number | null;
+  optimal_range_low?: number | null;
+  optimal_range_high?: number | null;
+  body_system?: string | null;
+  he_domain?: string | null;
+  description_de?: string;
+  description_en?: string;
+  description_fr?: string;
+  description_es?: string;
+  description_it?: string;
+} | null;
+
 const EMPTY_FORM: FormState = {
   name: { de: '', en: '', fr: '', es: '', it: '' },
   description: { de: '', en: '', fr: '', es: '', it: '' },
@@ -66,14 +81,29 @@ const ITEM_TYPES = [
   { value: 'genetic_test', label: 'Genetic' },
 ];
 
-// New category values matching the health engine domains
-const BIOMARKER_CATEGORIES = [
-  '', 'heart_vessels', 'metabolism', 'inflammation', 'organ_function',
-  'nutrients', 'hormones', 'body_composition', 'fitness', 'epigenetics', 'vitalcheck',
+const BODY_SYSTEMS = [
+  { value: '', label: '— none —' },
+  { value: 'heart_vessels', label: 'Heart & Vessels' },
+  { value: 'metabolism', label: 'Metabolism' },
+  { value: 'inflammation', label: 'Inflammation' },
+  { value: 'organ_function', label: 'Organ Function' },
+  { value: 'nutrients', label: 'Nutrients' },
+  { value: 'hormones', label: 'Hormones' },
+  { value: 'body_composition', label: 'Body Composition' },
+  { value: 'fitness', label: 'Fitness' },
+  { value: 'epigenetics', label: 'Epigenetics' },
 ];
 
 const HE_DOMAINS = [
-  '', 'longevity', 'fitness', 'nutrition', 'mental_health', 'sleep', 'stress', 'other',
+  { value: '', label: '— none —' },
+  { value: 'heart_vessels', label: 'Heart & Vessels' },
+  { value: 'metabolism', label: 'Metabolism' },
+  { value: 'inflammation', label: 'Inflammation' },
+  { value: 'organ_function', label: 'Organ Function' },
+  { value: 'nutrients', label: 'Nutrients' },
+  { value: 'hormones', label: 'Hormones' },
+  { value: 'fitness', label: 'Fitness & Body' },
+  { value: 'longevity', label: 'Longevity' },
 ];
 
 const RANGE_TYPES = [
@@ -214,19 +244,161 @@ function RangeBar({ refLow, refHigh, optLow, optHigh }: {
   );
 }
 
+// ─── AI Suggestion Modal ──────────────────────────────────────────────────────
+
+type SuggestionField = {
+  key: string;
+  label: string;
+  current: string;
+  suggested: string;
+};
+
+function AiSuggestionModal({
+  suggestion,
+  form,
+  onApply,
+  onClose,
+}: {
+  suggestion: AiSuggestion;
+  form: FormState;
+  onApply: (checked: Set<string>) => void;
+  onClose: () => void;
+}) {
+  const [checked, setChecked] = useState<Set<string>>(() => new Set());
+
+  if (!suggestion) return null;
+
+  const fmt = (v: string | number | null | undefined) => (v == null || v === '' ? '—' : String(v));
+
+  const domainLabel = (v: string | null | undefined) =>
+    HE_DOMAINS.find((d) => d.value === v)?.label ?? v ?? '—';
+  const bodyLabel = (v: string | null | undefined) =>
+    BODY_SYSTEMS.find((d) => d.value === v)?.label ?? v ?? '—';
+
+  const fields: SuggestionField[] = [
+    { key: 'unit', label: 'Unit', current: fmt(form.unit), suggested: fmt(suggestion.unit) },
+    { key: 'ref_range_low', label: 'Ref Low', current: fmt(form.ref_range_low), suggested: fmt(suggestion.ref_range_low) },
+    { key: 'ref_range_high', label: 'Ref High', current: fmt(form.ref_range_high), suggested: fmt(suggestion.ref_range_high) },
+    { key: 'optimal_range_low', label: 'Optimal Low', current: fmt(form.optimal_range_low), suggested: fmt(suggestion.optimal_range_low) },
+    { key: 'optimal_range_high', label: 'Optimal High', current: fmt(form.optimal_range_high), suggested: fmt(suggestion.optimal_range_high) },
+    { key: 'body_system', label: 'Body System', current: bodyLabel(form.body_system), suggested: bodyLabel(suggestion.body_system) },
+    { key: 'he_domain', label: 'HE Domain', current: domainLabel(form.he_domain), suggested: domainLabel(suggestion.he_domain) },
+    { key: 'description_en', label: 'Description (EN)', current: form.description.en ? form.description.en.slice(0, 60) + '…' : '—', suggested: suggestion.description_en ? suggestion.description_en.slice(0, 60) + '…' : '—' },
+    { key: 'description_de', label: 'Description (DE)', current: form.description.de ? form.description.de.slice(0, 60) + '…' : '—', suggested: suggestion.description_de ? suggestion.description_de.slice(0, 60) + '…' : '—' },
+    { key: 'description_fr', label: 'Description (FR)', current: form.description.fr ? form.description.fr.slice(0, 60) + '…' : '—', suggested: suggestion.description_fr ? suggestion.description_fr.slice(0, 60) + '…' : '—' },
+    { key: 'description_es', label: 'Description (ES)', current: form.description.es ? form.description.es.slice(0, 60) + '…' : '—', suggested: suggestion.description_es ? suggestion.description_es.slice(0, 60) + '…' : '—' },
+    { key: 'description_it', label: 'Description (IT)', current: form.description.it ? form.description.it.slice(0, 60) + '…' : '—', suggested: suggestion.description_it ? suggestion.description_it.slice(0, 60) + '…' : '—' },
+  ].filter((f) => f.suggested !== '—');
+
+  const toggle = (key: string) =>
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+
+  const selectAll = () => setChecked(new Set(fields.map((f) => f.key)));
+  const selectEmpty = () => setChecked(new Set(fields.filter((f) => f.current === '—').map((f) => f.key)));
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/40 z-[60] backdrop-blur-[2px]" onClick={onClose} />
+      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[#0e393d]/10 shrink-0">
+            <div>
+              <h3 className="font-serif text-lg text-[#0e393d]">✦ AI Suggestion</h3>
+              <p className="text-xs text-[#1c2a2b]/40 mt-0.5">Select fields to apply</p>
+            </div>
+            <button onClick={onClose} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Quick select */}
+          <div className="flex gap-2 px-6 py-3 border-b border-[#0e393d]/6 shrink-0">
+            <button onClick={selectAll} className="text-xs text-[#0e393d] underline underline-offset-2 hover:no-underline">Select all</button>
+            <span className="text-[#1c2a2b]/20">·</span>
+            <button onClick={selectEmpty} className="text-xs text-[#0e393d] underline underline-offset-2 hover:no-underline">Select empty only</button>
+            <span className="text-[#1c2a2b]/20">·</span>
+            <button onClick={() => setChecked(new Set())} className="text-xs text-[#0e393d] underline underline-offset-2 hover:no-underline">Clear all</button>
+          </div>
+
+          {/* Fields table */}
+          <div className="flex-1 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-[#fafaf8]">
+                <tr className="border-b border-[#0e393d]/8">
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-[#0e393d]/50 w-8"></th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-[#0e393d]/50">Field</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-[#0e393d]/50">Current</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-[#ceab84]">Suggested</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#0e393d]/6">
+                {fields.map((f) => (
+                  <tr
+                    key={f.key}
+                    className={`cursor-pointer transition-colors ${checked.has(f.key) ? 'bg-[#ceab84]/8' : 'hover:bg-[#fafaf8]'}`}
+                    onClick={() => toggle(f.key)}
+                  >
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={checked.has(f.key)}
+                        onChange={() => toggle(f.key)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded border-[#0e393d]/20 text-[#0e393d] focus:ring-[#0e393d]/20"
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-xs font-medium text-[#0e393d]/70">{f.label}</td>
+                    <td className="px-4 py-3 text-xs text-[#1c2a2b]/40 max-w-[180px] truncate">{f.current}</td>
+                    <td className="px-4 py-3 text-xs font-medium text-[#1c2a2b] max-w-[200px] truncate">{f.suggested}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer */}
+          <div className="flex gap-3 px-6 py-4 border-t border-[#0e393d]/10 shrink-0">
+            <button
+              onClick={onClose}
+              className="flex-1 rounded-lg border border-[#0e393d]/15 py-2.5 text-sm font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onApply(checked)}
+              disabled={checked.size === 0}
+              className="flex-1 rounded-lg bg-[#0e393d] py-2.5 text-sm font-medium text-white hover:bg-[#0e393d]/90 disabled:opacity-40 transition"
+            >
+              Apply {checked.size > 0 ? `(${checked.size})` : ''}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function ProductItemsManager({ initialItems }: { initialItems: ItemDefinition[] }) {
+export default function BiomarkersManager({ initialItems }: { initialItems: ItemDefinition[] }) {
   const supabase = createClient();
   const [items, setItems] = useState<ItemDefinition[]>(initialItems);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [nameLang, setNameLang] = useState<Lang>('de');
-  const [descLang, setDescLang] = useState<Lang>('de');
+  const [nameLang, setNameLang] = useState<Lang>('en');
+  const [descLang, setDescLang] = useState<Lang>('en');
   const [translating, setTranslating] = useState(false);
   const [autocompleting, setAutocompleting] = useState(false);
+  const [suggestion, setSuggestion] = useState<AiSuggestion>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -255,8 +427,8 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
 
   const openCreate = () => {
     setEditingId(null);
-    setNameLang('de');
-    setDescLang('de');
+    setNameLang('en');
+    setDescLang('en');
     setForm(EMPTY_FORM);
     setError(null);
     setOpenSections({ names: true, description: true, measurement: true, ranges: true, settings: false });
@@ -265,8 +437,8 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
 
   const openEdit = (item: ItemDefinition) => {
     setEditingId(item.id);
-    setNameLang('de');
-    setDescLang('de');
+    setNameLang('en');
+    setDescLang('en');
     setForm({
       name: {
         de: item.name?.de ?? '',
@@ -291,7 +463,7 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
       ref_range_high: item.ref_range_high != null ? String(item.ref_range_high) : '',
       optimal_range_low: item.optimal_range_low != null ? String(item.optimal_range_low) : '',
       optimal_range_high: item.optimal_range_high != null ? String(item.optimal_range_high) : '',
-      body_system: '',
+      body_system: item.body_system ?? '',
       he_domain: item.he_domain ?? '',
     });
     setError(null);
@@ -348,30 +520,35 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Autocomplete failed');
-      setForm((f) => ({
-        ...f,
-        unit: f.unit || json.unit || '',
-        ref_range_low: f.ref_range_low || (json.ref_range_low != null ? String(json.ref_range_low) : ''),
-        ref_range_high: f.ref_range_high || (json.ref_range_high != null ? String(json.ref_range_high) : ''),
-        optimal_range_low: f.optimal_range_low || (json.optimal_range_low != null ? String(json.optimal_range_low) : ''),
-        optimal_range_high: f.optimal_range_high || (json.optimal_range_high != null ? String(json.optimal_range_high) : ''),
-        body_system: f.body_system || json.body_system || '',
-        he_domain: f.he_domain || json.he_domain || '',
-        description: {
-          de: f.description.de || json.description_de || '',
-          en: f.description.en || json.description_en || '',
-          fr: f.description.fr || json.description_fr || '',
-          es: f.description.es || json.description_es || '',
-          it: f.description.it || json.description_it || '',
-        },
-      }));
-      // Open ranges + description sections after autocomplete
+      setSuggestion(json);
       setOpenSections((prev) => ({ ...prev, ranges: true, description: true }));
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : String(e));
     } finally {
       setAutocompleting(false);
     }
+  };
+
+  const applySuggestion = (checked: Set<string>) => {
+    if (!suggestion) return;
+    setForm((f) => {
+      const next = { ...f };
+      if (checked.has('unit') && suggestion.unit != null) next.unit = suggestion.unit;
+      if (checked.has('ref_range_low') && suggestion.ref_range_low != null) next.ref_range_low = String(suggestion.ref_range_low);
+      if (checked.has('ref_range_high') && suggestion.ref_range_high != null) next.ref_range_high = String(suggestion.ref_range_high);
+      if (checked.has('optimal_range_low') && suggestion.optimal_range_low != null) next.optimal_range_low = String(suggestion.optimal_range_low);
+      if (checked.has('optimal_range_high') && suggestion.optimal_range_high != null) next.optimal_range_high = String(suggestion.optimal_range_high);
+      if (checked.has('body_system') && suggestion.body_system != null) next.body_system = suggestion.body_system;
+      if (checked.has('he_domain') && suggestion.he_domain != null) next.he_domain = suggestion.he_domain;
+      next.description = { ...f.description };
+      if (checked.has('description_en') && suggestion.description_en) next.description.en = suggestion.description_en;
+      if (checked.has('description_de') && suggestion.description_de) next.description.de = suggestion.description_de;
+      if (checked.has('description_fr') && suggestion.description_fr) next.description.fr = suggestion.description_fr;
+      if (checked.has('description_es') && suggestion.description_es) next.description.es = suggestion.description_es;
+      if (checked.has('description_it') && suggestion.description_it) next.description.it = suggestion.description_it;
+      return next;
+    });
+    setSuggestion(null);
   };
 
   // ── Save ─────────────────────────────────────────────────────────────────────
@@ -397,6 +574,7 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
       ref_range_high: rangeType === 'lower_is_better' ? null : parseNum(form.ref_range_high),
       optimal_range_low: rangeType === 'higher_is_better' ? null : parseNum(form.optimal_range_low),
       optimal_range_high: rangeType === 'lower_is_better' ? null : parseNum(form.optimal_range_high),
+      body_system: form.body_system || null,
       he_domain: form.he_domain || null,
     };
 
@@ -498,7 +676,7 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Name</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Type</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Body System</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">HE Domain</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Unit</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Ranges</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Status</th>
@@ -514,13 +692,13 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
               </tr>
             )}
             {filtered.map((item) => (
-              <tr key={item.id} className="hover:bg-[#fafaf8] transition-colors">
+              <tr key={item.id} className="hover:bg-[#fafaf8] transition-colors cursor-pointer" onClick={() => openEdit(item)}>
                 <td className="px-4 py-3">
                   <div className="font-medium text-[#0e393d]">
-                    {item.name?.de || item.name?.en || <span className="text-[#1c2a2b]/30">—</span>}
+                    {item.name?.en || item.name?.de || <span className="text-[#1c2a2b]/30">—</span>}
                   </div>
                   {item.name?.en && item.name?.de && (
-                    <div className="text-xs text-[#1c2a2b]/40 mt-0.5">{item.name.en}</div>
+                    <div className="text-xs text-[#1c2a2b]/40 mt-0.5">{item.name.de}</div>
                   )}
                 </td>
                 <td className="px-4 py-3">
@@ -530,7 +708,9 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
                     </span>
                   ) : <span className="text-[#1c2a2b]/30">—</span>}
                 </td>
-                <td className="px-4 py-3 text-xs text-[#1c2a2b]/60">{item.body_system ?? '—'}</td>
+                <td className="px-4 py-3 text-xs text-[#1c2a2b]/60">
+                  {HE_DOMAINS.find((d) => d.value === item.he_domain)?.label ?? item.he_domain ?? '—'}
+                </td>
                 <td className="px-4 py-3 text-xs font-mono text-[#0e393d]/70">{item.unit ?? '—'}</td>
                 <td className="px-4 py-3 text-xs text-[#1c2a2b]/50">
                   {item.ref_range_low != null && item.ref_range_high != null
@@ -544,7 +724,7 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
                     <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-600 ring-1 ring-inset ring-gray-500/20">Inactive</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => openEdit(item)}
                     className="px-3 py-1 rounded-md text-xs font-medium text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition"
@@ -557,6 +737,16 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
           </tbody>
         </table>
       </div>
+
+      {/* ── AI Suggestion Modal ──────────────────────────────────────────────── */}
+      {suggestion && (
+        <AiSuggestionModal
+          suggestion={suggestion}
+          form={form}
+          onApply={applySuggestion}
+          onClose={() => setSuggestion(null)}
+        />
+      )}
 
       {/* ── Slide-over panel ──────────────────────────────────────────────────── */}
       {panelOpen && (
@@ -654,8 +844,6 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
                   placeholder={descLang === 'de' ? 'Kurze Beschreibung…' : 'Short description…'}
                 />
                 <div className="flex items-center justify-end gap-2 pt-1">
-                  <AiBtn onClick={() => {}} loading={false} label="✦ Rewrite & Proofread" />
-                  <AiBtn onClick={() => {}} loading={false} label="✦ AI Style" />
                   <AiBtn onClick={handleTranslate} loading={translating} label="✦ Translate to all" />
                 </div>
               </SectionBlock>
@@ -684,14 +872,14 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
                     />
                   </Field>
 
-                  <Field label="Category">
+                  <Field label="Body System">
                     <select
                       className={selectCls}
                       value={form.body_system}
                       onChange={(e) => setForm((f) => ({ ...f, body_system: e.target.value }))}
                     >
-                      {BIOMARKER_CATEGORIES.map((s) => (
-                        <option key={s} value={s}>{s || '— none —'}</option>
+                      {BODY_SYSTEMS.map(({ value, label }) => (
+                        <option key={value} value={value}>{label}</option>
                       ))}
                     </select>
                   </Field>
@@ -702,8 +890,8 @@ export default function ProductItemsManager({ initialItems }: { initialItems: It
                       value={form.he_domain}
                       onChange={(e) => setForm((f) => ({ ...f, he_domain: e.target.value }))}
                     >
-                      {HE_DOMAINS.map((d) => (
-                        <option key={d} value={d}>{d || '— none —'}</option>
+                      {HE_DOMAINS.map(({ value, label }) => (
+                        <option key={value} value={value}>{label}</option>
                       ))}
                     </select>
                   </Field>

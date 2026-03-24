@@ -156,7 +156,7 @@ const NAV_GROUPS: NavGroup[] = [
       },
       {
         label: 'Biomarkers & Tests',
-        href: '/admin/product-items',
+        href: '/admin/biomarkers',
         icon: (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
