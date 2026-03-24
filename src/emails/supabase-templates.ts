@@ -24,7 +24,8 @@ type AuthTemplateId =
   | 'reset_password'
   | 'magic_link'
   | 'change_email_address'
-  | 'invite_user';
+  | 'invite_user'
+  | 'reauthentication';
 
 // ── Translations ──────────────────────────────────────────────────────────────
 
@@ -218,6 +219,44 @@ const AUTH_T: Record<AuthTemplateId, Record<Lang, AuthEmailContent>> = {
       footerNote: "Questo invito scade tra 7 giorni. Se l'hai ricevuto per errore, ignoralo.",
     },
   },
+
+  reauthentication: {
+    en: {
+      subject: 'Confirm Your Identity — Evida Life',
+      heading: 'Confirm Your Identity',
+      body: "For your security, please confirm your identity before continuing. Click the button below to verify it's you.",
+      buttonText: 'Confirm Identity',
+      footerNote: "This link expires in 10 minutes. If you didn't initiate this action, please change your password immediately.",
+    },
+    de: {
+      subject: 'Identität bestätigen — Evida Life',
+      heading: 'Identität bestätigen',
+      body: 'Zu deiner Sicherheit bestätige bitte deine Identität, bevor du fortfährst. Klicke auf den Button, um dich zu verifizieren.',
+      buttonText: 'Identität bestätigen',
+      footerNote: 'Dieser Link ist 10 Minuten gültig. Wenn du diese Aktion nicht ausgelöst hast, ändere bitte sofort dein Passwort.',
+    },
+    es: {
+      subject: 'Confirma tu identidad — Evida Life',
+      heading: 'Confirma tu identidad',
+      body: 'Por tu seguridad, confirma tu identidad antes de continuar. Haz clic en el botón para verificar que eres tú.',
+      buttonText: 'Confirmar identidad',
+      footerNote: 'Este enlace caduca en 10 minutos.',
+    },
+    fr: {
+      subject: 'Confirmez votre identité — Evida Life',
+      heading: 'Confirmez votre identité',
+      body: 'Pour votre sécurité, veuillez confirmer votre identité avant de continuer. Cliquez sur le bouton ci-dessous.',
+      buttonText: "Confirmer l'identité",
+      footerNote: 'Ce lien expire dans 10 minutes.',
+    },
+    it: {
+      subject: 'Conferma la tua identità — Evida Life',
+      heading: 'Conferma la tua identità',
+      body: 'Per la tua sicurezza, conferma la tua identità prima di continuare. Clicca il pulsante qui sotto per verificare.',
+      buttonText: 'Conferma identità',
+      footerNote: 'Questo link scade tra 10 minuti.',
+    },
+  },
 };
 
 // ── Builder helpers ───────────────────────────────────────────────────────────
@@ -261,6 +300,11 @@ export function buildInviteUserEmail(lang: Lang, overrides?: Partial<AuthEmailCo
   return { subject: content.subject, html: buildAuthHtml(content, !!preview) };
 }
 
+export function buildReauthenticationEmail(lang: Lang, overrides?: Partial<AuthEmailContent>, preview?: boolean): { subject: string; html: string } {
+  const content = { ...AUTH_T.reauthentication[lang] ?? AUTH_T.reauthentication.en, ...overrides };
+  return { subject: content.subject, html: buildAuthHtml(content, !!preview) };
+}
+
 // ── Helpers used by admin UI ──────────────────────────────────────────────────
 
 export function getAuthTemplateDefaults(id: string, lang: Lang): AuthEmailContent {
@@ -270,11 +314,12 @@ export function getAuthTemplateDefaults(id: string, lang: Lang): AuthEmailConten
 
 export function buildAuthPreview(id: string, lang: Lang, overrides?: Partial<AuthEmailContent>): { subject: string; html: string } {
   switch (id) {
-    case 'reset_password':      return buildResetPasswordEmail(lang, overrides, true);
-    case 'magic_link':          return buildMagicLinkEmail(lang, overrides, true);
+    case 'reset_password':       return buildResetPasswordEmail(lang, overrides, true);
+    case 'magic_link':           return buildMagicLinkEmail(lang, overrides, true);
     case 'change_email_address': return buildChangeEmailEmail(lang, overrides, true);
-    case 'invite_user':         return buildInviteUserEmail(lang, overrides, true);
-    default:                    return buildConfirmSignupEmail(lang, overrides, true);
+    case 'invite_user':          return buildInviteUserEmail(lang, overrides, true);
+    case 'reauthentication':     return buildReauthenticationEmail(lang, overrides, true);
+    default:                     return buildConfirmSignupEmail(lang, overrides, true);
   }
 }
 
@@ -284,4 +329,5 @@ export const AUTH_TEMPLATE_LIST: { id: string; name: string }[] = [
   { id: 'magic_link',           name: 'Magic Link' },
   { id: 'change_email_address', name: 'Change Email' },
   { id: 'invite_user',          name: 'Invite User' },
+  { id: 'reauthentication',     name: 'Reauthentication' },
 ];
