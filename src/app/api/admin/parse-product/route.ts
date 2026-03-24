@@ -40,7 +40,7 @@ Extract:
 - short_description_en: One-sentence product subtitle for card display (max 120 chars)
 - description_en: Full product description in English (keep all details, can be several paragraphs)
 - suggested_price_chf: Price in CHF as a number, or null if not found
-- suggested_product_type: One of: test_package, addon_test, single_biomarker, supplement, functional_food, food, subscription, program, bundle, digital_product, device, coaching_session — pick the best fit, or null
+- suggested_product_type: One of: blood_test, addon_test, single_biomarker, supplement, functional_food, food, subscription, program, bundle, digital_product, device, coaching_session — pick the best fit, or null
 - marker_count: Number of biomarkers/tests included if this is a test kit, or null
 
 Return ONLY valid JSON:

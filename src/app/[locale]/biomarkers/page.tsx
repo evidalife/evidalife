@@ -321,7 +321,7 @@ export default async function BiomarkersPage() {
   const { data: allProducts } = await supabase
     .from('products')
     .select('id, slug, name, price_chf, sort_order, is_featured')
-    .eq('product_type', 'test_package')
+    .eq('product_type', 'blood_test')
     .eq('is_active', true)
     .order('sort_order', { ascending: true });
 

@@ -29,7 +29,7 @@ export type Product = {
 // ─── Type labels (5 languages) ────────────────────────────────────────────────
 
 const TYPE_LABELS: Record<string, Record<string, string>> = {
-  test_package:      { de: 'Bluttests',          en: 'Blood Tests',       fr: 'Bilans sanguins',    es: 'Análisis de sangre',   it: 'Esami del sangue' },
+  blood_test:      { de: 'Bluttests',          en: 'Blood Tests',       fr: 'Bilans sanguins',    es: 'Análisis de sangre',   it: 'Esami del sangue' },
   clinical_test:     { de: 'Klinische Tests',    en: 'Clinical Tests',    fr: 'Tests cliniques',    es: 'Pruebas clínicas',     it: 'Test clinici' },
   epigenetic_test:   { de: 'Epigenetik',         en: 'Epigenetic',        fr: 'Épigénétique',       es: 'Epigenética',          it: 'Epigenetica' },
   genetic_test:      { de: 'Genetik',            en: 'Genetic',           fr: 'Génétique',          es: 'Genética',             it: 'Genetica' },
@@ -86,7 +86,7 @@ function ProductCard({
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
   const featured = product.is_featured ?? false;
-  const isTestPackage = product.product_type === 'test_package' || product.product_type === 'clinical_test';
+  const isTestPackage = product.product_type === 'blood_test' || product.product_type === 'clinical_test';
   const markerCount = product.metadata?.marker_count;
 
   const handleAddToCart = () => {
@@ -257,14 +257,14 @@ export default function ShopContent({ products }: { products: Product[] }) {
     ? products.filter((p) => p.product_type === activeType)
     : products;
 
-  const packages  = displayProducts.filter((p) => p.product_type === 'test_package');
+  const packages  = displayProducts.filter((p) => p.product_type === 'blood_test');
   const clinical  = displayProducts.filter((p) => p.product_type === 'clinical_test');
   const epigenetic = displayProducts.filter((p) => p.product_type === 'epigenetic_test');
   const addons    = displayProducts.filter((p) => p.product_type === 'addon_test');
   const food      = displayProducts.filter((p) => p.product_type === 'food' || p.product_type === 'food_product');
   const subs      = displayProducts.filter((p) => p.product_type === 'subscription' || p.product_type === 'meal_subscription');
   const other     = displayProducts.filter((p) =>
-    !['test_package', 'clinical_test', 'epigenetic_test', 'genetic_test', 'microbiome_test', 'addon_test', 'food', 'food_product', 'subscription', 'meal_subscription'].includes(p.product_type ?? '')
+    !['blood_test', 'clinical_test', 'epigenetic_test', 'genetic_test', 'microbiome_test', 'addon_test', 'food', 'food_product', 'subscription', 'meal_subscription'].includes(p.product_type ?? '')
   );
 
   return (

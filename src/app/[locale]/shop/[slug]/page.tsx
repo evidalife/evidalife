@@ -65,7 +65,7 @@ export default async function ProductSlugPage({ params }: { params: Params }) {
   if (!product) notFound();
 
   // Fetch included test items for test packages / add-ons
-  const isTestProduct = product.product_type === 'test_package' || product.product_type === 'addon_test';
+  const isTestProduct = product.product_type === 'blood_test' || product.product_type === 'addon_test';
   type TestItem = { id: string; name: I18n; item_type: string | null };
   let testItems: TestItem[] = [];
 

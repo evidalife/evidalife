@@ -21,7 +21,7 @@ export default async function ShopPage() {
 
   // Inject live biomarker counts from junction table for test packages
   const testPackageIds = products
-    .filter((p) => p.product_type === 'test_package')
+    .filter((p) => p.product_type === 'blood_test')
     .map((p) => p.id);
 
   if (testPackageIds.length > 0) {

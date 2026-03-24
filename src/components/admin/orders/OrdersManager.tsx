@@ -21,7 +21,7 @@ type LocalizedString = string | Record<string, string>;
 function locName(field: LocalizedString | null | undefined): string {
   if (!field) return '';
   if (typeof field === 'string') return field;
-  return field.de || field.en || '';
+  return field.en || field.de || '';
 }
 
 type ShippingAddress = {

@@ -54,6 +54,9 @@ export type Product = {
   price_eur: number | null;
   compare_at_price_chf: number | null;
   compare_at_price_eur: number | null;
+  stripe_product_id: string | null;
+  stripe_price_id_chf: string | null;
+  stripe_price_id_eur: string | null;
   tax_class: string | null;
   product_type: string | null;
   sort_order: number | null;
@@ -91,20 +94,26 @@ const EMPTY_FORM: FormState = {
   description: { de: '', en: '', fr: '', es: '', it: '' },
   price_chf: '', price_eur: '',
   compare_at_price_chf: '', compare_at_price_eur: '',
-  tax_class: 'standard', product_type: 'test_package',
+  tax_class: 'standard', product_type: 'blood_test',
   marker_count: '', sort_order: '',
   is_active: true, is_featured: false,
 };
 
 const TAX_CLASSES = ['standard', 'reduced', 'zero'];
 const PRODUCT_TYPES = [
-  'test_package', 'addon_test', 'single_biomarker',
-  'supplement', 'functional_food', 'food', 'food_product', 'ready_meal',
-  'subscription', 'meal_subscription',
-  'program', 'bundle', 'digital_product',
-  'device', 'coaching_session',
-  'merch', 'merchandise',
+  'blood_test', 'clinical_test', 'epigenetic_test', 'genetic_test', 'microbiome_test',
+  'addon_test', 'wearable',
+  'supplement', 'program', 'subscription',
+  'digital_product', 'bundle',
 ];
+
+type LocalizedString = string | Record<string, string> | null | undefined;
+
+function locName(field: LocalizedString): string {
+  if (!field) return '';
+  if (typeof field === 'string') return field;
+  return (field as Record<string, string>).en || (field as Record<string, string>).de || '';
+}
 
 function slugify(text: string): string {
   return text.toLowerCase()
@@ -359,6 +368,9 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   // Gallery
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
 
+  // Biomarker counts per product
+  const [biomarkerCounts, setBiomarkerCounts] = useState<Record<string, number>>({});
+
   // Test items
   const [allDefinitions, setAllDefinitions] = useState<ItemDefinition[]>([]);
   const [includedItemIds, setIncludedItemIds] = useState<Set<string>>(new Set());
@@ -381,6 +393,21 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       .select('*')
       .order('created_at', { ascending: false });
     if (data) setProducts(data);
+  }, [supabase]);
+
+  // Load biomarker counts per product once on mount
+  useEffect(() => {
+    supabase
+      .from('product_items')
+      .select('product_id')
+      .then(({ data }) => {
+        if (!data) return;
+        const counts: Record<string, number> = {};
+        for (const { product_id } of data as { product_id: string }[]) {
+          counts[product_id] = (counts[product_id] ?? 0) + 1;
+        }
+        setBiomarkerCounts(counts);
+      });
   }, [supabase]);
 
   // Load all definitions once on mount
@@ -461,13 +488,13 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       compare_at_price_chf: p.compare_at_price_chf != null ? String(p.compare_at_price_chf) : '',
       compare_at_price_eur: p.compare_at_price_eur != null ? String(p.compare_at_price_eur) : '',
       tax_class: p.tax_class ?? 'standard',
-      product_type: p.product_type ?? 'test_package',
+      product_type: p.product_type ?? 'blood_test',
       marker_count: p.metadata?.marker_count != null ? String(p.metadata.marker_count) : '',
       sort_order: p.sort_order != null ? String(p.sort_order) : '',
       is_active: p.is_active ?? true,
       is_featured: p.is_featured ?? false,
     });
-    const isTest = p.product_type === 'test_package' || p.product_type === 'addon_test';
+    const isTest = ['blood_test', 'clinical_test', 'epigenetic_test', 'genetic_test', 'microbiome_test', 'addon_test'].includes(p.product_type ?? '');
     // Load gallery
     const existing = (p.gallery_urls ?? []).map((url, i) => ({
       _key: `_g${i}`,
@@ -783,7 +810,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     );
   });
 
-  const isTestType = form.product_type === 'test_package' || form.product_type === 'addon_test';
+  const isTestType = ['blood_test', 'clinical_test', 'epigenetic_test', 'genetic_test', 'microbiome_test', 'addon_test'].includes(form.product_type);
 
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -820,8 +847,10 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider w-16"></th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Name / SKU</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Type</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Biomarkers</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">CHF</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">EUR</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Stripe</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Status</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Actions</th>
             </tr>
@@ -829,11 +858,11 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
           <tbody className="divide-y divide-[#0e393d]/6">
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">No products found.</td>
+                <td colSpan={9} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">No products found.</td>
               </tr>
             )}
             {filtered.map((p) => (
-              <tr key={p.id} className={`hover:bg-[#fafaf8] transition-colors ${p.deleted_at ? 'opacity-50' : ''}`}>
+              <tr key={p.id} onClick={() => openEdit(p)} className={`cursor-pointer hover:bg-[#fafaf8] transition-colors ${p.deleted_at ? 'opacity-50' : ''}`}>
                 <td className="px-4 py-3">
                   {p.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -845,17 +874,32 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="font-medium text-[#0e393d]">{p.name?.de || p.name?.en || <span className="text-[#1c2a2b]/30">—</span>}</div>
+                  <div className="font-medium text-[#0e393d]">{p.name?.en || p.name?.de || <span className="text-[#1c2a2b]/30">—</span>}</div>
+                  {p.name?.de && p.name?.en && p.name.de !== p.name.en && (
+                    <div className="text-xs text-[#1c2a2b]/35 mt-0.5">{p.name.de}</div>
+                  )}
                   {p.sku && <div className="text-xs text-[#1c2a2b]/40 font-mono mt-0.5">{p.sku}</div>}
                 </td>
                 <td className="px-4 py-3">
                   <Badge color="gold">{p.product_type ?? '—'}</Badge>
-                  {p.is_featured && <span className="ml-1.5"><Badge color="gold">★ featured</Badge></span>}
+                  {p.is_featured && <span className="ml-1.5"><Badge color="gold">★</Badge></span>}
+                </td>
+                <td className="px-4 py-3">
+                  {biomarkerCounts[p.id]
+                    ? <span className="tabular-nums text-sm font-medium text-[#0e393d]">{biomarkerCounts[p.id]}</span>
+                    : <span className="text-[#1c2a2b]/25">—</span>
+                  }
                 </td>
                 <td className="px-4 py-3 text-[#1c2a2b]/70 tabular-nums">{chf(p.price_chf)}</td>
                 <td className="px-4 py-3 text-[#1c2a2b]/70 tabular-nums">{p.price_eur != null ? `€${p.price_eur}` : '—'}</td>
+                <td className="px-4 py-3">
+                  {p.stripe_product_id
+                    ? <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" title={p.stripe_product_id} />
+                    : <span className="inline-block w-2 h-2 rounded-full bg-red-300" title="No Stripe product ID" />
+                  }
+                </td>
                 <td className="px-4 py-3"><StatusBadge product={p} /></td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-2">
                     <button onClick={() => openEdit(p)}
                       className="px-3 py-1 rounded-md text-xs font-medium text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition">
@@ -1114,6 +1158,24 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                       {TAX_CLASSES.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </Field>
+                  {editingId && (() => {
+                    const p = products.find((x) => x.id === editingId);
+                    if (!p?.stripe_product_id && !p?.stripe_price_id_chf) return null;
+                    return (
+                      <div className="rounded-lg bg-[#0e393d]/4 px-3 py-2.5 space-y-1.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-[#0e393d]/50">Stripe IDs (read-only)</p>
+                        {p.stripe_product_id && (
+                          <p className="text-[11px] font-mono text-[#1c2a2b]/60 break-all">Product: {p.stripe_product_id}</p>
+                        )}
+                        {p.stripe_price_id_chf && (
+                          <p className="text-[11px] font-mono text-[#1c2a2b]/60 break-all">Price CHF: {p.stripe_price_id_chf}</p>
+                        )}
+                        {p.stripe_price_id_eur && (
+                          <p className="text-[11px] font-mono text-[#1c2a2b]/60 break-all">Price EUR: {p.stripe_price_id_eur}</p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </SectionBlock>
 

@@ -499,7 +499,7 @@ export default async function HomePage() {
   const { data: products } = await supabase
     .from('products')
     .select('id, slug, name, description, short_description, price_chf, compare_at_price_chf, sort_order')
-    .eq('product_type', 'test_package')
+    .eq('product_type', 'blood_test')
     .eq('is_active', true)
     .order('sort_order');
 
