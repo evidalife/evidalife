@@ -10,6 +10,20 @@ type Tab = 'biomarkers' | 'conversions' | 'units' | 'products';
 
 // ── Linked Products tab ──────────────────────────────────────────────────────
 
+function extractName(val: unknown): string {
+  if (typeof val === 'string') return val;
+  if (val && typeof val === 'object') {
+    const obj = val as Record<string, unknown>;
+    for (const key of ['en', 'de', 'fr', 'es', 'it']) {
+      if (typeof obj[key] === 'string' && obj[key]) return obj[key] as string;
+    }
+    for (const v of Object.values(obj)) {
+      if (typeof v === 'string' && v) return v;
+    }
+  }
+  return String(val ?? '');
+}
+
 type ProductRow = {
   id: string;
   name: string;
@@ -35,8 +49,8 @@ function LinkedProductsTab() {
           const p = row.products;
           const b = row.biomarkers;
           if (!p) continue;
-          if (!map.has(p.id)) map.set(p.id, { id: p.id, name: String(p.name ?? ''), product_type: p.product_type, biomarkers: [] });
-          if (b) map.get(p.id)!.biomarkers.push({ id: b.id, name: String(b.name ?? '') });
+          if (!map.has(p.id)) map.set(p.id, { id: p.id, name: extractName(p.name), product_type: p.product_type, biomarkers: [] });
+          if (b) map.get(p.id)!.biomarkers.push({ id: b.id, name: extractName(b.name) });
         }
         const sorted = [...map.values()].sort((a, b) => String(a.name ?? '').localeCompare(String(b.name ?? '')));
         setProducts(sorted);
