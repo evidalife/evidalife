@@ -293,6 +293,14 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
     setPanelOpen(true);
   };
 
+  const handleAddLocation = (parentId: string) => {
+    setEditingId(null);
+    setForm({ ...EMPTY_FORM, parent_lab_id: parentId });
+    setDescLang('de');
+    setError(null);
+    setPanelOpen(true);
+  };
+
   const closePanel = () => { setPanelOpen(false); setError(null); };
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
@@ -642,6 +650,14 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">
+                    {!isChild && (
+                      <button
+                        onClick={() => handleAddLocation(p.id)}
+                        className="px-3 py-1 rounded-md text-xs font-medium text-[#CEAB84] bg-[#CEAB84]/10 hover:bg-[#CEAB84]/20 transition"
+                      >
+                        ＋ Location
+                      </button>
+                    )}
                     <button
                       onClick={() => openEdit(p)}
                       className="px-3 py-1 rounded-md text-xs font-medium text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition"
@@ -673,9 +689,16 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
 
             {/* Panel header */}
             <div className="flex items-center justify-between border-b border-[#0e393d]/10 px-6 py-4">
-              <h2 className="font-serif text-lg text-[#0e393d]">
-                {editingId ? 'Edit Lab' : 'New Lab'}
-              </h2>
+              <div>
+                <h2 className="font-serif text-lg text-[#0e393d]">
+                  {editingId ? 'Edit Lab' : form.parent_lab_id ? 'New Location' : 'New Lab'}
+                </h2>
+                {form.parent_lab_id && (
+                  <p className="text-xs text-[#1c2a2b]/40 mt-0.5">
+                    Location of {partners.find((p) => p.id === form.parent_lab_id)?.name ?? 'parent organization'}
+                  </p>
+                )}
+              </div>
               <button onClick={closePanel} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
                   <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />

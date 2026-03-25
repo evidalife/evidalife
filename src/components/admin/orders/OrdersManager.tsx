@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { generateReportNumber, displayReportId } from '@/lib/lab-results/report-number';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -76,6 +77,17 @@ type OrderNote = {
 type Refund = {
   id: string; amount: number; currency: string; reason: string | null;
   stripe_refund_id: string | null; status: string; created_at: string;
+};
+
+type LabReport = {
+  id: string; order_id: string | null; lab_id: string | null;
+  report_number: string | null; status: string;
+  notes: string | null; created_at: string; updated_at: string;
+};
+
+type LabPartnerSimple = {
+  id: string; name: string; lab_code: string | null;
+  lab_type: string | null; parent_lab_id: string | null; city: string | null;
 };
 
 // ─── Status config ────────────────────────────────────────────────────────────
@@ -798,6 +810,242 @@ function CustomerContext({ order }: { order: Order }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Lab Report Card ──────────────────────────────────────────────────────────
+
+const LAB_REPORT_STATUS_LABEL: Record<string, string> = {
+  awaiting_sample:  'Awaiting Sample',
+  sample_collected: 'Sample Collected',
+  processing:       'Processing',
+  results_received: 'Results Received',
+  ai_extracted:     'AI Extracted',
+  review_pending:   'Review Pending',
+  archived:         'Archived',
+};
+
+const LAB_REPORT_STATUS_COLOR: Record<string, BadgeVariant> = {
+  awaiting_sample:  'amber',
+  sample_collected: 'sky',
+  processing:       'violet',
+  results_received: 'teal',
+  ai_extracted:     'green',
+  review_pending:   'orange',
+  archived:         'gray',
+};
+
+function LabReportCard({ order, addToast }: {
+  order: Order;
+  addToast: (msg: string, type: Toast['type']) => void;
+}) {
+  const supabase = createClient();
+  const [report, setReport] = useState<LabReport | null>(null);
+  const [labPartners, setLabPartners] = useState<LabPartnerSimple[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedLabId, setSelectedLabId] = useState('');
+  const [assigning, setAssigning] = useState(false);
+  const [overrideStatus, setOverrideStatus] = useState('');
+  const [overrideNotes, setOverrideNotes] = useState('');
+  const [overriding, setOverriding] = useState(false);
+  const [history, setHistory] = useState<Array<{ id: string; from_status: string | null; to_status: string; notes: string | null; created_at: string }>>([]);
+
+  const load = useCallback(async () => {
+    const [reportRes, partnersRes] = await Promise.all([
+      supabase.from('lab_reports').select('*').eq('order_id', order.id).maybeSingle(),
+      supabase.from('lab_partners').select('id, name, lab_code, lab_type, parent_lab_id, city').eq('is_active', true).order('name'),
+    ]);
+    const r = reportRes.data as LabReport | null;
+    setReport(r);
+    setLabPartners((partnersRes.data ?? []) as LabPartnerSimple[]);
+    if (r?.lab_id) setSelectedLabId(r.lab_id);
+    if (r?.id) {
+      const { data: hist } = await supabase
+        .from('lab_report_status_log')
+        .select('id, from_status, to_status, notes, created_at')
+        .eq('lab_report_id', r.id)
+        .order('created_at', { ascending: false });
+      setHistory((hist ?? []) as typeof history);
+    }
+    setLoading(false);
+  }, [order.id, supabase]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string, LabPartnerSimple[]>();
+    for (const l of labPartners) {
+      if (l.parent_lab_id) {
+        const arr = map.get(l.parent_lab_id) ?? [];
+        arr.push(l);
+        map.set(l.parent_lab_id, arr);
+      }
+    }
+    return map;
+  }, [labPartners]);
+
+  const orgs = useMemo(() => labPartners.filter((l) => !l.parent_lab_id), [labPartners]);
+
+  const handleAssignLocation = async () => {
+    if (!selectedLabId) return;
+    setAssigning(true);
+    const lab = labPartners.find((l) => l.id === selectedLabId);
+    if (!lab) { setAssigning(false); return; }
+    const source = lab.lab_type === 'evida_life' ? 'evida_life' : 'partner_lab';
+    const reportNumber = await generateReportNumber(supabase, source, lab.lab_code);
+    if (report) {
+      const { data, error } = await supabase
+        .from('lab_reports')
+        .update({ lab_id: selectedLabId, report_number: reportNumber, status: 'awaiting_sample' })
+        .eq('id', report.id)
+        .select()
+        .single();
+      if (!error) { setReport(data as LabReport); addToast(`Report ${reportNumber} assigned`, 'success'); }
+      else addToast(error.message, 'error');
+    } else {
+      const { data, error } = await supabase
+        .from('lab_reports')
+        .insert({ order_id: order.id, user_id: order.user_id, lab_id: selectedLabId, report_number: reportNumber, status: 'awaiting_sample', source: 'partner_lab' })
+        .select()
+        .single();
+      if (!error) { setReport(data as LabReport); addToast(`Report ${reportNumber} created`, 'success'); }
+      else addToast(error.message, 'error');
+    }
+    setAssigning(false);
+    load();
+  };
+
+  const handleOverrideStatus = async () => {
+    if (!report || !overrideStatus) return;
+    setOverriding(true);
+    const { error } = await supabase
+      .from('lab_reports')
+      .update({ status: overrideStatus, notes: overrideNotes || null })
+      .eq('id', report.id);
+    if (!error) {
+      addToast('Status updated', 'success');
+      setOverrideStatus('');
+      setOverrideNotes('');
+      load();
+    } else {
+      addToast(error.message, 'error');
+    }
+    setOverriding(false);
+  };
+
+  if (loading) return <div className="flex justify-center py-4"><Spinner /></div>;
+
+  return (
+    <div className="space-y-4">
+      {/* Current report */}
+      {report ? (
+        <div className="rounded-lg border border-[#0e393d]/8 bg-[#fafaf8] px-4 py-3 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-xs font-medium text-[#0e393d]">{displayReportId(report)}</span>
+            <Badge variant={LAB_REPORT_STATUS_COLOR[report.status] ?? 'gray'}>
+              {LAB_REPORT_STATUS_LABEL[report.status] ?? report.status}
+            </Badge>
+          </div>
+          {report.notes && <p className="text-xs text-[#1c2a2b]/50">{report.notes}</p>}
+        </div>
+      ) : (
+        <p className="text-xs text-[#1c2a2b]/40 italic">No lab report yet. Assign a location to create one.</p>
+      )}
+
+      {/* Location assignment */}
+      <div className="space-y-2">
+        <label className="block text-xs font-medium text-[#1c2a2b]/60">Lab Location</label>
+        <select
+          value={selectedLabId}
+          onChange={(e) => setSelectedLabId(e.target.value)}
+          className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-xs text-[#1c2a2b] focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+        >
+          <option value="">— Select lab location —</option>
+          {orgs.map((org) => {
+            const children = childrenByParent.get(org.id) ?? [];
+            if (children.length > 0) {
+              return (
+                <optgroup key={org.id} label={org.name}>
+                  {children.map((child) => (
+                    <option key={child.id} value={child.id}>
+                      {child.city ?? child.name}{child.lab_code ? ` (${child.lab_code})` : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              );
+            }
+            return (
+              <option key={org.id} value={org.id}>
+                {org.name}{org.lab_code ? ` (${org.lab_code})` : ''}{org.city ? ` — ${org.city}` : ''}
+              </option>
+            );
+          })}
+        </select>
+        <button
+          disabled={!selectedLabId || assigning}
+          onClick={handleAssignLocation}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#0e393d] text-white hover:bg-[#0e393d]/85 transition disabled:opacity-50"
+        >
+          {assigning ? <Spinner size={3} /> : null}
+          {report ? 'Reassign & Regenerate Number' : 'Assign Location & Generate Report Number'}
+        </button>
+      </div>
+
+      {/* Status override */}
+      {report && (
+        <div className="space-y-2 border-t border-[#0e393d]/8 pt-4">
+          <label className="block text-xs font-medium text-[#1c2a2b]/60">Override Status</label>
+          <select
+            value={overrideStatus}
+            onChange={(e) => setOverrideStatus(e.target.value)}
+            className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-xs text-[#1c2a2b] focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+          >
+            <option value="">— Select new status —</option>
+            {Object.entries(LAB_REPORT_STATUS_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <textarea
+            value={overrideNotes}
+            onChange={(e) => setOverrideNotes(e.target.value)}
+            placeholder="Notes (optional)…"
+            rows={2}
+            className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-xs text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 resize-none"
+          />
+          <button
+            disabled={!overrideStatus || overriding}
+            onClick={handleOverrideStatus}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#CEAB84] text-white hover:bg-[#CEAB84]/85 transition disabled:opacity-50"
+          >
+            {overriding ? <Spinner size={3} /> : null}Apply Status Override
+          </button>
+        </div>
+      )}
+
+      {/* Status history */}
+      {history.length > 0 && (
+        <div className="border-t border-[#0e393d]/8 pt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84] mb-3">Report History</p>
+          <div className="space-y-2">
+            {history.map((h, i) => (
+              <div key={h.id ?? i} className="flex items-start gap-2 text-xs">
+                <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#0e393d]/20 shrink-0" />
+                <div>
+                  <span className="text-[#1c2a2b]/40">{fmtDate(h.created_at, { time: true })}</span>
+                  <span className="mx-1.5 text-[#1c2a2b]/20">·</span>
+                  {h.from_status && (
+                    <><span className="text-[#1c2a2b]/40">{LAB_REPORT_STATUS_LABEL[h.from_status] ?? h.from_status}</span>
+                    <span className="mx-1 text-[#1c2a2b]/20">→</span></>
+                  )}
+                  <span className="font-medium text-[#0e393d]">{LAB_REPORT_STATUS_LABEL[h.to_status] ?? h.to_status}</span>
+                  {h.notes && <p className="text-[#1c2a2b]/40 mt-0.5">{h.notes}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1699,6 +1947,10 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                         refresh();
                       }}
                     />
+                  </div>
+                  <div>
+                    <SectionHeading>Lab Report</SectionHeading>
+                    <LabReportCard order={selectedOrder} addToast={addToast} />
                   </div>
                   <div>
                     <SectionHeading>Voucher</SectionHeading>
