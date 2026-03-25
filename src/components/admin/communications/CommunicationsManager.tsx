@@ -11,6 +11,7 @@ import {
 } from '@/emails/templates';
 import {
   buildAuthPreview,
+  buildAuthForSupabase,
   getAuthTemplateDefaults,
   AUTH_TEMPLATE_LIST,
   type AuthEmailContent,
@@ -666,7 +667,40 @@ export default function CommunicationsManager() {
             </div>
 
             {/* Copy buttons */}
-            <div className="flex gap-2">
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const { html } = buildAuthForSupabase(authTemplateId, authLang, authOverrides);
+                    navigator.clipboard.writeText(html);
+                    setCopiedField('supabase');
+                    setTimeout(() => setCopiedField(null), 2000);
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                    copiedField === 'supabase'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-[#0e393d] text-white hover:bg-[#0e393d]/85'
+                  }`}
+                >
+                  {copiedField === 'supabase' ? '✓ Copied!' : 'Copy for Supabase'}
+                </button>
+                <button
+                  onClick={() => {
+                    if (authPreviewData) {
+                      navigator.clipboard.writeText(authPreviewData.subject);
+                      setCopiedField('subject');
+                      setTimeout(() => setCopiedField(null), 2000);
+                    }
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium ring-1 ring-inset transition ${
+                    copiedField === 'subject'
+                      ? 'bg-emerald-600 text-white ring-transparent'
+                      : 'bg-white text-[#1c2a2b]/70 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'
+                  }`}
+                >
+                  {copiedField === 'subject' ? '✓ Copied!' : 'Copy Subject'}
+                </button>
+              </div>
               <button
                 onClick={() => {
                   if (authPreviewData) {
@@ -675,30 +709,19 @@ export default function CommunicationsManager() {
                     setTimeout(() => setCopiedField(null), 2000);
                   }
                 }}
-                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                className={`w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ring-1 ring-inset transition ${
                   copiedField === 'html'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-[#ceab84] text-white hover:bg-[#ceab84]/85'
-                }`}
-              >
-                {copiedField === 'html' ? '✓ Copied!' : 'Copy HTML'}
-              </button>
-              <button
-                onClick={() => {
-                  if (authPreviewData) {
-                    navigator.clipboard.writeText(authPreviewData.subject);
-                    setCopiedField('subject');
-                    setTimeout(() => setCopiedField(null), 2000);
-                  }
-                }}
-                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium ring-1 ring-inset transition ${
-                  copiedField === 'subject'
                     ? 'bg-emerald-600 text-white ring-transparent'
-                    : 'bg-white text-[#1c2a2b]/70 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'
+                    : 'bg-white text-[#1c2a2b]/50 ring-[#0e393d]/10 hover:ring-[#0e393d]/25'
                 }`}
               >
-                {copiedField === 'subject' ? '✓ Copied!' : 'Copy Subject'}
+                {copiedField === 'html' ? '✓ Copied!' : 'Copy Preview HTML'}
               </button>
+              <p className="text-[10px] text-[#1c2a2b]/40 leading-relaxed">
+                <span className="font-semibold text-[#0e393d]/60">Copy for Supabase</span> replaces preview URLs with{' '}
+                {authTemplateId === 'reauthentication' ? '{{ .Token }}' : '{{ .ConfirmationURL }}'}.
+                Paste into Supabase Dashboard → Authentication → Emails.
+              </p>
             </div>
 
             {/* Template ID info */}

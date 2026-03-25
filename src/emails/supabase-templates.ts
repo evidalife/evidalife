@@ -224,37 +224,37 @@ const AUTH_T: Record<AuthTemplateId, Record<Lang, AuthEmailContent>> = {
     en: {
       subject: 'Confirm Your Identity — Evida Life',
       heading: 'Confirm Your Identity',
-      body: "For your security, please confirm your identity before continuing. Click the button below to verify it's you.",
+      body: "For your security, please confirm your identity before continuing. Enter the verification code below.",
       buttonText: 'Confirm Identity',
-      footerNote: "This link expires in 10 minutes. If you didn't initiate this action, please change your password immediately.",
+      footerNote: "This code expires in 10 minutes. If you didn't initiate this action, please change your password immediately.",
     },
     de: {
       subject: 'Identität bestätigen — Evida Life',
       heading: 'Identität bestätigen',
-      body: 'Zu deiner Sicherheit bestätige bitte deine Identität, bevor du fortfährst. Klicke auf den Button, um dich zu verifizieren.',
+      body: 'Zu deiner Sicherheit bestätige bitte deine Identität, bevor du fortfährst. Gib den Code unten ein, um dich zu verifizieren.',
       buttonText: 'Identität bestätigen',
-      footerNote: 'Dieser Link ist 10 Minuten gültig. Wenn du diese Aktion nicht ausgelöst hast, ändere bitte sofort dein Passwort.',
+      footerNote: 'Dieser Code ist 10 Minuten gültig. Wenn du diese Aktion nicht ausgelöst hast, ändere bitte sofort dein Passwort.',
     },
     es: {
       subject: 'Confirma tu identidad — Evida Life',
       heading: 'Confirma tu identidad',
-      body: 'Por tu seguridad, confirma tu identidad antes de continuar. Haz clic en el botón para verificar que eres tú.',
+      body: 'Por tu seguridad, confirma tu identidad antes de continuar. Ingresa el código de abajo para verificar que eres tú.',
       buttonText: 'Confirmar identidad',
-      footerNote: 'Este enlace caduca en 10 minutos.',
+      footerNote: 'Este código caduca en 10 minutos.',
     },
     fr: {
       subject: 'Confirmez votre identité — Evida Life',
       heading: 'Confirmez votre identité',
-      body: 'Pour votre sécurité, veuillez confirmer votre identité avant de continuer. Cliquez sur le bouton ci-dessous.',
+      body: 'Pour votre sécurité, veuillez confirmer votre identité avant de continuer. Entrez le code ci-dessous pour vous identifier.',
       buttonText: "Confirmer l'identité",
-      footerNote: 'Ce lien expire dans 10 minutes.',
+      footerNote: 'Ce code expire dans 10 minutes.',
     },
     it: {
       subject: 'Conferma la tua identità — Evida Life',
       heading: 'Conferma la tua identità',
-      body: 'Per la tua sicurezza, conferma la tua identità prima di continuare. Clicca il pulsante qui sotto per verificare.',
+      body: 'Per la tua sicurezza, conferma la tua identità prima di continuare. Inserisci il codice qui sotto per verificare.',
       buttonText: 'Conferma identità',
-      footerNote: 'Questo link scade tra 10 minuti.',
+      footerNote: 'Questo codice scade tra 10 minuti.',
     },
   },
 };
@@ -262,6 +262,7 @@ const AUTH_T: Record<AuthTemplateId, Record<Lang, AuthEmailContent>> = {
 // ── Builder helpers ───────────────────────────────────────────────────────────
 
 const PREVIEW_URL = 'https://evidalife.com/auth/confirm?token=preview-token&type=preview';
+const PREVIEW_OTP_CODE = '284 791';
 
 function buildAuthHtml(content: AuthEmailContent, preview: boolean): string {
   return buildEmailShell({
@@ -269,6 +270,23 @@ function buildAuthHtml(content: AuthEmailContent, preview: boolean): string {
     bodyHtml: `<p style="margin:0 0 8px;font-size:16px;line-height:1.7;color:#1c2a2b;">${content.body}</p>`,
     ctaUrl: preview ? PREVIEW_URL : '{{ .ConfirmationURL }}',
     ctaText: content.buttonText,
+    footerNote: content.footerNote,
+  });
+}
+
+// Reauthentication uses a 6-digit OTP code, not a link.
+// In preview mode shows a dummy code; in Supabase mode emits {{ .Token }}.
+function buildReauthHtml(content: AuthEmailContent, preview: boolean): string {
+  const code = preview ? PREVIEW_OTP_CODE : '{{ .Token }}';
+  return buildEmailShell({
+    heading: content.heading,
+    bodyHtml: `
+      <p style="margin:0 0 8px;font-size:16px;line-height:1.7;color:#1c2a2b;">${content.body}</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:32px auto 0;">
+        <tr><td style="border-radius:12px;text-align:center;background-color:#0e393d;padding:20px 48px;">
+          <span style="font-family:'Courier New',monospace;font-size:32px;font-weight:700;letter-spacing:8px;color:#ffffff;">${code}</span>
+        </td></tr>
+      </table>`,
     footerNote: content.footerNote,
   });
 }
@@ -302,7 +320,7 @@ export function buildInviteUserEmail(lang: Lang, overrides?: Partial<AuthEmailCo
 
 export function buildReauthenticationEmail(lang: Lang, overrides?: Partial<AuthEmailContent>, preview?: boolean): { subject: string; html: string } {
   const content = { ...AUTH_T.reauthentication[lang] ?? AUTH_T.reauthentication.en, ...overrides };
-  return { subject: content.subject, html: buildAuthHtml(content, !!preview) };
+  return { subject: content.subject, html: buildReauthHtml(content, !!preview) };
 }
 
 // ── Helpers used by admin UI ──────────────────────────────────────────────────
@@ -320,6 +338,19 @@ export function buildAuthPreview(id: string, lang: Lang, overrides?: Partial<Aut
     case 'invite_user':          return buildInviteUserEmail(lang, overrides, true);
     case 'reauthentication':     return buildReauthenticationEmail(lang, overrides, true);
     default:                     return buildConfirmSignupEmail(lang, overrides, true);
+  }
+}
+
+// Builds the Supabase-ready version: {{ .ConfirmationURL }} for link templates,
+// {{ .Token }} for reauthentication. Paste this into Supabase Dashboard → Authentication → Emails.
+export function buildAuthForSupabase(id: string, lang: Lang, overrides?: Partial<AuthEmailContent>): { subject: string; html: string } {
+  switch (id) {
+    case 'reset_password':       return buildResetPasswordEmail(lang, overrides, false);
+    case 'magic_link':           return buildMagicLinkEmail(lang, overrides, false);
+    case 'change_email_address': return buildChangeEmailEmail(lang, overrides, false);
+    case 'invite_user':          return buildInviteUserEmail(lang, overrides, false);
+    case 'reauthentication':     return buildReauthenticationEmail(lang, overrides, false);
+    default:                     return buildConfirmSignupEmail(lang, overrides, false);
   }
 }
 
