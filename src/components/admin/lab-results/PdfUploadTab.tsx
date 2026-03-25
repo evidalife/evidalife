@@ -45,6 +45,7 @@ type LabOption = {
   name: string;
   lab_type: string | null;
   lab_code: string | null;
+  parent_lab_id: string | null;
   city: string | null;
   address: string | null;
   phone: string | null;
@@ -230,7 +231,7 @@ export default function PdfUploadTab() {
     loadUploads();
     supabase.from('biomarkers').select('id, name, unit, he_domain').eq('is_active', true)
       .then(({ data }) => setAllBiomarkers((data as AllBiomarker[]) ?? []));
-    supabase.from('lab_partners').select('id, name, lab_type, lab_code, city, address, phone, email')
+    supabase.from('lab_partners').select('id, name, lab_type, lab_code, parent_lab_id, city, address, phone, email')
       .eq('is_active', true).order('name')
       .then(({ data }) => setLabs((data as LabOption[]) ?? []));
   }, []);
@@ -669,14 +670,31 @@ export default function PdfUploadTab() {
                 className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
               >
                 <option value="">Choose a lab…</option>
-                {labs
-                  .filter((l) => l.lab_type === (labSource === 'evida_life' ? 'evida_life' : 'partner'))
-                  .map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.name}{l.lab_code ? ` (${l.lab_code})` : ''}{l.city ? ` — ${l.city}` : ''}
-                    </option>
-                  ))
-                }
+                {(() => {
+                  const typeFilter = labSource === 'evida_life' ? 'evida_life' : 'partner';
+                  const filtered = labs.filter(l => l.lab_type === typeFilter);
+                  const orgs = filtered.filter(l => !l.parent_lab_id);
+                  const children = filtered.filter(l => l.parent_lab_id);
+                  return orgs.map(org => {
+                    const orgChildren = children.filter(c => c.parent_lab_id === org.id);
+                    if (orgChildren.length === 0) {
+                      return (
+                        <option key={org.id} value={org.id}>
+                          {org.name}{org.lab_code ? ` (${org.lab_code})` : ''}{org.city ? ` — ${org.city}` : ''}
+                        </option>
+                      );
+                    }
+                    return (
+                      <optgroup key={org.id} label={org.name}>
+                        {orgChildren.map(child => (
+                          <option key={child.id} value={child.id}>
+                            {child.city || child.name}{child.lab_code ? ` (${child.lab_code})` : ''}
+                          </option>
+                        ))}
+                      </optgroup>
+                    );
+                  });
+                })()}
               </select>
             </div>
           )}

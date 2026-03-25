@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Badge, FlagBadge, HE_DOMAIN_LABEL, Spinner, Toast, ToastContainer, fmtDate, locName, nextToastId } from './shared';
+import { displayReportId } from '@/lib/lab-results/report-number';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -74,9 +75,13 @@ function sourceBadge(source: string, reportSource: string | null) {
 function reportStatusBadge(status: string | null) {
   if (!status || status === 'confirmed') return null;
   const map: Record<string, { label: string; cls: string }> = {
-    ai_extracted:   { label: '🤖 AI Extracted',   cls: 'bg-violet-50 text-violet-700 ring-1 ring-violet-600/20' },
-    review_pending: { label: '⏳ Review Pending', cls: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20' },
-    archived:       { label: '📦 Archived',        cls: 'bg-gray-100 text-gray-500 ring-1 ring-gray-300/50' },
+    awaiting_sample:  { label: '⏳ Awaiting sample',  cls: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20' },
+    sample_collected: { label: '🧪 Sample collected', cls: 'bg-sky-50 text-sky-700 ring-1 ring-sky-600/20' },
+    processing:       { label: '🔬 Processing',       cls: 'bg-sky-50 text-sky-700 ring-1 ring-sky-600/20' },
+    results_received: { label: '📨 Results received', cls: 'bg-violet-50 text-violet-700 ring-1 ring-violet-600/20' },
+    ai_extracted:     { label: '🤖 AI Extracted',     cls: 'bg-violet-50 text-violet-700 ring-1 ring-violet-600/20' },
+    review_pending:   { label: '⏳ Review Pending',   cls: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20' },
+    archived:         { label: '📦 Archived',          cls: 'bg-gray-100 text-gray-500 ring-1 ring-gray-300/50' },
   };
   const { label, cls } = map[status] ?? { label: status, cls: 'bg-gray-100 text-gray-500 ring-1 ring-gray-300/50' };
   return (
@@ -475,9 +480,7 @@ export default function AllResultsTab() {
                         }
                         {!isArchived && reportStatusBadge(report.status)}
                         <span className="font-semibold text-[#0e393d] text-sm">{report.title}</span>
-                        {report.report_number && (
-                          <span className="font-mono text-[11px] text-[#1c2a2b]/40">{report.report_number}</span>
-                        )}
+                        <span className="font-mono text-[11px] text-[#1c2a2b]/40">{displayReportId(report)}</span>
                       </div>
                       <p className="text-xs text-[#1c2a2b]/50">
                         {report.lab_address ? `${report.lab_address} · ` : ''}

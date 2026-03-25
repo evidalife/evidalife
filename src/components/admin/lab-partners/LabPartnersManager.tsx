@@ -16,6 +16,8 @@ export type LabPartner = {
   name: string;
   lab_type: string | null;
   lab_code: string | null;
+  parent_lab_id: string | null;
+  integration_tier: string | null;
   address: string | null;
   city: string | null;
   canton: string | null;
@@ -37,6 +39,8 @@ type FormState = {
   name: string;
   lab_type: 'evida_life' | 'partner';
   lab_code: string;
+  parent_lab_id: string;
+  integration_tier: string;
   address: string;
   city: string;
   canton: string;
@@ -59,6 +63,8 @@ const EMPTY_FORM: FormState = {
   name: '',
   lab_type: 'partner',
   lab_code: '',
+  parent_lab_id: '',
+  integration_tier: 'manual',
   address: '',
   city: '',
   canton: '',
@@ -259,6 +265,8 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
       name: p.name ?? '',
       lab_type: (p.lab_type === 'evida_life' ? 'evida_life' : 'partner'),
       lab_code: p.lab_code ?? '',
+      parent_lab_id: p.parent_lab_id ?? '',
+      integration_tier: p.integration_tier ?? 'manual',
       address: p.address ?? '',
       city: p.city ?? '',
       canton: p.canton ?? '',
@@ -290,8 +298,14 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const suggestLabCode = useCallback(async (canton: string): Promise<string> => {
+  const suggestLabCode = useCallback(async (canton: string, parentLabId?: string): Promise<string> => {
     if (!canton || canton.length < 2) return '';
+    // Child location: parentCode + canton suffix (e.g. LG1ZH)
+    if (parentLabId) {
+      const parent = partners.find(p => p.id === parentLabId);
+      if (parent?.lab_code) return parent.lab_code + canton.slice(0, 2).toUpperCase();
+    }
+    // Standalone / org: ZH01 pattern
     const prefix = canton.slice(0, 2).toUpperCase();
     const { count } = await supabase
       .from('lab_partners')
@@ -299,7 +313,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
       .like('lab_code', `${prefix}%`);
     const seq = String((count ?? 0) + 1).padStart(2, '0');
     return `${prefix}${seq}`;
-  }, [supabase]);
+  }, [supabase, partners]);
 
   // ── Address select ───────────────────────────────────────────────────────────
 
@@ -316,7 +330,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
       longitude:   data.lng != null ? String(data.lng) : prev.longitude,
     }));
     if (incomingCanton && !form.lab_code) {
-      suggestLabCode(incomingCanton).then(code => {
+      suggestLabCode(incomingCanton, form.parent_lab_id || undefined).then(code => {
         if (code) setField('lab_code', code);
       });
     }
@@ -409,6 +423,8 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
       name:              form.name.trim(),
       lab_type:          form.lab_type,
       lab_code:          rawCode || null,
+      parent_lab_id:     form.parent_lab_id || null,
+      integration_tier:  form.parent_lab_id ? null : form.integration_tier,
       address:           form.address.trim() || null,
       city:              form.city.trim() || null,
       canton:            form.canton.trim() || null,
@@ -473,6 +489,41 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
     return sortDir === 'asc' ? cmp : -cmp;
   }), [filtered, sortCol, sortDir]);
 
+  // ── Grouped display (orgs first, children indented) ──────────────────────────
+
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string, LabPartner[]>();
+    for (const p of partners) {
+      if (p.parent_lab_id) {
+        if (!map.has(p.parent_lab_id)) map.set(p.parent_lab_id, []);
+        map.get(p.parent_lab_id)!.push(p);
+      }
+    }
+    return map;
+  }, [partners]);
+
+  const orgIds = useMemo(() => new Set(childrenByParent.keys()), [childrenByParent]);
+
+  // Build display rows: each org followed immediately by its children
+  const displayRows = useMemo(() => {
+    const rows: Array<{ lab: LabPartner; isChild: boolean }> = [];
+    for (const p of sorted) {
+      if (p.parent_lab_id) continue; // children inserted inline below their parent
+      rows.push({ lab: p, isChild: false });
+      const children = childrenByParent.get(p.id) ?? [];
+      for (const child of children) {
+        rows.push({ lab: child, isChild: true });
+      }
+    }
+    return rows;
+  }, [sorted, childrenByParent]);
+
+  const TIER_ICON: Record<string, string> = {
+    manual:           '📋',
+    voucher_callback: '🔔',
+    full_api:         '⚡',
+  };
+
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
@@ -514,6 +565,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                 Name{' '}{sortCol === 'name' && sortDir === 'asc' ? '▲' : sortCol === 'name' && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Type / Code</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Structure</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider cursor-pointer select-none hover:text-[#0e393d]" onClick={() => handleSort('city')}>
                 City / Canton{' '}{sortCol === 'city' && sortDir === 'asc' ? '▲' : sortCol === 'city' && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}
               </th>
@@ -527,16 +579,16 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
           <tbody className="divide-y divide-[#0e393d]/6">
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
                   No labs found.
                 </td>
               </tr>
             )}
-            {sorted.map((p) => (
-              <tr key={p.id} className="hover:bg-[#fafaf8] transition-colors">
+            {displayRows.map(({ lab: p, isChild }) => (
+              <tr key={p.id} className={`hover:bg-[#fafaf8] transition-colors${isChild ? ' bg-[#fafaf8]/60' : ''}`}>
                 <td className="px-4 py-3">
-                  <div className="font-medium text-[#0e393d]">{p.name}</div>
-                  {p.address && <div className="text-xs text-[#1c2a2b]/40 mt-0.5">{p.address}</div>}
+                  <div className={`font-medium${isChild ? ' pl-5 text-[#0e393d]/70' : ' text-[#0e393d]'}`}>{isChild ? '↳ ' : ''}{p.name}</div>
+                  {p.address && <div className={`text-xs text-[#1c2a2b]/40 mt-0.5${isChild ? ' pl-5' : ''}`}>{p.address}</div>}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -546,6 +598,25 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                     }
                     {p.lab_code && (
                       <span className="font-mono text-xs text-[#1c2a2b]/60 bg-[#0e393d]/5 px-1.5 py-0.5 rounded">{p.lab_code}</span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {orgIds.has(p.id) && (
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-sky-50 text-sky-700 ring-1 ring-sky-600/20">Org</span>
+                    )}
+                    {p.parent_lab_id && (
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#ceab84]/15 text-[#8a6a3e] ring-1 ring-[#ceab84]/30">Location</span>
+                    )}
+                    {!orgIds.has(p.id) && !p.parent_lab_id && (
+                      <span className="text-[11px] text-[#1c2a2b]/30">Standalone</span>
+                    )}
+                    {!p.parent_lab_id && p.integration_tier && p.integration_tier !== 'manual' && (
+                      <span className="text-xs" title={p.integration_tier}>{TIER_ICON[p.integration_tier] ?? ''}</span>
+                    )}
+                    {!p.parent_lab_id && p.integration_tier === 'manual' && (
+                      <span className="text-xs opacity-40" title="manual">📋</span>
                     )}
                   </div>
                 </td>
@@ -658,6 +729,48 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                     maxLength={6}
                   />
                 </Field>
+
+                <Field label="Parent Organization" hint="Leave empty for standalone labs or parent organizations">
+                  <select
+                    className={inputCls}
+                    value={form.parent_lab_id}
+                    onChange={(e) => setField('parent_lab_id', e.target.value)}
+                  >
+                    <option value="">— Standalone / Parent org</option>
+                    {partners
+                      .filter(p => !p.parent_lab_id && p.id !== editingId)
+                      .map(p => (
+                        <option key={p.id} value={p.id}>{p.name}{p.lab_code ? ` (${p.lab_code})` : ''}</option>
+                      ))}
+                  </select>
+                </Field>
+
+                {!form.parent_lab_id && (
+                  <Field label="Integration Tier">
+                    <div className="space-y-2">
+                      {([
+                        { value: 'manual',            label: '📋 Manual',            desc: 'No system integration. Admin uploads PDF manually.' },
+                        { value: 'voucher_callback',  label: '🔔 Voucher Callback',  desc: 'Lab registers voucher via webhook.' },
+                        { value: 'full_api',          label: '⚡ Full API',           desc: 'Lab pushes real-time status + results via API.' },
+                      ] as const).map(({ value, label, desc }) => (
+                        <label key={value} className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="integration_tier"
+                            value={value}
+                            checked={form.integration_tier === value}
+                            onChange={() => setField('integration_tier', value)}
+                            className="mt-0.5 shrink-0"
+                          />
+                          <div>
+                            <span className="text-xs font-medium text-[#0e393d]">{label}</span>
+                            <p className="text-[11px] text-[#1c2a2b]/45">{desc}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </Field>
+                )}
               </div>
 
               {/* ── LOCATION ── */}
@@ -683,7 +796,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                       onChange={(e) => setField('canton', e.target.value)}
                       onBlur={(e) => {
                         if (!form.lab_code && e.target.value) {
-                          suggestLabCode(e.target.value).then(code => {
+                          suggestLabCode(e.target.value, form.parent_lab_id || undefined).then(code => {
                             if (code) setField('lab_code', code);
                           });
                         }

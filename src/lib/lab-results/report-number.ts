@@ -39,3 +39,12 @@ export async function generateReportNumber(
   const seq = String((count ?? 0) + 1).padStart(3, '0');
   return `${base}-${seq}`;
 }
+
+export function displayReportId(
+  report: { report_number: string | null; order_id?: string | null },
+  order?: { order_number?: string | null },
+): string {
+  if (report.report_number) return report.report_number;
+  if (order?.order_number) return `ORD-${order.order_number}`;
+  return 'Pending';
+}
