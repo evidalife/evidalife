@@ -851,7 +851,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                     onChange={(e) => {
                       const newParentId = e.target.value;
                       setField('parent_lab_id', newParentId);
-                      if (form.canton && !form.lab_code) {
+                      if (form.canton) {
                         const code = suggestLabCode(form.canton, newParentId || undefined);
                         if (code) setField('lab_code', code);
                       }
