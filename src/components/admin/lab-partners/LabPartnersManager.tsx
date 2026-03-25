@@ -307,22 +307,22 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const suggestLabCode = useCallback(async (canton: string, parentLabId?: string): Promise<string> => {
+  const suggestLabCode = useCallback((canton: string, parentLabId?: string): string => {
     if (!canton || canton.length < 2) return '';
-    // Child location: parentCode + canton suffix (e.g. LG1ZH)
+    const cantonPrefix = canton.slice(0, 2).toUpperCase();
     if (parentLabId) {
       const parent = partners.find(p => p.id === parentLabId);
-      if (parent?.lab_code) return parent.lab_code + canton.slice(0, 2).toUpperCase();
+      const parentCode = parent?.lab_code ?? '';
+      const base = parentCode + cantonPrefix;
+      let seq = 1;
+      while (partners.some(p => p.lab_code === `${base}${String(seq).padStart(2, '0')}`)) seq++;
+      return `${base}${String(seq).padStart(2, '0')}`;
     }
     // Standalone / org: ZH01 pattern
-    const prefix = canton.slice(0, 2).toUpperCase();
-    const { count } = await supabase
-      .from('lab_partners')
-      .select('id', { count: 'exact', head: true })
-      .like('lab_code', `${prefix}%`);
-    const seq = String((count ?? 0) + 1).padStart(2, '0');
-    return `${prefix}${seq}`;
-  }, [supabase, partners]);
+    let seq = 1;
+    while (partners.some(p => p.lab_code === `${cantonPrefix}${String(seq).padStart(2, '0')}`)) seq++;
+    return `${cantonPrefix}${String(seq).padStart(2, '0')}`;
+  }, [partners]);
 
   // ── Address select ───────────────────────────────────────────────────────────
 
@@ -339,9 +339,8 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
       longitude:   data.lng != null ? String(data.lng) : prev.longitude,
     }));
     if (incomingCanton && !form.lab_code) {
-      suggestLabCode(incomingCanton, form.parent_lab_id || undefined).then(code => {
-        if (code) setField('lab_code', code);
-      });
+      const code = suggestLabCode(incomingCanton, form.parent_lab_id || undefined);
+      if (code) setField('lab_code', code);
     }
   };
 
@@ -907,9 +906,8 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                       onChange={(e) => setField('canton', e.target.value)}
                       onBlur={(e) => {
                         if (!form.lab_code && e.target.value) {
-                          suggestLabCode(e.target.value, form.parent_lab_id || undefined).then(code => {
-                            if (code) setField('lab_code', code);
-                          });
+                          const code = suggestLabCode(e.target.value, form.parent_lab_id || undefined);
+                          if (code) setField('lab_code', code);
                         }
                       }}
                       placeholder="ZH"
