@@ -759,59 +759,22 @@ export default function PdfUploadTab() {
 
       {extracted.length === 0 && !extracting ? (
         <>
-          {/* ── Assign to user ────────────────────────────────────────────── */}
-          <div>
-            <SectionHeading>Assign to User <span className="text-red-400">*</span></SectionHeading>
-            {selectedUser ? (
-              <div className="flex items-center justify-between rounded-lg border border-[#0C9C6C]/30 bg-[#0C9C6C]/5 px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium text-[#1c2a2b]">
-                    {[selectedUser.first_name, selectedUser.last_name].filter(Boolean).join(' ') || selectedUser.email}
-                  </p>
-                  <p className="text-xs text-[#1c2a2b]/50">{selectedUser.email}</p>
-                </div>
-                <button onClick={() => { setSelectedUser(null); setUserSearch(''); }} className="text-xs text-[#1c2a2b]/40 hover:text-[#1c2a2b]">Change</button>
-              </div>
-            ) : (
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search by email or name…"
-                  value={userSearch}
-                  onChange={(e) => searchUsers(e.target.value)}
-                  className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
-                />
-                {searchingUsers && <div className="absolute right-3 top-2.5"><Spinner /></div>}
-                {userOptions.length > 0 && (
-                  <div className="absolute top-full mt-1 w-full rounded-lg border border-[#0e393d]/15 bg-white shadow-lg z-10 overflow-hidden">
-                    {userOptions.map((u) => (
-                      <button
-                        key={u.id}
-                        onClick={() => { setSelectedUser(u); setUserOptions([]); setUserSearch(''); }}
-                        className="w-full flex items-start px-4 py-2.5 text-left hover:bg-[#0e393d]/5 transition"
-                      >
-                        <div>
-                          <p className="text-sm text-[#1c2a2b]">{u.email}</p>
-                          {(u.first_name || u.last_name) && (
-                            <p className="text-xs text-[#1c2a2b]/40">{[u.first_name, u.last_name].filter(Boolean).join(' ')}</p>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* ── Lab source ────────────────────────────────────────────────── */}
+          {/* ── 1. Lab Source (always first) ───────────────────────────────── */}
           <div>
             <SectionHeading>Lab Source</SectionHeading>
             <div className="flex gap-2">
               {LAB_SOURCE_OPTIONS.map(({ value, label }) => (
                 <button
                   key={value}
-                  onClick={() => { setLabSource(value); setSelectedLabId(null); setSelectedOrder(null); setOrderSearch(''); setOrderResults([]); }}
+                  onClick={() => {
+                    setLabSource(value);
+                    setSelectedLabId(null);
+                    setSelectedOrder(null);
+                    setOrderSearch('');
+                    setOrderResults([]);
+                    setSelectedUser(null);
+                    setUserSearch('');
+                  }}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                     labSource === value
                       ? 'bg-[#0e393d] text-white'
@@ -824,12 +787,59 @@ export default function PdfUploadTab() {
             </div>
           </div>
 
-          {/* ── Order lookup (Evida Life / Partner) ───────────────────────── */}
+          {/* ── 2a. External: Assign to User ──────────────────────────────── */}
+          {labSource === 'external_upload' && (
+            <div>
+              <SectionHeading>Assign to User <span className="text-red-400">*</span></SectionHeading>
+              {selectedUser ? (
+                <div className="flex items-center justify-between rounded-lg border border-[#0C9C6C]/30 bg-[#0C9C6C]/5 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-[#1c2a2b]">
+                      {[selectedUser.first_name, selectedUser.last_name].filter(Boolean).join(' ') || selectedUser.email}
+                    </p>
+                    <p className="text-xs text-[#1c2a2b]/50">{selectedUser.email}</p>
+                  </div>
+                  <button onClick={() => { setSelectedUser(null); setUserSearch(''); }} className="text-xs text-[#1c2a2b]/40 hover:text-[#1c2a2b]">Change</button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search by email or name…"
+                    value={userSearch}
+                    onChange={(e) => searchUsers(e.target.value)}
+                    className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                  />
+                  {searchingUsers && <div className="absolute right-3 top-2.5"><Spinner /></div>}
+                  {userOptions.length > 0 && (
+                    <div className="absolute top-full mt-1 w-full rounded-lg border border-[#0e393d]/15 bg-white shadow-lg z-10 overflow-hidden">
+                      {userOptions.map((u) => (
+                        <button
+                          key={u.id}
+                          onClick={() => { setSelectedUser(u); setUserOptions([]); setUserSearch(''); }}
+                          className="w-full flex items-start px-4 py-2.5 text-left hover:bg-[#0e393d]/5 transition"
+                        >
+                          <div>
+                            <p className="text-sm text-[#1c2a2b]">{u.email}</p>
+                            {(u.first_name || u.last_name) && (
+                              <p className="text-xs text-[#1c2a2b]/40">{[u.first_name, u.last_name].filter(Boolean).join(' ')}</p>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── 2b. Evida/Partner: Link to Order (required) ───────────────── */}
           {(labSource === 'evida_life' || labSource === 'partner_lab') && (
             <div>
-              <SectionHeading>Link to Order <span className="text-[#1c2a2b]/30 font-normal text-xs">(optional)</span></SectionHeading>
+              <SectionHeading>Link to Order <span className="text-red-400">*</span></SectionHeading>
               {selectedOrder ? (
-                <div className="rounded-lg border border-[#0e393d]/15 bg-[#0e393d]/3 px-4 py-3 space-y-2">
+                <div className="rounded-lg border border-[#0C9C6C]/30 bg-[#0C9C6C]/5 px-4 py-3 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-medium text-[#0e393d]">
@@ -842,7 +852,7 @@ export default function PdfUploadTab() {
                         </p>
                       )}
                     </div>
-                    <button onClick={handleClearOrder} className="text-xs text-[#1c2a2b]/40 hover:text-[#1c2a2b] shrink-0">Clear</button>
+                    <button onClick={handleClearOrder} className="text-xs text-[#1c2a2b]/40 hover:text-[#1c2a2b] shrink-0">Change</button>
                   </div>
                   {selectedOrder.pendingReports.length > 1 && (
                     <div>
@@ -866,7 +876,7 @@ export default function PdfUploadTab() {
                   )}
                   {selectedOrder.pendingReports.length === 1 && (
                     <p className="text-xs text-[#1c2a2b]/50">
-                      Linked to report: <span className="font-medium text-[#0e393d]">{selectedOrder.pendingReports[0].product_type ?? 'lab report'}</span>
+                      Report: <span className="font-medium text-[#0e393d]">{selectedOrder.pendingReports[0].product_type ?? 'lab report'}</span>
                       {' '}({selectedOrder.pendingReports[0].status})
                     </p>
                   )}
@@ -903,16 +913,14 @@ export default function PdfUploadTab() {
                   {!searchingOrders && orderSearch.length > 1 && orderResults.length === 0 && (
                     <p className="mt-1.5 text-xs text-[#1c2a2b]/40">No orders with pending reports found.</p>
                   )}
-                  <p className="mt-1.5 text-xs text-amber-600/70">
-                    No order linked — upload will create a standalone report
-                  </p>
+                  <p className="mt-1.5 text-xs text-[#1c2a2b]/40">Search for the customer's order to link this report</p>
                 </div>
               )}
             </div>
           )}
 
-          {/* ── Lab selector (Evida Life / Partner) ───────────────────────── */}
-          {(labSource === 'evida_life' || labSource === 'partner_lab') && (
+          {/* ── 3. Lab selector (Evida/Partner, shown after order selected) ── */}
+          {(labSource === 'evida_life' || labSource === 'partner_lab') && selectedOrder && (
             <div>
               <SectionHeading>Select Lab</SectionHeading>
               <select
@@ -956,60 +964,76 @@ export default function PdfUploadTab() {
             </div>
           )}
 
-          {/* ── Drop zone ─────────────────────────────────────────────────── */}
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
-            onClick={() => fileInputRef.current?.click()}
-            className={`cursor-pointer rounded-xl border-2 border-dashed p-12 text-center transition ${
-              dragging ? 'border-[#0e393d] bg-[#0e393d]/5' : 'border-[#0e393d]/20 hover:border-[#0e393d]/40 hover:bg-[#0e393d]/3'
-            }`}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-            />
-            <div className="text-4xl mb-3">📄</div>
-            {file ? (
+          {/* ── 4. Drop zone ──────────────────────────────────────────────── */}
+          {(() => {
+            const uploadReady = labSource === 'external_upload' ? !!selectedUser : !!selectedOrder;
+            return (
               <>
-                <p className="font-medium text-[#0e393d]">{file.name}</p>
-                <p className="text-xs text-[#1c2a2b]/40 mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB · Click to change</p>
-              </>
-            ) : (
-              <>
-                <p className="font-medium text-[#0e393d]">Drop a lab PDF or image here</p>
-                <p className="text-xs text-[#1c2a2b]/40 mt-1">PDF, JPG, PNG · Max 10MB</p>
-              </>
-            )}
-          </div>
-
-          {file && (
-            <>
-              {uploading && (
-                <div className="space-y-2">
-                  <div className="h-2 rounded-full bg-[#0e393d]/8 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-[#0e393d] transition-all duration-500"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-[#1c2a2b]/50 text-center">Uploading…</p>
-                </div>
-              )}
-              {!uploading && (
-                <button
-                  onClick={handleUploadAndExtract}
-                  className="w-full rounded-xl bg-[#0e393d] text-white py-3 font-medium text-sm hover:bg-[#0e393d]/85 transition"
+                <div
+                  onDragOver={(e) => { if (!uploadReady) return; e.preventDefault(); setDragging(true); }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(e) => { e.preventDefault(); setDragging(false); if (!uploadReady) return; const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+                  onClick={() => { if (uploadReady) fileInputRef.current?.click(); }}
+                  className={`rounded-xl border-2 border-dashed p-12 text-center transition ${
+                    !uploadReady
+                      ? 'border-[#0e393d]/10 bg-[#0e393d]/2 opacity-50 cursor-not-allowed'
+                      : dragging
+                      ? 'cursor-pointer border-[#0e393d] bg-[#0e393d]/5'
+                      : 'cursor-pointer border-[#0e393d]/20 hover:border-[#0e393d]/40 hover:bg-[#0e393d]/3'
+                  }`}
                 >
-                  Upload & Extract with AI
-                </button>
-              )}
-            </>
-          )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="hidden"
+                    disabled={!uploadReady}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+                  />
+                  <div className="text-4xl mb-3">📄</div>
+                  {file ? (
+                    <>
+                      <p className="font-medium text-[#0e393d]">{file.name}</p>
+                      <p className="text-xs text-[#1c2a2b]/40 mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB · Click to change</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium text-[#0e393d]">Drop a lab PDF or image here</p>
+                      <p className="text-xs text-[#1c2a2b]/40 mt-1">
+                        {!uploadReady
+                          ? (labSource === 'external_upload' ? 'Select a user first' : 'Select an order first')
+                          : 'PDF, JPG, PNG · Max 10MB'}
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                {file && uploadReady && (
+                  <>
+                    {uploading && (
+                      <div className="space-y-2">
+                        <div className="h-2 rounded-full bg-[#0e393d]/8 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-[#0e393d] transition-all duration-500"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-[#1c2a2b]/50 text-center">Uploading…</p>
+                      </div>
+                    )}
+                    {!uploading && (
+                      <button
+                        onClick={handleUploadAndExtract}
+                        className="w-full rounded-xl bg-[#0e393d] text-white py-3 font-medium text-sm hover:bg-[#0e393d]/85 transition"
+                      >
+                        Upload & Extract with AI
+                      </button>
+                    )}
+                  </>
+                )}
+              </>
+            );
+          })()}
 
           {/* ── Upload history ──────────────────────────────────────────────── */}
           <div>
