@@ -594,16 +594,23 @@ function PhoneField({
     <div>
       <FieldLabel text={label} hint={hint} />
       <div className="flex gap-2">
-        <select
-          value={selectedCountry.code}
-          onChange={(e) => handleCountryChange(e.target.value)}
-          className="rounded-xl border border-[#0e393d]/15 bg-white px-2 py-3 text-sm text-[#1c2a2b] focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition-colors cursor-pointer w-28 shrink-0"
-          title="Country code"
-        >
-          {DIAL_COUNTRIES.map((c) => (
-            <option key={c.code} value={c.code}>{c.flag} {c.dialCode} {c.name}</option>
-          ))}
-        </select>
+        <div className="relative shrink-0">
+          <div className="flex items-center gap-1.5 rounded-xl border border-[#0e393d]/15 bg-white px-2.5 py-3 text-sm pointer-events-none select-none">
+            <span>{selectedCountry.flag}</span>
+            <span className="text-[#1c2a2b]">{selectedCountry.dialCode}</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-[#1c2a2b]/35 ml-0.5"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+          <select
+            value={selectedCountry.code}
+            onChange={(e) => handleCountryChange(e.target.value)}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            title={selectedCountry.name}
+          >
+            {DIAL_COUNTRIES.map((c) => (
+              <option key={c.code} value={c.code}>{c.flag} {c.dialCode} {c.name}</option>
+            ))}
+          </select>
+        </div>
         <input
           type="tel"
           value={localNumber}
