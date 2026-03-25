@@ -96,6 +96,22 @@ const HE_DOMAIN_ORDER = [
   'nutrients', 'organ_function', 'longevity', 'fitness',
 ];
 
+const PRIVACY_NOTICE: Record<string, string> = {
+  de: 'Dein Laborbericht wird nur zur Analyse hochgeladen. Nach der Erkennung der Werte wird die Datei unwiderruflich gelöscht. Wir speichern nur die erkannten Laborwerte, nicht das Dokument selbst.',
+  en: 'Your lab report is uploaded for analysis only. After extracting the values, the file will be permanently deleted. We only store the recognized lab values, not the document itself.',
+  fr: 'Votre rapport de laboratoire est téléchargé uniquement pour analyse. Après extraction des valeurs, le fichier sera définitivement supprimé. Nous ne conservons que les valeurs de laboratoire reconnues.',
+  es: 'Tu informe de laboratorio se sube solo para análisis. Después de extraer los valores, el archivo se eliminará permanentemente. Solo almacenamos los valores de laboratorio reconocidos.',
+  it: "Il tuo referto di laboratorio viene caricato solo per l'analisi. Dopo l'estrazione dei valori, il file verrà eliminato definitivamente. Conserviamo solo i valori di laboratorio riconosciuti.",
+};
+
+const SAVE_CONFIRM: Record<string, string> = {
+  de: '✅ Werte gespeichert. Datei wurde gelöscht.',
+  en: '✅ Values saved. File has been deleted.',
+  fr: '✅ Valeurs enregistrées. Fichier supprimé.',
+  es: '✅ Valores guardados. Archivo eliminado.',
+  it: '✅ Valori salvati. File eliminato.',
+};
+
 const FLAG_STYLE: Record<string, string> = {
   optimal:  'bg-[#0C9C6C]/12 text-[#0C9C6C]',
   good:     'bg-[#C4A96A]/15 text-[#7a5e20]',
@@ -277,6 +293,7 @@ export default function LabReportsTab({ lang }: { lang: Lang }) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
 
   // ── Load data ────────────────────────────────────────────────────────────────
 
@@ -476,8 +493,11 @@ export default function LabReportsTab({ lang }: { lang: Lang }) {
     setSaving(false);
 
     if (!data.success) { alert(data.error ?? 'Save failed'); return; }
+    const msg = SAVE_CONFIRM[lang] ?? SAVE_CONFIRM.en;
     backToList();
     loadData();
+    setSuccessToast(msg);
+    setTimeout(() => setSuccessToast(null), 5000);
   };
 
   // ── Save manual / edit report ──────────────────────────────────────────────
@@ -614,6 +634,12 @@ export default function LabReportsTab({ lang }: { lang: Lang }) {
         </div>
       ) : (
         <>
+          <div className="flex items-start gap-3 rounded-xl bg-[#0e393d]/4 border border-[#0e393d]/10 px-4 py-3">
+            <span className="text-base mt-0.5">🔒</span>
+            <p className="text-xs text-[#1c2a2b]/60 leading-relaxed">
+              {PRIVACY_NOTICE[lang] ?? PRIVACY_NOTICE.en}
+            </p>
+          </div>
           <div
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
@@ -857,6 +883,11 @@ export default function LabReportsTab({ lang }: { lang: Lang }) {
 
   return (
     <div className="space-y-4">
+      {successToast && (
+        <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
+          {successToast}
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <span />
         <button
