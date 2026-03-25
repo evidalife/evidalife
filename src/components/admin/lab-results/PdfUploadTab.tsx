@@ -47,10 +47,27 @@ type LabOption = {
   lab_code: string | null;
   parent_lab_id: string | null;
   city: string | null;
+  postal_code: string | null;
   address: string | null;
   phone: string | null;
   email: string | null;
   test_categories: string[] | null;
+};
+
+type PendingReport = {
+  id: string;
+  status: string;
+  product_type: string | null;
+  order_item_id: string | null;
+  lab_id: string | null;
+};
+
+type OrderLookupResult = {
+  id: string;
+  order_number: string | null;
+  created_at: string;
+  profile: { id: string; first_name: string | null; last_name: string | null; email: string | null } | null;
+  pendingReports: PendingReport[];
 };
 
 type UploadRecord = {
@@ -151,6 +168,18 @@ function ConfidenceBadge({ c }: { c: Confidence }) {
   return <Badge className={cls}>{dot} {label}</Badge>;
 }
 
+// ─── Lab label formatter ──────────────────────────────────────────────────────
+
+function labLabel(lab: LabOption): string {
+  const code = lab.lab_code ? ` (${lab.lab_code})` : '';
+  const addrParts = [
+    lab.address,
+    [lab.postal_code, lab.city].filter(Boolean).join(' '),
+  ].filter(Boolean);
+  const location = addrParts.join(', ');
+  return `${lab.name}${code}${location ? ` — ${location}` : ''}`;
+}
+
 // ─── Main tab ─────────────────────────────────────────────────────────────────
 
 type UserOption = { id: string; email: string | null; first_name: string | null; last_name: string | null };
@@ -189,6 +218,13 @@ export default function PdfUploadTab() {
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const userSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Order lookup
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderResults, setOrderResults] = useState<OrderLookupResult[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<OrderLookupResult | null>(null);
+  const [searchingOrders, setSearchingOrders] = useState(false);
+  const orderSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -232,7 +268,7 @@ export default function PdfUploadTab() {
     loadUploads();
     supabase.from('biomarkers').select('id, name, unit, he_domain').eq('is_active', true)
       .then(({ data }) => setAllBiomarkers((data as AllBiomarker[]) ?? []));
-    supabase.from('lab_partners').select('id, name, lab_type, lab_code, parent_lab_id, city, address, phone, email, test_categories')
+    supabase.from('lab_partners').select('id, name, lab_type, lab_code, parent_lab_id, city, postal_code, address, phone, email, test_categories')
       .eq('is_active', true).order('name')
       .then(({ data }) => setLabs((data as LabOption[]) ?? []));
   }, []);
@@ -253,6 +289,111 @@ export default function PdfUploadTab() {
       setUserOptions((data as UserOption[]) ?? []);
       setSearchingUsers(false);
     }, 300);
+  };
+
+  // ── Order lookup ─────────────────────────────────────────────────────────────
+
+  const searchOrders = (q: string) => {
+    setOrderSearch(q);
+    if (orderSearchTimer.current) clearTimeout(orderSearchTimer.current);
+    if (!q.trim()) { setOrderResults([]); return; }
+    orderSearchTimer.current = setTimeout(async () => {
+      setSearchingOrders(true);
+      const orderMap = new Map<string, { id: string; order_number: string | null; created_at: string; user_id: string }>();
+
+      // By order number
+      const { data: byNum } = await supabase.from('orders')
+        .select('id, order_number, created_at, user_id')
+        .ilike('order_number', `%${q}%`).limit(5);
+      (byNum ?? []).forEach((o) => orderMap.set(o.id, o));
+
+      // By user email
+      const { data: emailMatches } = await supabase.from('profiles')
+        .select('id').ilike('email', `%${q}%`).limit(5);
+      if (emailMatches?.length) {
+        const { data: byUser } = await supabase.from('orders')
+          .select('id, order_number, created_at, user_id')
+          .in('user_id', emailMatches.map((p) => p.id)).limit(5);
+        (byUser ?? []).forEach((o) => orderMap.set(o.id, o));
+      }
+
+      // By voucher code
+      const { data: vouchers } = await supabase.from('order_vouchers')
+        .select('order_id').ilike('code', `%${q}%`).limit(5);
+      const vOrderIds = (vouchers ?? []).map((v) => v.order_id).filter(Boolean);
+      if (vOrderIds.length) {
+        const { data: byVoucher } = await supabase.from('orders')
+          .select('id, order_number, created_at, user_id').in('id', vOrderIds).limit(5);
+        (byVoucher ?? []).forEach((o) => orderMap.set(o.id, o));
+      }
+
+      if (orderMap.size === 0) { setOrderResults([]); setSearchingOrders(false); return; }
+
+      const orderIds = [...orderMap.keys()];
+
+      // Pending lab_reports for these orders
+      const { data: reports } = await supabase.from('lab_reports')
+        .select('id, order_id, status, product_type, order_item_id, lab_id')
+        .in('order_id', orderIds)
+        .not('status', 'in', '("confirmed","archived")');
+
+      const reportsByOrder = new Map<string, PendingReport[]>();
+      (reports ?? []).forEach((r) => {
+        if (!r.order_id) return;
+        if (!reportsByOrder.has(r.order_id)) reportsByOrder.set(r.order_id, []);
+        reportsByOrder.get(r.order_id)!.push(r as PendingReport);
+      });
+
+      // Profiles
+      const userIds = [...new Set([...orderMap.values()].map((o) => o.user_id).filter(Boolean))];
+      const { data: profileData } = await supabase.from('profiles')
+        .select('id, first_name, last_name, email').in('id', userIds);
+      const profileById = new Map((profileData ?? []).map((p) => [p.id, p]));
+
+      const results: OrderLookupResult[] = orderIds
+        .filter((id) => (reportsByOrder.get(id) ?? []).length > 0)
+        .map((id) => {
+          const o = orderMap.get(id)!;
+          return {
+            id: o.id,
+            order_number: o.order_number,
+            created_at: o.created_at,
+            profile: profileById.get(o.user_id) ?? null,
+            pendingReports: reportsByOrder.get(id) ?? [],
+          };
+        });
+
+      setOrderResults(results);
+      setSearchingOrders(false);
+    }, 350);
+  };
+
+  const handleSelectOrder = (order: OrderLookupResult) => {
+    setSelectedOrder(order);
+    setOrderResults([]);
+    setOrderSearch('');
+    // Auto-fill user
+    if (order.profile) {
+      setSelectedUser({
+        id: order.profile.id,
+        email: order.profile.email,
+        first_name: order.profile.first_name,
+        last_name: order.profile.last_name,
+      });
+    }
+    // Auto-link report + lab if exactly one pending report
+    if (order.pendingReports.length === 1) {
+      const rpt = order.pendingReports[0];
+      setLabReportId(rpt.id);
+      if (rpt.lab_id) setSelectedLabId(rpt.lab_id);
+    }
+  };
+
+  const handleClearOrder = () => {
+    setSelectedOrder(null);
+    setOrderSearch('');
+    setOrderResults([]);
+    setLabReportId(null);
   };
 
   // ── Upload flow ─────────────────────────────────────────────────────────────
@@ -645,7 +786,7 @@ export default function PdfUploadTab() {
               {LAB_SOURCE_OPTIONS.map(({ value, label }) => (
                 <button
                   key={value}
-                  onClick={() => { setLabSource(value); setSelectedLabId(null); }}
+                  onClick={() => { setLabSource(value); setSelectedLabId(null); setSelectedOrder(null); setOrderSearch(''); setOrderResults([]); }}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                     labSource === value
                       ? 'bg-[#0e393d] text-white'
@@ -658,42 +799,132 @@ export default function PdfUploadTab() {
             </div>
           </div>
 
+          {/* ── Order lookup (Evida Life / Partner) ───────────────────────── */}
+          {(labSource === 'evida_life' || labSource === 'partner_lab') && (
+            <div>
+              <SectionHeading>Link to Order <span className="text-[#1c2a2b]/30 font-normal text-xs">(optional)</span></SectionHeading>
+              {selectedOrder ? (
+                <div className="rounded-lg border border-[#0e393d]/15 bg-[#0e393d]/3 px-4 py-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-[#0e393d]">
+                        Order #{selectedOrder.order_number ?? selectedOrder.id.slice(0, 8)}
+                      </p>
+                      {selectedOrder.profile && (
+                        <p className="text-xs text-[#1c2a2b]/50">
+                          {[selectedOrder.profile.first_name, selectedOrder.profile.last_name].filter(Boolean).join(' ') || selectedOrder.profile.email}
+                          {' · '}{selectedOrder.profile.email}
+                        </p>
+                      )}
+                    </div>
+                    <button onClick={handleClearOrder} className="text-xs text-[#1c2a2b]/40 hover:text-[#1c2a2b] shrink-0">Clear</button>
+                  </div>
+                  {selectedOrder.pendingReports.length > 1 && (
+                    <div>
+                      <p className="text-xs text-[#1c2a2b]/50 mb-1">Select which report to link:</p>
+                      {selectedOrder.pendingReports.map((rpt) => (
+                        <label key={rpt.id} className="flex items-center gap-2 text-xs py-1 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="linkedReport"
+                            checked={labReportId === rpt.id}
+                            onChange={() => {
+                              setLabReportId(rpt.id);
+                              if (rpt.lab_id) setSelectedLabId(rpt.lab_id);
+                            }}
+                          />
+                          <span className="text-[#1c2a2b]/70">{rpt.product_type ?? 'Report'}</span>
+                          <span className="text-[#1c2a2b]/40">({rpt.status})</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {selectedOrder.pendingReports.length === 1 && (
+                    <p className="text-xs text-[#1c2a2b]/50">
+                      Linked to report: <span className="font-medium text-[#0e393d]">{selectedOrder.pendingReports[0].product_type ?? 'lab report'}</span>
+                      {' '}({selectedOrder.pendingReports[0].status})
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search by order number, voucher code, or email…"
+                    value={orderSearch}
+                    onChange={(e) => searchOrders(e.target.value)}
+                    className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                  />
+                  {searchingOrders && <div className="absolute right-3 top-2.5"><Spinner /></div>}
+                  {orderResults.length > 0 && (
+                    <div className="absolute top-full mt-1 w-full rounded-lg border border-[#0e393d]/15 bg-white shadow-lg z-10 overflow-hidden">
+                      {orderResults.map((o) => (
+                        <button
+                          key={o.id}
+                          onClick={() => handleSelectOrder(o)}
+                          className="w-full flex items-start justify-between px-4 py-2.5 text-left hover:bg-[#0e393d]/5 transition gap-4"
+                        >
+                          <div>
+                            <p className="text-sm text-[#1c2a2b] font-medium">Order #{o.order_number ?? o.id.slice(0, 8)}</p>
+                            {o.profile && (
+                              <p className="text-xs text-[#1c2a2b]/50">{o.profile.email}</p>
+                            )}
+                          </div>
+                          <span className="text-xs text-[#1c2a2b]/40 shrink-0 mt-0.5">{o.pendingReports.length} pending</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!searchingOrders && orderSearch.length > 1 && orderResults.length === 0 && (
+                    <p className="mt-1.5 text-xs text-[#1c2a2b]/40">No orders with pending reports found.</p>
+                  )}
+                  <p className="mt-1.5 text-xs text-amber-600/70">
+                    No order linked — upload will create a standalone report
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ── Lab selector (Evida Life / Partner) ───────────────────────── */}
           {(labSource === 'evida_life' || labSource === 'partner_lab') && (
             <div>
               <SectionHeading>Select Lab</SectionHeading>
               <select
                 value={selectedLabId ?? ''}
-                onChange={(e) => {
-                  const id = e.target.value || null;
-                  setSelectedLabId(id);
-                }}
+                onChange={(e) => setSelectedLabId(e.target.value || null)}
                 className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
               >
                 <option value="">Choose a lab…</option>
                 {(() => {
                   const typeFilter = labSource === 'evida_life' ? 'evida_life' : 'partner';
-                  const filtered = labs.filter(l => l.lab_type === typeFilter);
-                  const orgs = filtered.filter(l => !l.parent_lab_id);
-                  const children = filtered.filter(l => l.parent_lab_id);
-                  return orgs.map(org => {
-                    const orgChildren = children.filter(c => c.parent_lab_id === org.id);
-                    if (orgChildren.length === 0) {
-                      return (
-                        <option key={org.id} value={org.id}>
-                          {org.name}{org.lab_code ? ` (${org.lab_code})` : ''}{org.city ? ` — ${org.city}` : ''}
+                  const filtered = labs.filter((l) => l.lab_type === typeFilter);
+                  const childrenByParent = new Map<string, LabOption[]>();
+                  filtered.filter((l) => l.parent_lab_id).forEach((c) => {
+                    if (!childrenByParent.has(c.parent_lab_id!)) childrenByParent.set(c.parent_lab_id!, []);
+                    childrenByParent.get(c.parent_lab_id!)!.push(c);
+                  });
+                  return filtered.filter((l) => !l.parent_lab_id).flatMap((org) => {
+                    const orgChildren = childrenByParent.get(org.id) ?? [];
+                    const selectable = orgChildren.length === 0 || (org.test_categories?.length ?? 0) > 0;
+                    const items = [];
+                    if (selectable) {
+                      items.push(<option key={org.id} value={org.id}>{labLabel(org)}</option>);
+                    } else {
+                      items.push(
+                        <option key={`h-${org.id}`} value="" disabled style={{ color: '#888' }}>
+                          — {org.name}{org.lab_code ? ` (${org.lab_code})` : ''}
                         </option>
                       );
                     }
-                    return (
-                      <optgroup key={org.id} label={org.name}>
-                        {orgChildren.map(child => (
-                          <option key={child.id} value={child.id}>
-                            {child.city || child.name}{child.lab_code ? ` (${child.lab_code})` : ''}
-                          </option>
-                        ))}
-                      </optgroup>
-                    );
+                    orgChildren.forEach((child) => {
+                      items.push(
+                        <option key={child.id} value={child.id}>
+                          {'  ↳ '}{labLabel(child)}
+                        </option>
+                      );
+                    });
+                    return items;
                   });
                 })()}
               </select>
