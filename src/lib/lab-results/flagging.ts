@@ -38,8 +38,8 @@ export function computeStatusFlag(value: number, ranges: BiomarkerRanges): Statu
 
   if (inRef) return 'good';
 
-  // Borderline: within 20% outside reference range
-  const borderlineBuffer = 0.20;
+  // Borderline: within 5% outside reference range (narrow margin — clearly out-of-range values should be 'risk')
+  const borderlineBuffer = 0.05;
   const refLowBuffer = rl != null ? rl * (1 - borderlineBuffer) : null;
   const refHighBuffer = rh != null ? rh * (1 + borderlineBuffer) : null;
   const inBorderline = (

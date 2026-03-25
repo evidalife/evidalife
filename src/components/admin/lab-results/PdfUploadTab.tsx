@@ -95,12 +95,37 @@ const LAB_SOURCE_OPTIONS: { value: LabSource; label: string }[] = [
   { value: 'external_upload', label: '📁 External' },
 ];
 
+// ─── Unit-aware ref range selection ──────────────────────────────────────────
+// Picks the correct ref range for flag comparison based on unit context:
+// - If conversion was applied: value is in DB unit → use DB ranges
+// - If not converted and units match: use DB ranges
+// - If not converted and units differ: use PDF's own ref range
+// This prevents false Out-of-Range flags for e.g. Harnsäure 310 mcmol/l vs DB range in mg/dL
+
+function normUnit(u: string): string {
+  return (u || '').toLowerCase().replace(/\s/g, '').replace(/[μµ]/g, 'u');
+}
+
+function effectiveRefRange(row: ExtractedRow): { low: number | null; high: number | null; useDbOptimal: boolean } {
+  const dbBm = row.db_biomarker;
+  if (!dbBm) return { low: row.ref_low, high: row.ref_high, useDbOptimal: false };
+  if (row.was_converted) {
+    return { low: dbBm.ref_range_low ?? null, high: dbBm.ref_range_high ?? null, useDbOptimal: true };
+  }
+  const pdfUnit = normUnit(row.unit);
+  const dbUnit  = normUnit(dbBm.unit ?? '');
+  if (!dbUnit || pdfUnit === dbUnit) {
+    return { low: dbBm.ref_range_low ?? null, high: dbBm.ref_range_high ?? null, useDbOptimal: true };
+  }
+  // Units differ, no conversion → fall back to PDF's ref range; optimal ranges are in DB unit so skip them
+  return { low: row.ref_low, high: row.ref_high, useDbOptimal: false };
+}
+
 // ─── Implausible value check ──────────────────────────────────────────────────
 
 function isImplausibleRow(row: ExtractedRow): boolean {
   if (!row.db_biomarker) return false;
-  const refLow  = row.db_biomarker.ref_range_low  ?? row.ref_low;
-  const refHigh = row.db_biomarker.ref_range_high ?? row.ref_high;
+  const { low: refLow, high: refHigh } = effectiveRefRange(row);
   if (refHigh != null && row.value > refHigh * 10) return true;
   if (refLow  != null && refLow > 0 && row.value < refLow / 10) return true;
   return false;
@@ -1218,17 +1243,18 @@ export default function PdfUploadTab() {
                 </thead>
                 <tbody className="divide-y divide-[#0e393d]/6">
                   {extracted.map((row, idx) => {
-                    const refLow  = row.db_biomarker?.ref_range_low  ?? row.ref_low;
-                    const refHigh = row.db_biomarker?.ref_range_high ?? row.ref_high;
-                    const refUnit = row.db_biomarker?.unit || row.unit || '';
+                    const { low: refLow, high: refHigh, useDbOptimal } = effectiveRefRange(row);
+                    const refUnit = row.was_converted
+                      ? (row.db_biomarker?.unit || row.unit || '')
+                      : (row.unit || '');
                     const implausible = row.include && isImplausibleRow(row);
 
                     const flag = row.db_biomarker
                       ? computeStatusFlag(row.value, {
                           ref_range_low: refLow,
                           ref_range_high: refHigh,
-                          optimal_range_low: row.db_biomarker.optimal_range_low,
-                          optimal_range_high: row.db_biomarker.optimal_range_high,
+                          optimal_range_low: useDbOptimal ? row.db_biomarker.optimal_range_low : null,
+                          optimal_range_high: useDbOptimal ? row.db_biomarker.optimal_range_high : null,
                           range_type: row.db_biomarker.range_type,
                         })
                       : null;
