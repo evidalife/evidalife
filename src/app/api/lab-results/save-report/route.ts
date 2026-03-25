@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
     const supabase = createAdminClient();
 
     // 1. Create lab_report
-    const reportNumber = await generateReportNumber(supabase, source);
+    // User self-reports always get EU prefix (external_upload)
+    const reportNumber = await generateReportNumber(supabase, 'external_upload', null, test_date);
     const { data: report, error: reportErr } = await supabase
       .from('lab_reports')
       .insert({

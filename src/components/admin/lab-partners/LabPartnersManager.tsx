@@ -13,6 +13,8 @@ const LANGS: Lang[] = ['de', 'en', 'fr', 'es', 'it'];
 export type LabPartner = {
   id: string;
   name: string;
+  lab_type: string | null;
+  lab_code: string | null;
   address: string | null;
   city: string | null;
   canton: string | null;
@@ -32,6 +34,8 @@ export type LabPartner = {
 
 type FormState = {
   name: string;
+  lab_type: 'evida_life' | 'partner';
+  lab_code: string;
   address: string;
   city: string;
   canton: string;
@@ -52,6 +56,8 @@ const EMPTY_DESC: Record<Lang, string> = { de: '', en: '', fr: '', es: '', it: '
 
 const EMPTY_FORM: FormState = {
   name: '',
+  lab_type: 'partner',
+  lab_code: '',
   address: '',
   city: '',
   canton: '',
@@ -501,6 +507,8 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
     const savedDesc = (p.description as Record<string, string> | null) ?? {};
     setForm({
       name: p.name ?? '',
+      lab_type: (p.lab_type === 'evida_life' ? 'evida_life' : 'partner'),
+      lab_code: p.lab_code ?? '',
       address: p.address ?? '',
       city: p.city ?? '',
       canton: p.canton ?? '',
@@ -615,6 +623,11 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
 
   const handleSave = async () => {
     if (!form.name.trim()) { setError('Name is required.'); return; }
+    const rawCode = form.lab_code.trim().toUpperCase();
+    if (rawCode && !/^[A-Z0-9]{1,6}$/.test(rawCode)) {
+      setError('Lab Code must be 1–6 uppercase alphanumeric characters (e.g. ZH01).');
+      return;
+    }
     setSaving(true);
     setError(null);
 
@@ -624,6 +637,8 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
 
     const payload = {
       name:              form.name.trim(),
+      lab_type:          form.lab_type,
+      lab_code:          rawCode || null,
       address:           form.address.trim() || null,
       city:              form.city.trim() || null,
       canton:            form.canton.trim() || null,
@@ -680,7 +695,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-serif text-2xl text-[#0e393d]">Lab Partners</h1>
+          <h1 className="font-serif text-2xl text-[#0e393d]">Labs</h1>
           <p className="mt-0.5 text-sm text-[#1c2a2b]/50">
             {partners.length} total · {partners.filter((p) => p.is_active).length} active
           </p>
@@ -689,7 +704,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
           onClick={openCreate}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 transition"
         >
-          <span className="text-lg leading-none">+</span> New Partner
+          <span className="text-lg leading-none">+</span> New Lab
         </button>
       </div>
 
@@ -710,9 +725,9 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
           <thead>
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Name</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Type / Code</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">City / Canton</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Categories</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">ISO</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Status</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Actions</th>
             </tr>
@@ -721,7 +736,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
-                  No lab partners found.
+                  No labs found.
                 </td>
               </tr>
             )}
@@ -730,6 +745,17 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                 <td className="px-4 py-3">
                   <div className="font-medium text-[#0e393d]">{p.name}</div>
                   {p.address && <div className="text-xs text-[#1c2a2b]/40 mt-0.5">{p.address}</div>}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {p.lab_type === 'evida_life'
+                      ? <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#0C9C6C]/10 text-[#0C9C6C] ring-1 ring-[#0C9C6C]/20">🌿 Evida</span>
+                      : <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#0e393d]/8 text-[#0e393d] ring-1 ring-[#0e393d]/15">🤝 Partner</span>
+                    }
+                    {p.lab_code && (
+                      <span className="font-mono text-xs text-[#1c2a2b]/60 bg-[#0e393d]/5 px-1.5 py-0.5 rounded">{p.lab_code}</span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-[#1c2a2b]/70">
                   {[p.city, p.canton].filter(Boolean).join(', ') || '—'}
@@ -744,13 +770,6 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                         ) : null;
                       })}
                     </div>
-                  ) : (
-                    <span className="text-[#1c2a2b]/25 text-xs">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  {p.iso_accreditation ? (
-                    <Badge color="gold">{p.iso_accreditation}</Badge>
                   ) : (
                     <span className="text-[#1c2a2b]/25 text-xs">—</span>
                   )}
@@ -792,7 +811,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
             {/* Panel header */}
             <div className="flex items-center justify-between border-b border-[#0e393d]/10 px-6 py-4">
               <h2 className="font-serif text-lg text-[#0e393d]">
-                {editingId ? 'Edit Lab Partner' : 'New Lab Partner'}
+                {editingId ? 'Edit Lab' : 'New Lab'}
               </h2>
               <button onClick={closePanel} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
@@ -806,13 +825,45 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
 
               {/* ── PARTNER ── */}
               <div className="space-y-3">
-                <SectionHead>Partner</SectionHead>
+                <SectionHead>Lab Identity</SectionHead>
                 <Field label="Name *">
                   <input
                     className={inputCls}
                     value={form.name}
                     onChange={(e) => setField('name', e.target.value)}
                     placeholder="Zurich Clinical Lab AG"
+                  />
+                </Field>
+
+                <Field label="Lab Type">
+                  <div className="flex gap-2">
+                    {([
+                      { value: 'evida_life', label: '🌿 Evida Life Lab' },
+                      { value: 'partner',    label: '🤝 Partner Lab' },
+                    ] as const).map(({ value, label }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setField('lab_type', value)}
+                        className={`flex-1 py-2 rounded-lg text-xs font-medium ring-1 ring-inset transition ${
+                          form.lab_type === value
+                            ? 'bg-[#0e393d] text-white ring-[#0e393d]'
+                            : 'bg-white text-[#1c2a2b]/60 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+
+                <Field label="Lab Code" hint="Short ID for report numbers — 1–6 chars, e.g. ZH01, LG1">
+                  <input
+                    className={inputCls}
+                    value={form.lab_code}
+                    onChange={(e) => setField('lab_code', e.target.value.toUpperCase())}
+                    placeholder="ZH01"
+                    maxLength={6}
                   />
                 </Field>
               </div>
@@ -1003,7 +1054,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                   disabled={saving}
                   className="flex-1 rounded-lg bg-[#0e393d] py-2.5 text-sm font-medium text-white hover:bg-[#0e393d]/90 disabled:opacity-50 transition"
                 >
-                  {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Create Partner'}
+                  {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Create Lab'}
                 </button>
               </div>
             </div>

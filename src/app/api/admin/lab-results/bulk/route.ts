@@ -31,8 +31,8 @@ export async function POST(req: NextRequest) {
     let labReportId: string | null = existingReportId ?? null;
 
     if (labReportId) {
-      // Update the existing draft report (created at AI extraction time) to confirmed
-      const reportNumber = await generateReportNumber(supabase, 'admin_import');
+      // Update the existing draft report (created at AI extraction time) to confirmed.
+      // Report number was already generated at extraction — do not overwrite it.
       await supabase
         .from('lab_reports')
         .update({
@@ -40,16 +40,30 @@ export async function POST(req: NextRequest) {
           test_date:     labReport?.test_date ?? undefined,
           source:        'admin_import',
           status:        'confirmed',
-          report_number: reportNumber,
-          report_source: labReport?.report_source || null,
+          report_source: labReport?.report_source || undefined,
           lab_address:   labReport?.lab_address || null,
           lab_email:     labReport?.lab_email   || null,
           lab_phone:     labReport?.lab_phone   || null,
         })
         .eq('id', labReportId);
     } else if (labReport?.title && labReport?.test_date && labReport?.user_id) {
-      // Legacy path: create a new report directly
-      const reportNumber = await generateReportNumber(supabase, 'admin_import');
+      // Legacy path: no existing draft, create a new report directly
+      // Look up lab code if a lab was selected
+      let labCode: string | null = null;
+      if (labReport.lab_id) {
+        const { data: labRecord } = await supabase
+          .from('lab_partners')
+          .select('lab_code')
+          .eq('id', labReport.lab_id)
+          .maybeSingle();
+        labCode = labRecord?.lab_code ?? null;
+      }
+      const reportNumber = await generateReportNumber(
+        supabase,
+        labReport.report_source ?? 'external_upload',
+        labCode,
+        labReport.test_date,
+      );
       const { data: reportRecord } = await supabase
         .from('lab_reports')
         .insert({
@@ -60,6 +74,7 @@ export async function POST(req: NextRequest) {
           status:        'confirmed',
           report_number: reportNumber,
           report_source: labReport.report_source || null,
+          lab_id:        labReport.lab_id || null,
           lab_address:   labReport.lab_address || null,
           lab_email:     labReport.lab_email   || null,
           lab_phone:     labReport.lab_phone   || null,

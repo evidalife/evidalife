@@ -40,6 +40,17 @@ type ExtractedRow = {
 
 type LabSource = 'evida_life' | 'partner_lab' | 'external_upload';
 
+type LabOption = {
+  id: string;
+  name: string;
+  lab_type: string | null;
+  lab_code: string | null;
+  city: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+};
+
 type UploadRecord = {
   id: string;
   user_id: string | null;
@@ -132,7 +143,10 @@ export default function PdfUploadTab() {
   const [reanalyzingUserId, setReanalyzingUserId] = useState<string | null>(null);
   // New: lab report ID (from AI extraction draft), lab source, PDF signed URL
   const [labReportId, setLabReportId] = useState<string | null>(null);
+  const [reportNumber, setReportNumber] = useState<string | null>(null);
   const [labSource, setLabSource] = useState<LabSource>('partner_lab');
+  const [labs, setLabs] = useState<LabOption[]>([]);
+  const [selectedLabId, setSelectedLabId] = useState<string | null>(null);
   const [pdfSignedUrl, setPdfSignedUrl] = useState<string | null>(null);
 
   // User assignment
@@ -162,11 +176,14 @@ export default function PdfUploadTab() {
     setLoadingUploads(false);
   }, [supabase]);
 
-  // Load all biomarker definitions for the mapping dropdown
+  // Load all biomarker definitions and labs on mount
   useEffect(() => {
     loadUploads();
     supabase.from('biomarkers').select('id, name, unit, he_domain').eq('is_active', true)
       .then(({ data }) => setAllBiomarkers((data as AllBiomarker[]) ?? []));
+    supabase.from('lab_partners').select('id, name, lab_type, lab_code, city, address, phone, email')
+      .eq('is_active', true).order('name')
+      .then(({ data }) => setLabs((data as LabOption[]) ?? []));
   }, []);
 
   // ── User search ──────────────────────────────────────────────────────────────
@@ -232,11 +249,11 @@ export default function PdfUploadTab() {
     setExtracting(true);
     setUploadId(uploadRecord.id);
 
-    // Call AI extraction — pass storage path
+    // Call AI extraction — pass storage path, lab source and selected lab
     const res = await fetch('/api/admin/parse-lab-results', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ storagePath, uploadId: uploadRecord.id }),
+      body: JSON.stringify({ storagePath, uploadId: uploadRecord.id, labSource, labId: selectedLabId }),
     });
     const data = await res.json();
     setExtracting(false);
@@ -246,15 +263,18 @@ export default function PdfUploadTab() {
       return;
     }
 
+    // If a lab is selected, pre-fill lab contact details from the lab record
+    const selectedLab = selectedLabId ? labs.find((l) => l.id === selectedLabId) : null;
     setExtracted(data.extracted ?? []);
     setLabMetadata({
       title:       data.metadata?.lab_name ?? file?.name.replace(/\.[^.]+$/, '') ?? '',
       test_date:   data.metadata?.test_date ?? '',
-      lab_address: data.metadata?.lab_address ?? '',
-      lab_email:   data.metadata?.lab_email ?? '',
-      lab_phone:   data.metadata?.lab_phone ?? '',
+      lab_address: selectedLab?.address ?? data.metadata?.lab_address ?? '',
+      lab_email:   selectedLab?.email   ?? data.metadata?.lab_email   ?? '',
+      lab_phone:   selectedLab?.phone   ?? data.metadata?.lab_phone   ?? '',
     });
     setLabReportId(data.labReportId ?? null);
+    setReportNumber(data.reportNumber ?? null);
 
     // Generate signed URL for PDF viewing in review screen
     const { data: signedData } = await supabase.storage.from('lab-pdfs').createSignedUrl(storagePath, 3600);
@@ -282,6 +302,9 @@ export default function PdfUploadTab() {
 
     if (upload.lab_report_id) {
       await supabase.from('lab_reports').update({ status: 'review_pending' }).eq('id', upload.lab_report_id);
+      // Fetch the existing report number
+      const { data: rpt } = await supabase.from('lab_reports').select('report_number').eq('id', upload.lab_report_id).single();
+      setReportNumber(rpt?.report_number ?? null);
     }
 
     // Generate signed URL for PDF viewing
@@ -338,6 +361,18 @@ export default function PdfUploadTab() {
       lab_phone:   data.metadata?.lab_phone ?? '',
     });
     setLabReportId(data.labReportId ?? null);
+    setReportNumber(data.reportNumber ?? null);
+
+    // Pre-fill lab details from selected lab if re-analyze selects a known lab
+    const reLab = selectedLabId ? labs.find((l) => l.id === selectedLabId) : null;
+    if (reLab) {
+      setLabMetadata((m) => ({
+        ...m,
+        lab_address: reLab.address || m.lab_address,
+        lab_email:   reLab.email   || m.lab_email,
+        lab_phone:   reLab.phone   || m.lab_phone,
+      }));
+    }
 
     const { data: signedData } = await supabase.storage.from('lab-pdfs').createSignedUrl(storagePath, 3600);
     setPdfSignedUrl(signedData?.signedUrl ?? null);
@@ -436,6 +471,7 @@ export default function PdfUploadTab() {
       lab_email:     labMetadata.lab_email   || null,
       lab_phone:     labMetadata.lab_phone   || null,
       report_source: labSource,
+      lab_id:        selectedLabId || null,
     } : null;
 
     const res = await fetch('/api/admin/lab-results/bulk', {
@@ -459,6 +495,7 @@ export default function PdfUploadTab() {
     setUploadId(null);
     setReanalyzingUserId(null);
     setLabReportId(null);
+    setReportNumber(null);
     setPdfSignedUrl(null);
     setLabMetadata({ title: '', test_date: '', lab_address: '', lab_email: '', lab_phone: '' });
     loadUploads();
@@ -470,6 +507,7 @@ export default function PdfUploadTab() {
     setUploadId(null);
     setReanalyzingUserId(null);
     setLabReportId(null);
+    setReportNumber(null);
     setPdfSignedUrl(null);
     setLabMetadata({ title: '', test_date: '', lab_address: '', lab_email: '', lab_phone: '' });
   };
@@ -545,7 +583,7 @@ export default function PdfUploadTab() {
               {LAB_SOURCE_OPTIONS.map(({ value, label }) => (
                 <button
                   key={value}
-                  onClick={() => setLabSource(value)}
+                  onClick={() => { setLabSource(value); setSelectedLabId(null); }}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                     labSource === value
                       ? 'bg-[#0e393d] text-white'
@@ -557,6 +595,31 @@ export default function PdfUploadTab() {
               ))}
             </div>
           </div>
+
+          {/* ── Lab selector (Evida Life / Partner) ───────────────────────── */}
+          {(labSource === 'evida_life' || labSource === 'partner_lab') && (
+            <div>
+              <SectionHeading>Select Lab</SectionHeading>
+              <select
+                value={selectedLabId ?? ''}
+                onChange={(e) => {
+                  const id = e.target.value || null;
+                  setSelectedLabId(id);
+                }}
+                className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
+              >
+                <option value="">Choose a lab…</option>
+                {labs
+                  .filter((l) => l.lab_type === (labSource === 'evida_life' ? 'evida_life' : 'partner'))
+                  .map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}{l.lab_code ? ` (${l.lab_code})` : ''}{l.city ? ` — ${l.city}` : ''}
+                    </option>
+                  ))
+                }
+              </select>
+            </div>
+          )}
 
           {/* ── Drop zone ─────────────────────────────────────────────────── */}
           <div
@@ -680,14 +743,21 @@ export default function PdfUploadTab() {
       ) : extracted.length > 0 ? (
         /* ── Review screen ──────────────────────────────────────────────────── */
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-4">
             <div>
               <SectionHeading>Review Extracted Results</SectionHeading>
-              {reanalyzingUserId && (
-                <p className="text-xs text-[#1c2a2b]/50 mt-0.5">Re-analysis — results will be saved to the original user</p>
-              )}
+              <div className="flex items-center gap-3 mt-1">
+                {reportNumber && (
+                  <span className="font-mono text-xs text-[#0e393d] bg-[#0e393d]/6 px-2 py-0.5 rounded">
+                    {reportNumber}
+                  </span>
+                )}
+                {reanalyzingUserId && (
+                  <p className="text-xs text-[#1c2a2b]/50">Re-analysis — results will be saved to the original user</p>
+                )}
+              </div>
             </div>
-            <div className="flex gap-2 items-center">
+            <div className="flex gap-2 items-center shrink-0">
               {pdfSignedUrl && (
                 <a
                   href={pdfSignedUrl}
@@ -705,6 +775,27 @@ export default function PdfUploadTab() {
               <button onClick={handleBackFromReview} className="text-xs text-[#1c2a2b]/50 hover:text-[#1c2a2b]">← Back</button>
             </div>
           </div>
+
+          {/* Selected lab info (read-only for known labs) */}
+          {selectedLabId && labSource !== 'external_upload' && (() => {
+            const lab = labs.find((l) => l.id === selectedLabId);
+            if (!lab) return null;
+            return (
+              <div className="rounded-lg border border-[#0e393d]/10 bg-[#fafaf8] px-4 py-3">
+                <div className="flex items-center gap-2 mb-1">
+                  {lab.lab_code && (
+                    <span className="font-mono text-[11px] text-[#1c2a2b]/50 bg-[#0e393d]/5 px-1.5 py-0.5 rounded">{lab.lab_code}</span>
+                  )}
+                  <span className="text-sm font-medium text-[#0e393d]">{lab.name}</span>
+                </div>
+                {lab.address && <p className="text-xs text-[#1c2a2b]/50">{lab.address}{lab.city ? `, ${lab.city}` : ''}</p>}
+                <div className="flex gap-4 mt-0.5">
+                  {lab.phone && <p className="text-xs text-[#1c2a2b]/40">{lab.phone}</p>}
+                  {lab.email && <p className="text-xs text-[#1c2a2b]/40">{lab.email}</p>}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Lab report metadata */}
           <div className="rounded-xl border border-[#0e393d]/10 bg-white p-4">

@@ -6,12 +6,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { callClaudeForPdf, matchAndConvertResults } from '@/lib/lab-results/extract-pdf';
+import { generateReportNumber } from '@/lib/lab-results/report-number';
 
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const { storagePath, uploadId } = await req.json();
+    const { storagePath, uploadId, labSource, labId } = await req.json();
     if (!storagePath || !uploadId) {
       return NextResponse.json({ error: 'storagePath and uploadId are required' }, { status: 400 });
     }
@@ -88,22 +89,39 @@ export async function POST(req: NextRequest) {
       .eq('id', uploadId)
       .single();
 
+    // Look up lab code if a specific lab was selected
+    let labCode: string | null = null;
+    if (labId) {
+      const { data: labRecord } = await supabase
+        .from('lab_partners')
+        .select('lab_code')
+        .eq('id', labId)
+        .maybeSingle();
+      labCode = labRecord?.lab_code ?? null;
+    }
+
     // Create a lab_reports row at extraction time (status: ai_extracted)
     const reportTitle = metadata?.lab_name || (uploadRecord?.file_name?.replace(/\.[^.]+$/, '') ?? 'Lab Report');
     const rawDate = metadata?.test_date ?? null;
     const testDate = rawDate ? (new Date(rawDate).toISOString().split('T')[0] ?? null) : null;
+    const resolvedSource = labSource ?? 'external_upload';
+
+    const reportNumber = await generateReportNumber(supabase, resolvedSource, labCode, testDate);
 
     const { data: reportRecord } = await supabase
       .from('lab_reports')
       .insert({
-        user_id:     uploadRecord?.user_id ?? null,
-        title:       reportTitle,
-        test_date:   testDate,
-        source:      'admin_import',
-        status:      'ai_extracted',
-        lab_address: metadata?.lab_address || null,
-        lab_email:   metadata?.lab_email   || null,
-        lab_phone:   metadata?.lab_phone   || null,
+        user_id:       uploadRecord?.user_id ?? null,
+        title:         reportTitle,
+        test_date:     testDate,
+        source:        'admin_import',
+        status:        'ai_extracted',
+        report_source: resolvedSource,
+        report_number: reportNumber,
+        lab_id:        labId ?? null,
+        lab_address:   metadata?.lab_address || null,
+        lab_email:     metadata?.lab_email   || null,
+        lab_phone:     metadata?.lab_phone   || null,
       })
       .select('id')
       .single();
@@ -119,7 +137,7 @@ export async function POST(req: NextRequest) {
       ...(labReportId ? { lab_report_id: labReportId } : {}),
     }).eq('id', uploadId);
 
-    return NextResponse.json({ success: true, extracted: matched, metadata, uploadId, labReportId });
+    return NextResponse.json({ success: true, extracted: matched, metadata, uploadId, labReportId, reportNumber });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

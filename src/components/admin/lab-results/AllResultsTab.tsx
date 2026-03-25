@@ -44,7 +44,8 @@ type LabReport = {
   lab_results?: LabResultSummary[];
 };
 
-type SourceFilter = 'all' | 'admin_import' | 'self_reported' | 'archived';
+type SourceFilter = 'all' | 'evida_life' | 'partner_lab' | 'external' | 'archived';
+type StatusFilter = 'all' | 'pending' | 'confirmed';
 
 // ─── Source label helper ──────────────────────────────────────────────────────
 
@@ -155,6 +156,7 @@ export default function AllResultsTab() {
   const [loadingResults, setLoadingResults] = useState<string | null>(null);
 
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -186,10 +188,23 @@ export default function AllResultsTab() {
       query = query.not('archived_at', 'is', null);
     } else {
       query = query.is('archived_at', null).is('deleted_at', null);
-      if (sourceFilter === 'admin_import') {
-        query = query.eq('source', 'admin_import');
-      } else if (sourceFilter === 'self_reported') {
-        query = query.in('source', ['pdf_upload', 'manual_entry']);
+      if (sourceFilter === 'evida_life') {
+        // New reports: report_source = 'evida_life'; legacy: source = 'admin_import' with no report_source
+        query = query.or("report_source.eq.evida_life,and(report_source.is.null,source.eq.admin_import)");
+      } else if (sourceFilter === 'partner_lab') {
+        query = query.eq('report_source', 'partner_lab');
+      } else if (sourceFilter === 'external') {
+        // New external + legacy self-reported
+        query = query.or("report_source.eq.external_upload,and(report_source.is.null,source.in.(pdf_upload,manual_entry))");
+      }
+    }
+
+    // Apply status filter
+    if (sourceFilter !== 'archived') {
+      if (statusFilter === 'pending') {
+        query = query.in('status', ['ai_extracted', 'review_pending']);
+      } else if (statusFilter === 'confirmed') {
+        query = query.eq('status', 'confirmed');
       }
     }
 
@@ -229,7 +244,7 @@ export default function AllResultsTab() {
     setOrphanCount(count ?? 0);
 
     setLoading(false);
-  }, [supabase, sourceFilter, search, dateFrom, dateTo]);
+  }, [supabase, sourceFilter, statusFilter, search, dateFrom, dateTo]);
 
   useEffect(() => { loadReports(); }, [loadReports]);
 
@@ -306,10 +321,17 @@ export default function AllResultsTab() {
   // ─────────────────────────────────────────────────────────────────────────────
 
   const FILTER_PILLS: { id: SourceFilter; label: string }[] = [
-    { id: 'all',          label: 'All' },
-    { id: 'admin_import', label: '🌿 Evida Life' },
-    { id: 'self_reported',label: '📝 Self-Reported' },
-    { id: 'archived',     label: '📦 Archived' },
+    { id: 'all',        label: 'All' },
+    { id: 'evida_life', label: '🌿 Evida Life' },
+    { id: 'partner_lab',label: '🤝 Partner Lab' },
+    { id: 'external',   label: '📁 External' },
+    { id: 'archived',   label: '📦 Archived' },
+  ];
+
+  const STATUS_PILLS: { id: StatusFilter; label: string }[] = [
+    { id: 'all',       label: 'All statuses' },
+    { id: 'pending',   label: '⏳ Pending Review' },
+    { id: 'confirmed', label: '✅ Confirmed' },
   ];
 
   return (
@@ -337,25 +359,44 @@ export default function AllResultsTab() {
         </div>
       </div>
 
-      {/* Source filter pills */}
-      <div className="flex flex-wrap gap-2">
-        {FILTER_PILLS.map(({ id, label }) => (
-          <button
-            key={id}
-            onClick={() => setSourceFilter(id)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              sourceFilter === id
-                ? 'bg-[#0e393d] text-white'
-                : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-        {orphanCount > 0 && (
-          <span className="rounded-full px-3 py-1 text-xs text-[#1c2a2b]/40 ring-1 ring-[#0e393d]/10">
-            {orphanCount} orphan results (no report)
-          </span>
+      {/* Source + status filter pills */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-2">
+          {FILTER_PILLS.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setSourceFilter(id)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                sourceFilter === id
+                  ? 'bg-[#0e393d] text-white'
+                  : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+          {orphanCount > 0 && (
+            <span className="rounded-full px-3 py-1 text-xs text-[#1c2a2b]/40 ring-1 ring-[#0e393d]/10">
+              {orphanCount} orphan results
+            </span>
+          )}
+        </div>
+        {sourceFilter !== 'archived' && (
+          <div className="flex flex-wrap gap-2">
+            {STATUS_PILLS.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => setStatusFilter(id)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                  statusFilter === id
+                    ? 'bg-[#ceab84]/80 text-white'
+                    : 'bg-white text-[#1c2a2b]/50 ring-1 ring-[#0e393d]/10 hover:ring-[#0e393d]/20'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
