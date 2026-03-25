@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
   buildWelcomeEmail,
@@ -374,6 +374,8 @@ export default function CommunicationsManager() {
   const [logLoading, setLogLoading] = useState(false);
   const [logSearch, setLogSearch] = useState('');
   const [logStatusFilter, setLogStatusFilter] = useState<'all' | 'sent' | 'failed' | 'bounced'>('all');
+  const [logSortCol, setLogSortCol] = useState<'email_address' | 'template' | 'status' | 'sent_at'>('sent_at');
+  const [logSortDir, setLogSortDir] = useState<'asc' | 'desc'>('desc');
 
   // Toasts
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -480,6 +482,11 @@ export default function CommunicationsManager() {
     if (tab === 'log') loadLog();
   }, [tab, loadLog]);
 
+  const handleLogSort = (col: typeof logSortCol) => {
+    if (logSortCol === col) setLogSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setLogSortCol(col); setLogSortDir('asc'); }
+  };
+
   const filteredLog = logEntries.filter((e) => {
     if (logStatusFilter !== 'all' && e.status !== logStatusFilter) return false;
     if (logSearch) {
@@ -488,6 +495,15 @@ export default function CommunicationsManager() {
     }
     return true;
   });
+
+  const sortedLog = useMemo(() => [...filteredLog].sort((a, b) => {
+    let cmp = 0;
+    if (logSortCol === 'email_address') cmp = a.email_address.localeCompare(b.email_address);
+    else if (logSortCol === 'template') cmp = a.template.localeCompare(b.template);
+    else if (logSortCol === 'status') cmp = a.status.localeCompare(b.status);
+    else cmp = a.sent_at.localeCompare(b.sent_at);
+    return logSortDir === 'asc' ? cmp : -cmp;
+  }), [filteredLog, logSortCol, logSortDir]);
 
   // ── Send test ────────────────────────────────────────────────────────────────
 
@@ -915,9 +931,19 @@ export default function CommunicationsManager() {
             <table className="w-full text-sm min-w-[700px]">
               <thead>
                 <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-                  {['Recipient', 'Template', 'Subject', 'Status', 'Sent at'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">
-                      {h}
+                  {([
+                    { key: 'email_address', label: 'Recipient' },
+                    { key: 'template',      label: 'Template'  },
+                    { key: null,            label: 'Subject'   },
+                    { key: 'status',        label: 'Status'    },
+                    { key: 'sent_at',       label: 'Sent at'   },
+                  ] as { key: typeof logSortCol | null; label: string }[]).map(({ key, label }) => (
+                    <th
+                      key={label}
+                      onClick={key ? () => handleLogSort(key) : undefined}
+                      className={`px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider${key ? ' cursor-pointer select-none hover:text-[#0e393d]' : ''}`}
+                    >
+                      {label}{key ? <>{' '}{logSortCol === key && logSortDir === 'asc' ? '▲' : logSortCol === key && logSortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}</> : null}
                     </th>
                   ))}
                 </tr>
@@ -937,7 +963,7 @@ export default function CommunicationsManager() {
                     </td>
                   </tr>
                 )}
-                {!logLoading && filteredLog.map((entry) => (
+                {!logLoading && sortedLog.map((entry) => (
                   <tr key={entry.id} className="hover:bg-[#fafaf8] transition-colors">
                     <td className="px-4 py-3 text-xs text-[#1c2a2b] font-mono">{entry.email_address}</td>
                     <td className="px-4 py-3 text-xs text-[#1c2a2b]/70 capitalize">{entry.template.replace('_', ' ')}</td>

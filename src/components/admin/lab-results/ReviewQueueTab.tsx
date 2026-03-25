@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Badge, FlagBadge, SectionHeading, Spinner, Toast, ToastContainer, fmtDate, locName, nextToastId } from './shared';
 
@@ -61,6 +61,8 @@ const TYPE_COLOR: Record<string, string> = {
   unmapped_biomarker:  'bg-gray-50 text-gray-600 ring-gray-500/20',
 };
 
+const SEVERITY_ORDER: Record<string, number> = { critical: 0, warning: 1, info: 2 };
+
 const SEVERITY_COLOR: Record<string, string> = {
   critical: 'bg-red-50 text-red-700 ring-red-600/20',
   warning:  'bg-amber-50 text-amber-700 ring-amber-600/20',
@@ -77,6 +79,8 @@ export default function ReviewQueueTab({ onCountChange }: { onCountChange?: (n: 
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all');
+  const [sortCol, setSortCol] = useState<'created_at' | 'severity'>('created_at');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
   const [editMode, setEditMode] = useState<string | null>(null);
@@ -149,6 +153,18 @@ export default function ReviewQueueTab({ onCountChange }: { onCountChange?: (n: 
     if (severityFilter !== 'all' && r.severity !== severityFilter) return false;
     return true;
   });
+
+  const handleSort = (col: typeof sortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortCol(col); setSortDir('asc'); }
+  };
+
+  const sortedFiltered = useMemo(() => [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sortCol === 'severity') cmp = (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9);
+    else cmp = a.created_at.localeCompare(b.created_at);
+    return sortDir === 'asc' ? cmp : -cmp;
+  }), [filtered, sortCol, sortDir]);
 
   // Stats
   const typeCounts = reviews.reduce((acc: Record<string, number>, r) => {
@@ -226,6 +242,25 @@ export default function ReviewQueueTab({ onCountChange }: { onCountChange?: (n: 
         ))}
       </div>
 
+      {/* Sort bar */}
+      {!loading && filtered.length > 0 && (
+        <div className="flex items-center gap-1 text-xs text-[#1c2a2b]/50">
+          <span className="mr-1">Sort:</span>
+          {([
+            { key: 'created_at', label: 'Date' },
+            { key: 'severity',   label: 'Severity' },
+          ] as { key: typeof sortCol; label: string }[]).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => handleSort(key)}
+              className={`px-2 py-1 rounded transition ${sortCol === key ? 'font-medium text-[#0e393d]' : 'hover:text-[#0e393d]/70'}`}
+            >
+              {label}{sortCol === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Review list */}
       {loading ? (
         <div className="flex justify-center py-10"><Spinner size={6} /></div>
@@ -237,7 +272,7 @@ export default function ReviewQueueTab({ onCountChange }: { onCountChange?: (n: 
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((review) => {
+          {sortedFiltered.map((review) => {
             const lr = review.lab_results;
             const bmName = locName(lr?.biomarkers?.name) || '—';
             const userName = lr?.profiles

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import SimpleCropModal from '@/components/admin/shared/SimpleCropModal';
 import GalleryUpload, { type GalleryItem } from '@/components/admin/recipes/GalleryUpload';
@@ -794,6 +794,14 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
   // ── Filtered list ─────────────────────────────────────────────────────────────
 
+  const [sortCol, setSortCol] = useState<'name' | 'product_type' | 'price_chf' | 'is_active'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (col: typeof sortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortCol(col); setSortDir('asc'); }
+  };
+
   const filtered = products.filter((p) => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -804,6 +812,15 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       p.product_type?.toLowerCase().includes(q)
     );
   });
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sortCol === 'name') cmp = (locName(a.name)).localeCompare(locName(b.name));
+    else if (sortCol === 'product_type') cmp = (a.product_type ?? '').localeCompare(b.product_type ?? '');
+    else if (sortCol === 'price_chf') cmp = (a.price_chf ?? 0) - (b.price_chf ?? 0);
+    else cmp = (a.is_active ? 0 : 1) - (b.is_active ? 0 : 1);
+    return sortDir === 'asc' ? cmp : -cmp;
+  }), [filtered, sortCol, sortDir]);
 
   const isTestType = ['blood_test', 'clinical_test', 'epigenetic_test', 'genetic_test', 'microbiome_test', 'addon_test'].includes(form.product_type);
 
@@ -839,24 +856,34 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider w-16"></th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Name / SKU</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Type</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Biomarkers</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">CHF</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">EUR</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Stripe</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Status</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Actions</th>
+              <th className="px-4 py-3 w-16"></th>
+              {([
+                { key: 'name',         label: 'Name / SKU' },
+                { key: 'product_type', label: 'Type'       },
+                { key: null,           label: 'Biomarkers' },
+                { key: 'price_chf',    label: 'CHF'        },
+                { key: null,           label: 'EUR'        },
+                { key: null,           label: 'Stripe'     },
+                { key: 'is_active',    label: 'Status'     },
+                { key: null,           label: 'Actions'    },
+              ] as { key: typeof sortCol | null; label: string }[]).map(({ key, label }) => (
+                <th
+                  key={label}
+                  onClick={key ? () => handleSort(key) : undefined}
+                  className={`px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider${key ? ' cursor-pointer select-none hover:text-[#0e393d]' : ''}`}
+                >
+                  {label}{key ? <>{' '}{sortCol === key && sortDir === 'asc' ? '▲' : sortCol === key && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}</> : null}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#0e393d]/6">
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <tr>
                 <td colSpan={9} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">No products found.</td>
               </tr>
             )}
-            {filtered.map((p) => (
+            {sorted.map((p) => (
               <tr key={p.id} onClick={() => openEdit(p)} className={`cursor-pointer hover:bg-[#fafaf8] transition-colors ${p.deleted_at ? 'opacity-50' : ''}`}>
                 <td className="px-4 py-3">
                   {p.image_url ? (

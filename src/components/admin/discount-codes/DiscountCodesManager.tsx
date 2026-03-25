@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -320,12 +320,29 @@ export default function DiscountCodesManager({
 
   // ── Filtered list ────────────────────────────────────────────────────────────
 
+  const [sortCol, setSortCol] = useState<'code' | 'used_count' | 'valid_from' | 'is_active'>('code');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (col: typeof sortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortCol(col); setSortDir('asc'); }
+  };
+
   const filtered = codes.filter((dc) => {
     if (search && !dc.code.toLowerCase().includes(search.toLowerCase())) return false;
     if (activeFilter === 'active' && !dc.is_active) return false;
     if (activeFilter === 'inactive' && dc.is_active) return false;
     return true;
   });
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sortCol === 'code') cmp = a.code.localeCompare(b.code);
+    else if (sortCol === 'used_count') cmp = (a.used_count ?? 0) - (b.used_count ?? 0);
+    else if (sortCol === 'valid_from') cmp = (a.valid_from ?? '').localeCompare(b.valid_from ?? '');
+    else cmp = (a.is_active ? 0 : 1) - (b.is_active ? 0 : 1);
+    return sortDir === 'asc' ? cmp : -cmp;
+  }), [filtered, sortCol, sortDir]);
 
   const filterPills: { key: ActiveFilter; label: string }[] = [
     { key: 'all', label: 'All' },
@@ -385,35 +402,33 @@ export default function DiscountCodesManager({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">
-                Code
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">
-                Discount
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">
-                Valid Range
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">
-                Uses
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">
-                Actions
-              </th>
+              {([
+                { key: 'code',       label: 'Code',       align: 'left'  },
+                { key: null,         label: 'Discount',   align: 'left'  },
+                { key: 'valid_from', label: 'Valid Range', align: 'left' },
+                { key: 'used_count', label: 'Uses',       align: 'left'  },
+                { key: 'is_active',  label: 'Status',     align: 'left'  },
+                { key: null,         label: 'Actions',    align: 'right' },
+              ] as { key: typeof sortCol | null; label: string; align: 'left' | 'right' }[]).map(({ key, label, align }) => (
+                <th
+                  key={label}
+                  onClick={key ? () => handleSort(key) : undefined}
+                  className={`px-4 py-3 text-${align} text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider${key ? ' cursor-pointer select-none hover:text-[#0e393d]' : ''}`}
+                >
+                  {label}{key ? <>{' '}{sortCol === key && sortDir === 'asc' ? '▲' : sortCol === key && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}</> : null}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#0e393d]/6">
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
                   No discount codes found.
                 </td>
               </tr>
             )}
-            {filtered.map((dc) => (
+            {sorted.map((dc) => (
               <tr key={dc.id} className="hover:bg-[#fafaf8] transition-colors">
                 {/* Code */}
                 <td className="px-4 py-3">

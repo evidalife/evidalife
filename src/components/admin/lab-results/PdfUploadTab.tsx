@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
   Badge, FlagBadge, SectionHeading, Spinner, Toast, ToastContainer,
@@ -87,6 +87,36 @@ function isImplausibleRow(row: ExtractedRow): boolean {
   return false;
 }
 
+// ─── Duplicate detection ──────────────────────────────────────────────────────
+
+// Returns matched_id → [indices] for all biomarkers appearing 2+ times
+function getDuplicateMap(rows: ExtractedRow[]): Map<string, number[]> {
+  const map = new Map<string, number[]>();
+  rows.forEach((row, idx) => {
+    if (!row.matched_id) return;
+    if (!map.has(row.matched_id)) map.set(row.matched_id, []);
+    map.get(row.matched_id)!.push(idx);
+  });
+  for (const [key, indices] of map) {
+    if (indices.length < 2) map.delete(key);
+  }
+  return map;
+}
+
+// Auto-deselect the converted duplicate; keep the canonical-unit row
+function autoDeselectDuplicates(rows: ExtractedRow[]): ExtractedRow[] {
+  const dupMap = getDuplicateMap(rows);
+  if (dupMap.size === 0) return rows;
+  const result = [...rows];
+  for (const indices of dupMap.values()) {
+    const keepIdx = indices.find((i) => !rows[i].was_converted) ?? indices[0];
+    for (const i of indices) {
+      if (i !== keepIdx) result[i] = { ...result[i], include: false };
+    }
+  }
+  return result;
+}
+
 // ─── Report language detection ────────────────────────────────────────────────
 
 function detectReportLanguage(extractedNames: string[]): string {
@@ -148,6 +178,8 @@ export default function PdfUploadTab() {
   const [labs, setLabs] = useState<LabOption[]>([]);
   const [selectedLabId, setSelectedLabId] = useState<string | null>(null);
   const [pdfSignedUrl, setPdfSignedUrl] = useState<string | null>(null);
+  const [uploadSortCol, setUploadSortCol] = useState<'file_name' | 'created_at' | 'extraction_status' | 'results_created'>('created_at');
+  const [uploadSortDir, setUploadSortDir] = useState<'asc' | 'desc'>('desc');
 
   // User assignment
   const [userSearch, setUserSearch] = useState('');
@@ -157,6 +189,23 @@ export default function PdfUploadTab() {
   const userSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Duplicate map for current extracted rows (matched_id → indices with 2+ rows)
+  const dupMap = useMemo(() => getDuplicateMap(extracted), [extracted]);
+
+  const handleUploadSort = (col: typeof uploadSortCol) => {
+    if (uploadSortCol === col) setUploadSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setUploadSortCol(col); setUploadSortDir('asc'); }
+  };
+
+  const sortedUploads = useMemo(() => [...uploads].sort((a, b) => {
+    let cmp = 0;
+    if (uploadSortCol === 'file_name') cmp = a.file_name.localeCompare(b.file_name);
+    else if (uploadSortCol === 'extraction_status') cmp = a.extraction_status.localeCompare(b.extraction_status);
+    else if (uploadSortCol === 'results_created') cmp = (a.results_created ?? 0) - (b.results_created ?? 0);
+    else cmp = a.created_at.localeCompare(b.created_at);
+    return uploadSortDir === 'asc' ? cmp : -cmp;
+  }), [uploads, uploadSortCol, uploadSortDir]);
 
   const addToast = useCallback((msg: string, type: Toast['type'] = 'success') => {
     const id = nextToastId();
@@ -265,7 +314,7 @@ export default function PdfUploadTab() {
 
     // If a lab is selected, pre-fill lab contact details from the lab record
     const selectedLab = selectedLabId ? labs.find((l) => l.id === selectedLabId) : null;
-    setExtracted(data.extracted ?? []);
+    setExtracted(autoDeselectDuplicates(data.extracted ?? []));
     setLabMetadata({
       title:       data.metadata?.lab_name ?? file?.name.replace(/\.[^.]+$/, '') ?? '',
       test_date:   data.metadata?.test_date ?? '',
@@ -288,7 +337,7 @@ export default function PdfUploadTab() {
   const handleOpenReview = async (upload: UploadRecord) => {
     if (!upload.draft_values?.length) return;
     const dm = upload.draft_metadata;
-    setExtracted(upload.draft_values);
+    setExtracted(autoDeselectDuplicates(upload.draft_values));
     setLabMetadata({
       title:       dm?.lab_name || upload.file_name.replace(/\.[^.]+$/, '') || '',
       test_date:   dm?.test_date || '',
@@ -352,7 +401,7 @@ export default function PdfUploadTab() {
       return;
     }
 
-    setExtracted(data.extracted ?? []);
+    setExtracted(autoDeselectDuplicates(data.extracted ?? []));
     setLabMetadata({
       title:       data.metadata?.lab_name ?? '',
       test_date:   data.metadata?.test_date ?? '',
@@ -429,6 +478,17 @@ export default function PdfUploadTab() {
     if (!toSave.length) { addToast('No matched results selected', 'error'); return; }
     if (!labMetadata.title.trim()) { addToast('Report title is required', 'error'); return; }
     if (!labMetadata.test_date) { addToast('Test date is required', 'error'); return; }
+
+    // Duplicate conflict check — block save if both duplicates of a biomarker are selected
+    const dupConflicts: string[] = [];
+    for (const indices of dupMap.values()) {
+      const selectedCount = indices.filter((i) => extracted[i].include && extracted[i].matched_id).length;
+      if (selectedCount > 1) dupConflicts.push(extracted[indices[0]].matched_name || extracted[indices[0]].extracted_name);
+    }
+    if (dupConflicts.length > 0) {
+      addToast(`Duplicate conflict: ${dupConflicts.join(', ')}. Deselect one of each duplicate before saving.`, 'error');
+      return;
+    }
 
     // Implausibility check — block save if any selected row is >10x outside ref range
     const implausible = toSave.filter(isImplausibleRow);
@@ -683,8 +743,21 @@ export default function PdfUploadTab() {
               <table className="w-full text-sm min-w-[740px]">
                 <thead>
                   <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-                    {['File', 'Uploaded by', 'Date', 'Status', 'Results', 'Actions'].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">{h}</th>
+                    {([
+                      { key: 'file_name',         label: 'File' },
+                      { key: null,                label: 'Uploaded by' },
+                      { key: 'created_at',        label: 'Date' },
+                      { key: 'extraction_status', label: 'Status' },
+                      { key: 'results_created',   label: 'Results' },
+                      { key: null,                label: 'Actions' },
+                    ] as { key: typeof uploadSortCol | null; label: string }[]).map(({ key, label }) => (
+                      <th
+                        key={label}
+                        onClick={key ? () => handleUploadSort(key) : undefined}
+                        className={`px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider${key ? ' cursor-pointer select-none hover:text-[#0e393d]' : ''}`}
+                      >
+                        {label}{key ? <>{' '}{uploadSortCol === key && uploadSortDir === 'asc' ? '▲' : uploadSortCol === key && uploadSortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}</> : null}
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -693,7 +766,7 @@ export default function PdfUploadTab() {
                     <tr><td colSpan={6} className="px-4 py-8 text-center"><div className="inline-flex justify-center"><Spinner /></div></td></tr>
                   ) : uploads.length === 0 ? (
                     <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-[#1c2a2b]/40">No uploads yet.</td></tr>
-                  ) : uploads.map((u) => (
+                  ) : sortedUploads.map((u) => (
                     <tr key={u.id} className="hover:bg-[#fafaf8] transition-colors">
                       <td className="px-4 py-3 text-xs font-mono text-[#1c2a2b]">{u.file_name}</td>
                       <td className="px-4 py-3 text-xs text-[#1c2a2b]/60">
@@ -884,7 +957,7 @@ export default function PdfUploadTab() {
                 <thead>
                   <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
                     <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Include</th>
-                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Lab Name</th>
+                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Extracted Name</th>
                     <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Matched Biomarker</th>
                     <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Ref Range</th>
                     <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Confidence</th>
@@ -949,7 +1022,14 @@ export default function PdfUploadTab() {
                             <span className="ml-1 text-red-500 font-medium" title="Value is >10× outside reference range">⚠</span>
                           )}
                         </td>
-                        <td className="px-3 py-2.5"><ConfidenceBadge c={row.confidence} /></td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-1">
+                            {row.matched_id && dupMap.has(row.matched_id) && (
+                              <Badge className="bg-violet-50 text-violet-700 ring-violet-600/20">Dup</Badge>
+                            )}
+                            <ConfidenceBadge c={row.confidence} />
+                          </div>
+                        </td>
                         <td className="px-3 py-2.5">
                           <input
                             type="number" step="0.01"

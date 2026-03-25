@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import ReviewModal, { type ReviewSuggestion } from './ReviewModal';
 
@@ -546,6 +546,21 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
     );
   });
 
+  const [sortCol, setSortCol] = useState<'name' | 'is_common'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (col: typeof sortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortCol(col); setSortDir('asc'); }
+  };
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sortCol === 'name') cmp = (a.name?.en ?? a.name?.de ?? '').localeCompare(b.name?.en ?? b.name?.de ?? '');
+    else cmp = (a.is_common ? 0 : 1) - (b.is_common ? 0 : 1);
+    return sortDir === 'asc' ? cmp : -cmp;
+  }), [filtered, sortCol, sortDir]);
+
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
@@ -641,23 +656,27 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Name</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider cursor-pointer select-none hover:text-[#0e393d]" onClick={() => handleSort('name')}>
+                Name{' '}{sortCol === 'name' && sortDir === 'asc' ? '▲' : sortCol === 'name' && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}
+              </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Default Unit</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Daily Dozen Category</th>
               <th className="px-4 py-3 text-center text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Nutrition</th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Common</th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider cursor-pointer select-none hover:text-[#0e393d]" onClick={() => handleSort('is_common')}>
+                Common{' '}{sortCol === 'is_common' && sortDir === 'asc' ? '▲' : sortCol === 'is_common' && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}
+              </th>
               <th className="px-4 py-3 text-right text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#0e393d]/6">
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
                   No ingredients found.
                 </td>
               </tr>
             )}
-            {filtered.map((ing) => {
+            {sorted.map((ing) => {
               const unit = getUnit(ing.default_unit_id);
               const cat = getCategory(ing.daily_dozen_category_id);
               return (

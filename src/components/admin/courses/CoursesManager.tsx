@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -363,6 +363,23 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
     return a.title?.de?.toLowerCase().includes(q) || a.title?.en?.toLowerCase().includes(q);
   });
 
+  const [sortCol, setSortCol] = useState<'title' | 'lesson_count' | 'sort_order' | 'is_published'>('sort_order');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (col: typeof sortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortCol(col); setSortDir('asc'); }
+  };
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sortCol === 'title') cmp = (a.title?.en ?? a.title?.de ?? '').localeCompare(b.title?.en ?? b.title?.de ?? '');
+    else if (sortCol === 'lesson_count') cmp = (a.lesson_count ?? 0) - (b.lesson_count ?? 0);
+    else if (sortCol === 'sort_order') cmp = a.sort_order - b.sort_order;
+    else cmp = (a.is_published ? 0 : 1) - (b.is_published ? 0 : 1);
+    return sortDir === 'asc' ? cmp : -cmp;
+  }), [filtered, sortCol, sortDir]);
+
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
@@ -393,20 +410,30 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider w-12"></th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Title</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Slug</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Lessons</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Order</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Status</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Actions</th>
+              <th className="px-4 py-3 w-12"></th>
+              {([
+                { key: 'title',        label: 'Title'   },
+                { key: null,           label: 'Slug'    },
+                { key: 'lesson_count', label: 'Lessons' },
+                { key: 'sort_order',   label: 'Order'   },
+                { key: 'is_published', label: 'Status'  },
+                { key: null,           label: 'Actions' },
+              ] as { key: typeof sortCol | null; label: string }[]).map(({ key, label }) => (
+                <th
+                  key={label}
+                  onClick={key ? () => handleSort(key) : undefined}
+                  className={`px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider${key ? ' cursor-pointer select-none hover:text-[#0e393d]' : ''}`}
+                >
+                  {label}{key ? <>{' '}{sortCol === key && sortDir === 'asc' ? '▲' : sortCol === key && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}</> : null}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#0e393d]/6">
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">No courses found.</td></tr>
             )}
-            {filtered.map((c) => (
+            {sorted.map((c) => (
               <tr key={c.id} className="hover:bg-[#fafaf8] transition-colors">
                 <td className="px-4 py-3">
                   {c.image_url

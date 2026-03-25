@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -215,6 +215,8 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
   const [search, setSearch]       = useState('');
   const [filter, setFilter]       = useState<FilterType>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [sortCol, setSortCol]     = useState<'email' | 'display_name' | 'created_at'>('created_at');
+  const [sortDir, setSortDir]     = useState<'asc' | 'desc'>('desc');
 
   // Per-row action state
   const [updatingId, setUpdatingId]             = useState<string | null>(null);
@@ -256,6 +258,19 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
     }
     return true;
   });
+
+  const handleSort = (col: typeof sortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortCol(col); setSortDir('asc'); }
+  };
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sortCol === 'email') cmp = (a.email ?? '').localeCompare(b.email ?? '');
+    else if (sortCol === 'display_name') cmp = getDisplayName(a).localeCompare(getDisplayName(b));
+    else cmp = a.created_at.localeCompare(b.created_at);
+    return sortDir === 'asc' ? cmp : -cmp;
+  }), [filtered, sortCol, sortDir]);
 
   // ── Stats (active users only) ──────────────────────────────────────────────
 
@@ -380,15 +395,21 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">User</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Display name</th>
+              {(['email', 'display_name'] as const).map((col) => (
+                <th key={col} className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider cursor-pointer select-none hover:text-[#0e393d]" onClick={() => handleSort(col)}>
+                  {col === 'email' ? 'User' : 'Display name'}
+                  {' '}{sortCol === col && sortDir === 'asc' ? '▲' : sortCol === col && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}
+                </th>
+              ))}
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">
                 {isDeactivatedView ? 'Status' : 'Role'}
               </th>
               {!isDeactivatedView && (
                 <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Admin</th>
               )}
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Joined</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider cursor-pointer select-none hover:text-[#0e393d]" onClick={() => handleSort('created_at')}>
+                Joined{' '}{sortCol === 'created_at' && sortDir === 'asc' ? '▲' : sortCol === 'created_at' && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}
+              </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">
                 {isDeactivatedView ? 'Deactivated on' : 'Last updated'}
               </th>
@@ -396,14 +417,14 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
             </tr>
           </thead>
           <tbody className="divide-y divide-[#0e393d]/6">
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
                   No users found.
                 </td>
               </tr>
             )}
-            {filtered.map((profile) => {
+            {sorted.map((profile) => {
               const isExpanded        = expandedId === profile.id;
               const isDeactivated     = !!profile.deleted_at;
               const isConfirmDeact    = confirmDeactivateId === profile.id;

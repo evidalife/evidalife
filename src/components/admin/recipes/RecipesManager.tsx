@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import RecipeFormPanel from './RecipeFormPanel';
 
@@ -218,6 +218,26 @@ export default function RecipesManager({
     return true;
   });
 
+  const [sortCol, setSortCol] = useState<'title' | 'difficulty' | 'total_time' | 'servings' | 'is_published'>('title');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (col: typeof sortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortCol(col); setSortDir('asc'); }
+  };
+
+  const DIFF_ORDER: Record<string, number> = { easy: 0, medium: 1, hard: 2 };
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sortCol === 'title') cmp = (a.title?.en ?? a.title?.de ?? '').localeCompare(b.title?.en ?? b.title?.de ?? '');
+    else if (sortCol === 'difficulty') cmp = (DIFF_ORDER[a.difficulty ?? ''] ?? 9) - (DIFF_ORDER[b.difficulty ?? ''] ?? 9);
+    else if (sortCol === 'total_time') cmp = ((a.prep_time_min ?? 0) + (a.cook_time_min ?? 0)) - ((b.prep_time_min ?? 0) + (b.cook_time_min ?? 0));
+    else if (sortCol === 'servings') cmp = (a.servings ?? 0) - (b.servings ?? 0);
+    else cmp = (a.is_published ? 0 : 1) - (b.is_published ? 0 : 1);
+    return sortDir === 'asc' ? cmp : -cmp;
+  }), [filtered, sortCol, sortDir]);
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -380,25 +400,35 @@ export default function RecipesManager({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-              {['', 'Title', 'Course', 'Difficulty', 'Time', 'Servings', 'Status', ''].map((h, i) => (
+              {([
+                { key: null,           label: ''           },
+                { key: 'title',        label: 'Title'      },
+                { key: null,           label: 'Course'     },
+                { key: 'difficulty',   label: 'Difficulty' },
+                { key: 'total_time',   label: 'Time'       },
+                { key: 'servings',     label: 'Servings'   },
+                { key: 'is_published', label: 'Status'     },
+                { key: null,           label: ''           },
+              ] as { key: typeof sortCol | null; label: string }[]).map(({ key, label }, i) => (
                 <th
                   key={i}
-                  className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider whitespace-nowrap"
+                  onClick={key ? () => handleSort(key) : undefined}
+                  className={`px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider whitespace-nowrap${key ? ' cursor-pointer select-none hover:text-[#0e393d]' : ''}`}
                 >
-                  {h}
+                  {label}{key ? <>{' '}{sortCol === key && sortDir === 'asc' ? '▲' : sortCol === key && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}</> : null}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#0e393d]/6">
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
                   No recipes found.
                 </td>
               </tr>
             )}
-            {filtered.map((r) => (
+            {sorted.map((r) => (
               <tr key={r.id} className="hover:bg-[#fafaf8] transition-colors">
                 {/* Thumb */}
                 <td className="px-4 py-3 w-16">

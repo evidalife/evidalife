@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -1057,6 +1057,8 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
   const [dateTo, setDateTo] = useState('');
   const [search, setSearch] = useState(() => searchParams?.get('search') ?? '');
   const [page, setPage] = useState(0);
+  const [sortCol, setSortCol] = useState<'order_number' | 'email' | 'total_amount' | 'created_at'>('created_at');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   // Bulk selection
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -1138,11 +1140,25 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
     return true;
   });
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const pageItems = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const handleSort = (col: typeof sortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortCol(col); setSortDir('asc'); }
+  };
 
-  // Reset page when filters change
-  useEffect(() => setPage(0), [statusFilter, fulfilmentFilter, dateFrom, dateTo, search]);
+  const sortedFiltered = useMemo(() => [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sortCol === 'order_number') cmp = a.order_number.localeCompare(b.order_number);
+    else if (sortCol === 'email') cmp = (a.profiles?.email ?? '').localeCompare(b.profiles?.email ?? '');
+    else if (sortCol === 'total_amount') cmp = a.total_amount - b.total_amount;
+    else cmp = a.created_at.localeCompare(b.created_at);
+    return sortDir === 'asc' ? cmp : -cmp;
+  }), [filtered, sortCol, sortDir]);
+
+  const totalPages = Math.ceil(sortedFiltered.length / PAGE_SIZE);
+  const pageItems = sortedFiltered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  // Reset page when filters or sort changes
+  useEffect(() => setPage(0), [statusFilter, fulfilmentFilter, dateFrom, dateTo, search, sortCol, sortDir]);
 
   // ── KPI stats ─────────────────────────────────────────────────────────────────
 
@@ -1363,9 +1379,22 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                   className="rounded border-[#0e393d]/20 text-[#0e393d] focus:ring-[#0e393d]/20"
                 />
               </th>
-              {['Order #', 'Customer', 'Status', 'Fulfilment', 'Products', 'Total', 'Date', ''].map((h) => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">
-                  {h}
+              {([
+                { key: 'order_number', label: 'Order #' },
+                { key: 'email',        label: 'Customer' },
+                { key: null,           label: 'Status' },
+                { key: null,           label: 'Fulfilment' },
+                { key: null,           label: 'Products' },
+                { key: 'total_amount', label: 'Total' },
+                { key: 'created_at',   label: 'Date' },
+                { key: null,           label: '' },
+              ] as { key: typeof sortCol | null; label: string }[]).map(({ key, label }) => (
+                <th
+                  key={label || '_actions'}
+                  onClick={key ? () => handleSort(key) : undefined}
+                  className={`px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider${key ? ' cursor-pointer select-none hover:text-[#0e393d]' : ''}`}
+                >
+                  {label}{key ? <>{' '}{sortCol === key && sortDir === 'asc' ? '▲' : sortCol === key && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}</> : null}
                 </th>
               ))}
             </tr>

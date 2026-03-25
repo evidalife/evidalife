@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import UnitsReviewModal, { type UnitReviewSuggestion } from './UnitsReviewModal';
 
@@ -555,6 +555,23 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
       })
     : units;
 
+  const [sortCol, setSortCol] = useState<'code' | 'name_en' | 'category' | 'sort_order'>('sort_order');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (col: typeof sortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortCol(col); setSortDir('asc'); }
+  };
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sortCol === 'code') cmp = a.code.localeCompare(b.code);
+    else if (sortCol === 'name_en') cmp = (a.name.en ?? '').localeCompare(b.name.en ?? '');
+    else if (sortCol === 'category') cmp = (a.category ?? '').localeCompare(b.category ?? '');
+    else cmp = (a.sort_order ?? 0) - (b.sort_order ?? 0);
+    return sortDir === 'asc' ? cmp : -cmp;
+  }), [filtered, sortCol, sortDir]);
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -617,9 +634,20 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-              {['Code', 'Name (EN)', 'Abbrev (EN)', 'Category', 'Sort', ''].map((h, i) => (
-                <th key={i} className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider whitespace-nowrap">
-                  {h}
+              {([
+                { key: 'code',       label: 'Code'       },
+                { key: 'name_en',    label: 'Name (EN)'  },
+                { key: null,         label: 'Abbrev (EN)'},
+                { key: 'category',   label: 'Category'   },
+                { key: 'sort_order', label: 'Sort'       },
+                { key: null,         label: ''           },
+              ] as { key: typeof sortCol | null; label: string }[]).map(({ key, label }, i) => (
+                <th
+                  key={i}
+                  onClick={key ? () => handleSort(key) : undefined}
+                  className={`px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider whitespace-nowrap${key ? ' cursor-pointer select-none hover:text-[#0e393d]' : ''}`}
+                >
+                  {label}{key ? <>{' '}{sortCol === key && sortDir === 'asc' ? '▲' : sortCol === key && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}</> : null}
                 </th>
               ))}
             </tr>
@@ -641,7 +669,7 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
               />
             )}
 
-            {filtered.length === 0 && !adding && (
+            {sorted.length === 0 && !adding && (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
                   No units found.
@@ -649,7 +677,7 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
               </tr>
             )}
 
-            {filtered.map((unit) =>
+            {sorted.map((unit) =>
               editingId === unit.id ? (
                 <FormRow
                   key={unit.id}

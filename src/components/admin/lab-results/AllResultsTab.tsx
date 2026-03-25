@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Badge, FlagBadge, HE_DOMAIN_LABEL, Spinner, Toast, ToastContainer, fmtDate, locName, nextToastId } from './shared';
 
@@ -160,6 +160,8 @@ export default function AllResultsTab() {
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [sortCol, setSortCol] = useState<'title' | 'user' | 'test_date' | 'results_count'>('test_date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -247,6 +249,23 @@ export default function AllResultsTab() {
   }, [supabase, sourceFilter, statusFilter, search, dateFrom, dateTo]);
 
   useEffect(() => { loadReports(); }, [loadReports]);
+
+  const handleSort = (col: typeof sortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortCol(col); setSortDir('asc'); }
+  };
+
+  const sortedReports = useMemo(() => [...reports].sort((a, b) => {
+    let cmp = 0;
+    if (sortCol === 'title') cmp = a.title.localeCompare(b.title);
+    else if (sortCol === 'user') {
+      const an = [a.profiles?.first_name, a.profiles?.last_name].filter(Boolean).join(' ') || a.profiles?.email || '';
+      const bn = [b.profiles?.first_name, b.profiles?.last_name].filter(Boolean).join(' ') || b.profiles?.email || '';
+      cmp = an.localeCompare(bn);
+    } else if (sortCol === 'results_count') cmp = (a.results_count ?? 0) - (b.results_count ?? 0);
+    else cmp = (a.test_date ?? '').localeCompare(b.test_date ?? '');
+    return sortDir === 'asc' ? cmp : -cmp;
+  }), [reports, sortCol, sortDir]);
 
   // ── Expand: lazy-load results ─────────────────────────────────────────────────
 
@@ -400,6 +419,27 @@ export default function AllResultsTab() {
         )}
       </div>
 
+      {/* Sort bar */}
+      {!loading && reports.length > 0 && (
+        <div className="flex items-center gap-1 text-xs text-[#1c2a2b]/50">
+          <span className="mr-1">Sort:</span>
+          {([
+            { key: 'test_date',     label: 'Date' },
+            { key: 'title',         label: 'Title' },
+            { key: 'user',          label: 'User' },
+            { key: 'results_count', label: 'Results' },
+          ] as { key: typeof sortCol; label: string }[]).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => handleSort(key)}
+              className={`px-2 py-1 rounded transition ${sortCol === key ? 'font-medium text-[#0e393d]' : 'hover:text-[#0e393d]/70'}`}
+            >
+              {label}{sortCol === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Report cards */}
       {loading ? (
         <div className="flex justify-center py-12"><Spinner size={5} /></div>
@@ -409,7 +449,7 @@ export default function AllResultsTab() {
         </div>
       ) : (
         <div className="space-y-3">
-          {reports.map((report) => {
+          {sortedReports.map((report) => {
             const isExpanded = expandedId === report.id;
             const isArchived = !!report.archived_at;
             const isLoading = actionLoading === report.id;

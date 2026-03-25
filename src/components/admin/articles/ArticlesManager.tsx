@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import ArticleFormPanel from './ArticleFormPanel';
 
@@ -62,6 +62,24 @@ export default function ArticlesManager({ initialArticles }: { initialArticles: 
     }
     return true;
   });
+
+  const [sortCol, setSortCol] = useState<'title' | 'category' | 'author_name' | 'published_at' | 'reading_time_min'>('published_at');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const handleSort = (col: typeof sortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortCol(col); setSortDir('asc'); }
+  };
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sortCol === 'title') cmp = (a.title?.en ?? a.title?.de ?? '').localeCompare(b.title?.en ?? b.title?.de ?? '');
+    else if (sortCol === 'category') cmp = (a.category ?? '').localeCompare(b.category ?? '');
+    else if (sortCol === 'author_name') cmp = (a.author_name ?? '').localeCompare(b.author_name ?? '');
+    else if (sortCol === 'reading_time_min') cmp = (a.reading_time_min ?? 0) - (b.reading_time_min ?? 0);
+    else cmp = (a.published_at ?? '').localeCompare(b.published_at ?? '');
+    return sortDir === 'asc' ? cmp : -cmp;
+  }), [filtered, sortCol, sortDir]);
 
   return (
     <div className="p-8">
@@ -129,18 +147,32 @@ export default function ArticlesManager({ initialArticles }: { initialArticles: 
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-              {['', 'Title', 'Category', 'Author', 'Read', 'Published', ''].map((h, i) => (
-                <th key={i} className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">{h}</th>
+              {([
+                { key: null,               label: ''          },
+                { key: 'title',            label: 'Title'     },
+                { key: 'category',         label: 'Category'  },
+                { key: 'author_name',      label: 'Author'    },
+                { key: 'reading_time_min', label: 'Read'      },
+                { key: 'published_at',     label: 'Published' },
+                { key: null,               label: ''          },
+              ] as { key: typeof sortCol | null; label: string }[]).map(({ key, label }, i) => (
+                <th
+                  key={i}
+                  onClick={key ? () => handleSort(key) : undefined}
+                  className={`px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider${key ? ' cursor-pointer select-none hover:text-[#0e393d]' : ''}`}
+                >
+                  {label}{key ? <>{' '}{sortCol === key && sortDir === 'asc' ? '▲' : sortCol === key && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}</> : null}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#0e393d]/6">
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">No articles found.</td>
               </tr>
             )}
-            {filtered.map((a) => (
+            {sorted.map((a) => (
               <tr key={a.id} className="hover:bg-[#fafaf8] transition-colors">
                 {/* Thumb */}
                 <td className="px-4 py-3 w-12">
