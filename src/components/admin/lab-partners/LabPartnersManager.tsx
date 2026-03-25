@@ -830,13 +830,13 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                   </div>
                 </Field>
 
-                <Field label="Lab Code" hint="Short ID for report numbers — 1–6 chars, e.g. ZH01, LG1">
+                <Field label="Lab Code" hint="Short ID for report numbers — 1–10 chars, e.g. ZH01, LG1ZH01">
                   <input
                     className={inputCls}
                     value={form.lab_code}
                     onChange={(e) => setField('lab_code', e.target.value.toUpperCase())}
                     placeholder="ZH01"
-                    maxLength={6}
+                    maxLength={10}
                   />
                 </Field>
 

@@ -21,14 +21,14 @@ export async function POST(req: NextRequest) {
   const targetNames = targetLangs.map((l) => `${LANG_NAMES[l] ?? l} (${l})`).join(', ');
   const client = new Anthropic({ apiKey });
 
-  const keys = targetLangs.map((l) => `  "${l}": string`).join(',\n');
+  const keys = targetLangs.map((l) => `  "${l}": "<${LANG_NAMES[l] ?? l} translation>"`).join(',\n');
   const prompt = `Translate this lab partner description from ${sourceName} into: ${targetNames}.
 Use natural, professional language appropriate for a health and longevity testing platform.
 
 SOURCE (${sourceName}):
 ${sourceText}
 
-Return ONLY valid JSON:
+Return ONLY valid JSON with exactly these keys:
 {
 ${keys}
 }
@@ -43,7 +43,8 @@ Return ONLY the JSON object, no markdown, no explanation.`;
     });
     const content = message.content[0];
     if (content.type !== 'text') return NextResponse.json({ error: 'Unexpected response type' }, { status: 500 });
-    const raw = content.text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+    const trimmed = content.text.trim();
+    const raw = trimmed.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
     return NextResponse.json(JSON.parse(raw));
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
