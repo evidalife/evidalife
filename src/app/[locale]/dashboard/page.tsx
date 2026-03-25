@@ -14,17 +14,6 @@ type Lang = typeof VALID_LANGS[number];
 type StatusFlag = 'optimal' | 'good' | 'moderate' | 'risk';
 
 
-const DOMAIN_KEYS = ['metabolic', 'cardiovascular', 'inflammation', 'hormonal', 'nutritional', 'body_composition'] as const;
-
-const DOMAIN_ICONS: Record<string, string> = {
-  metabolic:        '⚡',
-  cardiovascular:   '❤️',
-  inflammation:     '🔥',
-  hormonal:         '⚖️',
-  nutritional:      '🥗',
-  body_composition: '📊',
-};
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function scoreColor(score: number): string {
@@ -130,42 +119,6 @@ function ScoreGauge({ score, lang }: { score: number; lang: Lang }) {
   );
 }
 
-// ─── Domain score card ────────────────────────────────────────────────────────
-
-function DomainCard({ domain, score, label, lang }: {
-  domain: string; score: number | null; label: string; lang: Lang;
-}) {
-  const hasScore = score != null;
-  const color    = hasScore ? scoreColor(score!) : '#1c2a2b40';
-  const pct      = hasScore ? score! : 0;
-
-  return (
-    <div className="rounded-xl border border-[#0e393d]/10 bg-white p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-lg">{DOMAIN_ICONS[domain] ?? '●'}</span>
-        <p className="text-xs font-semibold text-[#0e393d]">{label}</p>
-      </div>
-      <div className="flex items-end justify-between mb-1.5">
-        <span className="text-2xl font-bold font-serif" style={{ color }}>
-          {hasScore ? Math.round(score!) : '—'}
-        </span>
-        {hasScore && <span className="text-[10px] text-[#1c2a2b]/35">/ 100</span>}
-      </div>
-      <div className="h-1.5 w-full rounded-full bg-[#0e393d]/8 overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${pct}%`, backgroundColor: color }}
-        />
-      </div>
-      {!hasScore && (
-        <p className="mt-1.5 text-[10px] text-[#1c2a2b]/35">
-          {lang === 'de' ? 'Kein Wert' : lang === 'fr' ? 'Aucune donnée' : lang === 'es' ? 'Sin datos' : lang === 'it' ? 'Nessun dato' : 'No data'}
-        </p>
-      )}
-    </div>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function DashboardPage() {
@@ -186,7 +139,6 @@ export default async function DashboardPage() {
 
   const [
     heScoreRes,
-    heDomainRes,
     labResultsRes,
     ddCategoriesRes,
     ddEntriesRes,
@@ -199,12 +151,6 @@ export default async function DashboardPage() {
       .order('calculated_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
-
-    supabase
-      .from('health_engine_domain_scores')
-      .select('domain, score, calculated_at')
-      .eq('user_id', user.id)
-      .order('calculated_at', { ascending: false }),
 
     supabase
       .from('lab_results')
@@ -237,15 +183,6 @@ export default async function DashboardPage() {
   // ── Extract data safely ───────────────────────────────────────────────────
 
   const heScore = heScoreRes.status === 'fulfilled' ? heScoreRes.value.data : null;
-
-  const heDomainRows = heDomainRes.status === 'fulfilled' ? (heDomainRes.value.data ?? []) : [];
-  // Keep only the most recent row per domain
-  const domainMap: Record<string, number> = {};
-  for (const row of heDomainRows) {
-    if (row.domain && !(row.domain in domainMap)) {
-      domainMap[row.domain] = row.score;
-    }
-  }
 
   const labRows = labResultsRes.status === 'fulfilled' ? (labResultsRes.value.data ?? []) : [];
   // Deduplicate: keep most recent result per biomarker
@@ -371,22 +308,6 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
-
-        {/* ── Domain scores ───────────────────────────────────────────────── */}
-        <section>
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84] mb-4">{t.domains}</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {DOMAIN_KEYS.map((domain) => (
-              <DomainCard
-                key={domain}
-                domain={domain}
-                score={domainMap[domain] ?? null}
-                label={t.domainLabels[domain]}
-                lang={lang}
-              />
-            ))}
-          </div>
-        </section>
 
         {/* ── Latest biomarkers ───────────────────────────────────────────── */}
         <section>
