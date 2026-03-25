@@ -338,7 +338,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
       latitude:    data.lat != null ? String(data.lat) : prev.latitude,
       longitude:   data.lng != null ? String(data.lng) : prev.longitude,
     }));
-    if (incomingCanton && !form.lab_code) {
+    if (incomingCanton) {
       const code = suggestLabCode(incomingCanton, form.parent_lab_id || undefined);
       if (code) setField('lab_code', code);
     }
@@ -916,7 +916,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                       value={form.canton}
                       onChange={(e) => setField('canton', e.target.value)}
                       onBlur={(e) => {
-                        if (!form.lab_code && e.target.value) {
+                        if (e.target.value) {
                           const code = suggestLabCode(e.target.value, form.parent_lab_id || undefined);
                           if (code) setField('lab_code', code);
                         }
