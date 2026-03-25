@@ -79,15 +79,26 @@ type Refund = {
   stripe_refund_id: string | null; status: string; created_at: string;
 };
 
+const PRODUCT_TYPE_TO_CATEGORY: Record<string, string> = {
+  blood_test:       'biomarker',
+  clinical_test:    'clinical_assessment',
+  epigenetic_test:  'bio_age',
+  genetic_test:     'genetic',
+  microbiome_test:  'microbiome',
+  wearable:         'wearable',
+};
+
 type LabReport = {
   id: string; order_id: string | null; lab_id: string | null;
   report_number: string | null; status: string;
   notes: string | null; created_at: string; updated_at: string;
+  order_item_id: string | null; product_type: string | null;
 };
 
 type LabPartnerSimple = {
   id: string; name: string; lab_code: string | null;
   lab_type: string | null; parent_lab_id: string | null; city: string | null;
+  test_categories: string[] | null;
 };
 
 // ─── Status config ────────────────────────────────────────────────────────────
@@ -836,46 +847,42 @@ const LAB_REPORT_STATUS_COLOR: Record<string, BadgeVariant> = {
   archived:         'gray',
 };
 
-function LabReportCard({ order, addToast }: {
-  order: Order;
+// Per-report item (location picker + status override + history)
+function LabReportItem({ report, labPartners, addToast, onUpdated }: {
+  report: LabReport;
+  labPartners: LabPartnerSimple[];
   addToast: (msg: string, type: Toast['type']) => void;
+  onUpdated: () => void;
 }) {
   const supabase = createClient();
-  const [report, setReport] = useState<LabReport | null>(null);
-  const [labPartners, setLabPartners] = useState<LabPartnerSimple[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedLabId, setSelectedLabId] = useState('');
+  const [selectedLabId, setSelectedLabId] = useState(report.lab_id ?? '');
   const [assigning, setAssigning] = useState(false);
   const [overrideStatus, setOverrideStatus] = useState('');
   const [overrideNotes, setOverrideNotes] = useState('');
   const [overriding, setOverriding] = useState(false);
   const [history, setHistory] = useState<Array<{ id: string; from_status: string | null; to_status: string; notes: string | null; created_at: string }>>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
 
-  const load = useCallback(async () => {
-    const [reportRes, partnersRes] = await Promise.all([
-      supabase.from('lab_reports').select('*').eq('order_id', order.id).maybeSingle(),
-      supabase.from('lab_partners').select('id, name, lab_code, lab_type, parent_lab_id, city').eq('is_active', true).order('name'),
-    ]);
-    const r = reportRes.data as LabReport | null;
-    setReport(r);
-    setLabPartners((partnersRes.data ?? []) as LabPartnerSimple[]);
-    if (r?.lab_id) setSelectedLabId(r.lab_id);
-    if (r?.id) {
-      const { data: hist } = await supabase
-        .from('lab_report_status_log')
-        .select('id, from_status, to_status, notes, created_at')
-        .eq('lab_report_id', r.id)
-        .order('created_at', { ascending: false });
-      setHistory((hist ?? []) as typeof history);
+  useEffect(() => {
+    supabase.from('lab_report_status_log')
+      .select('id, from_status, to_status, notes, created_at')
+      .eq('lab_report_id', report.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { setHistory((data ?? []) as typeof history); setHistoryLoaded(true); });
+  }, [report.id]);
+
+  // Filter labs by this report's product_type
+  const requiredCategory = report.product_type ? PRODUCT_TYPE_TO_CATEGORY[report.product_type] : null;
+  const eligibleLabs = useMemo(() => labPartners.filter((l) => {
+    if (requiredCategory && l.test_categories && l.test_categories.length > 0) {
+      return l.test_categories.includes(requiredCategory);
     }
-    setLoading(false);
-  }, [order.id, supabase]);
-
-  useEffect(() => { load(); }, [load]);
+    return true;
+  }), [labPartners, requiredCategory]);
 
   const childrenByParent = useMemo(() => {
     const map = new Map<string, LabPartnerSimple[]>();
-    for (const l of labPartners) {
+    for (const l of eligibleLabs) {
       if (l.parent_lab_id) {
         const arr = map.get(l.parent_lab_id) ?? [];
         arr.push(l);
@@ -883,41 +890,28 @@ function LabReportCard({ order, addToast }: {
       }
     }
     return map;
-  }, [labPartners]);
+  }, [eligibleLabs]);
 
-  const orgs = useMemo(() => labPartners.filter((l) => !l.parent_lab_id), [labPartners]);
+  const orgs = useMemo(() => eligibleLabs.filter((l) => !l.parent_lab_id), [eligibleLabs]);
 
   const handleAssignLocation = async () => {
     if (!selectedLabId) return;
     setAssigning(true);
-    const lab = labPartners.find((l) => l.id === selectedLabId);
+    const lab = eligibleLabs.find((l) => l.id === selectedLabId) ?? labPartners.find((l) => l.id === selectedLabId);
     if (!lab) { setAssigning(false); return; }
     const source = lab.lab_type === 'evida_life' ? 'evida_life' : 'partner_lab';
     const reportNumber = await generateReportNumber(supabase, source, lab.lab_code);
-    if (report) {
-      const { data, error } = await supabase
-        .from('lab_reports')
-        .update({ lab_id: selectedLabId, report_number: reportNumber, status: 'awaiting_sample' })
-        .eq('id', report.id)
-        .select()
-        .single();
-      if (!error) { setReport(data as LabReport); addToast(`Report ${reportNumber} assigned`, 'success'); }
-      else addToast(error.message, 'error');
-    } else {
-      const { data, error } = await supabase
-        .from('lab_reports')
-        .insert({ order_id: order.id, user_id: order.user_id, lab_id: selectedLabId, report_number: reportNumber, status: 'awaiting_sample', source: 'partner_lab' })
-        .select()
-        .single();
-      if (!error) { setReport(data as LabReport); addToast(`Report ${reportNumber} created`, 'success'); }
-      else addToast(error.message, 'error');
-    }
+    const { error } = await supabase
+      .from('lab_reports')
+      .update({ lab_id: selectedLabId, report_number: reportNumber, status: 'awaiting_sample' })
+      .eq('id', report.id);
+    if (!error) { addToast(`Report ${reportNumber} assigned`, 'success'); onUpdated(); }
+    else addToast(error.message, 'error');
     setAssigning(false);
-    load();
   };
 
   const handleOverrideStatus = async () => {
-    if (!report || !overrideStatus) return;
+    if (!overrideStatus) return;
     setOverriding(true);
     const { error } = await supabase
       .from('lab_reports')
@@ -927,35 +921,38 @@ function LabReportCard({ order, addToast }: {
       addToast('Status updated', 'success');
       setOverrideStatus('');
       setOverrideNotes('');
-      load();
+      onUpdated();
     } else {
       addToast(error.message, 'error');
     }
     setOverriding(false);
   };
 
-  if (loading) return <div className="flex justify-center py-4"><Spinner /></div>;
-
   return (
-    <div className="space-y-4">
-      {/* Current report */}
-      {report ? (
-        <div className="rounded-lg border border-[#0e393d]/8 bg-[#fafaf8] px-4 py-3 space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="font-mono text-xs font-medium text-[#0e393d]">{displayReportId(report)}</span>
-            <Badge variant={LAB_REPORT_STATUS_COLOR[report.status] ?? 'gray'}>
-              {LAB_REPORT_STATUS_LABEL[report.status] ?? report.status}
-            </Badge>
-          </div>
-          {report.notes && <p className="text-xs text-[#1c2a2b]/50">{report.notes}</p>}
+    <div className="rounded-lg border border-[#0e393d]/10 bg-white p-4 space-y-4">
+      {/* Report header */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-0.5">
+          <span className="font-mono text-xs font-medium text-[#0e393d]">{displayReportId(report)}</span>
+          {report.product_type && (
+            <p className="text-[10px] text-[#1c2a2b]/40 uppercase tracking-wider">
+              {report.product_type.replace(/_/g, ' ')}
+              {requiredCategory && <span className="ml-1.5 opacity-60">→ {requiredCategory}</span>}
+            </p>
+          )}
         </div>
-      ) : (
-        <p className="text-xs text-[#1c2a2b]/40 italic">No lab report yet. Assign a location to create one.</p>
-      )}
+        <Badge variant={LAB_REPORT_STATUS_COLOR[report.status] ?? 'gray'}>
+          {LAB_REPORT_STATUS_LABEL[report.status] ?? report.status}
+        </Badge>
+      </div>
+      {report.notes && <p className="text-xs text-[#1c2a2b]/50">{report.notes}</p>}
 
       {/* Location assignment */}
       <div className="space-y-2">
-        <label className="block text-xs font-medium text-[#1c2a2b]/60">Lab Location</label>
+        <label className="block text-xs font-medium text-[#1c2a2b]/60">
+          Lab Location
+          {requiredCategory && <span className="ml-1 text-[#1c2a2b]/30">(filtered: {requiredCategory})</span>}
+        </label>
         <select
           value={selectedLabId}
           onChange={(e) => setSelectedLabId(e.target.value)}
@@ -988,46 +985,44 @@ function LabReportCard({ order, addToast }: {
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#0e393d] text-white hover:bg-[#0e393d]/85 transition disabled:opacity-50"
         >
           {assigning ? <Spinner size={3} /> : null}
-          {report ? 'Reassign & Regenerate Number' : 'Assign Location & Generate Report Number'}
+          {report.lab_id ? 'Reassign & Regenerate Number' : 'Assign Location & Generate Report Number'}
         </button>
       </div>
 
       {/* Status override */}
-      {report && (
-        <div className="space-y-2 border-t border-[#0e393d]/8 pt-4">
-          <label className="block text-xs font-medium text-[#1c2a2b]/60">Override Status</label>
-          <select
-            value={overrideStatus}
-            onChange={(e) => setOverrideStatus(e.target.value)}
-            className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-xs text-[#1c2a2b] focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
-          >
-            <option value="">— Select new status —</option>
-            {Object.entries(LAB_REPORT_STATUS_LABEL).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-          <textarea
-            value={overrideNotes}
-            onChange={(e) => setOverrideNotes(e.target.value)}
-            placeholder="Notes (optional)…"
-            rows={2}
-            className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-xs text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 resize-none"
-          />
-          <button
-            disabled={!overrideStatus || overriding}
-            onClick={handleOverrideStatus}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#CEAB84] text-white hover:bg-[#CEAB84]/85 transition disabled:opacity-50"
-          >
-            {overriding ? <Spinner size={3} /> : null}Apply Status Override
-          </button>
-        </div>
-      )}
+      <div className="space-y-2 border-t border-[#0e393d]/8 pt-3">
+        <label className="block text-xs font-medium text-[#1c2a2b]/60">Override Status</label>
+        <select
+          value={overrideStatus}
+          onChange={(e) => setOverrideStatus(e.target.value)}
+          className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-xs text-[#1c2a2b] focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+        >
+          <option value="">— Select new status —</option>
+          {Object.entries(LAB_REPORT_STATUS_LABEL).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+        <textarea
+          value={overrideNotes}
+          onChange={(e) => setOverrideNotes(e.target.value)}
+          placeholder="Notes (optional)…"
+          rows={2}
+          className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-xs text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 resize-none"
+        />
+        <button
+          disabled={!overrideStatus || overriding}
+          onClick={handleOverrideStatus}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#CEAB84] text-white hover:bg-[#CEAB84]/85 transition disabled:opacity-50"
+        >
+          {overriding ? <Spinner size={3} /> : null}Apply Status Override
+        </button>
+      </div>
 
       {/* Status history */}
-      {history.length > 0 && (
-        <div className="border-t border-[#0e393d]/8 pt-4">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84] mb-3">Report History</p>
-          <div className="space-y-2">
+      {historyLoaded && history.length > 0 && (
+        <div className="border-t border-[#0e393d]/8 pt-3">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-2">History</p>
+          <div className="space-y-1.5">
             {history.map((h, i) => (
               <div key={h.id ?? i} className="flex items-start gap-2 text-xs">
                 <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#0e393d]/20 shrink-0" />
@@ -1046,6 +1041,48 @@ function LabReportCard({ order, addToast }: {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function LabReportCard({ order, addToast }: {
+  order: Order;
+  addToast: (msg: string, type: Toast['type']) => void;
+}) {
+  const supabase = createClient();
+  const [reports, setReports] = useState<LabReport[]>([]);
+  const [labPartners, setLabPartners] = useState<LabPartnerSimple[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    const [reportsRes, partnersRes] = await Promise.all([
+      supabase.from('lab_reports').select('*').eq('order_id', order.id).order('created_at'),
+      supabase.from('lab_partners').select('id, name, lab_code, lab_type, parent_lab_id, city, test_categories').eq('is_active', true).order('name'),
+    ]);
+    setReports((reportsRes.data ?? []) as LabReport[]);
+    setLabPartners((partnersRes.data ?? []) as LabPartnerSimple[]);
+    setLoading(false);
+  }, [order.id, supabase]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) return <div className="flex justify-center py-4"><Spinner /></div>;
+
+  if (reports.length === 0) {
+    return <p className="text-xs text-[#1c2a2b]/40 italic">No lab reports for this order yet. Reports are created automatically when an order is paid.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {reports.map((report) => (
+        <LabReportItem
+          key={report.id}
+          report={report}
+          labPartners={labPartners}
+          addToast={addToast}
+          onUpdated={load}
+        />
+      ))}
     </div>
   );
 }

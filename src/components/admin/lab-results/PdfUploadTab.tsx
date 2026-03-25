@@ -50,6 +50,7 @@ type LabOption = {
   address: string | null;
   phone: string | null;
   email: string | null;
+  test_categories: string[] | null;
 };
 
 type UploadRecord = {
@@ -231,7 +232,7 @@ export default function PdfUploadTab() {
     loadUploads();
     supabase.from('biomarkers').select('id, name, unit, he_domain').eq('is_active', true)
       .then(({ data }) => setAllBiomarkers((data as AllBiomarker[]) ?? []));
-    supabase.from('lab_partners').select('id, name, lab_type, lab_code, parent_lab_id, city, address, phone, email')
+    supabase.from('lab_partners').select('id, name, lab_type, lab_code, parent_lab_id, city, address, phone, email, test_categories')
       .eq('is_active', true).order('name')
       .then(({ data }) => setLabs((data as LabOption[]) ?? []));
   }, []);

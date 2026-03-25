@@ -80,6 +80,17 @@ export const ORDER_TRANSITIONS: OrderStatusTransition[] = [
   { from: 'pending', to: 'failed', trigger: 'stripe_payment_failed', autoActions: [] },
 ];
 
+// ── Product type → test category mapping ──────────────────────────────
+
+export const PRODUCT_TYPE_TO_CATEGORY: Record<string, string> = {
+  blood_test:       'biomarker',
+  clinical_test:    'clinical_assessment',
+  epigenetic_test:  'bio_age',
+  genetic_test:     'genetic',
+  microbiome_test:  'microbiome',
+  wearable:         'wearable',
+};
+
 // ── Voucher generation ─────────────────────────────────────────────────
 
 function generateVoucherCode(): string {
@@ -288,18 +299,63 @@ async function executeAction(
 ) {
   switch (action) {
     case 'generate_voucher': {
-      const code = generateVoucherCode();
-      // Find nearest lab partner (simple: pick first active one)
-      const { data: labs } = await supabase
-        .from('lab_partners')
-        .select('id')
-        .limit(1);
+      // Fetch order items with product type to create one voucher + report per item
+      const { data: orderItems } = await supabase
+        .from('order_items')
+        .select('id, product_id, products(product_type, name)')
+        .eq('order_id', orderId);
 
-      await supabase.from('order_vouchers').insert({
-        order_id: orderId,
-        voucher_code: code,
-        lab_partner_id: labs?.[0]?.id || null,
-      });
+      if (!orderItems?.length) {
+        // Fallback: create a single generic voucher
+        await supabase.from('order_vouchers').insert({
+          order_id: orderId,
+          voucher_code: generateVoucherCode(),
+        });
+        break;
+      }
+
+      for (const item of orderItems) {
+        const productType = (item as any).products?.product_type as string | null;
+        const code = generateVoucherCode();
+
+        // Create voucher linked to this order_item
+        await supabase.from('order_vouchers').insert({
+          order_id: orderId,
+          order_item_id: item.id,
+          voucher_code: code,
+          product_type: productType ?? null,
+        });
+
+        // Create lab_report placeholder for this order_item
+        const { data: report } = await supabase.from('lab_reports').insert({
+          order_id: orderId,
+          user_id: userId,
+          order_item_id: item.id,
+          product_type: productType ?? null,
+          status: 'awaiting_sample',
+          source: 'evida_life',
+        }).select('id').single();
+
+        // Create placeholder lab_results for each biomarker in this product
+        if (report?.id && item.product_id) {
+          const { data: productBiomarkers } = await supabase
+            .from('product_biomarkers')
+            .select('biomarker_id')
+            .eq('product_id', item.product_id);
+
+          if (productBiomarkers?.length) {
+            const placeholders = productBiomarkers.map((pb: any) => ({
+              user_id:                 userId,
+              lab_report_id:           report.id,
+              biomarker_definition_id: pb.biomarker_id,
+              value_numeric:           null,
+              status_flag:             'pending',
+              source:                  'evida_life',
+            }));
+            await supabase.from('lab_results').insert(placeholders);
+          }
+        }
+      }
       break;
     }
 
