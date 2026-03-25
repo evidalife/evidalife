@@ -38,7 +38,7 @@ function LinkedProductsTab() {
           if (!map.has(p.id)) map.set(p.id, { id: p.id, name: p.name, product_type: p.product_type, biomarkers: [] });
           if (b) map.get(p.id)!.biomarkers.push({ id: b.id, name: b.name });
         }
-        const sorted = [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+        const sorted = [...map.values()].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
         setProducts(sorted);
         setLoading(false);
       });
