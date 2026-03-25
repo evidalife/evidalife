@@ -421,7 +421,11 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
     if (!form.country.trim()) { setError('Country is required.'); return; }
     const rawCode = form.lab_code.trim().toUpperCase();
     if (rawCode && !/^[A-Z0-9]{1,10}$/.test(rawCode)) {
-      setError('Lab Code must be 1–6 uppercase alphanumeric characters (e.g. ZH01).');
+      setError('Lab Code must be 1–10 uppercase alphanumeric characters (e.g. ZH01, LG1ZH01).');
+      return;
+    }
+    if (rawCode && partners.some(p => p.lab_code === rawCode && p.id !== editingId)) {
+      setError('This Lab Code is already in use. Each lab must have a unique code.');
       return;
     }
     setSaving(true);
@@ -844,7 +848,14 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                   <select
                     className={inputCls}
                     value={form.parent_lab_id}
-                    onChange={(e) => setField('parent_lab_id', e.target.value)}
+                    onChange={(e) => {
+                      const newParentId = e.target.value;
+                      setField('parent_lab_id', newParentId);
+                      if (form.canton && !form.lab_code) {
+                        const code = suggestLabCode(form.canton, newParentId || undefined);
+                        if (code) setField('lab_code', code);
+                      }
+                    }}
                   >
                     <option value="">— Standalone / Parent org</option>
                     {partners
