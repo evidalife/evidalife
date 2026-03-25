@@ -166,7 +166,7 @@ const NAV_GROUPS: NavGroup[] = [
       },
       {
         label: 'Labs',
-        href: '/admin/lab-partners',
+        href: '/admin/labs',
         icon: (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
