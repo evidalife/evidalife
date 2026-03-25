@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -413,9 +413,8 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
               const isDeleting        = deletingId === profile.id;
 
               return (
-                <>
+                <Fragment key={profile.id}>
                   <tr
-                    key={profile.id}
                     onClick={() => setExpandedId(isExpanded ? null : profile.id)}
                     className={`transition-colors cursor-pointer ${isDeactivated ? 'bg-gray-50/50 hover:bg-gray-50' : 'hover:bg-[#fafaf8]'}`}
                   >
@@ -545,7 +544,7 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
                   </tr>
 
                   {isExpanded && <UserDetail profile={profile} />}
-                </>
+                </Fragment>
               );
             })}
           </tbody>
