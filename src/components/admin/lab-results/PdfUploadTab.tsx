@@ -252,6 +252,9 @@ export default function PdfUploadTab() {
   const [searchingOrders, setSearchingOrders] = useState(false);
   const orderSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [openBmIdx, setOpenBmIdx] = useState<number | null>(null);
+  const [bmSearchText, setBmSearchText] = useState('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Duplicate map for current extracted rows (matched_id → indices with 2+ rows)
@@ -1081,9 +1084,9 @@ export default function PdfUploadTab() {
                       <td className="px-4 py-3 text-xs text-[#1c2a2b]/50 whitespace-nowrap">{fmtDate(u.created_at)}</td>
                       <td className="px-4 py-3">
                         <Badge className={
-                          u.extraction_status === 'completed'  ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
-                          : u.extraction_status === 'extracted' ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
-                          : u.extraction_status === 'failed'    ? 'bg-red-50 text-red-700 ring-red-600/20'
+                          u.extraction_status === 'completed'   ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+                          : u.extraction_status === 'extracted'  ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
+                          : u.extraction_status === 'failed' || u.extraction_status === 'error' ? 'bg-red-50 text-red-700 ring-red-600/20'
                           : u.extraction_status === 'processing' ? 'bg-sky-50 text-sky-700 ring-sky-600/20'
                           : 'bg-gray-50 text-gray-600 ring-gray-500/20'
                         }>{u.extraction_status}</Badge>
@@ -1304,22 +1307,61 @@ export default function PdfUploadTab() {
                           <span title={row.extracted_name} className="block truncate">{row.extracted_name}</span>
                         </td>
                         <td className="px-3 py-2.5">
-                          <select
-                            value={row.matched_id ?? ''}
-                            onChange={(e) => {
-                              const bm = allBiomarkers.find((b) => b.id === e.target.value);
-                              updateRow(idx, 'matched_id', e.target.value || null);
-                              updateRow(idx, 'matched_name', locInLang(bm?.name) || null);
-                              updateRow(idx, 'db_biomarker', bm ?? null);
-                              updateRow(idx, 'confidence', e.target.value ? 'alias' : 'unmatched');
-                            }}
-                            className="rounded border border-[#0e393d]/15 bg-white px-2 py-1 text-xs text-[#1c2a2b] focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20 w-44"
-                          >
-                            <option value="">— Not mapped —</option>
-                            {allBiomarkers.map((b) => (
-                              <option key={b.id} value={b.id}>{locInLang(b.name)}</option>
-                            ))}
-                          </select>
+                          {(() => {
+                            const currentBm = row.matched_id ? allBiomarkers.find((b) => b.id === row.matched_id) : null;
+                            const displayText = openBmIdx === idx ? bmSearchText : (currentBm ? locInLang(currentBm.name) : '');
+                            const bmFiltered = (openBmIdx === idx && bmSearchText.trim()
+                              ? allBiomarkers.filter((b) => locInLang(b.name).toLowerCase().includes(bmSearchText.toLowerCase()))
+                              : allBiomarkers
+                            ).slice(0, 30);
+                            return (
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={displayText}
+                                  placeholder="— Not mapped —"
+                                  onFocus={() => { setOpenBmIdx(idx); setBmSearchText(''); }}
+                                  onChange={(e) => { setOpenBmIdx(idx); setBmSearchText(e.target.value); }}
+                                  onBlur={() => setTimeout(() => setOpenBmIdx(null), 150)}
+                                  className="rounded border border-[#0e393d]/15 bg-white px-2 py-1 text-xs text-[#1c2a2b] focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20 w-44"
+                                />
+                                {openBmIdx === idx && (
+                                  <div className="absolute top-full mt-0.5 left-0 w-56 bg-white border border-[#0e393d]/15 rounded-lg shadow-lg z-30 max-h-52 overflow-y-auto">
+                                    <button
+                                      onMouseDown={(e) => e.preventDefault()}
+                                      onClick={() => {
+                                        updateRow(idx, 'matched_id', null);
+                                        updateRow(idx, 'matched_name', null);
+                                        updateRow(idx, 'db_biomarker', null);
+                                        updateRow(idx, 'confidence', 'unmatched');
+                                        setOpenBmIdx(null);
+                                      }}
+                                      className="w-full text-left px-3 py-1.5 text-xs text-[#1c2a2b]/40 hover:bg-[#0e393d]/5"
+                                    >
+                                      — Not mapped —
+                                    </button>
+                                    {bmFiltered.map((b) => (
+                                      <button
+                                        key={b.id}
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => {
+                                          updateRow(idx, 'matched_id', b.id);
+                                          updateRow(idx, 'matched_name', locInLang(b.name));
+                                          updateRow(idx, 'db_biomarker', b);
+                                          updateRow(idx, 'confidence', 'alias');
+                                          setOpenBmIdx(null);
+                                          setBmSearchText('');
+                                        }}
+                                        className="w-full text-left px-3 py-1.5 text-xs text-[#1c2a2b] hover:bg-[#0e393d]/5"
+                                      >
+                                        {locInLang(b.name)}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-3 py-2.5 text-[#1c2a2b]/50 whitespace-nowrap">
                           {refLow != null || refHigh != null
