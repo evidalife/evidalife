@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { displayReportId } from '@/lib/lab-results/report-number';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -13,7 +14,7 @@ type Mode = 'list' | 'choose' | 'pdf' | 'pdf-review' | 'manual' | 'edit';
 
 type LabResultRow = {
   id: string;
-  value_numeric: number;
+  value_numeric: number | null;
   unit: string | null;
   status_flag: string | null;
   test_date: string | null;
@@ -34,14 +35,18 @@ type LabResultRow = {
 type LabReport = {
   id: string;
   title: string;
-  test_date: string;
+  test_date: string | null;
   source: string;
+  status: string | null;
+  order_id: string | null;
+  order_item_id: string | null;
   report_number: string | null;
   lab_address: string | null;
   lab_email: string | null;
   lab_phone: string | null;
   created_at: string;
   lab_results: LabResultRow[];
+  voucher_code?: string | null;
 };
 
 type FormMeta = {
@@ -121,6 +126,46 @@ const FLAG_STYLE: Record<string, string> = {
 
 const FLAG_LABEL: Record<string, string> = {
   optimal: 'Optimal', good: 'Good', moderate: 'Borderline', risk: 'Risk',
+};
+
+// ── Pending report constants ───────────────────────────────────────────────────
+
+const PENDING_STATUSES = new Set([
+  'awaiting_sample', 'sample_collected', 'processing',
+  'results_received', 'ai_extracted', 'review_pending',
+]);
+
+const PENDING_STEP: Record<string, number> = {
+  awaiting_sample: 1, sample_collected: 2,
+  processing: 3, results_received: 3, ai_extracted: 3, review_pending: 4,
+};
+
+const PENDING_STATUS_LABEL: Record<string, Record<Lang, string>> = {
+  awaiting_sample:  { de: 'Probe ausstehend', en: 'Awaiting sample', fr: 'En attente de prélèvement', es: 'Muestra pendiente', it: 'Campione in attesa' },
+  sample_collected: { de: 'Probe eingegangen', en: 'Sample collected', fr: 'Échantillon reçu', es: 'Muestra recogida', it: 'Campione raccolto' },
+  processing:       { de: 'In Analyse', en: 'Processing', fr: "En cours d'analyse", es: 'En análisis', it: 'In analisi' },
+  results_received: { de: 'Ergebnisse eingegangen', en: 'Results received', fr: 'Résultats reçus', es: 'Resultados recibidos', it: 'Risultati ricevuti' },
+  ai_extracted:     { de: 'KI-Auswertung', en: 'AI extracted', fr: 'Extraction IA', es: 'Extracción IA', it: 'Estratto IA' },
+  review_pending:   { de: 'Wird überprüft', en: 'Under review', fr: 'En cours de vérification', es: 'En revisión', it: 'In revisione' },
+};
+
+const PENDING_STATUS_COLOR: Record<string, string> = {
+  awaiting_sample:  'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20',
+  sample_collected: 'bg-sky-50 text-sky-700 ring-1 ring-sky-600/20',
+  processing:       'bg-violet-50 text-violet-700 ring-1 ring-violet-600/20',
+  results_received: 'bg-violet-50 text-violet-700 ring-1 ring-violet-600/20',
+  ai_extracted:     'bg-violet-50 text-violet-700 ring-1 ring-violet-600/20',
+  review_pending:   'bg-teal-50 text-teal-700 ring-1 ring-teal-600/20',
+};
+
+const PENDING_T: Record<string, Record<Lang, string>> = {
+  step:               { de: 'Schritt', en: 'Step', fr: 'Étape', es: 'Paso', it: 'Passo' },
+  biomarkersPending:  { de: 'Biomarker ausstehend', en: 'biomarkers pending', fr: 'biomarqueurs en attente', es: 'biomarcadores pendientes', it: 'biomarcatori in attesa' },
+  pending:            { de: 'ausstehend', en: 'pending', fr: 'en attente', es: 'pendiente', it: 'in attesa' },
+  more:               { de: 'weitere', en: 'more', fr: 'de plus', es: 'más', it: 'altri' },
+  visitAnyLab:        { de: 'Besuchen Sie eine unserer Partnerstandorte mit Ihrem Gutscheincode', en: 'Visit any of our partner locations with your voucher code', fr: "Rendez-vous dans l'un de nos sites partenaires avec votre code", es: 'Visite cualquiera de nuestras ubicaciones asociadas con su código', it: 'Visita uno dei nostri centri partner con il tuo codice' },
+  voucherCode:        { de: 'Gutscheincode', en: 'Voucher code', fr: 'Code bon', es: 'Código vale', it: 'Codice voucher' },
+  inProgressTitle:    { de: 'Laufende Analysen', en: 'In Progress', fr: 'En cours', es: 'En curso', it: 'In corso' },
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -206,7 +251,7 @@ function ResultsDisplay({ results, lang }: { results: LabResultRow[]; lang: Lang
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="tabular-nums text-sm font-semibold text-[#0e393d]">
-                      {r.value_numeric}{' '}
+                      {r.value_numeric ?? '—'}{' '}
                       <span className="font-normal text-[#1c2a2b]/50 text-xs">{r.unit || def?.unit || ''}</span>
                     </span>
                     <FlagBadge flag={r.status_flag} />
@@ -303,15 +348,15 @@ export default function LabReportsTab({ lang }: { lang: Lang }) {
       supabase
         .from('lab_reports')
         .select(`
-          id, title, test_date, source, report_number, lab_address, lab_email, lab_phone, created_at,
+          id, title, test_date, source, status, order_id, order_item_id, report_number, lab_address, lab_email, lab_phone, created_at,
           lab_results(
             id, value_numeric, unit, status_flag, test_date, source, deleted_at, biomarker_definition_id,
             biomarkers:biomarker_definition_id(name, unit, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high)
           )
         `)
         .is('deleted_at', null)
-        .is('archived_at', null)
-        .order('test_date', { ascending: false }),
+        .neq('status', 'archived')
+        .order('created_at', { ascending: false }),
       supabase
         .from('lab_results')
         .select(`
@@ -328,6 +373,31 @@ export default function LabReportsTab({ lang }: { lang: Lang }) {
       ...rp,
       lab_results: (rp.lab_results ?? []).filter((r: any) => r.deleted_at == null),
     }));
+
+    // Attach voucher codes to pending reports
+    const pendingOrderIds = [...new Set(
+      cleanReports
+        .filter((r) => r.order_id && r.status && PENDING_STATUSES.has(r.status))
+        .map((r) => r.order_id!),
+    )];
+
+    if (pendingOrderIds.length) {
+      const { data: vouchers } = await supabase
+        .from('order_vouchers')
+        .select('order_id, order_item_id, voucher_code')
+        .in('order_id', pendingOrderIds);
+
+      const byOrderItem = new Map(
+        (vouchers ?? []).filter((v: any) => v.order_item_id).map((v: any) => [v.order_item_id, v.voucher_code]),
+      );
+      const byOrder = new Map((vouchers ?? []).map((v: any) => [v.order_id, v.voucher_code]));
+
+      for (const r of cleanReports) {
+        if (r.order_id && r.status && PENDING_STATUSES.has(r.status)) {
+          r.voucher_code = (r.order_item_id && byOrderItem.get(r.order_item_id)) || byOrder.get(r.order_id) || null;
+        }
+      }
+    }
 
     setReports(cleanReports);
     setOrphanResults((orphanRes.data as unknown as LabResultRow[]) ?? []);
@@ -374,7 +444,7 @@ export default function LabReportsTab({ lang }: { lang: Lang }) {
     setEditReportId(report.id);
     setFormMeta({
       title: report.title,
-      test_date: report.test_date,
+      test_date: report.test_date ?? '',
       lab_address: report.lab_address ?? '',
       lab_email: report.lab_email ?? '',
       lab_phone: report.lab_phone ?? '',
@@ -385,7 +455,7 @@ export default function LabReportsTab({ lang }: { lang: Lang }) {
       biomarker_name: r.biomarkers ? locName(r.biomarkers.name, lang) : '—',
       canonical_unit: r.biomarkers?.unit ?? '',
       alt_units: [],
-      value: String(r.value_numeric),
+      value: r.value_numeric != null ? String(r.value_numeric) : '',
       unit: r.unit ?? r.biomarkers?.unit ?? '',
     }));
     setFormRows(rows.length > 0 ? rows : [emptyRow()]);
@@ -879,7 +949,10 @@ export default function LabReportsTab({ lang }: { lang: Lang }) {
 
   // ── List ──────────────────────────────────────────────────────────────────────
 
+  const pendingReports = reports.filter((r) => r.status && PENDING_STATUSES.has(r.status));
+  const confirmedReports = reports.filter((r) => !r.status || !PENDING_STATUSES.has(r.status));
   const isEmpty = reports.length === 0 && orphanResults.length === 0;
+  const pt = (key: string) => PENDING_T[key]?.[lang] ?? PENDING_T[key]?.en ?? key;
 
   return (
     <div className="space-y-4">
@@ -906,7 +979,88 @@ export default function LabReportsTab({ lang }: { lang: Lang }) {
         </div>
       )}
 
-      {reports.map((report) => {
+      {/* ── Pending reports ─────────────────────────────────────────────── */}
+      {pendingReports.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">
+            {pt('inProgressTitle')}
+          </p>
+          {pendingReports.map((report) => {
+            const step = PENDING_STEP[report.status!] ?? 1;
+            const totalSteps = 4;
+            const statusLabel = PENDING_STATUS_LABEL[report.status!]?.[lang] ?? report.status ?? '';
+            const colorCls = PENDING_STATUS_COLOR[report.status!] ?? 'bg-gray-100 text-gray-600';
+            const biomarkerCount = report.lab_results?.length ?? 0;
+            const previewResults = report.lab_results?.slice(0, 5) ?? [];
+
+            return (
+              <div key={report.id} className="rounded-xl border border-[#0e393d]/10 bg-white p-5 space-y-4">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="font-mono text-[11px] text-[#1c2a2b]/35">{displayReportId(report)}</span>
+                    {report.title && (
+                      <h3 className="font-serif text-base text-[#0e393d] mt-0.5 leading-tight">{report.title}</h3>
+                    )}
+                  </div>
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium shrink-0 ${colorCls}`}>
+                    {statusLabel}
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs text-[#1c2a2b]/40">
+                    <span>{pt('step')} {step} / {totalSteps}</span>
+                    <span>{biomarkerCount} {pt('biomarkersPending')}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-[#0e393d]/8 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-[#ceab84] transition-all"
+                      style={{ width: `${(step / totalSteps) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Voucher code */}
+                {report.voucher_code && (
+                  <div className="flex items-center gap-2 rounded-lg bg-[#0e393d]/4 border border-[#0e393d]/8 px-3 py-2">
+                    <span className="text-xs text-[#1c2a2b]/50">{pt('voucherCode')}:</span>
+                    <span className="font-mono text-sm font-semibold text-[#0e393d] tracking-wide">{report.voucher_code}</span>
+                  </div>
+                )}
+
+                {/* Greyed-out biomarker list */}
+                {previewResults.length > 0 && (
+                  <div className="divide-y divide-[#0e393d]/5">
+                    {previewResults.map((r) => (
+                      <div key={r.id} className="py-1.5 flex items-center justify-between">
+                        <span className="text-xs text-[#1c2a2b]/30">
+                          {r.biomarkers ? locName(r.biomarkers.name, lang) : '—'}
+                        </span>
+                        <span className="text-xs text-[#1c2a2b]/20 tabular-nums">— {pt('pending')}</span>
+                      </div>
+                    ))}
+                    {biomarkerCount > 5 && (
+                      <div className="py-1.5 text-xs text-[#1c2a2b]/20 italic">
+                        + {biomarkerCount - 5} {pt('more')}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Visit lab hint */}
+                {report.status === 'awaiting_sample' && (
+                  <p className="text-xs text-[#ceab84] font-medium">{pt('visitAnyLab')}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Confirmed reports ────────────────────────────────────────────── */}
+      {confirmedReports.map((report) => {
         const isExpanded = expandedId === report.id;
         const isEditable = report.source !== 'admin_import';
         return (
@@ -930,7 +1084,7 @@ export default function LabReportsTab({ lang }: { lang: Lang }) {
                     )}
                   </div>
                   <p className="text-xs text-[#1c2a2b]/40">
-                    {fmtDate(report.test_date)} · {report.lab_results.length} biomarkers
+                    {fmtDate(report.test_date ?? report.created_at)} · {report.lab_results.length} biomarkers
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
