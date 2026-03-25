@@ -420,7 +420,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
     if (!form.city.trim()) { setError('City is required.'); return; }
     if (!form.country.trim()) { setError('Country is required.'); return; }
     const rawCode = form.lab_code.trim().toUpperCase();
-    if (rawCode && !/^[A-Z0-9]{1,6}$/.test(rawCode)) {
+    if (rawCode && !/^[A-Z0-9]{1,10}$/.test(rawCode)) {
       setError('Lab Code must be 1–6 uppercase alphanumeric characters (e.g. ZH01).');
       return;
     }
