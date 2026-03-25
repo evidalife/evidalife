@@ -830,8 +830,11 @@ const TAB_ICONS: Record<Tab, React.ReactNode> = {
   ),
 };
 
-export default function ProfileTabs({ profile, lang }: { profile: ProfileData; lang: Lang }) {
-  const [tab, setTab] = useState<Tab>('profile');
+export default function ProfileTabs({ profile, lang, initialTab }: { profile: ProfileData; lang: Lang; initialTab?: string }) {
+  const [tab, setTab] = useState<Tab>(() => {
+    const valid: Tab[] = ['profile', 'orders', 'results', 'invoices'];
+    return valid.includes(initialTab as Tab) ? (initialTab as Tab) : 'profile';
+  });
   const t = T[lang] ?? T.en;
 
   const tabs: { id: Tab; label: string }[] = [

@@ -19,9 +19,11 @@ const T = {
   it: { eyebrow: 'Account', heading: 'Il mio profilo' },
 };
 
-export default async function ProfilePage() {
+export default async function ProfilePage({ searchParams }: { searchParams?: Promise<{ tab?: string }> }) {
   const locale = await getLocale();
   const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
+  const params = await searchParams;
+  const initialTab = params?.tab;
   const t = T[lang];
   const supabase = await createClient();
 
@@ -73,7 +75,7 @@ export default async function ProfilePage() {
           <h1 className="font-serif text-3xl text-[#0e393d]">{t.heading}</h1>
         </div>
 
-        <ProfileTabs profile={profile} lang={lang} />
+        <ProfileTabs profile={profile} lang={lang} initialTab={initialTab} />
       </main>
 
       <PublicFooter />

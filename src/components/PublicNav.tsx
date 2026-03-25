@@ -20,6 +20,83 @@ const NAV_SLUG_MAP: Record<string, (string | null)[]> = {
 
 const NAV_SECTIONS = ['Kitchen', 'Health', 'Fit', 'Shop'] as const;
 
+// ── Profile dropdown menu ─────────────────────────────────────────────────────
+
+type MenuItem = { label: string; href: string; admin?: boolean } | { label: string; action: 'signout' } | 'divider';
+
+const PROFILE_MENU: Record<Locale, MenuItem[]> = {
+  de: [
+    { label: 'Health Engine',  href: '/dashboard' },
+    { label: 'Laborwerte',     href: '/profile?tab=results' },
+    { label: 'Daily Dozen',    href: '/daily-dozen' },
+    { label: 'Einkaufsliste',  href: '/shopping-list' },
+    'divider',
+    { label: 'Profil',         href: '/profile' },
+    { label: 'Bestellungen',   href: '/profile?tab=orders' },
+    { label: 'Rechnungen',     href: '/profile?tab=invoices' },
+    'divider',
+    { label: 'Admin Panel',    href: '/admin', admin: true },
+    'divider',
+    { label: 'Abmelden',       action: 'signout' },
+  ],
+  en: [
+    { label: 'Health Engine',  href: '/dashboard' },
+    { label: 'Lab Results',    href: '/profile?tab=results' },
+    { label: 'Daily Dozen',    href: '/daily-dozen' },
+    { label: 'Shopping List',  href: '/shopping-list' },
+    'divider',
+    { label: 'Profile',        href: '/profile' },
+    { label: 'My Orders',      href: '/profile?tab=orders' },
+    { label: 'Invoices',       href: '/profile?tab=invoices' },
+    'divider',
+    { label: 'Admin Panel',    href: '/admin', admin: true },
+    'divider',
+    { label: 'Sign out',       action: 'signout' },
+  ],
+  fr: [
+    { label: 'Health Engine',        href: '/dashboard' },
+    { label: 'Résultats de labo',    href: '/profile?tab=results' },
+    { label: 'Daily Dozen',          href: '/daily-dozen' },
+    { label: 'Liste de courses',     href: '/shopping-list' },
+    'divider',
+    { label: 'Profil',               href: '/profile' },
+    { label: 'Commandes',            href: '/profile?tab=orders' },
+    { label: 'Factures',             href: '/profile?tab=invoices' },
+    'divider',
+    { label: 'Admin Panel',          href: '/admin', admin: true },
+    'divider',
+    { label: 'Se déconnecter',       action: 'signout' },
+  ],
+  es: [
+    { label: 'Health Engine',        href: '/dashboard' },
+    { label: 'Resultados de lab.',   href: '/profile?tab=results' },
+    { label: 'Daily Dozen',          href: '/daily-dozen' },
+    { label: 'Lista de la compra',   href: '/shopping-list' },
+    'divider',
+    { label: 'Perfil',               href: '/profile' },
+    { label: 'Pedidos',              href: '/profile?tab=orders' },
+    { label: 'Facturas',             href: '/profile?tab=invoices' },
+    'divider',
+    { label: 'Admin Panel',          href: '/admin', admin: true },
+    'divider',
+    { label: 'Cerrar sesión',        action: 'signout' },
+  ],
+  it: [
+    { label: 'Health Engine',        href: '/dashboard' },
+    { label: 'Risultati di lab.',    href: '/profile?tab=results' },
+    { label: 'Daily Dozen',          href: '/daily-dozen' },
+    { label: 'Lista della spesa',    href: '/shopping-list' },
+    'divider',
+    { label: 'Profilo',              href: '/profile' },
+    { label: 'Ordini',               href: '/profile?tab=orders' },
+    { label: 'Fatture',              href: '/profile?tab=invoices' },
+    'divider',
+    { label: 'Admin Panel',          href: '/admin', admin: true },
+    'divider',
+    { label: 'Esci',                 action: 'signout' },
+  ],
+};
+
 export default function PublicNav() {
   const locale = useLocale() as Locale;
   const router = useRouter();
@@ -244,43 +321,33 @@ export default function PublicNav() {
               {userOpen && (
                 <div className="absolute right-0 top-full pt-2 z-50">
                   <div
-                    className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.14)] border border-[#0e393d]/8 min-w-[160px] py-1.5"
+                    className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.14)] border border-[#0e393d]/8 min-w-[200px] py-1.5"
                     style={{ animation: 'dropdownIn 0.15s ease-out' }}
                   >
-                    <Link
-                      href="/dashboard"
-                      className="block px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
-                    >
-                      Dashboard
-                    </Link>
-                    <Link
-                      href="/profile"
-                      className="block px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
-                    >
-                      {locale === 'de' || locale === 'fr' ? 'Profil' : locale === 'es' ? 'Perfil' : locale === 'it' ? 'Profilo' : 'Profile'}
-                    </Link>
-                    <Link
-                      href="/orders"
-                      className="block px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
-                    >
-                      {locale === 'de' ? 'Meine Bestellungen' : locale === 'fr' ? 'Mes commandes' : locale === 'es' ? 'Mis pedidos' : locale === 'it' ? 'I miei ordini' : 'My Orders'}
-                    </Link>
-                    {profile?.is_admin && (
-                      <Link
-                        href="/admin"
-                        className="block px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
-                      >
-                        Admin Panel
-                      </Link>
-                    )}
-                    <div className="h-px bg-[#0e393d]/10 mx-4 my-1.5" />
-                    <button
-                      onClick={handleSignOut}
-                      aria-label={locale === 'de' ? 'Abmelden' : locale === 'fr' ? 'Se déconnecter' : locale === 'es' ? 'Cerrar sesión' : locale === 'it' ? 'Esci' : 'Sign out'}
-                      className="w-full text-left px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-red-600 transition-colors"
-                    >
-                      {locale === 'de' ? 'Abmelden' : locale === 'fr' ? 'Se déconnecter' : locale === 'es' ? 'Cerrar sesión' : locale === 'it' ? 'Esci' : 'Sign out'}
-                    </button>
+                    {PROFILE_MENU[locale]
+                      .filter((item) => !(item !== 'divider' && 'admin' in item && item.admin && !profile?.is_admin))
+                      .reduce<MenuItem[]>((acc, item) => {
+                        if (item === 'divider' && (acc.length === 0 || acc[acc.length - 1] === 'divider')) return acc;
+                        return [...acc, item];
+                      }, [])
+                      .filter((item, i, arr) => !(item === 'divider' && i === arr.length - 1))
+                      .map((item, i) => {
+                        if (item === 'divider') {
+                          return <div key={i} className="h-px bg-[#0e393d]/10 mx-4 my-1.5" />;
+                        }
+                        if ('action' in item) {
+                          return (
+                            <button key={i} onClick={handleSignOut} className="w-full text-left px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-red-600 transition-colors">
+                              {item.label}
+                            </button>
+                          );
+                        }
+                        return (
+                          <Link key={i} href={item.href} className="block px-5 py-2.5 text-[13px] text-[#1c2a2b] font-light hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors">
+                            {item.label}
+                          </Link>
+                        );
+                      })}
                   </div>
                 </div>
               )}
@@ -375,6 +442,60 @@ export default function PublicNav() {
               </span>
             )}
           </Link>
+
+          {/* Mobile profile section — logged-in users only */}
+          {user && (
+            <div className="border-t border-[#0e393d]/6">
+              <button
+                onClick={() => setExpandedSection(expandedSection === 'profile' ? null : 'profile')}
+                aria-label="Toggle profile menu"
+                aria-expanded={expandedSection === 'profile'}
+                className="flex w-full items-center justify-between px-5 py-3.5 text-[0.8rem] font-medium text-[#0e393d] hover:bg-[#f5f4f0] transition-colors"
+              >
+                <span>{profile?.display_name ?? profile?.first_name ?? user.email?.split('@')[0]}</span>
+                <svg
+                  width="12" height="12" viewBox="0 0 10 10" fill="none"
+                  className={`transition-transform duration-200 ${expandedSection === 'profile' ? 'rotate-180' : ''}`}
+                >
+                  <path d="M1.5 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              <div
+                style={{
+                  maxHeight: expandedSection === 'profile' ? '400px' : '0',
+                  overflow: 'hidden',
+                  transition: 'max-height 0.25s ease',
+                }}
+              >
+                <div className="pb-1.5">
+                  {PROFILE_MENU[locale]
+                    .filter((item) => !(item !== 'divider' && 'admin' in item && item.admin && !profile?.is_admin))
+                    .reduce<MenuItem[]>((acc, item) => {
+                      if (item === 'divider' && (acc.length === 0 || acc[acc.length - 1] === 'divider')) return acc;
+                      return [...acc, item];
+                    }, [])
+                    .filter((item, i, arr) => !(item === 'divider' && i === arr.length - 1))
+                    .map((item, i) => {
+                      if (item === 'divider') {
+                        return <div key={i} className="h-px bg-[#0e393d]/8 mx-5 my-1" />;
+                      }
+                      if ('action' in item) {
+                        return (
+                          <button key={i} onClick={handleSignOut} className="w-full text-left px-8 py-2.5 text-[13px] font-light text-[#1c2a2b] hover:bg-[#f5f4f0] hover:text-red-600 transition-colors">
+                            {item.label}
+                          </button>
+                        );
+                      }
+                      return (
+                        <Link key={i} href={item.href} className="block px-8 py-2.5 text-[13px] font-light text-[#1c2a2b] hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors">
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
