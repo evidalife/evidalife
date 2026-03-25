@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
 
     // Save extraction results + draft to upload record
     await supabase.from('lab_pdf_uploads').update({
-      extraction_status: 'completed',
+      extraction_status: 'extracted',
       extracted_data:    matched,
       draft_values:      matched,
       draft_metadata:    metadata ?? null,

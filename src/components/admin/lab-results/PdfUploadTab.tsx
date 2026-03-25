@@ -82,7 +82,8 @@ type UploadRecord = {
   draft_values: ExtractedRow[] | null;
   draft_metadata: any | null;
   lab_report_id: string | null;
-  profiles: { first_name: string | null; last_name: string | null } | null;
+  uploader: { first_name: string | null; last_name: string | null } | null;
+  patient: { first_name: string | null; last_name: string | null; email: string | null } | null;
 };
 
 type AllBiomarker = { id: string; name: any; unit: string | null; he_domain: string | null };
@@ -281,7 +282,7 @@ export default function PdfUploadTab() {
     setLoadingUploads(true);
     const { data } = await supabase
       .from('lab_pdf_uploads')
-      .select('id, user_id, file_name, file_url, extraction_status, results_created, created_at, extracted_data, draft_values, draft_metadata, lab_report_id, profiles:uploaded_by(first_name, last_name)')
+      .select('id, user_id, file_name, file_url, extraction_status, results_created, created_at, extracted_data, draft_values, draft_metadata, lab_report_id, uploader:profiles!uploaded_by(first_name, last_name), patient:profiles!user_id(first_name, last_name, email)')
       .order('created_at', { ascending: false })
       .limit(20);
     setUploads((data as unknown as UploadRecord[]) ?? []);
@@ -714,7 +715,7 @@ export default function PdfUploadTab() {
 
     // Update upload record result count
     if (uploadId) {
-      await supabase.from('lab_pdf_uploads').update({ results_created: data.created }).eq('id', uploadId);
+      await supabase.from('lab_pdf_uploads').update({ results_created: data.created, extraction_status: 'completed' }).eq('id', uploadId);
     }
 
     addToast(`${data.created} results saved from PDF`, 'success');
@@ -1044,7 +1045,8 @@ export default function PdfUploadTab() {
                   <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
                     {([
                       { key: 'file_name',         label: 'File' },
-                      { key: null,                label: 'Uploaded by' },
+                      { key: null,                label: 'Assigned User' },
+                      { key: null,                label: 'Admin' },
                       { key: 'created_at',        label: 'Date' },
                       { key: 'extraction_status', label: 'Status' },
                       { key: 'results_created',   label: 'Results' },
@@ -1062,28 +1064,34 @@ export default function PdfUploadTab() {
                 </thead>
                 <tbody className="divide-y divide-[#0e393d]/6">
                   {loadingUploads ? (
-                    <tr><td colSpan={6} className="px-4 py-8 text-center"><div className="inline-flex justify-center"><Spinner /></div></td></tr>
+                    <tr><td colSpan={7} className="px-4 py-8 text-center"><div className="inline-flex justify-center"><Spinner /></div></td></tr>
                   ) : uploads.length === 0 ? (
-                    <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-[#1c2a2b]/40">No uploads yet.</td></tr>
+                    <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-[#1c2a2b]/40">No uploads yet.</td></tr>
                   ) : sortedUploads.map((u) => (
                     <tr key={u.id} className="hover:bg-[#fafaf8] transition-colors">
                       <td className="px-4 py-3 text-xs font-mono text-[#1c2a2b]">{u.file_name}</td>
-                      <td className="px-4 py-3 text-xs text-[#1c2a2b]/60">
-                        {[u.profiles?.first_name, u.profiles?.last_name].filter(Boolean).join(' ') || '—'}
+                      <td className="px-4 py-3 text-xs text-[#1c2a2b]/70">
+                        {u.patient
+                          ? [u.patient.first_name, u.patient.last_name].filter(Boolean).join(' ') || u.patient.email || '—'
+                          : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-[#1c2a2b]/40">
+                        {[u.uploader?.first_name, u.uploader?.last_name].filter(Boolean).join(' ') || '—'}
                       </td>
                       <td className="px-4 py-3 text-xs text-[#1c2a2b]/50 whitespace-nowrap">{fmtDate(u.created_at)}</td>
                       <td className="px-4 py-3">
                         <Badge className={
-                          u.extraction_status === 'completed' ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
-                          : u.extraction_status === 'failed' ? 'bg-red-50 text-red-700 ring-red-600/20'
-                          : u.extraction_status === 'processing' ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
+                          u.extraction_status === 'completed'  ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+                          : u.extraction_status === 'extracted' ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
+                          : u.extraction_status === 'failed'    ? 'bg-red-50 text-red-700 ring-red-600/20'
+                          : u.extraction_status === 'processing' ? 'bg-sky-50 text-sky-700 ring-sky-600/20'
                           : 'bg-gray-50 text-gray-600 ring-gray-500/20'
                         }>{u.extraction_status}</Badge>
                       </td>
                       <td className="px-4 py-3 text-xs text-[#0e393d] font-medium">{u.results_created ?? 0}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-3">
-                          {u.draft_values && u.draft_values.length > 0 && u.extraction_status === 'completed' && (
+                          {u.draft_values && u.draft_values.length > 0 && u.extraction_status === 'extracted' && (
                             <button
                               onClick={() => handleOpenReview(u)}
                               className="text-xs text-[#0e393d] hover:text-[#0e393d]/70 font-medium transition"
