@@ -81,13 +81,45 @@ export async function POST(req: NextRequest) {
     console.log('[parse-lab] Matched:', matched.filter((m) => m.matched_id).length, 'of', matched.length);
     console.log('[parse-lab] Converted:', matched.filter((m) => m.was_converted).length);
 
-    // Save extraction results to upload record
+    // Fetch upload record to get patient user_id and file_name
+    const { data: uploadRecord } = await supabase
+      .from('lab_pdf_uploads')
+      .select('user_id, file_name')
+      .eq('id', uploadId)
+      .single();
+
+    // Create a lab_reports row at extraction time (status: ai_extracted)
+    const reportTitle = metadata?.lab_name || (uploadRecord?.file_name?.replace(/\.[^.]+$/, '') ?? 'Lab Report');
+    const rawDate = metadata?.test_date ?? null;
+    const testDate = rawDate ? (new Date(rawDate).toISOString().split('T')[0] ?? null) : null;
+
+    const { data: reportRecord } = await supabase
+      .from('lab_reports')
+      .insert({
+        user_id:     uploadRecord?.user_id ?? null,
+        title:       reportTitle,
+        test_date:   testDate,
+        source:      'admin_import',
+        status:      'ai_extracted',
+        lab_address: metadata?.lab_address || null,
+        lab_email:   metadata?.lab_email   || null,
+        lab_phone:   metadata?.lab_phone   || null,
+      })
+      .select('id')
+      .single();
+
+    const labReportId = reportRecord?.id ?? null;
+
+    // Save extraction results + draft to upload record
     await supabase.from('lab_pdf_uploads').update({
       extraction_status: 'completed',
-      extracted_data: matched,
+      extracted_data:    matched,
+      draft_values:      matched,
+      draft_metadata:    metadata ?? null,
+      ...(labReportId ? { lab_report_id: labReportId } : {}),
     }).eq('id', uploadId);
 
-    return NextResponse.json({ success: true, extracted: matched, metadata, uploadId });
+    return NextResponse.json({ success: true, extracted: matched, metadata, uploadId, labReportId });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

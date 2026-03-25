@@ -19,7 +19,7 @@ function adminClient() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { results, adminId, labReport } = body;
+    const { results, adminId, labReport, labReportId: existingReportId } = body;
 
     if (!results?.length) {
       return NextResponse.json({ error: 'No results provided' }, { status: 400 });
@@ -27,9 +27,28 @@ export async function POST(req: NextRequest) {
 
     const supabase = adminClient();
 
-    // Optionally create a lab_reports record to group these results
-    let labReportId: string | null = null;
-    if (labReport?.title && labReport?.test_date && labReport?.user_id) {
+    // Optionally create or update a lab_reports record to group these results
+    let labReportId: string | null = existingReportId ?? null;
+
+    if (labReportId) {
+      // Update the existing draft report (created at AI extraction time) to confirmed
+      const reportNumber = await generateReportNumber(supabase, 'admin_import');
+      await supabase
+        .from('lab_reports')
+        .update({
+          title:         labReport?.title?.trim() ?? undefined,
+          test_date:     labReport?.test_date ?? undefined,
+          source:        'admin_import',
+          status:        'confirmed',
+          report_number: reportNumber,
+          report_source: labReport?.report_source || null,
+          lab_address:   labReport?.lab_address || null,
+          lab_email:     labReport?.lab_email   || null,
+          lab_phone:     labReport?.lab_phone   || null,
+        })
+        .eq('id', labReportId);
+    } else if (labReport?.title && labReport?.test_date && labReport?.user_id) {
+      // Legacy path: create a new report directly
       const reportNumber = await generateReportNumber(supabase, 'admin_import');
       const { data: reportRecord } = await supabase
         .from('lab_reports')
@@ -38,7 +57,9 @@ export async function POST(req: NextRequest) {
           title:         labReport.title.trim(),
           test_date:     labReport.test_date,
           source:        'admin_import',
+          status:        'confirmed',
           report_number: reportNumber,
+          report_source: labReport.report_source || null,
           lab_address:   labReport.lab_address || null,
           lab_email:     labReport.lab_email   || null,
           lab_phone:     labReport.lab_phone   || null,

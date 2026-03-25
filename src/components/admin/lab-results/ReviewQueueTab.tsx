@@ -36,6 +36,15 @@ type Review = {
 type TypeFilter = 'all' | 'low_confidence' | 'plausibility_warning' | 'duplicate_detected' | 'unmapped_biomarker';
 type SeverityFilter = 'all' | 'critical' | 'warning' | 'info';
 
+type PendingReport = {
+  id: string;
+  title: string;
+  test_date: string | null;
+  status: string;
+  created_at: string;
+  profiles: { first_name: string | null; last_name: string | null; email: string | null } | null;
+};
+
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const TYPE_LABEL: Record<string, string> = {
@@ -64,6 +73,7 @@ export default function ReviewQueueTab({ onCountChange }: { onCountChange?: (n: 
   const supabase = createClient();
 
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [pendingReports, setPendingReports] = useState<PendingReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all');
@@ -80,22 +90,34 @@ export default function ReviewQueueTab({ onCountChange }: { onCountChange?: (n: 
 
   const loadReviews = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('lab_result_reviews')
-      .select(`
-        id, review_type, severity, message, original_value, suggested_value, is_resolved, created_at,
-        lab_results:lab_result_id (
-          id, value_numeric, unit, status_flag, source, measured_at,
-          biomarkers:biomarker_definition_id ( name ),
-          profiles:user_id ( first_name, last_name, email )
-        )
-      `)
-      .eq('is_resolved', false)
-      .order('created_at', { ascending: true })
-      .limit(200);
-    const items = (data as unknown as Review[]) ?? [];
+
+    const [reviewsRes, pendingRes] = await Promise.all([
+      supabase
+        .from('lab_result_reviews')
+        .select(`
+          id, review_type, severity, message, original_value, suggested_value, is_resolved, created_at,
+          lab_results:lab_result_id (
+            id, value_numeric, unit, status_flag, source, measured_at,
+            biomarkers:biomarker_definition_id ( name ),
+            profiles:user_id ( first_name, last_name, email )
+          )
+        `)
+        .eq('is_resolved', false)
+        .order('created_at', { ascending: true })
+        .limit(200),
+      supabase
+        .from('lab_reports')
+        .select('id, title, test_date, status, created_at, profiles:user_id (first_name, last_name, email)')
+        .in('status', ['ai_extracted', 'review_pending'])
+        .is('archived_at', null)
+        .order('created_at', { ascending: false }),
+    ]);
+
+    const items = (reviewsRes.data as unknown as Review[]) ?? [];
+    const pending = (pendingRes.data as unknown as PendingReport[]) ?? [];
     setReviews(items);
-    onCountChange?.(items.length);
+    setPendingReports(pending);
+    onCountChange?.(items.length + pending.length);
     setLoading(false);
   }, [supabase, onCountChange]);
 
@@ -154,6 +176,38 @@ export default function ReviewQueueTab({ onCountChange }: { onCountChange?: (n: 
           </div>
         ))}
       </div>
+
+      {/* Pending reports awaiting review */}
+      {pendingReports.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#0e393d]/60 mb-2">
+            Reports Awaiting Review ({pendingReports.length})
+          </p>
+          <div className="space-y-2">
+            {pendingReports.map((r) => {
+              const userName = r.profiles
+                ? [r.profiles.first_name, r.profiles.last_name].filter(Boolean).join(' ') || r.profiles.email
+                : '—';
+              const statusCls = r.status === 'ai_extracted'
+                ? 'bg-violet-50 text-violet-700 ring-1 ring-violet-600/20'
+                : 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20';
+              const statusLabel = r.status === 'ai_extracted' ? '🤖 AI Extracted' : '⏳ Review Pending';
+              return (
+                <div key={r.id} className="rounded-xl border border-[#0e393d]/10 bg-white px-4 py-3 flex items-center gap-4 flex-wrap">
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${statusCls}`}>
+                    {statusLabel}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-[#1c2a2b] truncate">{r.title}</p>
+                    <p className="text-xs text-[#1c2a2b]/40">{userName} · {fmtDate(r.test_date ?? r.created_at)}</p>
+                  </div>
+                  <p className="text-xs text-[#1c2a2b]/40 shrink-0">Open the PDF Upload tab to review</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">

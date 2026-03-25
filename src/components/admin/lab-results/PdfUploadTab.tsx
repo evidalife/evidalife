@@ -38,6 +38,8 @@ type ExtractedRow = {
   db_biomarker: any | null;
 };
 
+type LabSource = 'evida_life' | 'partner_lab' | 'external_upload';
+
 type UploadRecord = {
   id: string;
   user_id: string | null;
@@ -47,10 +49,32 @@ type UploadRecord = {
   results_created: number;
   created_at: string;
   extracted_data: ExtractedRow[] | null;
+  draft_values: ExtractedRow[] | null;
+  draft_metadata: any | null;
+  lab_report_id: string | null;
   profiles: { first_name: string | null; last_name: string | null } | null;
 };
 
 type AllBiomarker = { id: string; name: any; unit: string | null; he_domain: string | null };
+
+// ─── Lab source options ───────────────────────────────────────────────────────
+
+const LAB_SOURCE_OPTIONS: { value: LabSource; label: string }[] = [
+  { value: 'evida_life',      label: '🌿 Evida Life' },
+  { value: 'partner_lab',     label: '🔬 Partner Lab' },
+  { value: 'external_upload', label: '📁 External' },
+];
+
+// ─── Implausible value check ──────────────────────────────────────────────────
+
+function isImplausibleRow(row: ExtractedRow): boolean {
+  if (!row.db_biomarker) return false;
+  const refLow  = row.db_biomarker.ref_range_low  ?? row.ref_low;
+  const refHigh = row.db_biomarker.ref_range_high ?? row.ref_high;
+  if (refHigh != null && row.value > refHigh * 10) return true;
+  if (refLow  != null && refLow > 0 && row.value < refLow / 10) return true;
+  return false;
+}
 
 // ─── Report language detection ────────────────────────────────────────────────
 
@@ -106,6 +130,10 @@ export default function PdfUploadTab() {
   const [dragging, setDragging] = useState(false);
   // For re-analyze: track the user_id already stored on the upload record
   const [reanalyzingUserId, setReanalyzingUserId] = useState<string | null>(null);
+  // New: lab report ID (from AI extraction draft), lab source, PDF signed URL
+  const [labReportId, setLabReportId] = useState<string | null>(null);
+  const [labSource, setLabSource] = useState<LabSource>('partner_lab');
+  const [pdfSignedUrl, setPdfSignedUrl] = useState<string | null>(null);
 
   // User assignment
   const [userSearch, setUserSearch] = useState('');
@@ -127,7 +155,7 @@ export default function PdfUploadTab() {
     setLoadingUploads(true);
     const { data } = await supabase
       .from('lab_pdf_uploads')
-      .select('id, user_id, file_name, file_url, extraction_status, results_created, created_at, extracted_data, profiles:uploaded_by(first_name, last_name)')
+      .select('id, user_id, file_name, file_url, extraction_status, results_created, created_at, extracted_data, draft_values, draft_metadata, lab_report_id, profiles:uploaded_by(first_name, last_name)')
       .order('created_at', { ascending: false })
       .limit(20);
     setUploads((data as unknown as UploadRecord[]) ?? []);
@@ -226,7 +254,46 @@ export default function PdfUploadTab() {
       lab_email:   data.metadata?.lab_email ?? '',
       lab_phone:   data.metadata?.lab_phone ?? '',
     });
+    setLabReportId(data.labReportId ?? null);
+
+    // Generate signed URL for PDF viewing in review screen
+    const { data: signedData } = await supabase.storage.from('lab-pdfs').createSignedUrl(storagePath, 3600);
+    setPdfSignedUrl(signedData?.signedUrl ?? null);
+
     loadUploads();
+  };
+
+  // ── Open review from saved draft ─────────────────────────────────────────────
+
+  const handleOpenReview = async (upload: UploadRecord) => {
+    if (!upload.draft_values?.length) return;
+    const dm = upload.draft_metadata;
+    setExtracted(upload.draft_values);
+    setLabMetadata({
+      title:       dm?.lab_name || upload.file_name.replace(/\.[^.]+$/, '') || '',
+      test_date:   dm?.test_date || '',
+      lab_address: dm?.lab_address || '',
+      lab_email:   dm?.lab_email   || '',
+      lab_phone:   dm?.lab_phone   || '',
+    });
+    setUploadId(upload.id);
+    setLabReportId(upload.lab_report_id);
+    setReanalyzingUserId(upload.user_id);
+
+    if (upload.lab_report_id) {
+      await supabase.from('lab_reports').update({ status: 'review_pending' }).eq('id', upload.lab_report_id);
+    }
+
+    // Generate signed URL for PDF viewing
+    let sp = upload.file_url;
+    if (sp.startsWith('http')) {
+      const match = sp.match(/lab-pdfs\/(.+?)(?:\?|$)/);
+      sp = match?.[1] ?? '';
+    }
+    if (sp) {
+      const { data } = await supabase.storage.from('lab-pdfs').createSignedUrl(sp, 3600);
+      setPdfSignedUrl(data?.signedUrl ?? null);
+    }
   };
 
   // ── Re-analyze existing upload ───────────────────────────────────────────────
@@ -270,6 +337,11 @@ export default function PdfUploadTab() {
       lab_email:   data.metadata?.lab_email ?? '',
       lab_phone:   data.metadata?.lab_phone ?? '',
     });
+    setLabReportId(data.labReportId ?? null);
+
+    const { data: signedData } = await supabase.storage.from('lab-pdfs').createSignedUrl(storagePath, 3600);
+    setPdfSignedUrl(signedData?.signedUrl ?? null);
+
     loadUploads();
   };
 
@@ -280,6 +352,13 @@ export default function PdfUploadTab() {
 
     // Delete linked lab_results (by pdf_url matching file_url)
     await supabase.from('lab_results').delete().eq('pdf_url', upload.file_url);
+
+    // Delete draft lab_report if still in ai_extracted/review_pending state
+    if (upload.lab_report_id) {
+      await supabase.from('lab_reports').delete()
+        .eq('id', upload.lab_report_id)
+        .in('status', ['ai_extracted', 'review_pending']);
+    }
 
     // Delete file from storage — extract path from signed URL if needed
     let storagePath = upload.file_url ?? '';
@@ -315,6 +394,17 @@ export default function PdfUploadTab() {
     if (!toSave.length) { addToast('No matched results selected', 'error'); return; }
     if (!labMetadata.title.trim()) { addToast('Report title is required', 'error'); return; }
     if (!labMetadata.test_date) { addToast('Test date is required', 'error'); return; }
+
+    // Implausibility check — block save if any selected row is >10x outside ref range
+    const implausible = toSave.filter(isImplausibleRow);
+    if (implausible.length > 0) {
+      addToast(
+        `${implausible.length} result(s) appear implausible (>10× outside reference range). Please correct or deselect them before saving.`,
+        'error',
+      );
+      return;
+    }
+
     setSaving(true);
 
     const userId = selectedUser?.id ?? reanalyzingUserId ?? null;
@@ -339,18 +429,19 @@ export default function PdfUploadTab() {
     });
 
     const labReport = userId ? {
-      user_id:     userId,
-      title:       labMetadata.title.trim(),
-      test_date:   labMetadata.test_date,
-      lab_address: labMetadata.lab_address || null,
-      lab_email:   labMetadata.lab_email   || null,
-      lab_phone:   labMetadata.lab_phone   || null,
+      user_id:       userId,
+      title:         labMetadata.title.trim(),
+      test_date:     labMetadata.test_date,
+      lab_address:   labMetadata.lab_address || null,
+      lab_email:     labMetadata.lab_email   || null,
+      lab_phone:     labMetadata.lab_phone   || null,
+      report_source: labSource,
     } : null;
 
     const res = await fetch('/api/admin/lab-results/bulk', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ results, labReport }),
+      body: JSON.stringify({ results, labReport, labReportId }),
     });
     const data = await res.json();
     setSaving(false);
@@ -367,6 +458,8 @@ export default function PdfUploadTab() {
     setFile(null);
     setUploadId(null);
     setReanalyzingUserId(null);
+    setLabReportId(null);
+    setPdfSignedUrl(null);
     setLabMetadata({ title: '', test_date: '', lab_address: '', lab_email: '', lab_phone: '' });
     loadUploads();
   };
@@ -376,6 +469,8 @@ export default function PdfUploadTab() {
     setFile(null);
     setUploadId(null);
     setReanalyzingUserId(null);
+    setLabReportId(null);
+    setPdfSignedUrl(null);
     setLabMetadata({ title: '', test_date: '', lab_address: '', lab_email: '', lab_phone: '' });
   };
 
@@ -443,6 +538,26 @@ export default function PdfUploadTab() {
             )}
           </div>
 
+          {/* ── Lab source ────────────────────────────────────────────────── */}
+          <div>
+            <SectionHeading>Lab Source</SectionHeading>
+            <div className="flex gap-2">
+              {LAB_SOURCE_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setLabSource(value)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                    labSource === value
+                      ? 'bg-[#0e393d] text-white'
+                      : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* ── Drop zone ─────────────────────────────────────────────────── */}
           <div
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -502,7 +617,7 @@ export default function PdfUploadTab() {
           <div>
             <SectionHeading>Recent Uploads</SectionHeading>
             <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-x-auto">
-              <table className="w-full text-sm min-w-[680px]">
+              <table className="w-full text-sm min-w-[740px]">
                 <thead>
                   <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
                     {['File', 'Uploaded by', 'Date', 'Status', 'Results', 'Actions'].map((h) => (
@@ -533,6 +648,14 @@ export default function PdfUploadTab() {
                       <td className="px-4 py-3 text-xs text-[#0e393d] font-medium">{u.results_created ?? 0}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-3">
+                          {u.draft_values && u.draft_values.length > 0 && u.extraction_status === 'completed' && (
+                            <button
+                              onClick={() => handleOpenReview(u)}
+                              className="text-xs text-[#0e393d] hover:text-[#0e393d]/70 font-medium transition"
+                            >
+                              Review
+                            </button>
+                          )}
                           <button
                             onClick={() => handleReanalyze(u)}
                             className="text-xs text-[#ceab84] hover:text-[#b8965e] font-medium transition"
@@ -565,6 +688,17 @@ export default function PdfUploadTab() {
               )}
             </div>
             <div className="flex gap-2 items-center">
+              {pdfSignedUrl && (
+                <a
+                  href={pdfSignedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-[#0e393d] hover:underline font-medium"
+                >
+                  📄 Open PDF
+                </a>
+              )}
+              <span className="text-[#1c2a2b]/30">·</span>
               <button onClick={() => toggleAll(true)} className="text-xs text-[#0e393d] hover:underline">Select all</button>
               <span className="text-[#1c2a2b]/30">·</span>
               <button onClick={() => toggleAll(false)} className="text-xs text-[#0e393d] hover:underline">Deselect all</button>
@@ -636,6 +770,11 @@ export default function PdfUploadTab() {
             <span className="text-amber-600">{extracted.filter(r => r.confidence === 'fuzzy').length} fuzzy</span>
             <span className="text-red-500">{extracted.filter(r => r.confidence === 'unmatched').length} unmatched</span>
             <span className="text-[#0e393d]">{extracted.filter(r => r.was_converted).length} converted</span>
+            {extracted.filter(r => r.include && isImplausibleRow(r)).length > 0 && (
+              <span className="text-red-600 font-medium">
+                ⚠ {extracted.filter(r => r.include && isImplausibleRow(r)).length} implausible
+              </span>
+            )}
           </div>
 
           {(() => {
@@ -646,88 +785,110 @@ export default function PdfUploadTab() {
               return name[reportLang] || name.en || name.de || Object.values(name)[0] || '—';
             };
             return (
-        <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-x-auto">
-            <div className="px-3 pt-2 pb-0 text-[11px] text-[#1c2a2b]/40">
-              Detected report language: <span className="font-medium text-[#0e393d]/60 uppercase">{reportLang}</span>
-            </div>
-            <table className="w-full text-xs min-w-[960px]">
-              <thead>
-                <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-                  <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Include</th>
-                  <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Lab Name</th>
-                  <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Matched Biomarker</th>
-                  <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Confidence</th>
-                  <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Value</th>
-                  <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Unit / Conversion</th>
-                  <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Flag</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#0e393d]/6">
-                {extracted.map((row, idx) => {
-                  const flag = row.db_biomarker
-                    ? computeStatusFlag(row.value, {
-                        ref_range_low: row.db_biomarker.ref_range_low ?? row.ref_low,
-                        ref_range_high: row.db_biomarker.ref_range_high ?? row.ref_high,
-                        optimal_range_low: row.db_biomarker.optimal_range_low,
-                        optimal_range_high: row.db_biomarker.optimal_range_high,
-                        range_type: row.db_biomarker.range_type,
-                      })
-                    : null;
+          <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-x-auto">
+              <div className="px-3 pt-2 pb-0 text-[11px] text-[#1c2a2b]/40">
+                Detected report language: <span className="font-medium text-[#0e393d]/60 uppercase">{reportLang}</span>
+              </div>
+              <table className="w-full text-xs min-w-[1060px]">
+                <thead>
+                  <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
+                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Include</th>
+                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Lab Name</th>
+                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Matched Biomarker</th>
+                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Ref Range</th>
+                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Confidence</th>
+                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Value</th>
+                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Unit / Conversion</th>
+                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Flag</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#0e393d]/6">
+                  {extracted.map((row, idx) => {
+                    const refLow  = row.db_biomarker?.ref_range_low  ?? row.ref_low;
+                    const refHigh = row.db_biomarker?.ref_range_high ?? row.ref_high;
+                    const refUnit = row.db_biomarker?.unit || row.unit || '';
+                    const implausible = row.include && isImplausibleRow(row);
 
-                  return (
-                    <tr key={idx} className={`${row.include ? '' : 'opacity-40'} hover:bg-[#fafaf8] transition-colors`}>
-                      <td className="px-3 py-2.5 text-center">
-                        <input type="checkbox" checked={row.include} onChange={() => toggleRow(idx)}
-                          className="rounded border-[#0e393d]/30 accent-[#0e393d]" />
-                      </td>
-                      <td className="px-3 py-2.5 text-[#1c2a2b] max-w-[180px]">
-                        <span title={row.extracted_name} className="block truncate">{row.extracted_name}</span>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <select
-                          value={row.matched_id ?? ''}
-                          onChange={(e) => {
-                            const bm = allBiomarkers.find((b) => b.id === e.target.value);
-                            updateRow(idx, 'matched_id', e.target.value || null);
-                            updateRow(idx, 'matched_name', locInLang(bm?.name) || null);
-                            updateRow(idx, 'db_biomarker', bm ?? null);
-                            updateRow(idx, 'confidence', e.target.value ? 'alias' : 'unmatched');
-                          }}
-                          className="rounded border border-[#0e393d]/15 bg-white px-2 py-1 text-xs text-[#1c2a2b] focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20 w-44"
-                        >
-                          <option value="">— Not mapped —</option>
-                          {allBiomarkers.map((b) => (
-                            <option key={b.id} value={b.id}>{locInLang(b.name)}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-3 py-2.5"><ConfidenceBadge c={row.confidence} /></td>
-                      <td className="px-3 py-2.5">
-                        <input
-                          type="number" step="0.01"
-                          value={row.value}
-                          onChange={(e) => updateRow(idx, 'value', parseFloat(e.target.value))}
-                          className="w-20 rounded border border-[#0e393d]/15 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
-                        />
-                      </td>
-                      <td className="px-3 py-2.5 text-xs text-[#1c2a2b]">
-                        {row.was_converted ? (
-                          <span>
-                            <span className="text-[#1c2a2b]/40">{row.original_value} {row.original_unit}</span>
-                            {' → '}
-                            <span className="text-emerald-700 font-medium">{row.unit}</span>
-                          </span>
-                        ) : (
-                          <span className="font-medium">{row.unit || '—'}</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5"><FlagBadge flag={flag} /></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    const flag = row.db_biomarker
+                      ? computeStatusFlag(row.value, {
+                          ref_range_low: refLow,
+                          ref_range_high: refHigh,
+                          optimal_range_low: row.db_biomarker.optimal_range_low,
+                          optimal_range_high: row.db_biomarker.optimal_range_high,
+                          range_type: row.db_biomarker.range_type,
+                        })
+                      : null;
+
+                    return (
+                      <tr
+                        key={idx}
+                        className={`${row.include ? '' : 'opacity-40'} ${implausible ? 'bg-red-50/60' : 'hover:bg-[#fafaf8]'} transition-colors`}
+                      >
+                        <td className="px-3 py-2.5 text-center">
+                          <input type="checkbox" checked={row.include} onChange={() => toggleRow(idx)}
+                            className="rounded border-[#0e393d]/30 accent-[#0e393d]" />
+                        </td>
+                        <td className="px-3 py-2.5 text-[#1c2a2b] max-w-[180px]">
+                          <span title={row.extracted_name} className="block truncate">{row.extracted_name}</span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <select
+                            value={row.matched_id ?? ''}
+                            onChange={(e) => {
+                              const bm = allBiomarkers.find((b) => b.id === e.target.value);
+                              updateRow(idx, 'matched_id', e.target.value || null);
+                              updateRow(idx, 'matched_name', locInLang(bm?.name) || null);
+                              updateRow(idx, 'db_biomarker', bm ?? null);
+                              updateRow(idx, 'confidence', e.target.value ? 'alias' : 'unmatched');
+                            }}
+                            className="rounded border border-[#0e393d]/15 bg-white px-2 py-1 text-xs text-[#1c2a2b] focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20 w-44"
+                          >
+                            <option value="">— Not mapped —</option>
+                            {allBiomarkers.map((b) => (
+                              <option key={b.id} value={b.id}>{locInLang(b.name)}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-3 py-2.5 text-[#1c2a2b]/50 whitespace-nowrap">
+                          {refLow != null || refHigh != null
+                            ? `${refLow ?? '—'}–${refHigh ?? '—'} ${refUnit}`
+                            : <span className="text-[#1c2a2b]/25">—</span>
+                          }
+                          {implausible && (
+                            <span className="ml-1 text-red-500 font-medium" title="Value is >10× outside reference range">⚠</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5"><ConfidenceBadge c={row.confidence} /></td>
+                        <td className="px-3 py-2.5">
+                          <input
+                            type="number" step="0.01"
+                            value={row.value}
+                            onChange={(e) => updateRow(idx, 'value', parseFloat(e.target.value))}
+                            className={`w-20 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 transition ${
+                              implausible
+                                ? 'border-red-300 bg-red-50 focus:ring-red-300'
+                                : 'border-[#0e393d]/15 bg-white focus:ring-[#0e393d]/20'
+                            }`}
+                          />
+                        </td>
+                        <td className="px-3 py-2.5 text-xs text-[#1c2a2b]">
+                          {row.was_converted ? (
+                            <span>
+                              <span className="text-[#1c2a2b]/40">{row.original_value} {row.original_unit}</span>
+                              {' → '}
+                              <span className="text-emerald-700 font-medium">{row.unit}</span>
+                            </span>
+                          ) : (
+                            <span className="font-medium">{row.unit || '—'}</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5"><FlagBadge flag={flag} /></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
             );
           })()}
 

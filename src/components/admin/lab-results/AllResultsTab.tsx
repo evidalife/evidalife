@@ -30,6 +30,8 @@ type LabReport = {
   title: string;
   test_date: string | null;
   source: string;
+  status: string | null;
+  report_source: string | null;
   report_number: string | null;
   archived_at: string | null;
   created_at: string;
@@ -46,17 +48,39 @@ type SourceFilter = 'all' | 'admin_import' | 'self_reported' | 'archived';
 
 // ─── Source label helper ──────────────────────────────────────────────────────
 
-function sourceBadge(source: string) {
-  if (source === 'admin_import') {
-    return (
-      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#0C9C6C]/10 text-[#0C9C6C] ring-1 ring-[#0C9C6C]/20 whitespace-nowrap">
-        🌿 Evida Life
-      </span>
-    );
-  }
+function sourceBadge(source: string, reportSource: string | null) {
+  const label = reportSource === 'evida_life'
+    ? '🌿 Evida Life'
+    : reportSource === 'partner_lab'
+    ? '🔬 Partner Lab'
+    : reportSource === 'external_upload'
+    ? '📁 External'
+    : source === 'admin_import'
+    ? '🌿 Evida Life'
+    : '📝 Self-Reported';
+
+  const cls = (source === 'admin_import' || reportSource === 'evida_life' || reportSource === 'partner_lab' || reportSource === 'external_upload')
+    ? 'bg-[#0C9C6C]/10 text-[#0C9C6C] ring-1 ring-[#0C9C6C]/20'
+    : 'bg-[#CEAB84]/15 text-[#7a5e20] ring-1 ring-[#CEAB84]/30';
+
   return (
-    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#CEAB84]/15 text-[#7a5e20] ring-1 ring-[#CEAB84]/30 whitespace-nowrap">
-      📝 Self-Reported
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
+function reportStatusBadge(status: string | null) {
+  if (!status || status === 'confirmed') return null;
+  const map: Record<string, { label: string; cls: string }> = {
+    ai_extracted:   { label: '🤖 AI Extracted',   cls: 'bg-violet-50 text-violet-700 ring-1 ring-violet-600/20' },
+    review_pending: { label: '⏳ Review Pending', cls: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20' },
+    archived:       { label: '📦 Archived',        cls: 'bg-gray-100 text-gray-500 ring-1 ring-gray-300/50' },
+  };
+  const { label, cls } = map[status] ?? { label: status, cls: 'bg-gray-100 text-gray-500 ring-1 ring-gray-300/50' };
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${cls}`}>
+      {label}
     </span>
   );
 }
@@ -150,7 +174,7 @@ export default function AllResultsTab() {
     let query = supabase
       .from('lab_reports')
       .select(`
-        id, title, test_date, source, report_number, archived_at, created_at,
+        id, title, test_date, source, status, report_source, report_number, archived_at, created_at,
         lab_address, lab_email, lab_phone,
         profiles:user_id (id, first_name, last_name, email),
         lab_results(count)
@@ -366,8 +390,9 @@ export default function AllResultsTab() {
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         {isArchived
                           ? <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-gray-100 text-gray-500 ring-1 ring-gray-300/50">📦 Archived</span>
-                          : sourceBadge(report.source)
+                          : sourceBadge(report.source, report.report_source)
                         }
+                        {!isArchived && reportStatusBadge(report.status)}
                         <span className="font-semibold text-[#0e393d] text-sm">{report.title}</span>
                         {report.report_number && (
                           <span className="font-mono text-[11px] text-[#1c2a2b]/40">{report.report_number}</span>
