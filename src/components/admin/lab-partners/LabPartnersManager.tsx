@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { setOptions as setGMapsOptions, importLibrary as importGMapsLibrary } from '@googlemaps/js-api-loader';
 import { createClient } from '@/lib/supabase/client';
 import { TEST_CATEGORIES } from '@/components/admin/lab-results/shared';
@@ -540,9 +540,21 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  const suggestLabCode = useCallback(async (canton: string): Promise<string> => {
+    if (!canton || canton.length < 2) return '';
+    const prefix = canton.slice(0, 2).toUpperCase();
+    const { count } = await supabase
+      .from('lab_partners')
+      .select('id', { count: 'exact', head: true })
+      .like('lab_code', `${prefix}%`);
+    const seq = String((count ?? 0) + 1).padStart(2, '0');
+    return `${prefix}${seq}`;
+  }, [supabase]);
+
   // ── Address select ───────────────────────────────────────────────────────────
 
   const handlePlaceSelect = (data: PlaceData) => {
+    const incomingCanton = data.canton || '';
     setForm((prev) => ({
       ...prev,
       address:     data.street || prev.address,
@@ -553,6 +565,11 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
       latitude:    data.lat != null ? String(data.lat) : prev.latitude,
       longitude:   data.lng != null ? String(data.lng) : prev.longitude,
     }));
+    if (incomingCanton && !form.lab_code) {
+      suggestLabCode(incomingCanton).then(code => {
+        if (code) setField('lab_code', code);
+      });
+    }
   };
 
   // ── Test category toggle ─────────────────────────────────────────────────────
@@ -623,6 +640,9 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
 
   const handleSave = async () => {
     if (!form.name.trim()) { setError('Name is required.'); return; }
+    if (!form.address.trim()) { setError('Address is required. Use the address search to find the lab location.'); return; }
+    if (!form.city.trim()) { setError('City is required.'); return; }
+    if (!form.country.trim()) { setError('Country is required.'); return; }
     const rawCode = form.lab_code.trim().toUpperCase();
     if (rawCode && !/^[A-Z0-9]{1,6}$/.test(rawCode)) {
       setError('Lab Code must be 1–6 uppercase alphanumeric characters (e.g. ZH01).');
@@ -681,11 +701,27 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
 
   // ── Filtered list ─────────────────────────────────────────────────────────────
 
+  const [sortCol, setSortCol] = useState<'name' | 'city' | 'is_active'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (col: typeof sortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortCol(col); setSortDir('asc'); }
+  };
+
   const filtered = partners.filter((p) => {
     if (!search) return true;
     const q = search.toLowerCase();
     return p.name?.toLowerCase().includes(q) || p.city?.toLowerCase().includes(q);
   });
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sortCol === 'name') cmp = (a.name ?? '').localeCompare(b.name ?? '');
+    else if (sortCol === 'city') cmp = (a.city ?? '').localeCompare(b.city ?? '');
+    else cmp = (a.is_active ? 0 : 1) - (b.is_active ? 0 : 1);
+    return sortDir === 'asc' ? cmp : -cmp;
+  }), [filtered, sortCol, sortDir]);
 
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -724,23 +760,29 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Name</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider cursor-pointer select-none hover:text-[#0e393d]" onClick={() => handleSort('name')}>
+                Name{' '}{sortCol === 'name' && sortDir === 'asc' ? '▲' : sortCol === 'name' && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}
+              </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Type / Code</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">City / Canton</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider cursor-pointer select-none hover:text-[#0e393d]" onClick={() => handleSort('city')}>
+                City / Canton{' '}{sortCol === 'city' && sortDir === 'asc' ? '▲' : sortCol === 'city' && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}
+              </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Categories</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider cursor-pointer select-none hover:text-[#0e393d]" onClick={() => handleSort('is_active')}>
+                Status{' '}{sortCol === 'is_active' && sortDir === 'asc' ? '▲' : sortCol === 'is_active' && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}
+              </th>
               <th className="px-4 py-3 text-right text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#0e393d]/6">
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
                   No labs found.
                 </td>
               </tr>
             )}
-            {filtered.map((p) => (
+            {sorted.map((p) => (
               <tr key={p.id} className="hover:bg-[#fafaf8] transition-colors">
                 <td className="px-4 py-3">
                   <div className="font-medium text-[#0e393d]">{p.name}</div>
@@ -872,7 +914,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
               <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
                 <SectionHead>Location</SectionHead>
 
-                <Field label="Address">
+                <Field label="Address *">
                   <AddressAutocomplete
                     value={form.address}
                     onChange={(v) => setField('address', v)}
@@ -881,18 +923,30 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                 </Field>
 
                 <div className="grid grid-cols-3 gap-3">
-                  <Field label="City">
+                  <Field label="City *">
                     <input className={inputCls} value={form.city} onChange={(e) => setField('city', e.target.value)} placeholder="Zürich" />
                   </Field>
                   <Field label="Canton / State">
-                    <input className={inputCls} value={form.canton} onChange={(e) => setField('canton', e.target.value)} placeholder="ZH" />
+                    <input
+                      className={inputCls}
+                      value={form.canton}
+                      onChange={(e) => setField('canton', e.target.value)}
+                      onBlur={(e) => {
+                        if (!form.lab_code && e.target.value) {
+                          suggestLabCode(e.target.value).then(code => {
+                            if (code) setField('lab_code', code);
+                          });
+                        }
+                      }}
+                      placeholder="ZH"
+                    />
                   </Field>
                   <Field label="Postal Code">
                     <input className={inputCls} value={form.postal_code} onChange={(e) => setField('postal_code', e.target.value)} placeholder="8001" />
                   </Field>
                 </div>
 
-                <Field label="Country">
+                <Field label="Country *">
                   <input className={inputCls} value={form.country} onChange={(e) => setField('country', e.target.value)} placeholder="CH" />
                 </Field>
 
