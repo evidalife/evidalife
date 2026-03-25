@@ -145,6 +145,8 @@ function AddressAutocomplete({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listenerRef = useRef<google.maps.MapsEventListener | null>(null);
+  const onPlaceSelectRef = useRef(onPlaceSelect);
+  onPlaceSelectRef.current = onPlaceSelect;
 
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -180,7 +182,7 @@ function AddressAutocomplete({
         const lng = place.geometry?.location?.lng() ?? null;
 
         onChange(street);
-        onPlaceSelect({ street, city, canton, postalCode, country, lat, lng });
+        onPlaceSelectRef.current({ street, city, canton, postalCode, country, lat, lng });
       });
     }).catch(() => {});
 
