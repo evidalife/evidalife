@@ -9,29 +9,28 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 });
 
-  let body: { text: string; sourceLang: string };
+  let body: { sourceText: string; sourceLang: string; targetLangs: string[]; context?: string };
   try { body = await req.json(); }
   catch { return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 }); }
 
-  const { text, sourceLang } = body;
-  if (!text?.trim()) return NextResponse.json({ error: 'text is required' }, { status: 400 });
+  const { sourceText, sourceLang, targetLangs } = body;
+  if (!sourceText?.trim()) return NextResponse.json({ error: 'sourceText is required' }, { status: 400 });
+  if (!targetLangs?.length) return NextResponse.json({ error: 'targetLangs is required' }, { status: 400 });
 
   const sourceName = LANG_NAMES[sourceLang] ?? 'English';
+  const targetNames = targetLangs.map((l) => `${LANG_NAMES[l] ?? l} (${l})`).join(', ');
   const client = new Anthropic({ apiKey });
 
-  const prompt = `Translate this lab partner description from ${sourceName} into all 5 languages: German (de), English (en), French (fr), Spanish (es), Italian (it).
+  const keys = targetLangs.map((l) => `  "${l}": string`).join(',\n');
+  const prompt = `Translate this lab partner description from ${sourceName} into: ${targetNames}.
 Use natural, professional language appropriate for a health and longevity testing platform.
 
 SOURCE (${sourceName}):
-${text}
+${sourceText}
 
 Return ONLY valid JSON:
 {
-  "de": string,
-  "en": string,
-  "fr": string,
-  "es": string,
-  "it": string
+${keys}
 }
 
 Return ONLY the JSON object, no markdown, no explanation.`;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { setOptions as setGMapsOptions, importLibrary as importGMapsLibrary } from '@googlemaps/js-api-loader';
 import { createClient } from '@/lib/supabase/client';
 import { TEST_CATEGORIES } from '@/components/admin/lab-results/shared';
@@ -227,6 +227,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
   const [search, setSearch] = useState('');
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [expandedLabId, setExpandedLabId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -361,21 +362,25 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
   // ── AI Translate ─────────────────────────────────────────────────────────────
 
   const handleTranslate = async () => {
-    const text = form.description[descLang];
-    if (!text.trim()) return;
+    const desc = form.description as Record<string, string>;
+    const sourceLang = LANGS.find((l) => desc[l]?.trim());
+    if (!sourceLang) { setError('Write a description in at least one language first.'); return; }
+    const sourceText = desc[sourceLang];
+    const targetLangs = LANGS.filter((l) => l !== sourceLang && !desc[l]?.trim());
+    if (targetLangs.length === 0) { setError('All languages already have descriptions.'); return; }
     setTranslating(true);
     try {
       const res = await fetch('/api/admin/translate-lab-partner', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, sourceLang: descLang }),
+        body: JSON.stringify({ sourceText, sourceLang, targetLangs }),
       });
       if (!res.ok) throw new Error('Translate failed');
       const result = await res.json();
       setForm((prev) => {
         const newDesc = { ...prev.description };
-        for (const lang of LANGS) {
-          if (lang !== descLang && result[lang]) newDesc[lang] = result[lang];
+        for (const lang of targetLangs) {
+          if (result[lang]) newDesc[lang] = result[lang];
         }
         return { ...prev, description: newDesc };
       });
@@ -592,90 +597,173 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                 </td>
               </tr>
             )}
-            {displayRows.map(({ lab: p, isChild }) => (
-              <tr key={p.id} className={`hover:bg-[#fafaf8] transition-colors${isChild ? ' bg-[#fafaf8]/60' : ''}`}>
-                <td className="px-4 py-3">
-                  <div className={`font-medium${isChild ? ' pl-5 text-[#0e393d]/70' : ' text-[#0e393d]'}`}>{isChild ? '↳ ' : ''}{p.name}</div>
-                  {p.address && <div className={`text-xs text-[#1c2a2b]/40 mt-0.5${isChild ? ' pl-5' : ''}`}>{p.address}</div>}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {p.lab_type === 'evida_life'
-                      ? <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#0C9C6C]/10 text-[#0C9C6C] ring-1 ring-[#0C9C6C]/20">🌿 Evida</span>
-                      : <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#0e393d]/8 text-[#0e393d] ring-1 ring-[#0e393d]/15">🤝 Partner</span>
-                    }
-                    {p.lab_code && (
-                      <span className="font-mono text-xs text-[#1c2a2b]/60 bg-[#0e393d]/5 px-1.5 py-0.5 rounded">{p.lab_code}</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {orgIds.has(p.id) && (
-                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-sky-50 text-sky-700 ring-1 ring-sky-600/20">Org</span>
-                    )}
-                    {p.parent_lab_id && (
-                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#ceab84]/15 text-[#8a6a3e] ring-1 ring-[#ceab84]/30">Location</span>
-                    )}
-                    {!orgIds.has(p.id) && !p.parent_lab_id && (
-                      <span className="text-[11px] text-[#1c2a2b]/30">Standalone</span>
-                    )}
-                    {!p.parent_lab_id && p.integration_tier && p.integration_tier !== 'manual' && (
-                      <span className="text-xs" title={p.integration_tier}>{TIER_ICON[p.integration_tier] ?? ''}</span>
-                    )}
-                    {!p.parent_lab_id && p.integration_tier === 'manual' && (
-                      <span className="text-xs opacity-40" title="manual">📋</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-[#1c2a2b]/70">
-                  {[p.city, p.canton].filter(Boolean).join(', ') || '—'}
-                </td>
-                <td className="px-4 py-3">
-                  {p.test_categories && p.test_categories.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {p.test_categories.map((cat) => {
-                        const tc = TEST_CATEGORIES.find((t) => t.value === cat);
-                        return tc ? (
-                          <span key={cat} title={tc.label} className="text-base leading-none">{tc.icon}</span>
-                        ) : null;
-                      })}
-                    </div>
-                  ) : (
-                    <span className="text-[#1c2a2b]/25 text-xs">—</span>
+            {displayRows.map(({ lab: p, isChild }) => {
+              const isExpanded = expandedLabId === p.id;
+              const descText = (p.description as Record<string, string> | null);
+              const expandedDesc = descText?.en || descText?.de || descText?.fr || descText?.es || descText?.it || null;
+              const mapsUrl = p.latitude && p.longitude
+                ? `https://www.google.com/maps?q=${p.latitude},${p.longitude}`
+                : null;
+              return (
+                <React.Fragment key={p.id}>
+                  <tr
+                    className={`hover:bg-[#fafaf8] transition-colors cursor-pointer select-none${isChild ? ' bg-[#fafaf8]/60' : ''}${isExpanded ? ' bg-[#fafaf8]' : ''}`}
+                    onClick={() => setExpandedLabId(isExpanded ? null : p.id)}
+                  >
+                    <td className="px-4 py-3">
+                      <div className={`font-medium${isChild ? ' pl-5 text-[#0e393d]/70' : ' text-[#0e393d]'}`}>{isChild ? '↳ ' : ''}{p.name}</div>
+                      {p.address && <div className={`text-xs text-[#1c2a2b]/40 mt-0.5${isChild ? ' pl-5' : ''}`}>{p.address}</div>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {p.lab_type === 'evida_life'
+                          ? <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#0C9C6C]/10 text-[#0C9C6C] ring-1 ring-[#0C9C6C]/20">🌿 Evida</span>
+                          : <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#0e393d]/8 text-[#0e393d] ring-1 ring-[#0e393d]/15">🤝 Partner</span>
+                        }
+                        {p.lab_code && (
+                          <span className="font-mono text-xs text-[#1c2a2b]/60 bg-[#0e393d]/5 px-1.5 py-0.5 rounded">{p.lab_code}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {orgIds.has(p.id) && (
+                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-sky-50 text-sky-700 ring-1 ring-sky-600/20">Org</span>
+                        )}
+                        {p.parent_lab_id && (
+                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-[#ceab84]/15 text-[#8a6a3e] ring-1 ring-[#ceab84]/30">Location</span>
+                        )}
+                        {!orgIds.has(p.id) && !p.parent_lab_id && (
+                          <span className="text-[11px] text-[#1c2a2b]/30">Standalone</span>
+                        )}
+                        {!p.parent_lab_id && p.integration_tier && p.integration_tier !== 'manual' && (
+                          <span className="text-xs" title={p.integration_tier}>{TIER_ICON[p.integration_tier] ?? ''}</span>
+                        )}
+                        {!p.parent_lab_id && p.integration_tier === 'manual' && (
+                          <span className="text-xs opacity-40" title="manual">📋</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-[#1c2a2b]/70">
+                      {[p.city, p.canton].filter(Boolean).join(', ') || '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {p.test_categories && p.test_categories.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {p.test_categories.map((cat) => {
+                            const tc = TEST_CATEGORIES.find((t) => t.value === cat);
+                            return tc ? (
+                              <span key={cat} title={tc.label} className="text-base leading-none">{tc.icon}</span>
+                            ) : null;
+                          })}
+                        </div>
+                      ) : (
+                        <span className="text-[#1c2a2b]/25 text-xs">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {p.is_active ? <Badge color="green">Active</Badge> : <Badge color="gray">Inactive</Badge>}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {!isChild && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleAddLocation(p.id); }}
+                            className="px-3 py-1 rounded-md text-xs font-medium text-[#CEAB84] bg-[#CEAB84]/10 hover:bg-[#CEAB84]/20 transition"
+                          >
+                            ＋ Location
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openEdit(p); }}
+                          className="px-3 py-1 rounded-md text-xs font-medium text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition"
+                        >
+                          Edit
+                        </button>
+                        {p.is_active && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeactivate(p); }}
+                            className="px-3 py-1 rounded-md text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 transition"
+                          >
+                            Deactivate
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  {isExpanded && (
+                    <tr className={isChild ? 'bg-[#fafaf8]/80' : 'bg-[#fafaf8]'}>
+                      <td colSpan={7} className="px-6 pb-4 pt-1">
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm border-t border-[#0e393d]/6 pt-3">
+                          {p.address && (
+                            <div>
+                              <span className="text-xs text-[#1c2a2b]/40 uppercase tracking-wide">Address</span>
+                              <p className="text-[#1c2a2b]/80 mt-0.5">{[p.address, p.postal_code, p.city, p.canton, p.country].filter(Boolean).join(', ')}</p>
+                            </div>
+                          )}
+                          {p.phone && (
+                            <div>
+                              <span className="text-xs text-[#1c2a2b]/40 uppercase tracking-wide">Phone</span>
+                              <p className="mt-0.5">
+                                <a href={`tel:${p.phone}`} className="text-[#0e393d] hover:underline" onClick={(e) => e.stopPropagation()}>{p.phone}</a>
+                              </p>
+                            </div>
+                          )}
+                          {p.email && (
+                            <div>
+                              <span className="text-xs text-[#1c2a2b]/40 uppercase tracking-wide">Email</span>
+                              <p className="mt-0.5">
+                                <a href={`mailto:${p.email}`} className="text-[#0e393d] hover:underline" onClick={(e) => e.stopPropagation()}>{p.email}</a>
+                              </p>
+                            </div>
+                          )}
+                          {p.website && (
+                            <div>
+                              <span className="text-xs text-[#1c2a2b]/40 uppercase tracking-wide">Website</span>
+                              <p className="mt-0.5">
+                                <a href={p.website.startsWith('http') ? p.website : `https://${p.website}`} target="_blank" rel="noopener noreferrer" className="text-[#0e393d] hover:underline" onClick={(e) => e.stopPropagation()}>{p.website}</a>
+                              </p>
+                            </div>
+                          )}
+                          {p.lab_code && (
+                            <div>
+                              <span className="text-xs text-[#1c2a2b]/40 uppercase tracking-wide">Lab Code</span>
+                              <p className="font-mono text-[#1c2a2b]/70 mt-0.5">{p.lab_code}</p>
+                            </div>
+                          )}
+                          {p.integration_tier && (
+                            <div>
+                              <span className="text-xs text-[#1c2a2b]/40 uppercase tracking-wide">Integration</span>
+                              <p className="text-[#1c2a2b]/70 mt-0.5">{p.integration_tier}</p>
+                            </div>
+                          )}
+                          {p.iso_accreditation && (
+                            <div>
+                              <span className="text-xs text-[#1c2a2b]/40 uppercase tracking-wide">ISO Accreditation</span>
+                              <p className="text-[#1c2a2b]/70 mt-0.5">{p.iso_accreditation}</p>
+                            </div>
+                          )}
+                          {mapsUrl && (
+                            <div>
+                              <span className="text-xs text-[#1c2a2b]/40 uppercase tracking-wide">Coordinates</span>
+                              <p className="mt-0.5">
+                                <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="text-[#0e393d] hover:underline font-mono text-xs" onClick={(e) => e.stopPropagation()}>{p.latitude}, {p.longitude}</a>
+                              </p>
+                            </div>
+                          )}
+                          {expandedDesc && (
+                            <div className="col-span-2">
+                              <span className="text-xs text-[#1c2a2b]/40 uppercase tracking-wide">Description</span>
+                              <p className="text-[#1c2a2b]/70 mt-0.5 leading-relaxed">{expandedDesc}</p>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
                   )}
-                </td>
-                <td className="px-4 py-3">
-                  {p.is_active ? <Badge color="green">Active</Badge> : <Badge color="gray">Inactive</Badge>}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    {!isChild && (
-                      <button
-                        onClick={() => handleAddLocation(p.id)}
-                        className="px-3 py-1 rounded-md text-xs font-medium text-[#CEAB84] bg-[#CEAB84]/10 hover:bg-[#CEAB84]/20 transition"
-                      >
-                        ＋ Location
-                      </button>
-                    )}
-                    <button
-                      onClick={() => openEdit(p)}
-                      className="px-3 py-1 rounded-md text-xs font-medium text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition"
-                    >
-                      Edit
-                    </button>
-                    {p.is_active && (
-                      <button
-                        onClick={() => handleDeactivate(p)}
-                        className="px-3 py-1 rounded-md text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 transition"
-                      >
-                        Deactivate
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                </React.Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
