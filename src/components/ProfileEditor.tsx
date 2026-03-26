@@ -789,7 +789,7 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                 <input type="text" value={lastName} onChange={(e) => { setLastName(e.target.value); dirty(); }} placeholder={t.lastName} className={inputCls} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 items-end">
               <BirthdayField value={dateOfBirth} onChange={(v) => { setDateOfBirth(v); dirty(); }} label={t.dateOfBirth} hint={t.dateOfBirthHint} />
               <div>
                 <FieldLabel text={t.sex} />
