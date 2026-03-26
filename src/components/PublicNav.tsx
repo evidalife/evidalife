@@ -25,11 +25,26 @@ type AuthDropdownItem = { label: string; href: string };
 
 const AUTH_DROPDOWN_ITEMS: Partial<Record<string, Record<Locale, AuthDropdownItem[]>>> = {
   Health: {
-    de: [{ label: 'Meine Health Engine',  href: '/health-engine' }],
-    en: [{ label: 'My Health Engine',     href: '/health-engine' }],
-    fr: [{ label: 'Mon Health Engine',    href: '/health-engine' }],
-    es: [{ label: 'Mi Health Engine',     href: '/health-engine' }],
-    it: [{ label: 'Il mio Health Engine', href: '/health-engine' }],
+    de: [
+      { label: 'Meine Health Engine',  href: '/health-engine' },
+      { label: 'Mein Dashboard',       href: '/dashboard' },
+    ],
+    en: [
+      { label: 'My Health Engine',     href: '/health-engine' },
+      { label: 'My Dashboard',         href: '/dashboard' },
+    ],
+    fr: [
+      { label: 'Mon Health Engine',    href: '/health-engine' },
+      { label: 'Mon tableau de bord',  href: '/dashboard' },
+    ],
+    es: [
+      { label: 'Mi Health Engine',     href: '/health-engine' },
+      { label: 'Mi panel',             href: '/dashboard' },
+    ],
+    it: [
+      { label: 'Il mio Health Engine', href: '/health-engine' },
+      { label: 'La mia dashboard',     href: '/dashboard' },
+    ],
   },
   Kitchen: {
     de: [
