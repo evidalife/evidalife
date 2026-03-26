@@ -631,7 +631,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
         const { error: err } = await supabase.from('biomarkers').update(payload).eq('id', editingId);
         if (err) throw err;
       } else {
-        const { error: err } = await supabase.from('biomarkers').insert({ ...payload, slug: slugify(form.name.en || form.name.de) });
+        const { error: err } = await supabase.from('biomarkers').insert({ ...payload, slug: slugify(form.name_short_en || form.name.en || form.name.de) });
         if (err) throw err;
       }
       await refresh();
@@ -884,8 +884,8 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
                     onChange={(e) => setForm((f) => ({ ...f, name_short_en: e.target.value }))}
                     placeholder="e.g. HbA1c" />
                 </Field>
-                <Field label="Slug" hint="Auto-generated from EN name on create">
-                  <input className={inputCls} value={editingId ? (items.find((i) => i.id === editingId)?.slug ?? '') : slugify(form.name.en || form.name.de)} readOnly tabIndex={-1} />
+                <Field label="Slug" hint="Auto-generated from short name on create">
+                  <input className={inputCls} value={editingId ? (items.find((i) => i.id === editingId)?.slug ?? '') : slugify(form.name_short_en || form.name.en || form.name.de)} readOnly tabIndex={-1} />
                 </Field>
               </SectionBlock>
 
