@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { BIOMARKER_UNITS, BIOMARKER_UNIT_CATEGORIES } from '@/lib/biomarker-units';
 import { TEST_CATEGORIES, HE_DOMAINS as HE_DOMAINS_BASE } from '@/components/admin/lab-results/shared';
+import InputBiomarkersSelector from './InputBiomarkersSelector';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -14,9 +15,13 @@ export type ItemDefinition = {
   id: string;
   slug: string | null;
   name: Record<string, string> | null;
+  name_short: Record<string, string> | null;
   description: Record<string, string> | null;
   item_type: string | null;
   is_active: boolean | null;
+  is_calculated: boolean;
+  formula: string | null;
+  calculation_inputs: string[] | null;
   sort_order: number | null;
   unit: string | null;
   range_type: string | null;
@@ -29,8 +34,12 @@ export type ItemDefinition = {
 
 type FormState = {
   name: LangContent;
+  name_short_en: string;
   description: LangContent;
   item_type: string;
+  is_calculated: boolean;
+  formula: string;
+  calculation_inputs: string[];
   sort_order: string;
   is_active: boolean;
   unit: string;
@@ -50,6 +59,10 @@ type AiSuggestion = {
   optimal_range_low?: number | null;
   optimal_range_high?: number | null;
   he_domain?: string | null;
+  name_short?: string | null;
+  is_calculated?: boolean | null;
+  formula?: string | null;
+  calculation_inputs?: string[] | null;
   description_de?: string;
   description_en?: string;
   description_fr?: string;
@@ -61,8 +74,12 @@ type AiSuggestion = {
 
 const EMPTY_FORM: FormState = {
   name: { de: '', en: '', fr: '', es: '', it: '' },
+  name_short_en: '',
   description: { de: '', en: '', fr: '', es: '', it: '' },
   item_type: 'biomarker',
+  is_calculated: false,
+  formula: '',
+  calculation_inputs: [],
   sort_order: '',
   is_active: true,
   unit: '',
@@ -329,6 +346,10 @@ function AiSuggestionModal({
 
   type SuggestionField = { key: string; label: string; current: string; suggested: string };
   const fields: SuggestionField[] = [
+    { key: 'name_short',  label: 'Short Name',    current: fmt(form.name_short_en),  suggested: fmt(suggestion.name_short) },
+    { key: 'is_calculated', label: 'Calculated',  current: String(form.is_calculated), suggested: suggestion.is_calculated != null ? String(suggestion.is_calculated) : '—' },
+    ...(suggestion.is_calculated ? [{ key: 'formula', label: 'Formula', current: fmt(form.formula), suggested: fmt(suggestion.formula) }] : []),
+    ...(suggestion.is_calculated && suggestion.calculation_inputs?.length ? [{ key: 'calculation_inputs', label: 'Input Biomarkers', current: form.calculation_inputs.join(', ') || '—', suggested: suggestion.calculation_inputs.join(', ') }] : []),
     { key: 'unit',        label: 'Unit',          current: fmt(form.unit),           suggested: fmt(suggestion.unit) },
     { key: 'range_logic', label: 'Range Logic',   current: form.range_type || '—',   suggested: fmt(suggestion.range_logic) },
     ...(showLow  ? [{ key: 'ref_range_low',     label: 'Ref Low',      current: fmt(form.ref_range_low),     suggested: fmt(suggestion.ref_range_low) }] : []),
@@ -414,6 +435,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   const [search, setSearch]         = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [domainFilter, setDomainFilter] = useState('');
+  const [calcFilter, setCalcFilter] = useState<'calculated' | 'measured' | null>(null);
   type SortCol = 'name' | 'type' | 'domain' | 'unit' | 'ranges' | 'status' | null;
   const [sortCol, setSortCol] = useState<SortCol>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -428,7 +450,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   const [saving, setSaving]         = useState(false);
   const [error, setError]           = useState<string | null>(null);
   const [openSections, setOpenSections] = useState({
-    names: true, description: true, measurement: true, ranges: true, settings: false,
+    names: true, description: true, measurement: true, calculation: false, ranges: true, settings: false,
   });
 
   const toggleSection = (key: keyof typeof openSections) =>
@@ -439,7 +461,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   const refresh = useCallback(async () => {
     const { data } = await supabase
       .from('biomarkers')
-      .select('id, slug, name, description, item_type, is_active, sort_order, unit, range_type, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, he_domain')
+      .select('id, slug, name, name_short, description, item_type, is_active, is_calculated, formula, calculation_inputs, sort_order, unit, range_type, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, he_domain')
       .order('sort_order', { ascending: true });
     if (data) setItems(data as ItemDefinition[]);
   }, [supabase]);
@@ -449,16 +471,21 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   const openCreate = () => {
     setEditingId(null); setNameLang('en'); setDescLang('en');
     setForm(EMPTY_FORM); setError(null);
-    setOpenSections({ names: true, description: true, measurement: true, ranges: true, settings: false });
+    setOpenSections({ names: true, description: true, measurement: true, calculation: false, ranges: true, settings: false });
     setPanelOpen(true);
   };
 
   const openEdit = (item: ItemDefinition) => {
     setEditingId(item.id); setNameLang('en'); setDescLang('en');
+    const isCalc = item.is_calculated ?? false;
     setForm({
       name:        { de: item.name?.de ?? '', en: item.name?.en ?? '', fr: item.name?.fr ?? '', es: item.name?.es ?? '', it: item.name?.it ?? '' },
+      name_short_en: item.name_short?.en ?? '',
       description: { de: item.description?.de ?? '', en: item.description?.en ?? '', fr: item.description?.fr ?? '', es: item.description?.es ?? '', it: item.description?.it ?? '' },
       item_type:   item.item_type ?? 'biomarker',
+      is_calculated: isCalc,
+      formula:     item.formula ?? '',
+      calculation_inputs: item.calculation_inputs ?? [],
       sort_order:  item.sort_order != null ? String(item.sort_order) : '',
       is_active:   item.is_active ?? true,
       unit:        item.unit ?? '',
@@ -470,7 +497,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
       he_domain:   item.he_domain ?? '',
     });
     setError(null);
-    setOpenSections({ names: true, description: true, measurement: true, ranges: true, settings: false });
+    setOpenSections({ names: true, description: true, measurement: true, calculation: isCalc, ranges: true, settings: false });
     setPanelOpen(true);
   };
 
@@ -517,6 +544,10 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
       if (checked.has('ref_range_low')     && suggestion.ref_range_low     != null) next.ref_range_low     = String(suggestion.ref_range_low);
       if (checked.has('ref_range_high')    && suggestion.ref_range_high    != null) next.ref_range_high    = String(suggestion.ref_range_high);
       if (checked.has('optimal_range_low') && suggestion.optimal_range_low != null) next.optimal_range_low = String(suggestion.optimal_range_low);
+      if (checked.has('name_short')        && suggestion.name_short        != null) next.name_short_en     = suggestion.name_short;
+      if (checked.has('is_calculated')     && suggestion.is_calculated     != null) next.is_calculated     = suggestion.is_calculated;
+      if (checked.has('formula')           && suggestion.formula           != null) next.formula           = suggestion.formula;
+      if (checked.has('calculation_inputs') && suggestion.calculation_inputs != null) next.calculation_inputs = suggestion.calculation_inputs;
       if (checked.has('optimal_range_high')&& suggestion.optimal_range_high!= null) next.optimal_range_high= String(suggestion.optimal_range_high);
       if (checked.has('he_domain')    && suggestion.he_domain   != null) next.he_domain   = suggestion.he_domain;
       next.description = { ...f.description };
@@ -543,10 +574,15 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
     if (missing.length > 0) { setError(`Please fill all required fields: ${missing.join(', ')}`); return; }
     setSaving(true); setError(null);
     const rt = form.range_type || null;
+    const nameShortEn = form.name_short_en.trim();
     const payload = {
       name:        { de: form.name.de, en: form.name.en, fr: form.name.fr, es: form.name.es, it: form.name.it },
+      name_short:  nameShortEn ? { en: nameShortEn } : {},
       description: { de: form.description.de, en: form.description.en, fr: form.description.fr, es: form.description.es, it: form.description.it },
       item_type:   form.item_type || null,
+      is_calculated: form.is_calculated,
+      formula:     form.is_calculated && form.formula.trim() ? form.formula.trim() : null,
+      calculation_inputs: form.is_calculated ? form.calculation_inputs : [],
       sort_order:  form.sort_order ? Number(form.sort_order) : null,
       is_active:   form.is_active,
       unit:        form.unit || null,
@@ -583,11 +619,14 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   const filtered = items.filter((item) => {
     if (typeFilter && item.item_type !== typeFilter) return false;
     if (domainFilter && item.he_domain !== domainFilter) return false;
+    if (calcFilter === 'calculated' && !item.is_calculated) return false;
+    if (calcFilter === 'measured' && item.is_calculated) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
       item.name?.en?.toLowerCase().includes(q) ||
       item.name?.de?.toLowerCase().includes(q) ||
+      item.name_short?.en?.toLowerCase().includes(q) ||
       item.item_type?.toLowerCase().includes(q) ||
       item.slug?.toLowerCase().includes(q) ||
       item.unit?.toLowerCase().includes(q)
@@ -632,6 +671,8 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
         <span>{items.length} total</span>
         <span className="text-[#0e393d]/20">·</span>
         <span>{items.filter((i) => i.is_active).length} active</span>
+        <span className="text-[#0e393d]/20">·</span>
+        <span>⚡ {items.filter((i) => i.is_calculated).length} calculated</span>
       </div>
 
       {/* ── Filters ── */}
@@ -644,6 +685,17 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
               {icon && <span className="mr-1">{icon}</span>}{label}
             </button>
           ))}
+        </div>
+        {/* Calculated / Measured pills */}
+        <div className="flex gap-1.5">
+          <button onClick={() => setCalcFilter(calcFilter === 'calculated' ? null : 'calculated')}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition border ${calcFilter === 'calculated' ? 'bg-purple-600 text-white border-purple-600' : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'}`}>
+            ⚡ Calculated ({items.filter((b) => b.is_calculated).length})
+          </button>
+          <button onClick={() => setCalcFilter(calcFilter === 'measured' ? null : 'measured')}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition border ${calcFilter === 'measured' ? 'bg-sky-600 text-white border-sky-600' : 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100'}`}>
+            🔬 Measured ({items.filter((b) => !b.is_calculated).length})
+          </button>
         </div>
         {/* Domain filter */}
         <select
@@ -698,17 +750,28 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div>
-                        <div className="font-medium text-[#0e393d]">{item.name?.en || item.name?.de || <span className="text-[#1c2a2b]/30">—</span>}</div>
-                        {item.name?.en && item.name?.de && <div className="text-xs text-[#1c2a2b]/40 mt-0.5">{item.name.de}</div>}
+                        <div className="font-medium text-[#0e393d]">
+                          {item.name_short?.en || item.name?.en || item.name?.de || <span className="text-[#1c2a2b]/30">—</span>}
+                        </div>
+                        <div className="text-xs text-[#1c2a2b]/40 mt-0.5">
+                          {item.name?.en || item.name?.de || ''}
+                        </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    {item.item_type ? (
-                      <span className="inline-flex items-center rounded-full bg-[#ceab84]/15 px-2 py-0.5 text-[11px] font-medium text-[#8a6a3e] ring-1 ring-inset ring-[#ceab84]/30">
-                        {TEST_CATEGORIES.find((t) => t.value === item.item_type)?.label ?? item.item_type}
-                      </span>
-                    ) : <span className="text-[#1c2a2b]/30">—</span>}
+                    <div className="flex flex-col gap-1">
+                      {item.item_type ? (
+                        <span className="inline-flex items-center rounded-full bg-[#ceab84]/15 px-2 py-0.5 text-[11px] font-medium text-[#8a6a3e] ring-1 ring-inset ring-[#ceab84]/30">
+                          {TEST_CATEGORIES.find((t) => t.value === item.item_type)?.label ?? item.item_type}
+                        </span>
+                      ) : <span className="text-[#1c2a2b]/30">—</span>}
+                      {item.is_calculated && (
+                        <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-[11px] font-medium text-purple-700 ring-1 ring-inset ring-purple-200">
+                          ⚡ Calculated
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-[#1c2a2b]/60">
                     {item.he_domain
@@ -783,6 +846,11 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
                     onChange={(e) => setForm((f) => ({ ...f, name: { ...f.name, [nameLang]: e.target.value } }))}
                     placeholder={nameLang === 'de' ? 'z.B. Hämoglobin' : 'e.g. Haemoglobin'} autoFocus />
                 </Field>
+                <Field label="Abbreviation / Short Name (EN)" hint="e.g. HbA1c, hs-CRP, ApoB — shown as primary label in tables">
+                  <input className={inputCls} value={form.name_short_en}
+                    onChange={(e) => setForm((f) => ({ ...f, name_short_en: e.target.value }))}
+                    placeholder="e.g. HbA1c" />
+                </Field>
                 <Field label="Slug" hint="Auto-generated from EN name on create">
                   <input className={inputCls} value={editingId ? (items.find((i) => i.id === editingId)?.slug ?? '') : slugify(form.name.en || form.name.de)} readOnly tabIndex={-1} />
                 </Field>
@@ -826,7 +894,36 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
                     </Field>
                   </div>
                 </div>
+                <div className="flex items-center justify-between rounded-lg border border-[#0e393d]/10 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-[#1c2a2b]">⚡ Calculated Marker</p>
+                    <p className="text-xs text-[#1c2a2b]/40">Derived from other biomarkers via a formula rather than directly measured</p>
+                  </div>
+                  <Toggle checked={form.is_calculated} onChange={(v) => {
+                    setForm((f) => ({ ...f, is_calculated: v }));
+                    if (v) toggleSection('calculation');
+                  }} />
+                </div>
               </SectionBlock>
+
+              {/* Calculation */}
+              {form.is_calculated && (
+                <SectionBlock title="⚡ Calculation" open={openSections.calculation} onToggle={() => toggleSection('calculation')}>
+                  <Field label="Formula" hint="Human-readable formula using biomarker slugs, e.g. (glucose / insulin) / 22.5">
+                    <textarea className={`${inputCls} resize-none font-mono text-xs`} rows={3}
+                      value={form.formula}
+                      onChange={(e) => setForm((f) => ({ ...f, formula: e.target.value }))}
+                      placeholder="e.g. (glucose * insulin) / 22.5" />
+                  </Field>
+                  <Field label="Input Biomarkers" hint="Measured markers this formula depends on">
+                    <InputBiomarkersSelector
+                      allItems={items.filter((i) => !i.is_calculated)}
+                      selected={form.calculation_inputs}
+                      onChange={(v) => setForm((f) => ({ ...f, calculation_inputs: v }))}
+                    />
+                  </Field>
+                </SectionBlock>
+              )}
 
               {/* Reference Ranges */}
               <SectionBlock title="Reference Ranges" open={openSections.ranges} onToggle={() => toggleSection('ranges')}>

@@ -23,6 +23,10 @@ export async function POST(req: NextRequest) {
 
 Return ONLY valid JSON matching this exact structure:
 {
+  "name_short": string | null,
+  "is_calculated": boolean,
+  "formula": string | null,
+  "calculation_inputs": string[] | null,
   "unit": string | null,
   "range_logic": "lower_is_better" | "higher_is_better" | "range" | null,
   "ref_range_low": number | null,
@@ -38,6 +42,10 @@ Return ONLY valid JSON matching this exact structure:
 }
 
 Rules:
+- name_short: Standard clinical abbreviation for this marker if one exists (e.g. "HbA1c", "hs-CRP", "ApoB", "eGFR", "TSH", "fT3", "fT4", "LDL-C", "HDL-C", "TG", "MAP", "PP", "BMI", "WHtR"). null if no standard abbreviation.
+- is_calculated: true if this marker is derived/computed from other measured biomarkers (e.g. HOMA-IR, eGFR, BMI, TG/HDL ratio, Non-HDL-C, MAP, pulse pressure, FIB-4, NLR, LMR), false if it is directly measured in a lab or clinical test.
+- formula: if is_calculated=true, provide the mathematical formula using common biomarker slug names (snake_case). e.g. "(fasting_glucose * fasting_insulin) / 22.5" for HOMA-IR. null if not calculated.
+- calculation_inputs: if is_calculated=true, list the slug names of the input biomarkers the formula depends on (e.g. ["fasting_glucose", "fasting_insulin"] for HOMA-IR). null if not calculated.
 - unit: IMPORTANT — use the unit most commonly reported in Swiss/German/Austrian clinical labs. Examples: mg/dL for lipids (LDL, HDL, total cholesterol, triglycerides), µmol/L for homocysteine and uric acid, nmol/L for vitamin D (25-OH), pmol/L for fT3/fT4, mIU/L for TSH, µg/L for ferritin and B12, U/L for ALT/AST/GGT/ALP, g/dL for haemoglobin, g/L for albumin/total protein, ×10⁹/L for WBC/platelets, ×10¹²/L for red blood cells, % for HbA1c and haematocrit, mmol/L for glucose/HbA1c (if SI preferred), mL/min/1.73m² for eGFR, mL/kg/min for VO₂max. Use null only if truly not applicable.
 - range_logic: "lower_is_better" if lower values are healthier (e.g. LDL, hs-CRP, HbA1c, ApoB, homocysteine, triglycerides), "higher_is_better" if higher is healthier (e.g. HDL, vitamin D, eGFR, VO₂max, testosterone), "range" if both bounds define normal (e.g. TSH, fT3/fT4, haemoglobin, glucose, sodium). Use null if not a numeric measurement.
 - ref_range_low: only provide if range_logic is "higher_is_better" or "range". Set null for "lower_is_better".
