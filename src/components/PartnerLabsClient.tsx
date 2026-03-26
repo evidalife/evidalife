@@ -105,7 +105,7 @@ export default function PartnerLabsClient({ labs, lang, t }: Props) {
       {/* Map */}
       {mapLabs.length > 0 && (
         <section className="w-full border-b border-[#0e393d]/10">
-          <div style={{ height: '360px' }} className="w-full bg-[#e8efe9]">
+          <div style={{ height: '500px' }} className="w-full bg-[#e8efe9]">
             <LabMap labs={mapLabs} />
           </div>
         </section>

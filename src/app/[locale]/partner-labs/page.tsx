@@ -90,6 +90,21 @@ export default async function PartnerLabsPage() {
           </section>
         )}
 
+        {/* Interactive map + filter + cards (client) */}
+        {labList.length > 0 ? (
+          <PartnerLabsClient
+            labs={labList}
+            lang={lang}
+            t={clientTranslations}
+          />
+        ) : (
+          <section className="w-full max-w-5xl mx-auto px-6 pb-16">
+            <div className="rounded-2xl border border-[#0e393d]/10 bg-white px-6 py-14 text-center">
+              <p className="text-sm text-[#1c2a2b]/40">{t.noLabs}</p>
+            </div>
+          </section>
+        )}
+
         {/* Why ISO */}
         <section className="w-full max-w-3xl mx-auto px-6 py-10">
           <div className="rounded-2xl border border-[#ceab84]/30 bg-[#ceab84]/6 px-6 py-6 flex gap-5">
@@ -106,21 +121,6 @@ export default async function PartnerLabsPage() {
             </div>
           </div>
         </section>
-
-        {/* Interactive map + filter + cards (client) */}
-        {labList.length > 0 ? (
-          <PartnerLabsClient
-            labs={labList}
-            lang={lang}
-            t={clientTranslations}
-          />
-        ) : (
-          <section className="w-full max-w-5xl mx-auto px-6 pb-16">
-            <div className="rounded-2xl border border-[#0e393d]/10 bg-white px-6 py-14 text-center">
-              <p className="text-sm text-[#1c2a2b]/40">{t.noLabs}</p>
-            </div>
-          </section>
-        )}
 
         {/* CTA */}
         <section className="w-full bg-white border-t border-[#0e393d]/10 px-6 py-16">
