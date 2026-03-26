@@ -118,13 +118,13 @@ function PublicIntro({ lang }: { lang: Lang }) {
   return (
     <div className="flex-1 flex flex-col">
       {/* Hero */}
-      <section className="relative h-[55vh] min-h-[380px] flex items-end">
+      <section className="relative h-[72vh] min-h-[480px] flex items-end">
         <img src={HERO_IMG} alt="" className="absolute inset-0 w-full h-full object-cover object-center" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0e393d]/85 via-[#0e393d]/25 to-transparent" />
-        <div className="relative z-10 max-w-3xl mx-auto px-6 pb-14 w-full">
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0e393d]/85 via-[#0e393d]/30 to-transparent" />
+        <div className="relative z-10 max-w-3xl mx-auto px-6 pb-16 w-full">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-3">{t.tag}</p>
-          <h1 className="font-serif text-4xl md:text-5xl text-white leading-tight mb-4">{t.h1}</h1>
-          <p className="text-white/80 text-base leading-relaxed max-w-xl">{t.sub}</p>
+          <h1 className="font-serif text-5xl md:text-6xl text-white leading-tight mb-4">{t.h1}</h1>
+          <p className="text-white/80 text-lg leading-relaxed max-w-xl">{t.sub}</p>
         </div>
       </section>
 
@@ -145,7 +145,7 @@ function PublicIntro({ lang }: { lang: Lang }) {
       </section>
 
       {/* CTA */}
-      <section className="bg-[#0e393d] py-16 mt-auto">
+      <section className="bg-[#0e393d] py-20 mt-auto">
         <div className="max-w-2xl mx-auto px-6 text-center">
           <h2 className="font-serif text-3xl text-white mb-3">{t.ctaHeading}</h2>
           <p className="text-white/70 text-sm leading-relaxed mb-7">{t.ctaBody}</p>

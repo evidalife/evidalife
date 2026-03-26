@@ -278,7 +278,7 @@ export default function ShopContent({ products }: { products: Product[] }) {
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">
             {t('tag')}
           </p>
-          <h1 className="font-serif text-5xl text-[#0e393d] mb-4">
+          <h1 className="font-serif text-5xl text-[#0e393d] mb-4 leading-tight">
             {t('h1')}
           </h1>
           <p className="mx-auto max-w-xl text-base text-[#1c2a2b]/60 leading-relaxed">

@@ -134,7 +134,7 @@ export default async function CoursesPage() {
             {t.eyebrow}
           </p>
           <h1 className="font-serif text-4xl text-[#0e393d] mb-3">{t.heading}</h1>
-          <p className="text-[#1c2a2b]/60 text-base max-w-xl">{t.sub}</p>
+          <p className="text-[#1c2a2b]/60 text-base leading-relaxed max-w-xl">{t.sub}</p>
         </div>
 
         {/* Empty */}

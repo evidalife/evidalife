@@ -1,6 +1,7 @@
 # Design Audit — Evida Life Public Pages
 
 **Date:** 2026-03-26
+**Last cleanup:** 2026-03-26 — all inconsistencies resolved (13 fixes applied)
 **Scope:** All public-facing and auth pages under `src/app/[locale]/`
 **ARCHITECTURE.md:** Does not exist at time of audit.
 
@@ -11,28 +12,28 @@
 | Page | Route | Hero Type | Hero Height | Text Align | Text Container | Eyebrow className | H1 className | Subtitle className | Gradient | Bottom CTA | CTA style |
 |------|-------|-----------|-------------|------------|----------------|-------------------|--------------|-------------------|----------|------------|-----------|
 | **Homepage** | `/` | Photo (bg-cover inline style) | `h-screen min-h-[620px]` | left | `max-w-[1060px]` | `text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]` (as `SectionTag`) | `font-serif text-5xl md:text-6xl lg:text-[5.5rem] font-normal leading-[1.06] tracking-tight text-white` | `text-[1rem] font-light text-white/70` | `bg-gradient-to-r from-[#0e393d]/85 via-[#0e393d]/50 to-[#0e393d]/10` | Yes — `rounded-2xl bg-[#0e393d]` | 2 CTAs |
-| **fit** | `/fit` | Photo (`<img>`) | `h-[72vh] min-h-[480px]` | left | `max-w-3xl` | `text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]` | `font-serif text-5xl md:text-6xl text-white leading-tight` | `text-white/80 text-lg leading-relaxed max-w-xl` | `bg-gradient-to-t from-[#0e393d]/80 via-[#0e393d]/30 to-transparent` | Yes — `bg-[#0e393d] py-20` | 1 CTA |
+| **fit** | `/fit` | Photo (`<img>`) | `h-[72vh] min-h-[480px]` | left | `max-w-3xl` | `text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]` | `font-serif text-5xl md:text-6xl text-white leading-tight` | `text-white/80 text-lg leading-relaxed max-w-xl` | `bg-gradient-to-t from-[#0e393d]/85 via-[#0e393d]/30 to-transparent` | Yes — `bg-[#0e393d] py-20` | 1 CTA |
 | **sleep** | `/sleep` | Photo (`<img>`) | `h-[72vh] min-h-[480px]` | left | `max-w-3xl` | same as fit | `font-serif text-5xl md:text-6xl text-white leading-tight` | `text-white/80 text-lg leading-relaxed max-w-xl` + badges | `bg-gradient-to-t from-[#0e393d]/85 via-[#0e393d]/30 to-transparent` | Yes — `bg-[#0e393d] py-20` | 1 CTA |
 | **exercise** | `/exercise` | Photo (`<img>`) | `h-[72vh] min-h-[480px]` | left | `max-w-3xl` | same as fit | same as sleep | same as sleep + badges | `bg-gradient-to-t from-[#0e393d]/85 via-[#0e393d]/30 to-transparent` | Yes — `bg-[#0e393d] py-20` | 2 CTAs |
 | **stress-recovery** | `/stress-recovery` | Photo (`<img>`) | `h-[72vh] min-h-[480px]` | left | `max-w-3xl` | same as fit | same as sleep | same as sleep + badges | `bg-gradient-to-t from-[#0e393d]/85 via-[#0e393d]/30 to-transparent` | Yes — `bg-[#0e393d] py-20` | 1 CTA |
 | **coaching** | `/coaching` | Photo (`<img>`) | `h-[72vh] min-h-[480px]` | left | `max-w-3xl` | same as fit | same as sleep | same as sleep + badges | `bg-gradient-to-t from-[#0e393d]/85 via-[#0e393d]/30 to-transparent` | Yes — `bg-[#0e393d] py-20` | 1 CTA |
-| **kitchen** | `/kitchen` | Photo (`<img>`) | `h-[65vh] min-h-[440px]` | left | `max-w-3xl` | same as fit | `font-serif text-5xl md:text-6xl text-white leading-tight` | `text-white/80 text-lg leading-relaxed max-w-xl` (no badges) | `bg-gradient-to-t from-[#0e393d]/85 via-[#0e393d]/25 to-transparent` | Yes — `bg-[#0e393d] py-20` | 1 CTA |
+| **kitchen** | `/kitchen` | Photo (`<img>`) | `h-[72vh] min-h-[480px]` | left | `max-w-3xl` | same as fit | `font-serif text-5xl md:text-6xl text-white leading-tight` | `text-white/80 text-lg leading-relaxed max-w-xl` (no badges) | `bg-gradient-to-t from-[#0e393d]/85 via-[#0e393d]/30 to-transparent` | Yes — `bg-[#0e393d] py-20` | 1 CTA |
 | **how-to-start** | `/how-to-start` | Text-only (white bg) | `pt-28 pb-16` (inside `max-w-[1060px]`) | **center** | `max-w-[1060px]` (outer), no inner max-w on heading | `text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]` | `font-serif text-5xl text-[#0e393d] leading-tight` | `mx-auto max-w-xl text-base text-[#1c2a2b]/60 leading-relaxed` | none | No separate CTA section | 2 CTAs inline |
-| **bioage** | `/bioage` | Text-only (white bg) | `pt-28 pb-16` (inside `max-w-[1060px]`) | **center** | `max-w-2xl mx-auto` | `mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]` | `font-serif text-5xl text-[#0e393d] mb-5 leading-tight` | `text-base text-[#1c2a2b]/60 leading-relaxed` | none | Yes — `rounded-2xl bg-[#0e393d]` inline | 1 CTA |
+| **bioage** | `/bioage` | Text-only (white bg) | `pt-28 pb-16` (inside `max-w-[1060px]`) | **center** | `max-w-2xl mx-auto` | `mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]` | `font-serif text-5xl text-[#0e393d] mb-4 leading-tight` | `text-base text-[#1c2a2b]/60 leading-relaxed` | none | Yes — `rounded-2xl bg-[#0e393d]` inline | 1 CTA |
 | **science** | `/science` | Solid-color (`bg-[#0e393d]`) | `pt-28 pb-20` | left | `max-w-3xl` | `text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]` | `font-serif text-4xl sm:text-5xl text-white leading-tight` | `text-white/60 text-base leading-relaxed max-w-xl` | none (solid bg) | Yes — `rounded-2xl bg-[#0e393d]` inline | 2 CTAs |
 | **health-engine** | `/health-engine` | Solid-color (`bg-[#0e393d]`) | `pt-28 pb-20` | left | `max-w-2xl` | `text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]` | `font-serif text-4xl sm:text-5xl text-white leading-tight` | none | none (solid bg) | No | — |
 | **biomarkers** | `/biomarkers` | Text-only (white bg) | `pt-28 pb-16` (inside `max-w-[1060px]`) | **center** | `max-w-[1060px]` (outer), `div.mb-14 text-center` | `text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]` | `font-serif text-5xl text-[#0e393d] mb-4 leading-tight` | `text-base text-[#1c2a2b]/60 leading-relaxed` | none | No (bottom CTA is inline buy button) | — |
 | **assessments** | `/assessments` | Text-only (white bg) | `pt-28 pb-16` (inside `max-w-[1060px]`) | **center** | `max-w-[1060px]` (outer), `div.mb-16 text-center` | same | `font-serif text-5xl text-[#0e393d] mb-4 leading-tight` | same | none | No (inline) | — |
 | **partner-labs** | `/partner-labs` | Solid-color (`bg-[#0e393d]`) | `pt-28 pb-20` | left | `max-w-3xl` | `text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]` | `font-serif text-4xl sm:text-5xl text-white leading-tight` | subtitled | none (solid bg) | No | — |
-| **recipes** | `/recipes` | Text-only (white bg) | `pt-28 pb-12` (inside `max-w-5xl`) | left | `max-w-5xl` | `text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]` | `font-serif text-4xl text-[#0e393d]` | `text-[#1c2a2b]/60 text-base max-w-xl` | none | No | — |
-| **blog** | `/blog` | Text-only (white bg) | `pt-28 pb-12` (inside `max-w-5xl`) | left | `max-w-5xl` | same | `font-serif text-4xl text-[#0e393d]` | `text-[#1c2a2b]/60 text-base max-w-xl` | none | No | — |
-| **shop** | `/shop` | Text-only (white bg) | `pt-28 pb-16` (inside `max-w-[1060px]`) | **center** | `max-w-[1060px]` (outer), `div.mb-10 text-center` | same | `font-serif text-5xl text-[#0e393d]` | `mx-auto max-w-xl text-base text-[#1c2a2b]/60 leading-relaxed` | none | No (inline buy) | — |
-| **courses** | `/courses` | Text-only (white bg) | `pt-28 pb-12` (inside `max-w-5xl`) | left | `max-w-5xl` | same | `font-serif text-4xl text-[#0e393d]` | text | none | No | — |
+| **recipes** | `/recipes` | Text-only (white bg) | `pt-28 pb-12` (inside `max-w-5xl`) | left | `max-w-5xl` | `text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]` | `font-serif text-4xl text-[#0e393d]` | `text-[#1c2a2b]/60 text-base leading-relaxed max-w-xl` | none | No | — |
+| **blog** | `/blog` | Text-only (white bg) | `pt-28 pb-12` (inside `max-w-5xl`) | left | `max-w-5xl` | same | `font-serif text-4xl text-[#0e393d]` | `text-[#1c2a2b]/60 text-base leading-relaxed max-w-xl` | none | No | — |
+| **shop** | `/shop` | Text-only (white bg) | `pt-28 pb-16` (inside `max-w-[1060px]`) | **center** | `max-w-[1060px]` (outer), `div.mb-10 text-center` | same | `font-serif text-5xl text-[#0e393d] leading-tight` | `mx-auto max-w-xl text-base text-[#1c2a2b]/60 leading-relaxed` | none | No (inline buy) | — |
+| **courses** | `/courses` | Text-only (white bg) | `pt-28 pb-12` (inside `max-w-5xl`) | left | `max-w-5xl` | same | `font-serif text-4xl text-[#0e393d]` | `text-[#1c2a2b]/60 text-base leading-relaxed max-w-xl` | none | No | — |
 | **daily-dozen** | `/daily-dozen` | Text-only (white bg) | `pt-28 pb-12` (inside `max-w-5xl`) | left | `max-w-5xl` | same | `font-serif text-4xl text-[#0e393d]` | text | none | No | — |
-| **shopping-list** | `/shopping-list` | Photo (`<img>`) | `h-[55vh] min-h-[380px]` | left | `max-w-3xl` | same as fit | `font-serif text-4xl md:text-5xl text-white leading-tight` | `text-white/80 text-base leading-relaxed max-w-xl` | `bg-gradient-to-t from-[#0e393d]/85 via-[#0e393d]/25 to-transparent` | Yes — `bg-[#0e393d] py-16` | 2 CTAs |
+| **shopping-list** | `/shopping-list` | Photo (`<img>`) | `h-[72vh] min-h-[480px]` | left | `max-w-3xl` | same as fit | `font-serif text-5xl md:text-6xl text-white leading-tight` | `text-white/80 text-lg leading-relaxed max-w-xl` | `bg-gradient-to-t from-[#0e393d]/85 via-[#0e393d]/30 to-transparent` | Yes — `bg-[#0e393d] py-20` | 2 CTAs |
 | **dashboard** | `/dashboard` | Text-only (white bg) | `pt-28 pb-12` (inside `max-w-5xl`) | left | `max-w-5xl` | same | `font-serif text-4xl text-[#0e393d]` | — | none | No | — |
 | **profile** | `/profile` | Text-only (white bg) | `pt-28 pb-12` (inside `max-w-5xl`) | left | `max-w-5xl` | same | — | — | none | No | — |
-| **about** | `/about` | Solid-color (`bg-[#0e393d]`) | `pt-28 pb-24` | left | `max-w-3xl` | same | `font-serif text-4xl sm:text-5xl text-white leading-tight` | `text-white/65 text-lg leading-relaxed max-w-2xl` | none | No | — |
+| **about** | `/about` | Solid-color (`bg-[#0e393d]`) | `pt-28 pb-20` | left | `max-w-3xl` | same | `font-serif text-4xl sm:text-5xl text-white leading-tight` | `text-white/60 text-lg leading-relaxed max-w-2xl` | none | No | — |
 | **team** | `/team` | Solid-color (`bg-[#0e393d]`) | `pt-28 pb-20` | left | `max-w-3xl` | same | `font-serif text-4xl sm:text-5xl text-white leading-tight` | — | none | Yes — inline `max-w-xl text-center` | 1 CTA |
 | **contact** | `/contact` | Text-only (white bg) | `pt-28 pb-16` (inside `max-w-5xl`) | left | `max-w-5xl` | same | `font-serif text-4xl text-[#0e393d]` | text | none | No | — |
 | **privacy** | `/privacy` | Text-only (white bg, via `LegalLayout`) | `pt-28 pb-12` (inside `max-w-3xl`) | left | `max-w-3xl` | — | `font-serif text-4xl text-[#0e393d]` | — | none | No | — |
@@ -56,26 +57,26 @@
 
 ### fit (`/fit`)
 
-- **Gradient**: `from-[#0e393d]/80` — uniquely uses `/80` opacity on the `from` stop. All other photo-hero pillar pages use `/85`.
+- **Gradient**: ~~`from-[#0e393d]/80`~~ → `from-[#0e393d]/85` ✅ Fixed.
 - **No badges** in hero. All other pillar pages (sleep, exercise, stress-recovery, coaching) include badge pills.
 - **Subtitle**: no `mb-6` on `<p>` (ends at `mb-4` on h1). Other badge-carrying pages add `mb-6` to p to make space for badges.
 - **Content sections**: 2×2 card grid linking to sub-pages (`/sleep`, `/exercise`, `/stress-recovery`, `/coaching`).
 
 ### kitchen (`/kitchen`)
 
-- **Hero height**: `h-[65vh] min-h-[440px]` — the only pillar page using a shorter 65vh height. All others use `72vh`.
-- **Gradient via**: `via-[#0e393d]/25` — lighter than others which use `/30`.
+- **Hero height**: ~~`h-[65vh] min-h-[440px]`~~ → `h-[72vh] min-h-[480px]` ✅ Fixed.
+- **Gradient via**: ~~`via-[#0e393d]/25`~~ → `via-[#0e393d]/30` ✅ Fixed.
 - **No badges** (same as `/fit`).
 - **Content sections**: 3-column card grid (sm:2, lg:3) linking to kitchen sub-sections.
 
 ### shopping-list (`/shopping-list`)
 
-- **Hero height**: `h-[55vh] min-h-[380px]` — noticeably shorter than standard (`72vh`). This page lives in the "public intro" category.
-- **H1 size**: `text-4xl md:text-5xl` (not `text-5xl md:text-6xl` like the pillar pages).
-- **Subtitle**: `text-base` (not `text-lg` like pillar pages).
-- **Gradient via**: `via-[#0e393d]/25` — same as kitchen, not `/30`.
-- **pb in hero text area**: `pb-14` (not `pb-16` like all pillar pages).
-- **Bottom CTA**: `bg-[#0e393d] py-16` (not `py-20`).
+- **Hero height**: ~~`h-[55vh] min-h-[380px]`~~ → `h-[72vh] min-h-[480px]` ✅ Fixed.
+- **H1 size**: ~~`text-4xl md:text-5xl`~~ → `text-5xl md:text-6xl` ✅ Fixed.
+- **Subtitle**: ~~`text-base`~~ → `text-lg` ✅ Fixed.
+- **Gradient via**: ~~`via-[#0e393d]/25`~~ → `via-[#0e393d]/30` ✅ Fixed.
+- **pb in hero text area**: ~~`pb-14`~~ → `pb-16` ✅ Fixed.
+- **Bottom CTA**: ~~`bg-[#0e393d] py-16`~~ → `py-20` ✅ Fixed.
 - Renders a `PublicIntro` component for unauthenticated users; authenticated users see `ShoppingListView`.
 
 ### how-to-start (`/how-to-start`)
@@ -92,6 +93,7 @@
 - **Text alignment**: `text-center` on hero div.
 - **CTA is inline** at the bottom (not a full-bleed `bg-[#0e393d]` section) — uses `rounded-2xl bg-[#0e393d] p-10 sm:p-12 text-center`.
 - **H1 size**: `text-5xl` — consistent with other centered text-only pages.
+- **H1 margin**: ~~`mb-5`~~ → `mb-4` ✅ Fixed.
 - Fetches live product data from Supabase for pricing/slug.
 
 ### science (`/science`)
@@ -148,9 +150,9 @@
 
 ### about (`/about`)
 
-- **Solid-color hero** (`bg-[#0e393d]`). `pt-28 pb-24` — uniquely uses `pb-24` while all other solid-color heroes use `pb-20`.
+- **Solid-color hero** (`bg-[#0e393d]`). ~~`pt-28 pb-24`~~ → `pt-28 pb-20` ✅ Fixed.
 - Left-aligned, `max-w-3xl`.
-- **H1 subtitle**: `text-white/65 text-lg` — closest to the photo-hero subtitle style.
+- **H1 subtitle**: ~~`text-white/65`~~ → `text-white/60` ✅ Fixed.
 
 ### team (`/team`)
 
@@ -183,26 +185,22 @@
 | No photo hero despite being content-rich pillar page | `how-to-start`, `bioage` |
 | Full-viewport (`h-screen`) hero while others use fractional height | homepage only |
 
-### 3.2 Hero Height Inconsistencies (Photo Heroes)
+### 3.2 Hero Height Inconsistencies (Photo Heroes) ✅ Fixed
 
 | Height | Pages |
 |--------|-------|
 | `h-screen min-h-[620px]` | homepage |
-| `h-[72vh] min-h-[480px]` | fit, sleep, exercise, stress-recovery, coaching |
-| `h-[65vh] min-h-[440px]` | kitchen |
-| `h-[55vh] min-h-[380px]` | shopping-list |
+| `h-[72vh] min-h-[480px]` | fit, sleep, exercise, stress-recovery, coaching, **kitchen**, **shopping-list** |
 
-Three different heights across 7 photo-hero pages (excluding homepage).
+~~Three different heights across 7 photo-hero pages (excluding homepage).~~ All photo-hero pages (except homepage) now use `h-[72vh] min-h-[480px]`.
 
-### 3.3 Gradient Opacity Inconsistencies (Photo Heroes)
+### 3.3 Gradient Opacity Inconsistencies (Photo Heroes) ✅ Fixed
 
 | `from` opacity | `via` opacity | Pages |
 |----------------|---------------|-------|
-| `/80` | `/30` | fit |
-| `/85` | `/30` | sleep, exercise, stress-recovery, coaching |
-| `/85` | `/25` | kitchen, shopping-list |
+| `/85` | `/30` | fit, sleep, exercise, stress-recovery, coaching, **kitchen**, **shopping-list** |
 
-`fit` uses `/80` on `from`, not `/85` like the other four pillar pages.
+~~`fit` uses `/80` on `from`, not `/85` like the other four pillar pages.~~ All photo-hero pages now use `/85` from and `/30` via.
 
 ### 3.4 Hero Text Container Width Inconsistencies
 
@@ -231,12 +229,11 @@ Three different heights across 7 photo-hero pages (excluding homepage).
 | `font-serif text-4xl text-[#0e393d]` | recipes, blog, courses, daily-dozen, contact (text-only left) |
 | `font-serif text-4xl text-[#0e393d] mb-2` | LegalLayout (privacy, terms, legal) |
 
-Summary of inconsistencies:
-- Photo-hero pillar pages: `text-5xl md:text-6xl` (5 pages) vs `text-4xl md:text-5xl` (shopping-list)
-- Solid-color hero pages: `text-4xl sm:text-5xl` (5 pages) — consistent within type but different breakpoint prefix (`sm:` vs `md:`) compared to photo heroes
-- Text-only centered pages: `text-5xl` (4 pages) — consistent within type
+Summary ✅ Fixed where applicable:
+- Photo-hero pillar pages: `text-5xl md:text-6xl` — **shopping-list** now matches
+- Solid-color hero pages: `text-4xl sm:text-5xl` (5 pages) — consistent within type (different breakpoint prefix from photo heroes is intentional)
+- Text-only centered pages: `text-5xl` — **shop** now has `leading-tight`; **bioage** `mb-` now `mb-4`
 - Text-only left pages: `text-4xl` (5 pages) — consistent within type
-- `mb-` spacing on h1 varies: `mb-5`, `mb-4`, none — inconsistent even within centered pages
 
 ### 3.6 Subtitle / Subheading Style Inconsistencies
 
@@ -252,11 +249,11 @@ Summary of inconsistencies:
 | `mx-auto max-w-xl text-base text-[#1c2a2b]/60 leading-relaxed` | how-to-start, shop |
 | `text-base text-[#1c2a2b]/60 leading-relaxed` | bioage (`text-base text-[#1c2a2b]/60`) |
 
-Issues:
-- `text-white/60` vs `text-white/65` vs `text-white/80` for white subtitles on hero backgrounds.
-- `text-base` vs `text-lg` for photo-hero page subtitles.
-- Presence/absence of `leading-relaxed` in list-page subtitles.
-- Property order varies for the same effective classes.
+Issues ✅ Fixed:
+- `text-white/65` on `about` → `text-white/60` ✅
+- `text-base` on `shopping-list` photo-hero subtitle → `text-lg` ✅
+- Missing `leading-relaxed` on `recipes`, `blog`, `courses` list-page subtitles → added ✅
+- Property order varies for the same effective classes (cosmetic, not fixed)
 
 ### 3.7 Bottom CTA Section Inconsistencies
 
@@ -267,10 +264,10 @@ All pillar pages (fit, sleep, exercise, stress-recovery, coaching, kitchen) use:
 ```
 
 But:
-- `shopping-list` uses `bg-[#0e393d] py-16` (not `py-20`) and `max-w-2xl`.
-- `bioage`, `how-to-start`, `biomarkers`, `assessments`, `science` use inline `rounded-2xl bg-[#0e393d]` boxes inside content flow (not full-bleed sections).
-- `team` uses no full-bleed CTA but has a small centered CTA block.
-- `homepage` uses `rounded-2xl bg-[#0e393d] px-10 md:px-16 py-14`.
+- ~~`shopping-list` uses `bg-[#0e393d] py-16`~~ → now `py-20` ✅
+- `bioage`, `how-to-start`, `biomarkers`, `assessments`, `science` use inline `rounded-2xl bg-[#0e393d]` boxes inside content flow (not full-bleed sections) — intentional, not changed.
+- `team` uses no full-bleed CTA but has a small centered CTA block — intentional.
+- `homepage` uses `rounded-2xl bg-[#0e393d] px-10 md:px-16 py-14` — intentional (landing page variant).
 
 ### 3.8 Eyebrow Inconsistencies
 
@@ -278,16 +275,17 @@ But:
 - `legal`, `privacy`, `terms`: No eyebrow element at all.
 - Homepage: Eyebrow in subsequent sections uses a `<SectionTag>` component rather than the inline `<p>` pattern.
 
-### 3.9 Pb on Hero Text Area (Photo Heroes)
+### 3.9 Pb on Hero Text Area (Photo Heroes) ✅ Fixed
 
 | `pb-` on the hero inner `div` | Pages |
 |-------------------------------|-------|
-| `pb-16` | fit, sleep, exercise, stress-recovery, coaching |
-| `pb-14` | shopping-list |
+| `pb-16` | fit, sleep, exercise, stress-recovery, coaching, **shopping-list** |
 
-### 3.10 About Page: Non-standard `pb-24`
+~~`pb-14` on shopping-list~~ → now `pb-16` ✅
 
-`about` uses `pt-28 pb-24` while all other solid-color hero pages use `pt-28 pb-20`.
+### 3.10 About Page: Non-standard `pb-24` ✅ Fixed
+
+~~`about` uses `pt-28 pb-24`~~ → now `pt-28 pb-20` ✅
 
 ### 3.11 Homepage Uses `div` with inline style for background image
 

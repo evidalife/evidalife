@@ -303,7 +303,7 @@ export default async function BioAgePage() {
         {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <div className="mb-16 text-center max-w-2xl mx-auto">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">{t.tag}</p>
-          <h1 className="font-serif text-5xl text-[#0e393d] mb-5 leading-tight">{t.h1}</h1>
+          <h1 className="font-serif text-5xl text-[#0e393d] mb-4 leading-tight">{t.h1}</h1>
           <p className="text-base text-[#1c2a2b]/60 leading-relaxed">{t.sub}</p>
           <div className="flex items-center justify-center gap-3 mt-6">
             {t.badges.map((b) => (
