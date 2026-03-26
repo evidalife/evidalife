@@ -1,23 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import SimpleCropModal from '@/components/admin/shared/SimpleCropModal';
-
-async function compressImage(file: File, maxWidth = 1200, quality = 0.85): Promise<{ blob: Blob; sizeKb: number }> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, maxWidth / bitmap.width);
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
-  const canvas = document.createElement('canvas');
-  canvas.width = w; canvas.height = h;
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(bitmap, 0, 0, w, h);
-  const mimeType = file.type === 'image/png' ? 'image/png' : 'image/webp';
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => { resolve({ blob: blob!, sizeKb: Math.round(blob!.size / 1024) }); }, mimeType, quality);
-  });
-}
+import CoverImageUploader from '@/components/shared/CoverImageUploader';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -114,18 +99,13 @@ interface Props {
 
 export default function ArticleFormPanel({ articleId, onClose, onSaved, onDeleted }: Props) {
   const supabase = createClient();
-  const fileRef  = useRef<HTMLInputElement>(null);
   const [deleting, setDeleting] = useState(false);
 
   const [lang, setLang]                 = useState<Lang>('de');
   const [translating, setTranslating]   = useState(false);
   const [form, setForm]                 = useState<ArticleForm>(EMPTY_FORM);
   const [tagInput, setTagInput]         = useState('');
-  const [imageFile, setImageFile]       = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageCompressedKb, setImageCompressedKb] = useState<number | null>(null);
-  const [cropModalOpen, setCropModalOpen] = useState(false);
-  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [loading, setLoading]           = useState(!!articleId);
   const [saving, setSaving]             = useState(false);
   const [error, setError]               = useState<string | null>(null);
@@ -141,7 +121,7 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
       supabase.from('article_tags').select('tag').eq('article_id', articleId),
     ]).then(([{ data: a }, { data: tags }]) => {
       if (!a) { setLoading(false); return; }
-      setCurrentImageUrl(a.featured_image_url ?? null);
+      setCoverImageUrl(a.featured_image_url ?? null);
 
       // published_at → datetime-local value (YYYY-MM-DDTHH:mm)
       const pa = a.published_at ? new Date(a.published_at).toISOString().slice(0, 16) : '';
@@ -228,37 +208,6 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
     }
   };
 
-  // ── Image ─────────────────────────────────────────────────────────────────────
-
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = '';
-    const { blob, sizeKb } = await compressImage(file);
-    const compressed = new File([blob], file.name, { type: blob.type });
-    setImageFile(compressed);
-    setImageCompressedKb(sizeKb);
-    setImagePreview(URL.createObjectURL(compressed));
-    setCropModalOpen(true);
-  };
-
-  const uploadImage = async (_id: string): Promise<string | null> => {
-    if (!imageFile) return currentImageUrl;
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve((reader.result as string).split(',')[1]);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(imageFile);
-    });
-    const res = await fetch('/api/upload-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ base64, filename: imageFile.name, bucket: 'article-images', contentType: imageFile.type }),
-    });
-    const json = await res.json();
-    if (!res.ok || !json.url) { console.error('[uploadImage]', json.error); return currentImageUrl; }
-    return json.url as string;
-  };
 
   // ── Save ──────────────────────────────────────────────────────────────────────
 
@@ -286,24 +235,19 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
         is_featured:      form.is_featured,
       };
 
-      // 1. Upsert article
+      // 1. Upsert article (image URL already uploaded by CoverImageUploader)
+      const fullPayload = { ...payload, featured_image_url: coverImageUrl };
       let id = articleId;
       if (id) {
-        const { error } = await supabase.from('articles').update(payload).eq('id', id);
+        const { error } = await supabase.from('articles').update(fullPayload).eq('id', id);
         if (error) throw error;
       } else {
-        const { data, error } = await supabase.from('articles').insert(payload).select('id').single();
+        const { data, error } = await supabase.from('articles').insert(fullPayload).select('id').single();
         if (error) throw error;
         id = data.id;
       }
 
-      // 2. Image
-      const imageUrl = await uploadImage(id!);
-      if (imageUrl !== currentImageUrl) {
-        await supabase.from('articles').update({ featured_image_url: imageUrl }).eq('id', id!);
-      }
-
-      // 3. Replace tags
+      // 2. Replace tags
       await supabase.from('article_tags').delete().eq('article_id', id!);
       if (form.tags.length > 0) {
         const { error } = await supabase
@@ -329,8 +273,8 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
     setDeleting(true);
     // Clean up storage image before deleting the DB row
-    if (currentImageUrl) {
-      const path = currentImageUrl.split('/storage/v1/object/public/')[1];
+    if (coverImageUrl) {
+      const path = coverImageUrl.split('/storage/v1/object/public/')[1];
       if (path) {
         const [bucket, ...rest] = path.split('/');
         await supabase.storage.from(bucket).remove([rest.join('/')]);
@@ -549,27 +493,15 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
             {/* ── Featured image ─────────────────────────────────────────── */}
             <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
               <SectionHead>Featured Image</SectionHead>
-
-              {(imagePreview || currentImageUrl) && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={imagePreview ?? currentImageUrl!}
-                  alt="Preview"
-                  className="w-full h-44 object-cover rounded-xl border border-[#0e393d]/10"
-                />
-              )}
-              {imageCompressedKb && (
-                <p className="text-[11px] text-[#1c2a2b]/40">Auto-compressed · {imageCompressedKb} KB</p>
-              )}
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="w-full rounded-lg border border-dashed border-[#0e393d]/20 py-4 text-sm text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d]/70 hover:bg-[#0e393d]/3 transition"
-              >
-                {imagePreview || currentImageUrl ? 'Replace image' : 'Upload featured image'}
-                <span className="block text-xs mt-0.5 text-[#1c2a2b]/30">JPEG, PNG, WebP · max 5 MB</span>
-              </button>
-              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageChange} />
+              <CoverImageUploader
+                currentUrl={coverImageUrl}
+                bucket="article-images"
+                aspect={16 / 9}
+                outputWidth={1200}
+                outputHeight={675}
+                hint="16:9 · max 5 MB"
+                onUrlChange={setCoverImageUrl}
+              />
             </div>
 
             {/* ── Settings ───────────────────────────────────────────────── */}
@@ -625,24 +557,6 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
 
       </div>
 
-      {/* Crop Modal */}
-      {cropModalOpen && imagePreview && (
-        <SimpleCropModal
-          imageUrl={imagePreview}
-          aspect={16 / 9}
-          outputWidth={1200}
-          outputHeight={675}
-          title="Crop Featured Image (16:9)"
-          onConfirm={(blob, sizeKb) => {
-            const file = new File([blob], 'cover.jpg', { type: 'image/jpeg' });
-            setImageFile(file);
-            setImageCompressedKb(sizeKb);
-            setImagePreview(URL.createObjectURL(blob));
-            setCropModalOpen(false);
-          }}
-          onClose={() => setCropModalOpen(false)}
-        />
-      )}
     </>
   );
 }

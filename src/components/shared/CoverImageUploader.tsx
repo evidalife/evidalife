@@ -76,7 +76,7 @@ export default function CoverImageUploader({
 
       const reader = new FileReader();
       const base64 = await new Promise<string>((resolve) => {
-        reader.onload = (e) => resolve(e.target!.result as string);
+        reader.onload = (e) => resolve((e.target!.result as string).split(',')[1]);
         reader.readAsDataURL(blob);
       });
       const res = await fetch('/api/upload-image', {

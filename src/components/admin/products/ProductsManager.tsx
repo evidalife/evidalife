@@ -2,25 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import SimpleCropModal from '@/components/admin/shared/SimpleCropModal';
+import CoverImageUploader from '@/components/shared/CoverImageUploader';
 import GalleryUpload, { type GalleryItem } from '@/components/admin/recipes/GalleryUpload';
 import type { ParsedProduct } from '@/app/api/admin/parse-product/route';
 import { PRODUCT_TYPES } from '@/components/admin/lab-results/shared';
-
-async function compressImage(file: File, maxWidth = 800, quality = 0.85): Promise<{ blob: Blob; sizeKb: number }> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, maxWidth / bitmap.width);
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
-  const canvas = document.createElement('canvas');
-  canvas.width = w; canvas.height = h;
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(bitmap, 0, 0, w, h);
-  const mimeType = file.type === 'image/png' ? 'image/png' : 'image/webp';
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => { resolve({ blob: blob!, sizeKb: Math.round(blob!.size / 1024) }); }, mimeType, quality);
-  });
-}
 
 async function readFileAsBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -337,16 +322,9 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   const [lang, setLang] = useState<Lang>('de');
   const [translating, setTranslating] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageCompressedKb, setImageCompressedKb] = useState<number | null>(null);
-  const [cropModalOpen, setCropModalOpen] = useState(false);
-  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
-  const [imageRemoved, setImageRemoved] = useState(false);
-  const pendingDeleteRef = useRef<string | null>(null);
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
 
   // AI statuses
@@ -440,13 +418,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   };
 
   const resetPanel = () => {
-    setImageFile(null);
-    setImagePreview(null);
-    setImageCompressedKb(null);
-    setCropModalOpen(false);
-    setCurrentImageUrl(null);
-    setImageRemoved(false);
-    pendingDeleteRef.current = null;
+    setCoverImageUrl(null);
     setError(null);
     setGalleryItems([]);
     setQuickImportOpen(false);
@@ -498,7 +470,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     }));
     resetPanel();
     setGalleryItems(existing);
-    setCurrentImageUrl(p.image_url);
+    setCoverImageUrl(p.image_url ?? null);
     setOpenSections({ content: true, details: true, pricing: true, settings: true, testItems: isTest, gallery: existing.length > 0, cover: true });
     setEditingId(p.id);   // keep after resetPanel clears it
     setPanelOpen(true);
@@ -514,42 +486,6 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
   const setLangField = (field: 'name' | 'short_description' | 'description', l: Lang, v: string) =>
     setForm((prev) => ({ ...prev, [field]: { ...prev[field], [l]: v } }));
-
-  // ── Image picker ──────────────────────────────────────────────────────────────
-
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = '';
-    const { blob, sizeKb } = await compressImage(file);
-    const compressed = new File([blob], file.name, { type: blob.type });
-    setImageFile(compressed);
-    setImageCompressedKb(sizeKb);
-    setImagePreview(URL.createObjectURL(compressed));
-    setCropModalOpen(true);
-  };
-
-  const uploadImage = async (_productId: string): Promise<string | null> => {
-    if (!imageFile) return imageRemoved ? null : currentImageUrl;
-    if (currentImageUrl) pendingDeleteRef.current = currentImageUrl;
-    const base64 = await readFileAsBase64(imageFile);
-    const res = await fetch('/api/upload-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ base64, filename: imageFile.name, bucket: 'product-images', contentType: imageFile.type }),
-    });
-    const json = await res.json();
-    if (!res.ok || !json.url) { console.error('[uploadImage]', json.error); return currentImageUrl; }
-    return json.url as string;
-  };
-
-  const handleRemoveCoverImage = () => {
-    pendingDeleteRef.current = currentImageUrl;
-    setCurrentImageUrl(null);
-    setImageFile(null);
-    setImagePreview(null);
-    setImageRemoved(true);
-  };
 
   // ── AI Translate ──────────────────────────────────────────────────────────────
 
@@ -735,11 +671,8 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
         productId = data.id;
       }
 
-      // Upload cover image
-      const imageUrl = await uploadImage(productId!);
-      if (imageUrl !== currentImageUrl || imageRemoved) {
-        await supabase.from('products').update({ image_url: imageUrl }).eq('id', productId!);
-      }
+      // Update cover image URL (already uploaded by CoverImageUploader)
+      await supabase.from('products').update({ image_url: coverImageUrl }).eq('id', productId!);
 
       // Upload pending gallery items
       const galleryPayload: string[] = [];
@@ -763,10 +696,6 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
         }
       }
       await supabase.from('products').update({ gallery_urls: galleryPayload }).eq('id', productId!);
-
-      // DB committed — delete old cover
-      await deleteImage(pendingDeleteRef.current);
-      pendingDeleteRef.current = null;
 
       await refresh();
       closePanel();
@@ -1287,28 +1216,15 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
               {/* ── Cover Image ───────────────────────────────────────────── */}
               <SectionBlock title="Cover Image" open={openSections.cover} onToggle={() => toggleSection('cover')}>
-                {(imagePreview || currentImageUrl) && (
-                  <div className="relative mb-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={imagePreview ?? currentImageUrl!} alt="Preview"
-                      className="w-full h-40 object-cover rounded-xl border border-[#0e393d]/10" />
-                    <button type="button" title="Remove photo" onClick={handleRemoveCoverImage}
-                      className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white hover:bg-red-600/80 transition">
-                      <svg width="8" height="8" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round"/></svg>
-                      Remove
-                    </button>
-                  </div>
-                )}
-                {imageCompressedKb && (
-                  <p className="mb-2 text-[11px] text-[#1c2a2b]/40">Auto-compressed · {imageCompressedKb} KB</p>
-                )}
-                <button type="button" onClick={() => fileInputRef.current?.click()}
-                  className="w-full rounded-lg border border-dashed border-[#0e393d]/20 py-4 text-sm text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d]/70 hover:bg-[#0e393d]/3 transition">
-                  {imagePreview || currentImageUrl ? 'Replace image' : 'Upload image'}
-                  <span className="block text-xs mt-0.5 text-[#1c2a2b]/30">JPEG, PNG, WebP · max 5 MB</span>
-                </button>
-                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
-                  className="hidden" onChange={handleImageChange} />
+                <CoverImageUploader
+                  currentUrl={coverImageUrl}
+                  bucket="product-images"
+                  aspect={1}
+                  outputWidth={800}
+                  outputHeight={800}
+                  hint="1:1 square · max 5 MB"
+                  onUrlChange={setCoverImageUrl}
+                />
               </SectionBlock>
 
             </div>
@@ -1330,25 +1246,6 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
           </div>
         </>
-      )}
-
-      {/* Crop Modal */}
-      {cropModalOpen && imagePreview && (
-        <SimpleCropModal
-          imageUrl={imagePreview}
-          aspect={1}
-          outputWidth={800}
-          outputHeight={800}
-          title="Crop Product Image (1:1)"
-          onConfirm={(blob, sizeKb) => {
-            const file = new File([blob], 'product.jpg', { type: 'image/jpeg' });
-            setImageFile(file);
-            setImageCompressedKb(sizeKb);
-            setImagePreview(URL.createObjectURL(blob));
-            setCropModalOpen(false);
-          }}
-          onClose={() => setCropModalOpen(false)}
-        />
       )}
 
     </div>

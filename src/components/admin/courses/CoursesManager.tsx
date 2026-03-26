@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import CoverImageUploader from '@/components/shared/CoverImageUploader';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -115,13 +116,10 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
   const [lessons, setLessons] = useState<LessonRow[]>([]);
   const [allArticles, setAllArticles] = useState<ArticleOption[]>([]);
   const [articleSearch, setArticleSearch] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   // ── Refresh ──────────────────────────────────────────────────────────────────
 
@@ -153,9 +151,7 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
     setLang('de');
     setForm(EMPTY_FORM);
     setLessons([]);
-    setImageFile(null);
-    setImagePreview(null);
-    setCurrentImageUrl(null);
+    setCoverImageUrl(null);
     setArticleSearch('');
     setError(null);
     setPanelOpen(true);
@@ -171,9 +167,7 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
       sort_order: String(c.sort_order),
       is_published: c.is_published,
     });
-    setImageFile(null);
-    setImagePreview(null);
-    setCurrentImageUrl(c.image_url);
+    setCoverImageUrl(c.image_url ?? null);
     setArticleSearch('');
     setError(null);
 
@@ -202,32 +196,6 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
   const setLangField = (field: 'title' | 'description', l: Lang, v: string) =>
     setForm((f) => ({ ...f, [field]: { ...f[field], [l]: v } }));
 
-  // ── Image ─────────────────────────────────────────────────────────────────────
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-  };
-
-  const uploadImage = async (): Promise<string | null> => {
-    if (!imageFile) return currentImageUrl;
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve((reader.result as string).split(',')[1]);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(imageFile);
-    });
-    const res = await fetch('/api/upload-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ base64, filename: imageFile.name, bucket: 'course-images', contentType: imageFile.type }),
-    });
-    const json = await res.json();
-    if (!res.ok || !json.url) { console.error('[uploadImage]', json.error); return currentImageUrl; }
-    return json.url as string;
-  };
 
   // ── Lesson management ─────────────────────────────────────────────────────────
 
@@ -291,13 +259,11 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
     setError(null);
 
     try {
-      const imageUrl = await uploadImage();
-
       const payload = {
         title: { de: form.title.de, en: form.title.en, fr: form.title.fr, es: form.title.es, it: form.title.it },
         description: { de: form.description.de, en: form.description.en, fr: form.description.fr, es: form.description.es, it: form.description.it },
         slug: form.slug.trim() || slugify(form.title.de || form.title.en),
-        image_url: imageUrl,
+        image_url: coverImageUrl,
         sort_order: form.sort_order ? Number(form.sort_order) : 0,
         is_published: form.is_published,
       };
@@ -542,17 +508,15 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
               {/* Image */}
               <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
                 <SectionHead>Cover Image</SectionHead>
-                {(imagePreview || currentImageUrl) && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={imagePreview ?? currentImageUrl!} alt="Preview"
-                    className="w-full h-40 object-cover rounded-xl border border-[#0e393d]/10" />
-                )}
-                <button type="button" onClick={() => fileRef.current?.click()}
-                  className="w-full rounded-lg border border-dashed border-[#0e393d]/20 py-4 text-sm text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d]/70 hover:bg-[#0e393d]/3 transition">
-                  {imagePreview || currentImageUrl ? 'Replace image' : 'Upload image'}
-                  <span className="block text-xs mt-0.5 text-[#1c2a2b]/30">PNG, JPG, WebP · max 5 MB</span>
-                </button>
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                <CoverImageUploader
+                  currentUrl={coverImageUrl}
+                  bucket="course-images"
+                  aspect={16 / 9}
+                  outputWidth={1200}
+                  outputHeight={675}
+                  hint="16:9 · max 5 MB"
+                  onUrlChange={setCoverImageUrl}
+                />
               </div>
 
               {/* Lessons */}
