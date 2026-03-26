@@ -24,7 +24,7 @@ Pages accessible without authentication.
 | `/health-engine` | Health Engine | ✅ Live | Navbar → Health → Health Engine |
 | `/how-to-start` | How to Start | ✅ Live | Navbar → Kitchen → How to Start |
 | `/legal` | Imprint / Legal | ✅ Live | Footer |
-| `/partner-labs` | Partner Labs | ✅ Live | Navbar → Health → Partner Labs, Footer |
+| `/partner-labs` | Partner Labs | ✅ Live | Navbar → Health → Partner Labs, Footer — upgraded: Leaflet map, search/filter, category pills, cover images |
 | `/privacy` | Privacy Policy | ✅ Live | Footer, waitlist form |
 | `/recipes` | Recipes | ✅ Live | Navbar → Kitchen → Recipes |
 | `/recipes/[slug]` | Recipe Detail | ✅ Live | /recipes listing |
@@ -37,7 +37,7 @@ Pages accessible without authentication.
 | `/coaching` | Coaching | ✅ Live | Navbar → Fit → Coaching |
 | `/exercise` | Exercise | ✅ Live | Navbar → Fit → Exercise |
 | `/fit` | Fit | ✅ Live | Navbar → Fit → Overview |
-| `/kitchen` | Kitchen | 🟡 Placeholder | Navbar → Kitchen → Overview |
+| `/kitchen` | Kitchen | ✅ Live | Navbar → Kitchen → Overview |
 | `/sleep` | Schlaf / Sleep | ✅ Live | Navbar → Fit → Sleep |
 | `/stress-recovery` | Stress Recovery | ✅ Live | Navbar → Fit → Stress & Recovery |
 
@@ -93,7 +93,7 @@ Protected by `src/app/[locale]/admin/layout.tsx`: checks `getUser()` and `profil
 |-------|-----------|--------|-------------|
 | `/admin/lab-results` | Lab Results Manager | ✅ Live | Admin sidebar → Health |
 | `/admin/biomarkers` | Biomarkers Manager | ✅ Live | Admin sidebar → Health |
-| `/admin/labs` | Partner Labs Manager | ✅ Live | Admin sidebar → Health |
+| `/admin/labs` | Partner Labs Manager | ✅ Live | Admin sidebar → Health — includes cover image upload (16:9 crop, lab-covers bucket) |
 
 ### System
 | Route | Page Title | Status | Linked From |
@@ -189,7 +189,7 @@ Pages with a "coming soon" / `comingSoon` template — real routes, minimal cont
 
 | Route | Current State | Notes |
 |-------|--------------|-------|
-| `/kitchen` | 🟡 Coming soon | Section landing — sub-pages not yet built |
+| `/kitchen` | ✅ Live | Overview with 6 section cards (Recipes, Blog, Courses, Daily Dozen, How to Start, Shopping List) |
 | `/fit` | ✅ Live | Overview with 4 pillar cards linking to sub-pages |
 | `/sleep` | ✅ Live | Full sleep page: stages, biomarkers, evidence-based tips |
 | `/exercise` | ✅ Live | Full exercise page: Zone 2, VO₂max, strength, longevity metrics |
@@ -318,7 +318,7 @@ Grouped by domain. Not user-facing.
 | Category | Count |
 |---------|-------|
 | Public pages — live | 26 route patterns |
-| Public pages — placeholder / coming soon | 2 |
+| Public pages — placeholder / coming soon | 1 |
 | Auth pages (login/signup flow) | 4 |
 | Authenticated user pages | 3 |
 | Admin pages | 16 |
@@ -330,4 +330,4 @@ Grouped by domain. Not user-facing.
 | **Total API routes** | **53** |
 | Orphan pages | 0 (was 1 — `/orders` deleted, redirect added) |
 | Dead links | 0 |
-| Placeholder pages | 2 |
+| Placeholder pages | 1 |
