@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
   FlagBadge, SectionHeading, Spinner, Toast, ToastContainer,
-  SOURCE_ICON, SOURCE_LABEL,
+  SOURCE_ICON, SOURCE_LABEL, TEST_CATEGORIES,
   locName, nextToastId, todayISO,
 } from './shared';
 import { computeStatusFlag, checkPlausibility } from '@/lib/lab-results/flagging';
@@ -98,7 +98,6 @@ export default function ManualEntryTab() {
   // ── Data ──────────────────────────────────────────────────────────────────
 
   const [allBiomarkers, setAllBiomarkers] = useState<AllBiomarker[]>([]);
-  const [availableSources, setAvailableSources] = useState<string[]>([]);
   const [labs, setLabs] = useState<LabOption[]>([]);
   const [conversionsMap, setConversionsMap] = useState<Record<string, UnitConversion[]>>({});
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -159,11 +158,9 @@ export default function ManualEntryTab() {
     supabase.from('biomarkers')
       .select('id, name, unit, source, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, range_type')
       .eq('is_active', true)
-      .then(({ data }) => {
-        const bms = (data as AllBiomarker[]) ?? [];
-        setAllBiomarkers(bms);
-        const unique = [...new Set(bms.map((b) => b.source).filter(Boolean) as string[])].sort();
-        setAvailableSources(unique);
+      .then(({ data, error }) => {
+        if (error) { console.error('[ManualEntryTab] biomarkers load error:', error); return; }
+        setAllBiomarkers((data as AllBiomarker[]) ?? []);
       });
 
     supabase.from('lab_partners')
@@ -600,41 +597,40 @@ export default function ManualEntryTab() {
       )}
 
       {/* ── Test Category ────────────────────────────────────────────────── */}
-      {availableSources.length > 0 && (
-        <div>
-          <SectionHeading>Test Category</SectionHeading>
-          <div className="flex flex-wrap gap-2">
+      <div>
+        <SectionHeading>Test Category</SectionHeading>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => { setCategoryFilter(null); setRows([newRow()]); }}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+              categoryFilter === null
+                ? 'bg-[#0e393d] text-white'
+                : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
+            }`}
+          >
+            All
+          </button>
+          {TEST_CATEGORIES.map(({ value, label, icon }) => (
             <button
-              onClick={() => { setCategoryFilter(null); setRows([newRow()]); }}
+              key={value}
+              onClick={() => { setCategoryFilter(categoryFilter === value ? null : value); setRows([newRow()]); }}
               className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                categoryFilter === null
+                categoryFilter === value
                   ? 'bg-[#0e393d] text-white'
                   : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
               }`}
             >
-              All
+              {icon} {label}
             </button>
-            {availableSources.map((source) => (
-              <button
-                key={source}
-                onClick={() => { setCategoryFilter(categoryFilter === source ? null : source); setRows([newRow()]); }}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  categoryFilter === source
-                    ? 'bg-[#0e393d] text-white'
-                    : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
-                }`}
-              >
-                {SOURCE_ICON[source] ?? '🔬'} {SOURCE_LABEL[source] ?? source}
-              </button>
-            ))}
-          </div>
-          {categoryFilter && (
-            <p className="mt-1.5 text-xs text-[#1c2a2b]/50">
-              Showing only {SOURCE_LABEL[categoryFilter] ?? categoryFilter} markers
-            </p>
-          )}
+          ))}
         </div>
-      )}
+        {categoryFilter && (
+          <p className="mt-1.5 text-xs text-[#1c2a2b]/50">
+            Showing only {SOURCE_LABEL[categoryFilter] ?? categoryFilter} markers
+            {allBiomarkers.length === 0 && <span className="ml-2 text-amber-600">(loading…)</span>}
+          </p>
+        )}
+      </div>
 
       {/* ── 1d. External: Lab contact fields ─────────────────────────────── */}
       {labSource === 'external_upload' && (
@@ -755,7 +751,10 @@ export default function ManualEntryTab() {
                                 {b.unit && <span className="text-[#1c2a2b]/35 shrink-0">{b.unit}</span>}
                               </button>
                             ))}
-                          {filteredBiomarkers.filter((b) => !row.search.trim() || locName(b.name).toLowerCase().includes(row.search.toLowerCase())).length === 0 && (
+                          {allBiomarkers.length === 0 && (
+                            <p className="px-3 py-2 text-xs text-[#1c2a2b]/40">Loading markers…</p>
+                          )}
+                          {allBiomarkers.length > 0 && filteredBiomarkers.filter((b) => !row.search.trim() || locName(b.name).toLowerCase().includes(row.search.toLowerCase())).length === 0 && (
                             <p className="px-3 py-2 text-xs text-[#1c2a2b]/40">No markers found</p>
                           )}
                         </div>
