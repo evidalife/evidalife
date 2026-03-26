@@ -3,18 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import CoverImageUploader from '@/components/shared/CoverImageUploader';
-import GalleryUpload, { type GalleryItem } from '@/components/admin/recipes/GalleryUpload';
+import GalleryUploader from '@/components/shared/GalleryUploader';
 import type { ParsedProduct } from '@/app/api/admin/parse-product/route';
 import { PRODUCT_TYPES } from '@/components/admin/lab-results/shared';
-
-async function readFileAsBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve((reader.result as string).split(',')[1]);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -339,7 +330,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   const [quickImportResult, setQuickImportResult] = useState<ParsedProduct | null>(null);
 
   // Gallery
-  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+  const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
 
   // Biomarker counts per product
   const [biomarkerCounts, setBiomarkerCounts] = useState<Record<string, number>>({});
@@ -420,7 +411,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   const resetPanel = () => {
     setCoverImageUrl(null);
     setError(null);
-    setGalleryItems([]);
+    setGalleryUrls([]);
     setQuickImportOpen(false);
     setQuickImportText('');
     setQuickImportResult(null);
@@ -462,16 +453,11 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       is_featured: p.is_featured ?? false,
     });
     const isTest = ['blood_test', 'clinical_test', 'epigenetic_test', 'genetic_test', 'microbiome_test', 'addon_test'].includes(p.product_type ?? '');
-    // Load gallery
-    const existing = (p.gallery_urls ?? []).map((url, i) => ({
-      _key: `_g${i}`,
-      url,
-      order: i,
-    }));
+    const existingGallery = p.gallery_urls ?? [];
     resetPanel();
-    setGalleryItems(existing);
+    setGalleryUrls(existingGallery);
     setCoverImageUrl(p.image_url ?? null);
-    setOpenSections({ content: true, details: true, pricing: true, settings: true, testItems: isTest, gallery: existing.length > 0, cover: true });
+    setOpenSections({ content: true, details: true, pricing: true, settings: true, testItems: isTest, gallery: existingGallery.length > 0, cover: true });
     setEditingId(p.id);   // keep after resetPanel clears it
     setPanelOpen(true);
   };
@@ -674,28 +660,8 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       // Update cover image URL (already uploaded by CoverImageUploader)
       await supabase.from('products').update({ image_url: coverImageUrl }).eq('id', productId!);
 
-      // Upload pending gallery items
-      const galleryPayload: string[] = [];
-      const sortedGallery = [...galleryItems].sort((a, b) => a.order - b.order);
-      for (const item of sortedGallery) {
-        if (item._file) {
-          try {
-            const base64 = await readFileAsBase64(item._file);
-            const res = await fetch('/api/upload-image', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ base64, filename: item._file.name, bucket: 'product-images', contentType: item._file.type }),
-            });
-            const json = await res.json();
-            if (json.url) galleryPayload.push(json.url as string);
-          } catch {
-            if (item.url) galleryPayload.push(item.url);
-          }
-        } else if (item.url) {
-          galleryPayload.push(item.url);
-        }
-      }
-      await supabase.from('products').update({ gallery_urls: galleryPayload }).eq('id', productId!);
+      // Save gallery (images already uploaded by GalleryUploader)
+      await supabase.from('products').update({ gallery_urls: galleryUrls }).eq('id', productId!);
 
       await refresh();
       closePanel();
@@ -1209,9 +1175,17 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                 title="Photo Gallery"
                 open={openSections.gallery}
                 onToggle={() => toggleSection('gallery')}
-                badge={<SectionBadge>{galleryItems.length} / 10</SectionBadge>}
+                badge={<SectionBadge>{galleryUrls.length} / 10</SectionBadge>}
               >
-                <GalleryUpload items={galleryItems} onChange={setGalleryItems} maxPhotos={10} />
+                <GalleryUploader
+                  urls={galleryUrls}
+                  bucket="product-images"
+                  maxImages={10}
+                  outputWidth={1200}
+                  label=""
+                  hint="Additional product photos. Up to 10 images."
+                  onUrlsChange={setGalleryUrls}
+                />
               </SectionBlock>
 
               {/* ── Cover Image ───────────────────────────────────────────── */}

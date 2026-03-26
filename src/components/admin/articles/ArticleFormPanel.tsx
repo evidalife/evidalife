@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import CoverImageUploader from '@/components/shared/CoverImageUploader';
+import GalleryUploader from '@/components/shared/GalleryUploader';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -106,6 +107,7 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
   const [form, setForm]                 = useState<ArticleForm>(EMPTY_FORM);
   const [tagInput, setTagInput]         = useState('');
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const [galleryUrls, setGalleryUrls]   = useState<string[]>([]);
   const [loading, setLoading]           = useState(!!articleId);
   const [saving, setSaving]             = useState(false);
   const [error, setError]               = useState<string | null>(null);
@@ -122,6 +124,7 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
     ]).then(([{ data: a }, { data: tags }]) => {
       if (!a) { setLoading(false); return; }
       setCoverImageUrl(a.featured_image_url ?? null);
+      setGalleryUrls((a as Record<string, unknown>).gallery_urls as string[] ?? []);
 
       // published_at → datetime-local value (YYYY-MM-DDTHH:mm)
       const pa = a.published_at ? new Date(a.published_at).toISOString().slice(0, 16) : '';
@@ -235,8 +238,8 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
         is_featured:      form.is_featured,
       };
 
-      // 1. Upsert article (image URL already uploaded by CoverImageUploader)
-      const fullPayload = { ...payload, featured_image_url: coverImageUrl };
+      // 1. Upsert article (images already uploaded by CoverImageUploader / GalleryUploader)
+      const fullPayload = { ...payload, featured_image_url: coverImageUrl, gallery_urls: galleryUrls };
       let id = articleId;
       if (id) {
         const { error } = await supabase.from('articles').update(fullPayload).eq('id', id);
@@ -501,6 +504,20 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
                 outputHeight={675}
                 hint="16:9 · max 5 MB"
                 onUrlChange={setCoverImageUrl}
+              />
+            </div>
+
+            {/* ── Gallery ────────────────────────────────────────────────── */}
+            <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
+              <SectionHead>Gallery</SectionHead>
+              <GalleryUploader
+                urls={galleryUrls}
+                bucket="article-images"
+                maxImages={10}
+                outputWidth={1200}
+                label=""
+                hint="Additional article images. Up to 10."
+                onUrlsChange={setGalleryUrls}
               />
             </div>
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import CoverImageUploader from '@/components/shared/CoverImageUploader';
+import GalleryUploader from '@/components/shared/GalleryUploader';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -117,6 +118,7 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
   const [allArticles, setAllArticles] = useState<ArticleOption[]>([]);
   const [articleSearch, setArticleSearch] = useState('');
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -152,6 +154,7 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
     setForm(EMPTY_FORM);
     setLessons([]);
     setCoverImageUrl(null);
+    setGalleryUrls([]);
     setArticleSearch('');
     setError(null);
     setPanelOpen(true);
@@ -168,6 +171,7 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
       is_published: c.is_published,
     });
     setCoverImageUrl(c.image_url ?? null);
+    setGalleryUrls((c as Record<string, unknown>).gallery_urls as string[] ?? []);
     setArticleSearch('');
     setError(null);
 
@@ -264,6 +268,7 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
         description: { de: form.description.de, en: form.description.en, fr: form.description.fr, es: form.description.es, it: form.description.it },
         slug: form.slug.trim() || slugify(form.title.de || form.title.en),
         image_url: coverImageUrl,
+        gallery_urls: galleryUrls,
         sort_order: form.sort_order ? Number(form.sort_order) : 0,
         is_published: form.is_published,
       };
@@ -516,6 +521,20 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
                   outputHeight={675}
                   hint="16:9 · max 5 MB"
                   onUrlChange={setCoverImageUrl}
+                />
+              </div>
+
+              {/* Gallery */}
+              <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
+                <SectionHead>Gallery</SectionHead>
+                <GalleryUploader
+                  urls={galleryUrls}
+                  bucket="course-images"
+                  maxImages={10}
+                  outputWidth={1200}
+                  label=""
+                  hint="Course preview images. Up to 10."
+                  onUrlsChange={setGalleryUrls}
                 />
               </div>
 

@@ -1,11 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import dynamic from 'next/dynamic';
-import type CropperType from 'react-easy-crop';
-const Cropper = dynamic(() => import('react-easy-crop').then((m) => m.default), { ssr: false }) as unknown as typeof CropperType;
+import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import GalleryUpload, { type GalleryItem } from './GalleryUpload';
+import CoverImageUploader from '@/components/shared/CoverImageUploader';
+import GalleryUploader from '@/components/shared/GalleryUploader';
 import type { ParsedRecipe, ParsedIngredient } from '@/app/api/admin/parse-recipe/route';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -250,210 +248,6 @@ function SectionBadge({ children }: { children: React.ReactNode }) {
     <span className="inline-flex items-center rounded-full bg-[#0e393d]/8 px-2 py-0.5 text-[10px] font-medium text-[#0e393d]/60">
       {children}
     </span>
-  );
-}
-
-// ─── Cover Image Crop Types + Helpers ─────────────────────────────────────────
-
-type CropArea = { x: number; y: number; width: number; height: number };
-type CropData = { x: number; y: number; width: number; height: number; zoom: number };
-
-async function compressImage(file: File, maxWidth = 1200, quality = 0.85): Promise<{ blob: Blob; sizeKb: number }> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, maxWidth / bitmap.width);
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(bitmap, 0, 0, w, h);
-  const mimeType = file.type === 'image/png' ? 'image/png' : 'image/webp';
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      resolve({ blob: blob!, sizeKb: Math.round(blob!.size / 1024) });
-    }, mimeType, quality);
-  });
-}
-
-async function getCroppedCanvas(
-  imageSrc: string,
-  pixelCrop: CropArea,
-  outputWidth: number,
-  outputHeight: number,
-): Promise<HTMLCanvasElement> {
-  const image = new Image();
-  image.src = imageSrc;
-  await new Promise<void>((resolve) => { image.onload = () => resolve(); });
-  const canvas = document.createElement('canvas');
-  canvas.width = outputWidth;
-  canvas.height = outputHeight;
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, outputWidth, outputHeight);
-  return canvas;
-}
-
-// ─── Cover Crop Modal ─────────────────────────────────────────────────────────
-
-interface CoverCropModalProps {
-  imageUrl: string;
-  initialDetail: CropData | null;
-  initialGrid: CropData | null;
-  onConfirm: (detail: CropData, grid: CropData) => void;
-  onClose: () => void;
-}
-
-function CoverCropModal({ imageUrl, initialDetail, initialGrid, onConfirm, onClose }: CoverCropModalProps) {
-  const [activeTab, setActiveTab] = useState<'detail' | 'grid'>('detail');
-
-  const [detailCrop, setDetailCrop] = useState(initialDetail ? { x: initialDetail.x, y: initialDetail.y } : { x: 0, y: 0 });
-  const [detailZoom, setDetailZoom] = useState(initialDetail?.zoom ?? 1);
-  const [detailPixels, setDetailPixels] = useState<CropArea | null>(null);
-
-  const [gridCrop, setGridCrop] = useState(initialGrid ? { x: initialGrid.x, y: initialGrid.y } : { x: 0, y: 0 });
-  const [gridZoom, setGridZoom] = useState(initialGrid?.zoom ?? 1);
-  const [gridPixels, setGridPixels] = useState<CropArea | null>(null);
-
-  const [detailPreview, setDetailPreview] = useState<string | null>(null);
-  const [gridPreview, setGridPreview] = useState<string | null>(null);
-
-  const onDetailCropComplete = useCallback((_: unknown, pixels: CropArea) => {
-    setDetailPixels(pixels);
-  }, []);
-
-  const onGridCropComplete = useCallback((_: unknown, pixels: CropArea) => {
-    setGridPixels(pixels);
-  }, []);
-
-  // Render previews when pixel crops change
-  useEffect(() => {
-    if (!detailPixels) return;
-    getCroppedCanvas(imageUrl, detailPixels, 480, 270).then((c) => setDetailPreview(c.toDataURL('image/webp', 0.7)));
-  }, [imageUrl, detailPixels]);
-
-  useEffect(() => {
-    if (!gridPixels) return;
-    getCroppedCanvas(imageUrl, gridPixels, 400, 300).then((c) => setGridPreview(c.toDataURL('image/webp', 0.7)));
-  }, [imageUrl, gridPixels]);
-
-  const handleConfirm = () => {
-    const detail: CropData = { x: detailCrop.x, y: detailCrop.y, width: detailPixels?.width ?? 0, height: detailPixels?.height ?? 0, zoom: detailZoom };
-    const grid: CropData = { x: gridCrop.x, y: gridCrop.y, width: gridPixels?.width ?? 0, height: gridPixels?.height ?? 0, zoom: gridZoom };
-    onConfirm(detail, grid);
-  };
-
-  return (
-    <>
-      <div className="fixed inset-0 bg-black/50 z-[60]" onClick={onClose} />
-      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl border border-[#0e393d]/10 shadow-2xl w-full max-w-xl overflow-hidden">
-
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-[#0e393d]/10 px-5 py-4">
-            <h3 className="font-serif text-base text-[#0e393d]">Crop Cover Image</h3>
-            <button onClick={onClose} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/></svg>
-            </button>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex border-b border-[#0e393d]/10 px-5">
-            {(['detail', 'grid'] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2.5 text-xs font-medium transition border-b-2 -mb-px ${
-                  activeTab === tab
-                    ? 'border-[#0e393d] text-[#0e393d]'
-                    : 'border-transparent text-[#1c2a2b]/50 hover:text-[#1c2a2b]'
-                }`}
-              >
-                {tab === 'detail' ? 'Detail 16:9' : 'Grid 4:3'}
-              </button>
-            ))}
-          </div>
-
-          {/* Crop area */}
-          <div className="relative bg-black" style={{ height: 280 }}>
-            {activeTab === 'detail' && (
-              <Cropper
-                image={imageUrl}
-                crop={detailCrop}
-                zoom={detailZoom}
-                aspect={5 / 2}
-                onCropChange={setDetailCrop}
-                onZoomChange={setDetailZoom}
-                onCropComplete={onDetailCropComplete}
-              />
-            )}
-            {activeTab === 'grid' && (
-              <Cropper
-                image={imageUrl}
-                crop={gridCrop}
-                zoom={gridZoom}
-                aspect={4 / 3}
-                onCropChange={setGridCrop}
-                onZoomChange={setGridZoom}
-                onCropComplete={onGridCropComplete}
-              />
-            )}
-          </div>
-
-          {/* Zoom slider */}
-          <div className="flex items-center gap-3 px-5 py-3 border-t border-[#0e393d]/8">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="text-[#1c2a2b]/40 shrink-0"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35" strokeLinecap="round"/><path d="M11 8v6M8 11h6"/></svg>
-            <input
-              type="range" min={1} max={3} step={0.05}
-              value={activeTab === 'detail' ? detailZoom : gridZoom}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                if (activeTab === 'detail') setDetailZoom(v);
-                else setGridZoom(v);
-              }}
-              className="flex-1 accent-[#0e393d]"
-            />
-            <span className="text-[11px] text-[#1c2a2b]/40 w-8 text-right">
-              {(activeTab === 'detail' ? detailZoom : gridZoom).toFixed(1)}×
-            </span>
-          </div>
-
-          {/* Previews */}
-          <div className="flex gap-4 px-5 pb-4">
-            <div className="flex-1">
-              <p className="text-[10px] text-[#1c2a2b]/40 mb-1">Detail page (5:2)</p>
-              <div className="rounded-lg overflow-hidden bg-[#f5f4f0] border border-[#0e393d]/8" style={{ aspectRatio: '5/2' }}>
-                {detailPreview
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={detailPreview} alt="" className="w-full h-full object-cover" />
-                  : <div className="w-full h-full flex items-center justify-center text-[10px] text-[#1c2a2b]/20">preview</div>
-                }
-              </div>
-            </div>
-            <div className="w-32 shrink-0">
-              <p className="text-[10px] text-[#1c2a2b]/40 mb-1">Grid card (4:3)</p>
-              <div className="rounded-lg overflow-hidden bg-[#f5f4f0] border border-[#0e393d]/8" style={{ aspectRatio: '4/3' }}>
-                {gridPreview
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={gridPreview} alt="" className="w-full h-full object-cover" />
-                  : <div className="w-full h-full flex items-center justify-center text-[10px] text-[#1c2a2b]/20">preview</div>
-                }
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="flex gap-3 border-t border-[#0e393d]/10 px-5 py-4">
-            <button onClick={onClose} className="flex-1 rounded-lg border border-[#0e393d]/15 py-2 text-sm font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition">
-              Cancel
-            </button>
-            <button onClick={handleConfirm} className="flex-1 rounded-lg bg-[#0e393d] py-2 text-sm font-medium text-white hover:bg-[#0e393d]/90 transition">
-              Apply crop
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
   );
 }
 
@@ -1208,19 +1002,13 @@ interface Props {
 
 export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted }: Props) {
   const supabase = createClient();
-  const fileRef = useRef<HTMLInputElement>(null);
   const instructionRef = useRef<HTMLTextAreaElement>(null);
 
   const [lang, setLang] = useState<Lang>('en');
   const [form, setForm] = useState<RecipeForm>(EMPTY_FORM);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
-  const [imageRemoved, setImageRemoved] = useState(false);
-  const [imageCompressedKb, setImageCompressedKb] = useState<number | null>(null);
-  const [cropModalOpen, setCropModalOpen] = useState(false);
-  const [cropDetail, setCropDetail] = useState<CropData | null>(null);
-  const [cropGrid, setCropGrid] = useState<CropData | null>(null);
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
   const [loading, setLoading] = useState(!!recipeId);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -1239,9 +1027,6 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   const [quickAddTargetKey, setQuickAddTargetKey] = useState<string | null>(null);
   const [quickAddNoteOpen, setQuickAddNoteOpen] = useState(false);
   const [quickAddNoteTargetKey, setQuickAddNoteTargetKey] = useState<string | null>(null);
-
-  // Gallery
-  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
 
   // AI action states
   const [translateStatus, setTranslateStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
@@ -1265,10 +1050,6 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
   // Save validation
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-
-  // Pending storage deletes — only executed after a successful DB save
-  const pendingDeleteRef = useRef<string | null>(null);
-  const originalGalleryUrlsRef = useRef<Set<string>>(new Set());
 
   // Collapsible sections — new recipe defaults: all key sections open; edit: all open except quick import
   type SectionKey = 'content' | 'basics' | 'ingredients' | 'nutrition' | 'goals' | 'cover' | 'gallery' | 'settings';
@@ -1309,7 +1090,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   // ── Load existing recipe ─────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!recipeId) { setForm(EMPTY_FORM); setGalleryItems([]); setImageFile(null); setImagePreview(null); setCurrentImageUrl(null); setImageRemoved(false); pendingDeleteRef.current = null; originalGalleryUrlsRef.current = new Set(); setLoading(false); return; }
+    if (!recipeId) { setForm(EMPTY_FORM); setCoverImageUrl(null); setThumbnailUrl(null); setGalleryUrls([]); setLoading(false); return; }
     setLoading(true);
     Promise.all([
       supabase.from('recipes').select('*').eq('id', recipeId).single(),
@@ -1318,11 +1099,8 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       supabase.from('recipe_meal_type_tags').select('meal_type_id').eq('recipe_id', recipeId),
     ]).then(([{ data: r }, { data: ings }, { data: goals }, { data: mealTags }]) => {
       if (!r) { setLoading(false); return; }
-      setCurrentImageUrl(r.image_url ?? null);
-      setImageRemoved(false);
-      setCropDetail((r as Record<string, unknown>).cover_crop_detail as CropData | null ?? null);
-      setCropGrid((r as Record<string, unknown>).cover_crop_grid as CropData | null ?? null);
-      pendingDeleteRef.current = null;
+      setCoverImageUrl(r.image_url ?? null);
+      setThumbnailUrl((r as Record<string, unknown>).thumbnail_url as string ?? null);
       setForm({
         title:        { en: r.title?.en ?? '', de: r.title?.de ?? '', fr: r.title?.fr ?? '', es: r.title?.es ?? '', it: r.title?.it ?? '' },
         slug: r.slug ?? '',
@@ -1371,13 +1149,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
       });
       // Load gallery
       const raw = r.image_gallery as { url: string; order: number }[] | null;
-      const galleryEntries = (raw ?? []).map((p, i) => ({
-        _key: `_g${i}`,
-        url: p.url,
-        order: p.order ?? i,
-      }));
-      setGalleryItems(galleryEntries);
-      originalGalleryUrlsRef.current = new Set(galleryEntries.map(g => g.url).filter((u): u is string => !!u));
+      setGalleryUrls((raw ?? []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((g) => g.url));
       setLoading(false);
     });
   }, [recipeId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1522,56 +1294,6 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
     if (!res.ok) console.error('Delete failed:', await res.text());
   };
 
-  // ── Image ────────────────────────────────────────────────────────────────────
-
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // Client-side compression
-    const { blob, sizeKb } = await compressImage(file);
-    const compressed = new File([blob], file.name, { type: blob.type });
-    setImageFile(compressed);
-    setImageCompressedKb(sizeKb);
-    const previewUrl = URL.createObjectURL(compressed);
-    setImagePreview(previewUrl);
-    setCropDetail(null);
-    setCropGrid(null);
-    setCropModalOpen(true);
-    // Reset file input
-    e.target.value = '';
-  };
-
-  const handleRemoveCoverImage = () => {
-    pendingDeleteRef.current = currentImageUrl;
-    setCurrentImageUrl(null);
-    setImageFile(null);
-    setImagePreview(null);
-    setImageRemoved(true);
-    setImageCompressedKb(null);
-    setCropDetail(null);
-    setCropGrid(null);
-  };
-
-  const uploadImage = async (_id: string): Promise<string | null> => {
-    if (!imageFile) return currentImageUrl;
-    // Track old URL for deletion after save succeeds
-    if (currentImageUrl) pendingDeleteRef.current = currentImageUrl;
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve((reader.result as string).split(',')[1]);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(imageFile);
-    });
-    const res = await fetch('/api/upload-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ base64, filename: imageFile.name, bucket: 'recipe-images', contentType: imageFile.type }),
-    });
-    const json = await res.json();
-    if (!res.ok || !json.url) { console.error('[uploadImage]', json.error); return currentImageUrl; }
-    return json.url as string;
-  };
-
   // ── Save ─────────────────────────────────────────────────────────────────────
 
   const validate = (): string[] => {
@@ -1623,8 +1345,8 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         })(),
         is_published: form.is_published,
         is_featured:  form.is_featured,
-        cover_crop_detail: cropDetail ?? null,
-        cover_crop_grid:   cropGrid ?? null,
+        image_url:    coverImageUrl,
+        thumbnail_url: thumbnailUrl,
       };
 
       // 1. Upsert recipe row
@@ -1636,12 +1358,6 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         const { data, error } = await supabase.from('recipes').insert(payload).select('id').single();
         if (error) throw error;
         id = data.id;
-      }
-
-      // 2. Upload image
-      const imageUrl = await uploadImage(id!);
-      if (imageUrl !== currentImageUrl || imageRemoved) {
-        await supabase.from('recipes').update({ image_url: imageUrl }).eq('id', id!);
       }
 
       // 3. Replace ingredients
@@ -1709,39 +1425,10 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         if (error) throw error;
       }
 
-      // 6. Upload pending gallery photos and save image_gallery
-      const galleryPayload: { url: string; order: number }[] = [];
-      for (const item of galleryItems) {
-        if (item._file) {
-          const base64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve((reader.result as string).split(',')[1]);
-            reader.onerror = () => reject(reader.error);
-            reader.readAsDataURL(item._file!);
-          });
-          const res = await fetch('/api/upload-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ base64, filename: item._file.name, bucket: 'recipe-images', contentType: item._file.type }),
-          });
-          const json = await res.json();
-          if (!res.ok || !json.url) throw new Error(`Gallery upload failed: ${json.error ?? 'unknown error'}`);
-          galleryPayload.push({ url: json.url as string, order: item.order });
-        } else if (item.url) {
-          galleryPayload.push({ url: item.url, order: item.order });
-        }
-      }
+      // 6. Save gallery (images already uploaded by GalleryUploader)
+      const galleryPayload = galleryUrls.map((url, i) => ({ url, order: i }));
       const { error: galErr } = await supabase.from('recipes').update({ image_gallery: galleryPayload }).eq('id', id!);
       if (galErr) throw galErr;
-
-      // DB is committed — now safe to delete removed storage files
-      await deleteStorageUrl(pendingDeleteRef.current);
-      pendingDeleteRef.current = null;
-      const savedGalleryUrls = new Set(galleryPayload.map(g => g.url));
-      for (const url of originalGalleryUrlsRef.current) {
-        if (!savedGalleryUrls.has(url)) await deleteStorageUrl(url);
-      }
-      originalGalleryUrlsRef.current = new Set(galleryPayload.map(g => g.url));
 
       onSaved();
     } catch (e: unknown) {
@@ -1759,12 +1446,11 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
     const title = form.title.en || form.title.de || 'this recipe';
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
     setDeleting(true);
-    // Delete all storage files: pending removes + current cover + all gallery URLs
+    // Delete all storage files: cover, thumbnail, and all gallery URLs
     const storageUrlsToDelete = new Set<string>();
-    if (pendingDeleteRef.current) storageUrlsToDelete.add(pendingDeleteRef.current);
-    if (currentImageUrl) storageUrlsToDelete.add(currentImageUrl);
-    for (const url of originalGalleryUrlsRef.current) storageUrlsToDelete.add(url);
-    for (const item of galleryItems) { if (item.url) storageUrlsToDelete.add(item.url); }
+    if (coverImageUrl) storageUrlsToDelete.add(coverImageUrl);
+    if (thumbnailUrl) storageUrlsToDelete.add(thumbnailUrl);
+    for (const url of galleryUrls) storageUrlsToDelete.add(url);
     for (const url of storageUrlsToDelete) await deleteStorageUrl(url);
     const { error: err } = await supabase.from('recipes').delete().eq('id', recipeId);
     setDeleting(false);
@@ -2617,60 +2303,29 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
               </div>
             </SectionBlock>
 
-            {/* ── Image ───────────────────────────────────────────────────── */}
-            {/* ── Cover Image ──────────────────────────────────────────────── */}
-            <SectionBlock
-              title="Cover Image"
-              open={openSections.cover}
-              onToggle={() => toggleSection('cover')}
-              badge={(imagePreview || currentImageUrl) ? <SectionBadge>uploaded</SectionBadge> : undefined}
-            >
-              <div className="space-y-3">
-                {(imagePreview || currentImageUrl) && (
-                  <div className="relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={imagePreview ?? currentImageUrl!}
-                      alt="Preview"
-                      className="w-full h-44 object-cover rounded-xl border border-[#0e393d]/10"
-                    />
-                    <div className="absolute top-2 right-2 flex items-center gap-1.5">
-                      {imagePreview && (
-                        <button
-                          type="button"
-                          onClick={() => setCropModalOpen(true)}
-                          className="flex items-center gap-1 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white hover:bg-[#0e393d]/80 transition"
-                        >
-                          ✂ Crop
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        title="Remove photo"
-                        onClick={handleRemoveCoverImage}
-                        className="flex items-center gap-1 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white hover:bg-red-600/80 transition"
-                      >
-                        <svg width="8" height="8" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" strokeLinecap="round"/></svg>
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {imageCompressedKb && (
-                  <p className="text-[11px] text-[#1c2a2b]/40">Auto-compressed · {imageCompressedKb} KB</p>
-                )}
-                {(cropDetail || cropGrid) && (
-                  <p className="text-[11px] text-emerald-600">✓ Crops set: {[cropDetail && '5:2', cropGrid && '4:3'].filter(Boolean).join(', ')}</p>
-                )}
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  className="w-full rounded-lg border border-dashed border-[#0e393d]/20 py-4 text-sm text-[#0e393d]/50 hover:border-[#0e393d]/40 hover:text-[#0e393d]/70 hover:bg-[#0e393d]/3 transition"
-                >
-                  {imagePreview || currentImageUrl ? 'Replace image' : 'Upload image'}
-                  <span className="block text-xs mt-0.5 text-[#1c2a2b]/30">PNG, JPG, WebP · auto-compressed</span>
-                </button>
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+            {/* ── Cover Image + Thumbnail ───────────────────────────────────── */}
+            <SectionBlock title="Cover Image" open={openSections.cover} onToggle={() => toggleSection('cover')}>
+              <div className="space-y-6">
+                <CoverImageUploader
+                  currentUrl={coverImageUrl}
+                  bucket="recipe-images"
+                  aspect={16 / 9}
+                  outputWidth={1200}
+                  outputHeight={675}
+                  label="Cover (16:9)"
+                  hint="Recipe detail page hero."
+                  onUrlChange={setCoverImageUrl}
+                />
+                <CoverImageUploader
+                  currentUrl={thumbnailUrl}
+                  bucket="recipe-images"
+                  aspect={4 / 3}
+                  outputWidth={600}
+                  outputHeight={450}
+                  label="Thumbnail (4:3)"
+                  hint="Recipe card image."
+                  onUrlChange={setThumbnailUrl}
+                />
               </div>
             </SectionBlock>
 
@@ -2679,14 +2334,17 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
               title="Gallery Photos"
               open={openSections.gallery}
               onToggle={() => toggleSection('gallery')}
-              badge={<SectionBadge>{galleryItems.length} / 10</SectionBadge>}
+              badge={<SectionBadge>{galleryUrls.length} / 10</SectionBadge>}
             >
-              <div className="space-y-3">
-                <p className="text-[11px] text-[#1c2a2b]/40">
-                  Use <code className="bg-[#0e393d]/6 px-1 rounded text-[10px]">![photo:N]</code> in instructions to embed photo N inline.
-                </p>
-                <GalleryUpload items={galleryItems} onChange={setGalleryItems} />
-              </div>
+              <GalleryUploader
+                urls={galleryUrls}
+                bucket="recipe-images"
+                maxImages={10}
+                outputWidth={1200}
+                label="Photo Gallery"
+                hint={`Use ![photo:N] in instructions to embed photo N inline.`}
+                onUrlsChange={setGalleryUrls}
+              />
             </SectionBlock>
 
             {/* ── Settings ─────────────────────────────────────────────────── */}
@@ -2768,21 +2426,6 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
         <QuickAddNoteModal
           onSaved={handleQuickAddNoteSaved}
           onClose={() => { setQuickAddNoteOpen(false); setQuickAddNoteTargetKey(null); }}
-        />
-      )}
-
-      {/* Cover Crop Modal */}
-      {cropModalOpen && imagePreview && (
-        <CoverCropModal
-          imageUrl={imagePreview}
-          initialDetail={cropDetail}
-          initialGrid={cropGrid}
-          onConfirm={(detail, grid) => {
-            setCropDetail(detail);
-            setCropGrid(grid);
-            setCropModalOpen(false);
-          }}
-          onClose={() => setCropModalOpen(false)}
         />
       )}
 
