@@ -5,6 +5,7 @@ import { setOptions as setGMapsOptions, importLibrary as importGMapsLibrary } fr
 import { createClient } from '@/lib/supabase/client';
 import { TEST_CATEGORIES } from '@/components/admin/lab-results/shared';
 import PhoneField from '@/components/shared/PhoneField';
+import SimpleCropModal from '@/components/admin/shared/SimpleCropModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ export type LabPartner = {
   is_active: boolean | null;
   description: Record<string, string> | null;
   test_categories: string[] | null;
+  cover_image_url: string | null;
   created_at: string;
 };
 
@@ -237,6 +239,13 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
   // Description tab
   const [descLang, setDescLang] = useState<Lang>('de');
 
+  // Cover image states
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
+  const [coverCropOpen, setCoverCropOpen] = useState(false);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
   // AI states
   const [translating, setTranslating] = useState(false);
   const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
@@ -257,12 +266,18 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
     setEditingId(null);
     setForm(EMPTY_FORM);
     setDescLang('de');
+    setCoverImageUrl(null);
+    setCoverImagePreview(null);
+    setCoverFile(null);
     setError(null);
     setPanelOpen(true);
   };
 
   const openEdit = (p: LabPartner) => {
     setEditingId(p.id);
+    setCoverImageUrl(p.cover_image_url ?? null);
+    setCoverImagePreview(null);
+    setCoverFile(null);
     const savedDesc = (p.description as Record<string, string> | null) ?? {};
     setForm({
       name: p.name ?? '',
@@ -414,6 +429,44 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
     setTimeout(() => setAiStatus('idle'), 2000);
   };
 
+  // ── Cover image helpers ───────────────────────────────────────────────────────
+
+  const handleCoverFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { setError('Cover image must be under 5 MB.'); return; }
+    setCoverFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => { setCoverImagePreview(ev.target?.result as string); setCoverCropOpen(true); };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleCoverCropConfirm = (blob: Blob) => {
+    const objectUrl = URL.createObjectURL(blob);
+    setCoverImagePreview(objectUrl);
+    setCoverCropOpen(false);
+    // Store blob for upload on save
+    setCoverFile(new File([blob], coverFile?.name ?? 'cover.jpg', { type: 'image/jpeg' }));
+  };
+
+  const uploadCoverImage = async (): Promise<string | null> => {
+    if (!coverFile) return coverImageUrl; // no new file — keep existing
+    const reader = new FileReader();
+    const base64 = await new Promise<string>((resolve) => {
+      reader.onload = (e) => resolve(e.target!.result as string);
+      reader.readAsDataURL(coverFile);
+    });
+    const res = await fetch('/api/upload-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base64, filename: coverFile.name, bucket: 'lab-covers', contentType: 'image/jpeg' }),
+    });
+    if (!res.ok) throw new Error('Cover image upload failed.');
+    const { url } = await res.json();
+    return url as string;
+  };
+
   // ── Save ──────────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
@@ -432,6 +485,15 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
     }
     setSaving(true);
     setError(null);
+
+    let uploadedCoverUrl: string | null = coverImageUrl;
+    try {
+      uploadedCoverUrl = await uploadCoverImage();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Cover image upload failed.');
+      setSaving(false);
+      return;
+    }
 
     const descPayload = Object.fromEntries(
       Object.entries(form.description).filter(([, v]) => v.trim())
@@ -457,6 +519,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
       is_active:         form.is_active,
       description:       Object.keys(descPayload).length > 0 ? descPayload : null,
       test_categories:   form.test_categories.length > 0 ? form.test_categories : [],
+      cover_image_url:   uploadedCoverUrl,
     };
 
     try {
@@ -1049,6 +1112,49 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                 </div>
               </div>
 
+              {/* ── COVER IMAGE ── */}
+              <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
+                <SectionHead>Cover Image</SectionHead>
+                <p className="text-xs text-[#1c2a2b]/45">Displayed on the public partner labs page. 16:9, max 5 MB. Stored in lab-covers bucket.</p>
+                <div className="flex items-start gap-4">
+                  {/* Preview */}
+                  <div className="w-32 shrink-0 aspect-video rounded-lg overflow-hidden border border-[#0e393d]/12 bg-[#fafaf8] flex items-center justify-center">
+                    {(coverImagePreview ?? coverImageUrl) ? (
+                      <img src={coverImagePreview ?? coverImageUrl!} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0e393d" strokeWidth="1.25" opacity="0.25">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <input
+                      ref={coverInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={handleCoverFileChange}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => coverInputRef.current?.click()}
+                      className="text-xs font-medium text-[#0e393d] border border-[#0e393d]/20 rounded-lg px-3 py-1.5 hover:border-[#0e393d]/40 transition"
+                    >
+                      {(coverImagePreview ?? coverImageUrl) ? 'Change image' : 'Upload image'}
+                    </button>
+                    {(coverImagePreview ?? coverImageUrl) && (
+                      <button
+                        type="button"
+                        onClick={() => { setCoverImageUrl(null); setCoverImagePreview(null); setCoverFile(null); }}
+                        className="text-xs text-red-500 hover:text-red-700 transition text-left"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* ── CERTIFICATION ── */}
               <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
                 <SectionHead>Certification</SectionHead>
@@ -1102,6 +1208,18 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
         </>
       )}
 
+      {/* Cover image crop modal */}
+      {coverCropOpen && coverImagePreview && (
+        <SimpleCropModal
+          imageUrl={coverImagePreview}
+          aspect={16 / 9}
+          outputWidth={1200}
+          outputHeight={675}
+          title="Crop Cover Image (16:9)"
+          onConfirm={handleCoverCropConfirm}
+          onClose={() => { setCoverCropOpen(false); setCoverImagePreview(null); setCoverFile(null); }}
+        />
+      )}
     </div>
   );
 }

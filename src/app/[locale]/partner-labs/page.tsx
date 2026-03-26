@@ -4,6 +4,7 @@ import PublicFooter from '@/components/PublicFooter';
 import { createClient } from '@/lib/supabase/server';
 import { buildMeta, PAGE_META } from '@/lib/seo';
 import { T } from './translations';
+import PartnerLabsClient, { type PublicLab } from '@/components/PartnerLabsClient';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -14,49 +15,38 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 type Lang = typeof VALID_LANGS[number];
 
-type LabPartner = {
-  id: string;
-  name: string;
-  address: string | null;
-  city: string | null;
-  canton: string | null;
-  postal_code: string | null;
-  country: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  phone: string | null;
-  email: string | null;
-  website: string | null;
-  iso_accreditation: string | null;
-};
-
-
-function IsoBadge({ value }: { value: string }) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-[#ceab84]/15 px-2.5 py-1 text-[11px] font-semibold text-[#8a6a3e] ring-1 ring-inset ring-[#ceab84]/30">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-      </svg>
-      {value}
-    </span>
-  );
-}
-
 export default async function PartnerLabsPage() {
   const locale = await getLocale();
   const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const t = T[lang];
 
   const supabase = await createClient();
+
+  // Only fetch labs that actually perform tests (have test_categories set)
+  // Exclude parent org umbrella entries that have no test offerings
   const { data: labs } = await supabase
     .from('lab_partners')
-    .select('id, name, address, city, canton, postal_code, country, latitude, longitude, phone, email, website, iso_accreditation')
+    .select('id, name, address, city, canton, postal_code, country, latitude, longitude, phone, website, iso_accreditation, test_categories, cover_image_url, description')
     .eq('is_active', true)
+    .not('test_categories', 'is', null)
     .order('name', { ascending: true });
 
-  const labList: LabPartner[] = labs ?? [];
+  // Filter to labs with at least 1 category
+  const labList: PublicLab[] = (labs ?? []).filter(
+    (l) => Array.isArray(l.test_categories) && l.test_categories.length > 0
+  );
+
   const countryCount = new Set(labList.map((l) => l.country).filter(Boolean)).size;
   const isoCount = labList.filter((l) => l.iso_accreditation).length;
+
+  const clientTranslations = {
+    searchPlaceholder: t.searchPlaceholder,
+    countryAll: t.countryAll,
+    noResults: t.noResults,
+    mapLink: t.mapLink,
+    websiteLink: t.websiteLink,
+    clearFilters: t.clearFilters,
+  };
 
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
@@ -101,7 +91,7 @@ export default async function PartnerLabsPage() {
         )}
 
         {/* Why ISO */}
-        <section className="w-full max-w-3xl mx-auto px-6 py-14">
+        <section className="w-full max-w-3xl mx-auto px-6 py-10">
           <div className="rounded-2xl border border-[#ceab84]/30 bg-[#ceab84]/6 px-6 py-6 flex gap-5">
             <div className="shrink-0 mt-0.5">
               <div className="w-10 h-10 rounded-full bg-[#ceab84]/20 flex items-center justify-center">
@@ -117,89 +107,20 @@ export default async function PartnerLabsPage() {
           </div>
         </section>
 
-        {/* Labs grid */}
-        <section className="w-full max-w-5xl mx-auto px-6 pb-16">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-6">{t.labsHead}</p>
-
-          {labList.length === 0 ? (
+        {/* Interactive map + filter + cards (client) */}
+        {labList.length > 0 ? (
+          <PartnerLabsClient
+            labs={labList}
+            lang={lang}
+            t={clientTranslations}
+          />
+        ) : (
+          <section className="w-full max-w-5xl mx-auto px-6 pb-16">
             <div className="rounded-2xl border border-[#0e393d]/10 bg-white px-6 py-14 text-center">
               <p className="text-sm text-[#1c2a2b]/40">{t.noLabs}</p>
             </div>
-          ) : (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {labList.map((lab) => {
-                const locationParts = [lab.address, [lab.postal_code, lab.city].filter(Boolean).join(' '), lab.canton ? `(${lab.canton})` : null, lab.country !== 'CH' ? lab.country : null].filter(Boolean);
-                const mapsUrl = lab.latitude != null && lab.longitude != null
-                  ? `https://www.google.com/maps?q=${lab.latitude},${lab.longitude}`
-                  : null;
-
-                return (
-                  <div
-                    key={lab.id}
-                    className="rounded-2xl border border-[#0e393d]/10 bg-white p-6 flex flex-col hover:border-[#0e393d]/20 hover:shadow-sm transition-all duration-200"
-                  >
-                    {/* Name + ISO badge */}
-                    <div className="flex items-start justify-between gap-3 mb-4">
-                      <h3 className="font-serif text-lg text-[#0e393d] leading-snug">{lab.name}</h3>
-                      {lab.iso_accreditation && <IsoBadge value={lab.iso_accreditation} />}
-                    </div>
-
-                    {/* Location */}
-                    {locationParts.length > 0 && (
-                      <div className="flex items-start gap-2.5 mb-4">
-                        <svg className="shrink-0 mt-0.5 text-[#0e393d]/35" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
-                          <circle cx="12" cy="10" r="3"/>
-                        </svg>
-                        <div>
-                          {locationParts.map((line, i) => (
-                            <p key={i} className="text-sm text-[#1c2a2b]/60 leading-snug">{line}</p>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Divider */}
-                    <div className="w-full h-px bg-[#0e393d]/8 mb-4" />
-
-                    {/* Links */}
-                    <div className="mt-auto flex flex-wrap gap-2">
-                      {mapsUrl && (
-                        <a
-                          href={mapsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-[#0e393d]/15 bg-[#fafaf8] px-3 py-1.5 text-xs font-medium text-[#0e393d] hover:border-[#0e393d]/30 hover:bg-white transition"
-                        >
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
-                            <circle cx="12" cy="10" r="3"/>
-                          </svg>
-                          {t.mapLink}
-                        </a>
-                      )}
-                      {lab.website && (
-                        <a
-                          href={lab.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-[#0e393d]/15 bg-[#fafaf8] px-3 py-1.5 text-xs font-medium text-[#0e393d] hover:border-[#0e393d]/30 hover:bg-white transition"
-                        >
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
-                            <polyline points="15 3 21 3 21 9"/>
-                            <line x1="10" y1="14" x2="21" y2="3"/>
-                          </svg>
-                          {t.websiteLink}
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
+          </section>
+        )}
 
         {/* CTA */}
         <section className="w-full bg-white border-t border-[#0e393d]/10 px-6 py-16">

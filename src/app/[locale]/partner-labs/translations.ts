@@ -1,5 +1,9 @@
 export const T = {
   de: {
+    searchPlaceholder: 'Suche nach Name, Stadt, Kanton …',
+    countryAll: 'Alle Länder',
+    noResults: 'Keine Labore gefunden.',
+    clearFilters: 'Filter zurücksetzen',
     eyebrow: 'Partnerlabore',
     heading: 'Unser Labornetzwerk',
     heroSub: 'Evida Life arbeitet ausschliesslich mit ISO-akkreditierten Partnerlaboren zusammen. Höchste Analysequalität – für zuverlässige Biomarker-Ergebnisse, auf die du dich verlassen kannst.',
@@ -21,6 +25,10 @@ export const T = {
     ctaBtn: 'Zum Shop',
   },
   en: {
+    searchPlaceholder: 'Search by name, city, region …',
+    countryAll: 'All countries',
+    noResults: 'No labs found.',
+    clearFilters: 'Clear filters',
     eyebrow: 'Partner Labs',
     heading: 'Our lab network',
     heroSub: 'Evida Life works exclusively with ISO-accredited partner laboratories. The highest analytical quality — for reliable biomarker results you can trust.',
@@ -42,6 +50,10 @@ export const T = {
     ctaBtn: 'Go to shop',
   },
   fr: {
+    searchPlaceholder: 'Rechercher par nom, ville, région …',
+    countryAll: 'Tous les pays',
+    noResults: 'Aucun laboratoire trouvé.',
+    clearFilters: 'Réinitialiser les filtres',
     eyebrow: 'Laboratoires partenaires',
     heading: 'Notre réseau de laboratoires',
     heroSub: 'Evida Life travaille exclusivement avec des laboratoires partenaires accrédités ISO. La plus haute qualité analytique — pour des résultats de biomarqueurs fiables sur lesquels vous pouvez compter.',
@@ -63,6 +75,10 @@ export const T = {
     ctaBtn: 'Aller à la boutique',
   },
   es: {
+    searchPlaceholder: 'Buscar por nombre, ciudad, región …',
+    countryAll: 'Todos los países',
+    noResults: 'No se encontraron laboratorios.',
+    clearFilters: 'Restablecer filtros',
     eyebrow: 'Laboratorios asociados',
     heading: 'Nuestra red de laboratorios',
     heroSub: 'Evida Life trabaja exclusivamente con laboratorios asociados acreditados por ISO. La más alta calidad analítica — para resultados de biomarcadores fiables en los que puedes confiar.',
@@ -84,6 +100,10 @@ export const T = {
     ctaBtn: 'Ir a la tienda',
   },
   it: {
+    searchPlaceholder: 'Cerca per nome, città, regione …',
+    countryAll: 'Tutti i paesi',
+    noResults: 'Nessun laboratorio trovato.',
+    clearFilters: 'Azzera filtri',
     eyebrow: 'Laboratori partner',
     heading: 'La nostra rete di laboratori',
     heroSub: 'Evida Life lavora esclusivamente con laboratori partner accreditati ISO. La massima qualità analitica — per risultati di biomarcatori affidabili su cui puoi fare affidamento.',
