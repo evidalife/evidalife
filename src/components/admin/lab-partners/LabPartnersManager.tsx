@@ -371,11 +371,10 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
 
   const handleTranslate = async () => {
     const desc = form.description as Record<string, string>;
-    const sourceLang = LANGS.find((l) => desc[l]?.trim());
+    const sourceLang = desc[descLang]?.trim() ? descLang : LANGS.find((l) => desc[l]?.trim());
     if (!sourceLang) { setError('Write a description in at least one language first.'); return; }
     const sourceText = desc[sourceLang];
-    const targetLangs = LANGS.filter((l) => l !== sourceLang && !desc[l]?.trim());
-    if (targetLangs.length === 0) { setError('All languages already have descriptions.'); return; }
+    const targetLangs = LANGS.filter((l) => l !== sourceLang);
     setTranslating(true);
     try {
       const res = await fetch('/api/admin/translate-lab-partner', {
