@@ -144,7 +144,6 @@ The navbar has four section triggers — all **dropdown-only** (not clickable li
 | # | Label | Route | Auth? |
 |---|-------|-------|-------|
 | 1 | Overview | `/fit` | No |
-| — | *(separator)* | — | — |
 | 2 | Sleep | `/sleep` | No |
 | 3 | Exercise | `/exercise` | No |
 | 4 | Stress & Recovery | `/stress-recovery` | No |
@@ -154,19 +153,22 @@ The navbar has four section triggers — all **dropdown-only** (not clickable li
 | # | Label | Route | Auth? |
 |---|-------|-------|-------|
 | 1 | Browse Shop | `/shop` | No |
+| 2 | Blood Tests | `/shop?type=blood_test` | No |
+| 3 | Clinical Tests | `/shop?type=clinical_test` | No |
+| 4 | Epigenetic Tests | `/shop?type=epigenetic_test` | No |
 | — | *(separator)* | — | — |
-| 2 | My Orders | `/profile?tab=orders` | ✅ logged-in only |
-| 3 | My Invoices | `/profile?tab=invoices` | ✅ logged-in only |
+| 5 | My Orders | `/profile?tab=orders` | ✅ logged-in only |
+| 6 | My Invoices | `/profile?tab=invoices` | ✅ logged-in only |
 
 ### Profile Dropdown (logged in only)
 | Label | Route | Notes |
 |-------|-------|-------|
+| Admin Panel | `/admin` | Only shown when `is_admin === true` |
+| *(separator)* | — | — |
 | Profile | `/profile` | — |
 | Orders | `/profile?tab=orders` | — |
 | Results | `/profile?tab=results` | — |
 | Invoices | `/profile?tab=invoices` | — |
-| *(separator)* | — | — |
-| Admin Panel | `/admin` | Only shown when `is_admin === true` |
 | *(separator)* | — | — |
 | Abmelden / Sign out | — | Auth action |
 

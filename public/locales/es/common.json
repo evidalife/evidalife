@@ -24,14 +24,16 @@
       ],
       "Fit": [
         "Resumen",
-        null,
         "Sueño",
         "Ejercicio",
         "Estrés & Recuperación",
         "Coaching"
       ],
       "Shop": [
-        "Ver tienda"
+        "Ver tienda",
+        "Análisis de sangre",
+        "Tests clínicos",
+        "Tests epigenéticos"
       ]
     }
   },

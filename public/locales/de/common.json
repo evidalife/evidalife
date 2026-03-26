@@ -24,14 +24,16 @@
       ],
       "Fit": [
         "Übersicht",
-        null,
         "Schlaf",
         "Bewegung",
         "Stress & Recovery",
         "Coaching"
       ],
       "Shop": [
-        "Shop entdecken"
+        "Shop entdecken",
+        "Bluttests",
+        "Klinische Tests",
+        "Epigenetische Tests"
       ]
     }
   },

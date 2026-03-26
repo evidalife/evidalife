@@ -24,14 +24,16 @@
       ],
       "Fit": [
         "Aperçu",
-        null,
         "Sommeil",
         "Exercice",
         "Stress & Récupération",
         "Coaching"
       ],
       "Shop": [
-        "Parcourir la boutique"
+        "Parcourir la boutique",
+        "Tests sanguins",
+        "Tests cliniques",
+        "Tests épigénétiques"
       ]
     }
   },

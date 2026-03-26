@@ -24,14 +24,16 @@
       ],
       "Fit": [
         "Overview",
-        null,
         "Sleep",
         "Exercise",
         "Stress & Recovery",
         "Coaching"
       ],
       "Shop": [
-        "Browse Shop"
+        "Browse Shop",
+        "Blood Tests",
+        "Clinical Tests",
+        "Epigenetic Tests"
       ]
     }
   },

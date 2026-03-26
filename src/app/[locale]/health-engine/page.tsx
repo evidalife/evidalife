@@ -1,70 +1,19 @@
 import { getLocale } from 'next-intl/server';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
-import HealthEngineContent from '@/components/health/HealthEngineContent';
 import HealthEnginePublic from '@/components/health/HealthEnginePublic';
-import { createClient } from '@/lib/supabase/server';
-import { computeHealthScore } from '@/lib/health-score';
 
 export const metadata = { title: 'Health Engine – Evida Life' };
 
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 type Lang = typeof VALID_LANGS[number];
 
+// Always shows the public info/preview page regardless of auth state.
+// Authenticated users who want their personal dashboard go to /dashboard.
 export default async function HealthEnginePage() {
   const locale = await getLocale();
   const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  // ─── Authenticated: show dashboard ───────────────────────────────────────────
-  if (user) {
-    const { data: rawResults } = await supabase
-      .from('lab_results')
-      .select('id, value_numeric, unit, status_flag, measured_at, biomarker_definition_id')
-      .eq('user_id', user.id)
-      .is('deleted_at', null)
-      .order('measured_at', { ascending: false });
-
-    const labResults = rawResults ?? [];
-
-    const defIds = [...new Set(labResults.map((r) => r.biomarker_definition_id).filter(Boolean))] as string[];
-
-    const { data: rawDefs } = defIds.length > 0
-      ? await supabase
-          .from('biomarker_definitions')
-          .select('id, slug, name, unit, category, reference_range_low, reference_range_high, optimal_range_low, optimal_range_high')
-          .in('id', defIds)
-      : { data: [] };
-
-    const definitions = rawDefs ?? [];
-    const scores = computeHealthScore(labResults, definitions, lang);
-
-    const defMeta = definitions.map((d) => ({
-      id: d.id,
-      reference_range_low: d.reference_range_low ?? null,
-      reference_range_high: d.reference_range_high ?? null,
-      optimal_range_low: d.optimal_range_low ?? null,
-      optimal_range_high: d.optimal_range_high ?? null,
-      unit: d.unit ?? null,
-    }));
-
-    return (
-      <div className="min-h-screen bg-[#fafaf8] flex flex-col">
-        <PublicNav />
-        <HealthEngineContent
-          lang={lang}
-          userId={user.id}
-          scores={scores}
-          definitions={defMeta}
-        />
-        <PublicFooter />
-      </div>
-    );
-  }
-
-  // ─── Public: interactive preview with sample data ─────────────────────────────
   return (
     <>
       <PublicNav />

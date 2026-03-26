@@ -831,10 +831,20 @@ const TAB_ICONS: Record<Tab, React.ReactNode> = {
 };
 
 export default function ProfileTabs({ profile, lang, initialTab }: { profile: ProfileData; lang: Lang; initialTab?: string }) {
-  const [tab, setTab] = useState<Tab>(() => {
-    const valid: Tab[] = ['profile', 'orders', 'results', 'invoices'];
-    return valid.includes(initialTab as Tab) ? (initialTab as Tab) : 'profile';
-  });
+  const VALID_TABS: Tab[] = ['profile', 'orders', 'results', 'invoices'];
+  const [tab, setTab] = useState<Tab>(() =>
+    VALID_TABS.includes(initialTab as Tab) ? (initialTab as Tab) : 'profile'
+  );
+
+  // Sync when the URL ?tab= param changes via client-side navigation
+  useEffect(() => {
+    if (initialTab && VALID_TABS.includes(initialTab as Tab)) {
+      setTab(initialTab as Tab);
+    } else if (!initialTab) {
+      setTab('profile');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTab]);
   const t = T[lang] ?? T.en;
 
   const tabs: { id: Tab; label: string }[] = [
