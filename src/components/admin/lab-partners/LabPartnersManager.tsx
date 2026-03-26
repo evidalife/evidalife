@@ -431,6 +431,18 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
 
   // ── Cover image helpers ───────────────────────────────────────────────────────
 
+  const deleteCoverFromStorage = async (url: string | null) => {
+    if (!url) return;
+    try {
+      const path = url.includes('lab-covers/') ? url.split('lab-covers/').pop() : null;
+      if (path) {
+        await supabase.storage.from('lab-covers').remove([path]);
+      }
+    } catch (e) {
+      console.error('Failed to delete cover from storage:', e);
+    }
+  };
+
   const handleCoverFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -452,6 +464,8 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
 
   const uploadCoverImage = async (): Promise<string | null> => {
     if (!coverFile) return coverImageUrl; // no new file — keep existing
+    // Delete old image from storage before uploading replacement
+    await deleteCoverFromStorage(coverImageUrl);
     const reader = new FileReader();
     const base64 = await new Promise<string>((resolve) => {
       reader.onload = (e) => resolve(e.target!.result as string);
@@ -1145,7 +1159,7 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                     {(coverImagePreview ?? coverImageUrl) && (
                       <button
                         type="button"
-                        onClick={() => { setCoverImageUrl(null); setCoverImagePreview(null); setCoverFile(null); }}
+                        onClick={() => { deleteCoverFromStorage(coverImageUrl); setCoverImageUrl(null); setCoverImagePreview(null); setCoverFile(null); }}
                         className="text-xs text-red-500 hover:text-red-700 transition text-left"
                       >
                         Remove

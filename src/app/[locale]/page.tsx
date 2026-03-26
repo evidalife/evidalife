@@ -100,7 +100,7 @@ const T: Record<Lang, {
         { label: 'Diabetes',                     desc: '85 % durch Ernährung vermeidbar' },
       ],
       callout: '+10–15 Jahre',
-      calloutSub: 'Das sind mehr Tote als in beiden Weltkriegen zusammen — jedes einzelne Jahr. Doch die meisten dieser Todesfälle sind vermeidbar. Ungesunde Ernährung ist heute der Risikofaktor Nr. 1 für vorzeitigen Tod weltweit.',
+      calloutSub: 'Die meisten vorzeitigen Todesfälle sind vermeidbar. Mit der richtigen Ernährung kannst du 10–15 gesunde Jahre gewinnen. Füge Jahre zu deinem Leben hinzu — und Leben zu deinen Jahren.',
       source: 'Quelle: WHO Noncommunicable Diseases Fact Sheet, 2024',
     },
     mission: {
@@ -177,7 +177,7 @@ const T: Record<Lang, {
         { label: 'Diabetes',             desc: '85% preventable through diet' },
       ],
       callout: '+10–15 years',
-      calloutSub: "That's more than both World Wars combined — every single year. Yet most of these deaths are preventable. Unhealthy diets are now the #1 risk factor for early death globally.",
+      calloutSub: "Most premature deaths are preventable. With the right nutrition, you can add 10–15 healthy years to your life. Add years to your life — and life to your years.",
       source: 'Source: WHO Noncommunicable Diseases Fact Sheet, 2024',
     },
     mission: {
@@ -254,7 +254,7 @@ const T: Record<Lang, {
         { label: 'Diabète',                  desc: "85 % évitables par l'alimentation" },
       ],
       callout: '+10–15 ans',
-      calloutSub: "C'est plus de morts que lors des deux guerres mondiales réunies — chaque année. Pourtant, la plupart de ces décès sont évitables. Une alimentation malsaine est désormais le facteur de risque n°1 de mort prématurée dans le monde.",
+      calloutSub: "La plupart des décès prématurés sont évitables. Avec une bonne nutrition, vous pouvez gagner 10 à 15 années de vie en bonne santé. Ajoutez des années à votre vie — et de la vie à vos années.",
       source: 'Source : Fiche d\'information de l\'OMS sur les maladies non transmissibles, 2024',
     },
     mission: {
@@ -331,7 +331,7 @@ const T: Record<Lang, {
         { label: 'Diabetes',                    desc: '85% prevenibles a través de la dieta' },
       ],
       callout: '+10–15 años',
-      calloutSub: 'Eso es más muertos que en ambas guerras mundiales juntas — cada año. Sin embargo, la mayoría de estas muertes son prevenibles. Las dietas poco saludables son ahora el factor de riesgo n.º 1 de muerte prematura a nivel mundial.',
+      calloutSub: 'La mayoría de las muertes prematuras son prevenibles. Con la nutrición adecuada, puedes ganar 10–15 años saludables. Añade años a tu vida — y vida a tus años.',
       source: 'Fuente: Hoja de datos de la OMS sobre enfermedades no transmisibles, 2024',
     },
     mission: {
@@ -408,7 +408,7 @@ const T: Record<Lang, {
         { label: 'Diabete',                    desc: "85% prevenibili attraverso l'alimentazione" },
       ],
       callout: '+10–15 anni',
-      calloutSub: "Sono più morti di entrambe le guerre mondiali messe insieme — ogni singolo anno. Eppure la maggior parte di questi decessi è prevenibile. Le diete non salutari sono ora il fattore di rischio n. 1 per la morte prematura a livello globale.",
+      calloutSub: "La maggior parte dei decessi prematuri è prevenibile. Con la giusta nutrizione, puoi guadagnare 10–15 anni di vita sana. Aggiungi anni alla tua vita — e vita ai tuoi anni.",
       source: "Fonte: Scheda informativa dell'OMS sulle malattie non trasmissibili, 2024",
     },
     mission: {
