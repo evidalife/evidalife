@@ -87,7 +87,7 @@ type UploadRecord = {
   patient: { first_name: string | null; last_name: string | null; email: string | null } | null;
 };
 
-type AllBiomarker = { id: string; name: any; unit: string | null; he_domain: string | null; source: string | null; ref_range_low: number | null; ref_range_high: number | null };
+type AllBiomarker = { id: string; name: any; unit: string | null; he_domain: string | null; item_type: string | null; ref_range_low: number | null; ref_range_high: number | null };
 
 // ─── Lab source options ───────────────────────────────────────────────────────
 
@@ -318,11 +318,12 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
   // Load all biomarker definitions and labs on mount
   useEffect(() => {
     loadUploads();
-    supabase.from('biomarkers').select('id, name, unit, he_domain, source, ref_range_low, ref_range_high').eq('is_active', true)
-      .then(({ data }) => {
+    supabase.from('biomarkers').select('id, name, unit, he_domain, item_type, ref_range_low, ref_range_high').eq('is_active', true)
+      .then(({ data, error }) => {
+        if (error) { console.error('[PdfUploadTab] biomarkers load error:', error?.message, error?.code); return; }
         const bms = (data as AllBiomarker[]) ?? [];
         setAllBiomarkers(bms);
-        const unique = [...new Set(bms.map((b) => b.source).filter(Boolean) as string[])].sort();
+        const unique = [...new Set(bms.map((b) => b.item_type).filter(Boolean) as string[])].sort();
         setAvailableSources(unique);
       });
     supabase.from('lab_partners').select('id, name, lab_type, lab_code, parent_lab_id, city, postal_code, address, phone, email, test_categories')
@@ -781,7 +782,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
 
   const filteredBiomarkers = useMemo(() => {
     if (!reportType) return allBiomarkers;
-    return allBiomarkers.filter((b) => b.source === reportType);
+    return allBiomarkers.filter((b) => b.item_type === reportType);
   }, [allBiomarkers, reportType]);
 
   // ── Add manual row to review table ───────────────────────────────────────────
@@ -1518,7 +1519,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                           )}
                         </td>
                         <td className="px-3 py-2.5">
-                          <SourceBadge source={row.db_biomarker?.source ?? null} />
+                          <SourceBadge source={row.db_biomarker?.item_type ?? null} />
                         </td>
                         <td className="px-3 py-2.5"><FlagBadge flag={flag} /></td>
                       </tr>

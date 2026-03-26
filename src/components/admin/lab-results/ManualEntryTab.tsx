@@ -18,7 +18,7 @@ type AllBiomarker = {
   id: string;
   name: Record<string, string> | string;
   unit: string | null;
-  source: string | null;
+  item_type: string | null;
   ref_range_low: number | null;
   ref_range_high: number | null;
   optimal_range_low: number | null;
@@ -156,7 +156,7 @@ export default function ManualEntryTab() {
 
   useEffect(() => {
     supabase.from('biomarkers')
-      .select('id, name, unit, source, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, range_type')
+      .select('id, name, unit, item_type, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, range_type')
       .eq('is_active', true)
       .then(({ data, error }) => {
         if (error) { console.error('[ManualEntryTab] biomarkers load error:', error); return; }
@@ -247,7 +247,7 @@ export default function ManualEntryTab() {
 
   const filteredBiomarkers = useMemo(() => {
     if (!categoryFilter) return allBiomarkers;
-    return allBiomarkers.filter((b) => b.source === categoryFilter);
+    return allBiomarkers.filter((b) => b.item_type === categoryFilter);
   }, [allBiomarkers, categoryFilter]);
 
   // ── Per-row computed values ───────────────────────────────────────────────
@@ -746,7 +746,7 @@ export default function ManualEntryTab() {
                                 })}
                                 className="w-full text-left px-3 py-1.5 text-xs text-[#1c2a2b] hover:bg-[#0e393d]/5 flex items-center gap-2"
                               >
-                                <span className="shrink-0">{SOURCE_ICON[b.source ?? ''] ?? '❓'}</span>
+                                <span className="shrink-0">{SOURCE_ICON[b.item_type ?? ''] ?? '❓'}</span>
                                 <span className="flex-1">{locName(b.name)}</span>
                                 {b.unit && <span className="text-[#1c2a2b]/35 shrink-0">{b.unit}</span>}
                               </button>
