@@ -599,6 +599,43 @@ export default function ManualEntryTab() {
         </div>
       )}
 
+      {/* ── Test Category ────────────────────────────────────────────────── */}
+      {availableSources.length > 0 && (
+        <div>
+          <SectionHeading>Test Category</SectionHeading>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => { setCategoryFilter(null); setRows([newRow()]); }}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                categoryFilter === null
+                  ? 'bg-[#0e393d] text-white'
+                  : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
+              }`}
+            >
+              All
+            </button>
+            {availableSources.map((source) => (
+              <button
+                key={source}
+                onClick={() => { setCategoryFilter(categoryFilter === source ? null : source); setRows([newRow()]); }}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  categoryFilter === source
+                    ? 'bg-[#0e393d] text-white'
+                    : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
+                }`}
+              >
+                {SOURCE_ICON[source] ?? '🔬'} {SOURCE_LABEL[source] ?? source}
+              </button>
+            ))}
+          </div>
+          {categoryFilter && (
+            <p className="mt-1.5 text-xs text-[#1c2a2b]/50">
+              Showing only {SOURCE_LABEL[categoryFilter] ?? categoryFilter} markers
+            </p>
+          )}
+        </div>
+      )}
+
       {/* ── 1d. External: Lab contact fields ─────────────────────────────── */}
       {labSource === 'external_upload' && (
         <div className="rounded-xl border border-[#0e393d]/10 bg-white p-4">
@@ -654,43 +691,6 @@ export default function ManualEntryTab() {
         </div>
       </div>
 
-      {/* ── Section 3: Test Category Filter ─────────────────────────────── */}
-      {availableSources.length > 0 && (
-        <div>
-          <SectionHeading>Test Category</SectionHeading>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setCategoryFilter(null)}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                categoryFilter === null
-                  ? 'bg-[#0e393d] text-white'
-                  : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
-              }`}
-            >
-              All
-            </button>
-            {availableSources.map((source) => (
-              <button
-                key={source}
-                onClick={() => setCategoryFilter(categoryFilter === source ? null : source)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  categoryFilter === source
-                    ? 'bg-[#0e393d] text-white'
-                    : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
-                }`}
-              >
-                {SOURCE_ICON[source] ?? '🔬'} {SOURCE_LABEL[source] ?? source}
-              </button>
-            ))}
-          </div>
-          {categoryFilter && (
-            <p className="mt-1.5 text-xs text-[#1c2a2b]/50">
-              Showing only {SOURCE_LABEL[categoryFilter] ?? categoryFilter} markers
-            </p>
-          )}
-        </div>
-      )}
-
       {/* ── Section 4: Marker Rows Table ─────────────────────────────────── */}
       <div>
         <SectionHeading>Markers</SectionHeading>
@@ -720,8 +720,6 @@ export default function ManualEntryTab() {
                       range_type:         row.bm.range_type,
                     })
                   : null;
-                const altUnitList = row.bm ? (conversionsMap[row.bm.id] ?? []).map((c) => c.alt_unit) : [];
-
                 return (
                   <tr key={row.id} className="hover:bg-[#fafaf8] transition-colors">
                     {/* Biomarker */}
@@ -775,19 +773,27 @@ export default function ManualEntryTab() {
                       />
                     </td>
 
-                    {/* Unit */}
+                    {/* Unit — select from canonical + alt units, or plain text if no biomarker */}
                     <td className="px-3 py-2">
-                      <input
-                        type="text"
-                        placeholder={row.bm?.unit || '—'}
-                        value={row.unit}
-                        onChange={(e) => updateRow(row.id, { unit: e.target.value })}
-                        className="w-full rounded border border-[#0e393d]/15 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
-                      />
-                      {altUnitList.length > 0 && (
-                        <p className="mt-0.5 text-[10px] text-[#1c2a2b]/35">
-                          alt: {altUnitList.join(', ')}
-                        </p>
+                      {row.bm ? (() => {
+                        const canonical = row.bm.unit ?? '';
+                        const alts = (conversionsMap[row.bm.id] ?? []).map((c) => c.alt_unit);
+                        const options = [canonical, ...alts].filter(Boolean);
+                        return options.length > 1 ? (
+                          <select
+                            value={row.unit}
+                            onChange={(e) => updateRow(row.id, { unit: e.target.value })}
+                            className="w-full rounded border border-[#0e393d]/15 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
+                          >
+                            {options.map((u) => (
+                              <option key={u} value={u}>{u}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="text-xs text-[#1c2a2b]/60 px-1">{canonical || '—'}</span>
+                        );
+                      })() : (
+                        <span className="text-xs text-[#1c2a2b]/25 px-1">—</span>
                       )}
                     </td>
 

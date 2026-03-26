@@ -993,7 +993,50 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
             </div>
           )}
 
-          {/* ── 3. Lab selector (Evida/Partner, shown after order selected) ── */}
+          {/* ── 3. Report Type ───────────────────────────────────────────── */}
+          {availableSources.length > 0 && (
+            <div>
+              <SectionHeading>Report Type</SectionHeading>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setReportType(null)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                    reportType === null
+                      ? 'bg-[#0e393d] text-white'
+                      : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
+                  }`}
+                >
+                  All
+                </button>
+                {availableSources.map((source) => (
+                  <button
+                    key={source}
+                    onClick={() => {
+                      if (source === 'clinical_assessment' && onSwitchToManual) {
+                        onSwitchToManual();
+                      } else {
+                        setReportType(source);
+                      }
+                    }}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                      reportType === source
+                        ? 'bg-[#0e393d] text-white'
+                        : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
+                    }`}
+                  >
+                    {SOURCE_ICON[source] ?? '🔬'} {SOURCE_LABEL[source] ?? source}
+                  </button>
+                ))}
+              </div>
+              {reportType && reportType !== 'biomarker' && (
+                <p className="mt-1.5 text-xs text-[#1c2a2b]/50">
+                  Showing only {SOURCE_LABEL[reportType] ?? reportType} markers
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* ── 4. Lab selector (Evida/Partner, shown after order selected) ── */}
           {(labSource === 'evida_life' || labSource === 'partner_lab') && selectedOrder && (
             <div>
               <SectionHeading>Select Lab</SectionHeading>
@@ -1038,50 +1081,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
             </div>
           )}
 
-          {/* ── 3b. Report Type ──────────────────────────────────────────── */}
-          {availableSources.length > 0 && (
-            <div>
-              <SectionHeading>Report Type</SectionHeading>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setReportType(null)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                    reportType === null
-                      ? 'bg-[#0e393d] text-white'
-                      : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
-                  }`}
-                >
-                  All
-                </button>
-                {availableSources.map((source) => (
-                  <button
-                    key={source}
-                    onClick={() => {
-                      if (source === 'clinical_assessment' && onSwitchToManual) {
-                        onSwitchToManual();
-                      } else {
-                        setReportType(source);
-                      }
-                    }}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                      reportType === source
-                        ? 'bg-[#0e393d] text-white'
-                        : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
-                    }`}
-                  >
-                    {SOURCE_ICON[source] ?? '🔬'} {SOURCE_LABEL[source] ?? source}
-                  </button>
-                ))}
-              </div>
-              {reportType && reportType !== 'biomarker' && (
-                <p className="mt-1.5 text-xs text-[#1c2a2b]/50">
-                  Showing only {SOURCE_LABEL[reportType] ?? reportType} markers
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* ── 4. Drop zone ──────────────────────────────────────────────── */}
+          {/* ── 5. Drop zone ──────────────────────────────────────────────── */}
           {(() => {
             const uploadReady = labSource === 'external_upload' ? !!selectedUser : !!selectedOrder;
             return (
