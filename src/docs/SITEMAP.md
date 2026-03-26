@@ -34,12 +34,12 @@ Pages accessible without authentication.
 | `/shopping-list` | Shopping List | ✅ Live | Navbar → Kitchen → Shopping List |
 | `/team` | Team | ✅ Live | Footer |
 | `/terms` | Terms of Service | ✅ Live | Footer |
-| `/coaching` | Coaching | 🟡 Placeholder | Navbar → Fit → Coaching |
-| `/exercise` | Exercise | 🟡 Placeholder | Navbar → Fit → Exercise |
-| `/fit` | Fit | 🟡 Placeholder | Navbar → Fit → Overview |
+| `/coaching` | Coaching | ✅ Live | Navbar → Fit → Coaching |
+| `/exercise` | Exercise | ✅ Live | Navbar → Fit → Exercise |
+| `/fit` | Fit | ✅ Live | Navbar → Fit → Overview |
 | `/kitchen` | Kitchen | 🟡 Placeholder | Navbar → Kitchen → Overview |
-| `/sleep` | Schlaf / Sleep | 🟡 Placeholder | Navbar → Fit → Sleep |
-| `/stress-recovery` | Stress Recovery | 🟡 Placeholder | Navbar → Fit → Stress & Recovery |
+| `/sleep` | Schlaf / Sleep | ✅ Live | Navbar → Fit → Sleep |
+| `/stress-recovery` | Stress Recovery | ✅ Live | Navbar → Fit → Stress & Recovery |
 
 ---
 
@@ -190,11 +190,11 @@ Pages with a "coming soon" / `comingSoon` template — real routes, minimal cont
 | Route | Current State | Notes |
 |-------|--------------|-------|
 | `/kitchen` | 🟡 Coming soon | Section landing — sub-pages not yet built |
-| `/fit` | 🟡 Coming soon | Section landing — sub-pages not yet built |
-| `/sleep` | 🟡 Coming soon | Linked from Fit dropdown |
-| `/exercise` | 🟡 Coming soon | Linked from Fit dropdown |
-| `/stress-recovery` | 🟡 Coming soon | Linked from Fit dropdown |
-| `/coaching` | 🟡 Coming soon | Linked from Fit dropdown |
+| `/fit` | ✅ Live | Overview with 4 pillar cards linking to sub-pages |
+| `/sleep` | ✅ Live | Full sleep page: stages, biomarkers, evidence-based tips |
+| `/exercise` | ✅ Live | Full exercise page: Zone 2, VO₂max, strength, longevity metrics |
+| `/stress-recovery` | ✅ Live | Full stress page: HRV, cortisol, inflammation, recovery protocols |
+| `/coaching` | ✅ Live | Full coaching programme page with 3 tiers, 5-step process, CTA |
 | `/admin` | 🟡 Partially built | Has order stats; some dashboard sections still placeholder |
 
 > **Confirmed removed:** Data Explorer (TanStack Table) — no `page.tsx` found.
@@ -318,7 +318,7 @@ Grouped by domain. Not user-facing.
 | Category | Count |
 |---------|-------|
 | Public pages — live | 26 route patterns |
-| Public pages — placeholder / coming soon | 6 |
+| Public pages — placeholder / coming soon | 2 |
 | Auth pages (login/signup flow) | 4 |
 | Authenticated user pages | 3 |
 | Admin pages | 16 |
@@ -330,4 +330,4 @@ Grouped by domain. Not user-facing.
 | **Total API routes** | **53** |
 | Orphan pages | 0 (was 1 — `/orders` deleted, redirect added) |
 | Dead links | 0 |
-| Placeholder pages | 6 |
+| Placeholder pages | 2 |
