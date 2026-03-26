@@ -205,8 +205,9 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
   ],
   egfr: [
     'eGFR', 'eGFR CKD-EPI', 'GFR', 'Glomeruläre Filtrationsrate',
-    'eGFR CKD-EPI 2009', 'eGFR (CKD-EPI)', 'Estimated GFR',
-    'Geschätzte glomeruläre Filtrationsrate',
+    'eGFR CKD-EPI 2009', 'eGFR (CKD-EPI)', 'Estimated GFR', 'estimated GFR',
+    'Geschätzte glomeruläre Filtrationsrate', 'geschätzte GFR',
+    'GFR estimé', 'filtrazione glomerulare', 'CKD-EPI', 'MDRD',
     'Tasa de filtración glomerular', 'TFG estimada',
   ],
   uric_acid: [
@@ -232,6 +233,7 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
   alp: [
     'Alkalische Phosphatase', 'AP', 'ALP', 'Phosphatase alcaline',
     'Fosfatasi alcalina', 'Alk. Phosphatase', 'Fosfatasa alcalina',
+    'alkaline phosphatase', 'alk phos', 'AlkPhos',
   ],
   ldh: [
     'LDH', 'Laktatdehydrogenase', 'Lactate Déshydrogénase',
@@ -264,7 +266,10 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
     'Nüchterninsulin', 'Insulin nüchtern', 'Fasting Insulin',
     'Insuline à jeun', 'Insulina', 'Insulin', 'Insulina en ayunas',
   ],
-  homa_ir: ['HOMA-IR', 'HOMA Index', 'HOMA', 'Homeostatic Model Assessment'],
+  homa_ir: [
+    'HOMA-IR', 'HOMA IR', 'HOMA Index', 'HOMA', 'HOMA2-IR',
+    'Insulin Resistance Index', 'Homeostatic Model Assessment', 'homeostatic model assessment',
+  ],
 
   // === LIPIDS ===
   total_cholesterol: [
@@ -319,14 +324,16 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
     'Testosterone libero', 'Testosterona libre',
   ],
   shbg: [
-    'SHBG', 'Sexualhormon-bindendes Globulin',
-    'Sex Hormone Binding Globulin', 'Globuline liant les hormones sexuelles',
+    'SHBG', 'Sexualhormon-bindendes Globulin', 'Sex-Hormon-bindendes Globulin',
+    'Sex Hormone Binding Globulin', 'Sex hormone binding globulin',
+    'Globuline liant les hormones sexuelles', 'globulina legante gli ormoni sessuali',
     'Globulina transportadora de hormonas sexuales',
   ],
   dhea_s: ['DHEA-S', 'DHEAS', 'DHEA-Sulfat', 'DHEA Sulfate'],
   estradiol: ['Östradiol', 'Estradiol', 'E2', 'Estradiol (E2)', 'Œstradiol'],
   igf_1: [
-    'IGF-1', 'IGF1', 'Insulin-like Growth Factor 1', 'Somatomedin C', 'IGF-I',
+    'IGF-1', 'IGF1', 'IGF 1', 'Insulin-like Growth Factor 1', 'Somatomedin C', 'somatomedin-c',
+    'IGF-I', 'insulinähnlicher Wachstumsfaktor', 'facteur de croissance insulinomimétique',
     'Factor de crecimiento insulínico tipo 1',
   ],
   cortisol: ['Cortisol', 'Kortisol', 'Hydrocortisone'],
@@ -376,14 +383,46 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
 
   // === OTHER ===
   omega_3_index: [
-    'Omega-3 Index', 'Omega-3-Index', 'Omega-3', 'EPA+DHA',
-    'Índice Omega-3',
+    'Omega-3 Index', 'Omega-3-Index', 'Omega 3 Index', 'Omega-3', 'EPA+DHA', 'EPA+DHA%',
+    'omega-3 fatty acids', 'Omega-3-Fettsäuren', 'HS-Omega-3 Index', 'Índice Omega-3',
   ],
   iodine_urine: [
     'Jod', 'Jod (Urin)', 'Iodine', 'Iode', 'Iodio', 'Iod im Urin',
     'Yodo', 'Yodo en orina',
   ],
+
+  // === CALCULATED (some labs do report these) ===
+  non_hdl_c: [
+    'Non-HDL', 'Non-HDL-C', 'Non-HDL Cholesterin', 'Nicht-HDL',
+    'nicht-HDL Cholesterin', 'Non-HDL cholestérol', 'colesterolo non-HDL',
+  ],
+  tsat: [
+    'TSAT', 'TS%', 'Transferrin-Sättigung', 'Transferrinsättigung',
+    'transferrin saturation', 'saturation de la transferrine',
+    'saturazione della transferrina', 'iron saturation',
+  ],
 };
+
+// Markers computed by Evidalife — must never be extracted from lab PDF reports.
+// (egfr, non_hdl_c, tsat, homa_ir are exceptions — some labs do report them.)
+export const CALCULATED_SKIP_IMPORT = new Set([
+  'aip',
+  'tg_hdl_ratio',
+  'castelli_i',
+  'castelli_ii',
+  'mean_arterial_pressure',
+  'pulse_pressure',
+  'nlr',
+  'lmr',
+  'plr',
+  'sii',
+  'fib4_score',
+  'de_ritis_ratio',
+  'wht_ratio',
+  'homa_beta',
+  'pheno_age',
+  'bmi',
+]);
 
 // ─── Biomarker name matching ──────────────────────────────────────────────────
 
@@ -421,14 +460,20 @@ export function matchBiomarkerName(
   // 1. Slug match
   const slugCandidate = n.replace(/[\s\-]/g, '_').replace(/[^a-z0-9_]/g, '');
   const slugMatch = biomarkers.find((b) => b.slug === slugCandidate);
-  if (slugMatch) return { biomarker: slugMatch, confidence: 'exact' };
+  if (slugMatch) {
+    if (CALCULATED_SKIP_IMPORT.has(slugMatch.slug)) return null;
+    return { biomarker: slugMatch, confidence: 'exact' };
+  }
 
   // 2. Exact name match in any of 5 languages
   for (const b of biomarkers) {
     if (!b.name) continue;
     for (const lang of ['de', 'en', 'es', 'fr', 'it'] as const) {
       const langName = norm((b.name as Record<string, string>)[lang] ?? '');
-      if (langName && langName === n) return { biomarker: b, confidence: 'exact' };
+      if (langName && langName === n) {
+        if (CALCULATED_SKIP_IMPORT.has(b.slug)) return null;
+        return { biomarker: b, confidence: 'exact' };
+      }
     }
   }
 
@@ -437,7 +482,10 @@ export function matchBiomarkerName(
     for (const alias of aliases) {
       if (norm(alias) === n) {
         const bm = biomarkers.find((b) => b.slug === slug);
-        if (bm) return { biomarker: bm, confidence: 'alias' };
+        if (bm) {
+          if (CALCULATED_SKIP_IMPORT.has(bm.slug)) return null;
+          return { biomarker: bm, confidence: 'alias' };
+        }
       }
     }
   }
@@ -450,7 +498,10 @@ export function matchBiomarkerName(
         const a = norm(alias).replace(/[^a-z0-9äöüéèàùâêîôûñ]/gi, '').toLowerCase();
         if (a.length >= 4 && (stripped === a || stripped.startsWith(a) || a.startsWith(stripped))) {
           const bm = biomarkers.find((b) => b.slug === slug);
-          if (bm) return { biomarker: bm, confidence: 'fuzzy' };
+          if (bm) {
+            if (CALCULATED_SKIP_IMPORT.has(bm.slug)) return null;
+            return { biomarker: bm, confidence: 'fuzzy' };
+          }
         }
       }
     }

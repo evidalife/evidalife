@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import { transitionOrder } from '@/lib/order-fulfilment';
 import { computeStatusFlag, checkPlausibility } from '@/lib/lab-results/flagging';
 import { generateReportNumber } from '@/lib/lab-results/report-number';
+import { computeAllCalculatedMarkers } from '@/lib/health-score';
 
 function adminClient() {
   return createClient(
@@ -88,6 +89,21 @@ export async function POST(req: NextRequest) {
     let warnings = 0;
     const ordersToCheck = new Set<string>();
 
+    // Pre-fetch slugs for all biomarker IDs so we can build the slug→value map
+    const allBiomarkerIds = [...new Set(results.map((r: any) => r.biomarkerDefinitionId).filter(Boolean))];
+    const { data: allBiomarkerSlugs } = await supabase
+      .from('biomarkers')
+      .select('id, slug')
+      .in('id', allBiomarkerIds);
+    const biomarkerSlugMap = new Map<string, string>(
+      (allBiomarkerSlugs ?? []).map((b: any) => [b.id, b.slug]),
+    );
+
+    // Collect slug→value for auto-computing calculated markers after the loop
+    const savedValues: Record<string, number> = {};
+    let savedUserId: string | null = null;
+    let savedTestDate: string | null = null;
+
     for (const item of results) {
       const {
         orderId, orderTestItemId, biomarkerDefinitionId, userId,
@@ -164,6 +180,12 @@ export async function POST(req: NextRequest) {
 
       created++;
 
+      // Track saved values for post-loop calculated marker computation
+      const slug = biomarkerSlugMap.get(biomarkerDefinitionId);
+      if (slug) savedValues[slug] = numericValue;
+      if (!savedUserId && userId) savedUserId = userId;
+      if (!savedTestDate && testDate) savedTestDate = testDate;
+
       // Plausibility check
       const plausibility = checkPlausibility(numericValue, biomarkerName || '', {
         ref_range_low: refRangeLow ?? null,
@@ -197,6 +219,64 @@ export async function POST(req: NextRequest) {
 
       if (orderId) ordersToCheck.add(orderId);
     }
+
+    // ── Auto-compute calculated markers ──────────────────────────────────────
+    if (labReportId && savedUserId && Object.keys(savedValues).length > 0) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('birthday, height_cm')
+        .eq('id', savedUserId)
+        .single();
+
+      const userAge = profileData?.birthday
+        ? Math.floor(
+            (Date.now() - new Date(profileData.birthday).getTime()) /
+            (365.25 * 24 * 3600 * 1000),
+          )
+        : undefined;
+      const heightCm = profileData?.height_cm ?? undefined;
+
+      const withCalc = computeAllCalculatedMarkers(savedValues, userAge, heightCm);
+
+      const newCalcEntries = Object.entries(withCalc).filter(
+        ([slug]) =>
+          !(slug in savedValues) &&
+          slug !== 'age_years' &&
+          slug !== 'height_cm',
+      );
+
+      if (newCalcEntries.length > 0) {
+        const calcSlugs = newCalcEntries.map(([slug]) => slug);
+        const { data: calcBiomarkers } = await supabase
+          .from('biomarkers')
+          .select('id, slug')
+          .in('slug', calcSlugs)
+          .eq('is_calculated', true);
+
+        if (calcBiomarkers && calcBiomarkers.length > 0) {
+          const calcBioMap = Object.fromEntries(calcBiomarkers.map((b: any) => [b.slug, b.id]));
+          const calcRows = newCalcEntries
+            .filter(([slug]) => calcBioMap[slug])
+            .map(([slug, value]) => ({
+              user_id:                 savedUserId,
+              lab_report_id:           labReportId,
+              biomarker_definition_id: calcBioMap[slug],
+              value_numeric:           value,
+              unit:                    '',
+              source:                  'calculated',
+              is_reviewed:             true,
+              test_date:               savedTestDate ?? new Date().toISOString().split('T')[0],
+              measured_at:             savedTestDate
+                ? new Date(savedTestDate).toISOString()
+                : new Date().toISOString(),
+            }));
+          if (calcRows.length > 0) {
+            await supabase.from('lab_results').insert(calcRows);
+          }
+        }
+      }
+    }
+    // ── End auto-compute ──────────────────────────────────────────────────────
 
     // Check if any orders are now 100% complete
     let orderCompleted = false;

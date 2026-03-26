@@ -237,13 +237,34 @@ export const CATEGORY_DISPLAY: Record<string, Record<string, string>> = {
 
 // ── Calculated Markers ────────────────────────────────────────────────────────
 //
-// A map of slug → compute function. Each function receives a slug→value lookup
-// of the user's measured biomarkers and returns the calculated value, or null
-// if any required input is missing.
+// Each key MUST exactly match the slug in the `biomarkers` DB table.
+// Keys renamed from previous version:
+//   atherogenic_index              → aip
+//   non_hdl_cholesterol            → non_hdl_c
+//   castelli_risk_index_i          → castelli_i
+//   castelli_risk_index_ii         → castelli_ii
+//   fib4_index                     → fib4_score
+//   neutrophil_lymphocyte_ratio    → nlr
+//   lymphocyte_monocyte_ratio      → lmr
+//   platelet_lymphocyte_ratio      → plr
+//   systemic_immune_inflammation_index → sii
+//   transferrin_saturation         → tsat  (inputs: serum_iron→iron_serum, tibc→transferrin)
+//   waist_height_ratio             → wht_ratio
+//
+// Canonical units in lab_results (what formulas receive):
+//   fasting_glucose  mg/dL    triglycerides    mg/dL
+//   creatinine       mg/dL    hdl_cholesterol  mg/dL
+//   albumin          g/dL     ldl_cholesterol  mg/dL
+//   hs_crp           mg/L     total_cholesterol mg/dL
+//   systolic_bp      mmHg     diastolic_bp     mmHg
+//   neutrophils      %        lymphocytes      %
+//   monocytes        %        platelets        10³/µL
+//   alt/ast/alp      U/L      iron_serum       µg/dL
+//   transferrin      mg/dL
 
 type SlugValues = Record<string, number>;
 
-export type CalculatedMarkerFn = (v: SlugValues) => number | null;
+export type CalculatedMarkerFn = (v: SlugValues, userAge?: number) => number | null;
 
 function get(v: SlugValues, slug: string): number | null {
   return slug in v ? v[slug] : null;
@@ -256,188 +277,261 @@ function all(v: SlugValues, ...slugs: string[]): number[] | null {
 }
 
 export const CALCULATED_MARKERS: Record<string, CalculatedMarkerFn> = {
-  // HOMA-IR — insulin resistance index
+
+  // ── Metabolism ──────────────────────────────────────────────────────────────
+
+  // HOMA-IR — insulin resistance
+  // Divisor 405 because fasting_glucose is in mg/dL (not mmol/L)
   homa_ir: (v) => {
-    const [glucose, insulin] = all(v, 'fasting_glucose', 'fasting_insulin') ?? [null, null];
-    if (glucose === null || insulin === null) return null;
-    // glucose in mmol/L, insulin in µIU/mL
-    return (glucose * insulin) / 22.5;
+    const r = all(v, 'fasting_insulin', 'fasting_glucose');
+    if (!r) return null;
+    const [insulin, glucose] = r;
+    if (glucose <= 0) return null;
+    return (insulin * glucose) / 405;
   },
 
-  // eGFR (CKD-EPI simplified, serum creatinine in µmol/L)
-  egfr: (v) => {
-    const cr = get(v, 'creatinine');
-    if (cr === null) return null;
-    // CKD-EPI race-free 2021: approximation; age/sex unknown so neutral midpoint
-    // Convert µmol/L → mg/dL: divide by 88.4
-    const crMg = cr / 88.4;
-    // Use simplified Cockcroft-Gault placeholder (accurate eGFR needs age+sex from profile)
-    if (crMg <= 0) return null;
-    return Math.round(100 / crMg);
+  // HOMA-β — pancreatic beta-cell function (normal ~100%)
+  homa_beta: (v) => {
+    const r = all(v, 'fasting_insulin', 'fasting_glucose');
+    if (!r) return null;
+    const [insulin, glucose] = r;
+    const glucoseMmol = glucose / 18.0182;
+    if (glucoseMmol <= 3.5) return null;
+    return (20 * insulin) / (glucoseMmol - 3.5);
   },
 
-  // BMI — body mass index
+  // ── Heart & Vessels ─────────────────────────────────────────────────────────
+
+  // Non-HDL Cholesterol = Total − HDL (mg/dL)
+  non_hdl_c: (v) => {
+    const r = all(v, 'total_cholesterol', 'hdl_cholesterol');
+    if (!r) return null;
+    return r[0] - r[1];
+  },
+
+  // TG/HDL Ratio (both mg/dL — ratio is unit-independent)
+  tg_hdl_ratio: (v) => {
+    const r = all(v, 'triglycerides', 'hdl_cholesterol');
+    if (!r || r[1] <= 0) return null;
+    return r[0] / r[1];
+  },
+
+  // AIP — Atherogenic Index of Plasma: log10(TG/HDL in mmol/L)
+  // Convert mg/dL → mmol/L first: TG÷88.57, HDL÷38.67
+  aip: (v) => {
+    const r = all(v, 'triglycerides', 'hdl_cholesterol');
+    if (!r) return null;
+    const tgMmol  = r[0] / 88.57;
+    const hdlMmol = r[1] / 38.67;
+    if (hdlMmol <= 0 || tgMmol <= 0) return null;
+    return Math.log10(tgMmol / hdlMmol);
+  },
+
+  // Castelli Risk Index I = Total Cholesterol / HDL
+  castelli_i: (v) => {
+    const r = all(v, 'total_cholesterol', 'hdl_cholesterol');
+    if (!r || r[1] <= 0) return null;
+    return r[0] / r[1];
+  },
+
+  // Castelli Risk Index II = LDL / HDL
+  castelli_ii: (v) => {
+    const r = all(v, 'ldl_cholesterol', 'hdl_cholesterol');
+    if (!r || r[1] <= 0) return null;
+    return r[0] / r[1];
+  },
+
+  // MAP — Mean Arterial Pressure (mmHg)
+  mean_arterial_pressure: (v) => {
+    const r = all(v, 'systolic_bp', 'diastolic_bp');
+    if (!r) return null;
+    return r[1] + (r[0] - r[1]) / 3;
+  },
+
+  // Pulse Pressure = SBP − DBP (mmHg)
+  pulse_pressure: (v) => {
+    const r = all(v, 'systolic_bp', 'diastolic_bp');
+    if (!r) return null;
+    return r[0] - r[1];
+  },
+
+  // ── Inflammation ─────────────────────────────────────────────────────────────
+
+  // NLR — Neutrophil-to-Lymphocyte Ratio
+  nlr: (v) => {
+    const r = all(v, 'neutrophils', 'lymphocytes');
+    if (!r || r[1] <= 0) return null;
+    return r[0] / r[1];
+  },
+
+  // LMR — Lymphocyte-to-Monocyte Ratio
+  lmr: (v) => {
+    const r = all(v, 'lymphocytes', 'monocytes');
+    if (!r || r[1] <= 0) return null;
+    return r[0] / r[1];
+  },
+
+  // PLR — Platelet-to-Lymphocyte Ratio
+  plr: (v) => {
+    const r = all(v, 'platelets', 'lymphocytes');
+    if (!r || r[1] <= 0) return null;
+    return r[0] / r[1];
+  },
+
+  // SII — Systemic Immune-Inflammation Index: (Neutrophils × Platelets) / Lymphocytes
+  sii: (v) => {
+    const r = all(v, 'neutrophils', 'platelets', 'lymphocytes');
+    if (!r || r[2] <= 0) return null;
+    return (r[0] * r[1]) / r[2];
+  },
+
+  // ── Organ Function ────────────────────────────────────────────────────────────
+
+  // eGFR — CKD-EPI 2021 race-free (sex-neutral approximation; requires userAge)
+  egfr: (v, userAge) => {
+    const cr = get(v, 'creatinine'); // mg/dL
+    if (cr === null || cr <= 0 || !userAge) return null;
+    // Simplified neutral estimate — full CKD-EPI needs sex from profile
+    return Math.max(0, Math.round(75 * Math.pow(0.7 / cr, 0.411)));
+  },
+
+  // De Ritis Ratio = AST / ALT
+  de_ritis_ratio: (v) => {
+    const r = all(v, 'ast', 'alt');
+    if (!r || r[1] <= 0) return null;
+    return r[0] / r[1];
+  },
+
+  // FIB-4 — liver fibrosis: (Age × AST) / (Platelets × √ALT)
+  // Requires userAge — returns null without it
+  fib4_score: (v, userAge) => {
+    const r = all(v, 'ast', 'alt', 'platelets');
+    if (!r || !userAge) return null;
+    const [ast, alt, platelets] = r;
+    if (alt <= 0 || platelets <= 0) return null;
+    return (userAge * ast) / (platelets * Math.sqrt(alt));
+  },
+
+  // ── Nutrients ────────────────────────────────────────────────────────────────
+
+  // TSAT — Transferrin Saturation (%)
+  // iron_serum µg/dL → µmol/L: ÷5.585
+  // transferrin mg/dL → g/L: ×0.01 → µmol/L: ×25.2 (MW 79,570 Da, 2 Fe sites)
+  tsat: (v) => {
+    const r = all(v, 'iron_serum', 'transferrin');
+    if (!r) return null;
+    const [ironUgDl, transferrinMgDl] = r;
+    const ironUmolL     = ironUgDl / 5.585;
+    const transferrinGL = transferrinMgDl * 0.01;
+    const tibcUmolL     = transferrinGL * 25.2;
+    if (tibcUmolL <= 0) return null;
+    return (ironUmolL / tibcUmolL) * 100;
+  },
+
+  // ── Body Composition ──────────────────────────────────────────────────────────
+
+  // BMI — height_cm injected from profile (not in lab_results)
   bmi: (v) => {
-    const [weight, height] = all(v, 'weight', 'height') ?? [null, null];
-    if (weight === null || height === null || height === 0) return null;
-    const heightM = height / 100;
-    return weight / (heightM * heightM);
+    const weight = get(v, 'body_weight'); // kg
+    const height = get(v, 'height_cm');  // injected from profile
+    if (weight === null || height === null || height <= 0) return null;
+    const hM = height / 100;
+    return weight / (hM * hM);
   },
 
-  // PhenoAge (Levine biological age proxy — simplified)
-  pheno_age: (v) => {
-    const albumin   = get(v, 'albumin');
+  // WHtR — Waist-to-Height Ratio (height_cm from profile)
+  wht_ratio: (v) => {
+    const waist  = get(v, 'waist_circumference');
+    const height = get(v, 'height_cm'); // injected from profile
+    if (waist === null || height === null || height <= 0) return null;
+    return waist / height;
+  },
+
+  // ── Epigenetics ──────────────────────────────────────────────────────────────
+
+  // PhenoAge — Levine 2018 biological age (years)
+  //
+  // Inputs (canonical units → Levine units):
+  //   albumin        g/dL  → g/L       (×10)
+  //   creatinine     mg/dL → µmol/L    (×88.42)
+  //   fasting_glucose mg/dL → mmol/L   (÷18.0182)
+  //   hs_crp         mg/L  → mg/dL     (÷10) then ln()
+  //   lymphocytes    %     → as-is
+  //   mcv            fL    → as-is
+  //   rdw            %     → as-is
+  //   alp            U/L   → as-is
+  //   userAge        years → from profile (NOT a lab slug)
+  //
+  // Previous bugs fixed:
+  //   'alkaline_phosphatase' → 'alp'
+  //   'leukocytes'           → removed (wbc is NOT in Levine formula)
+  //   9th coefficient        → chronological age (was incorrectly wbc)
+  pheno_age: (v, userAge) => {
+    const albumin    = get(v, 'albumin');
     const creatinine = get(v, 'creatinine');
     const glucose    = get(v, 'fasting_glucose');
     const crp        = get(v, 'hs_crp');
     const lympho     = get(v, 'lymphocytes');
     const mcv        = get(v, 'mcv');
     const rdw        = get(v, 'rdw');
-    const alkPhos    = get(v, 'alkaline_phosphatase');
-    const wbc        = get(v, 'leukocytes');
-    if ([albumin, creatinine, glucose, crp, lympho, mcv, rdw, alkPhos, wbc].some((x) => x === null)) return null;
-    // Levine 2018 linear combination (simplified — full formula requires log transforms)
-    const score =
-      -19.907 -
-      0.0336  * albumin! +
-      0.0095  * creatinine! +
-      0.1953  * glucose! +
-      0.0954  * Math.log(crp! + 0.01) -
-      0.0120  * lympho! +
-      0.0268  * mcv! +
-      0.3306  * rdw! +
-      0.00188 * alkPhos! +
-      0.0554  * wbc!;
-    return score;
-  },
+    const alp        = get(v, 'alp');
 
-  // TG/HDL ratio
-  tg_hdl_ratio: (v) => {
-    const [tg, hdl] = all(v, 'triglycerides', 'hdl_cholesterol') ?? [null, null];
-    if (tg === null || hdl === null || hdl === 0) return null;
-    return tg / hdl;
-  },
+    if (
+      albumin === null || creatinine === null || glucose === null ||
+      crp === null || lympho === null || mcv === null ||
+      rdw === null || alp === null || !userAge
+    ) return null;
 
-  // AIP — Atherogenic Index of Plasma: log(TG/HDL) in mmol/L
-  atherogenic_index: (v) => {
-    const [tg, hdl] = all(v, 'triglycerides', 'hdl_cholesterol') ?? [null, null];
-    if (tg === null || hdl === null || hdl <= 0 || tg <= 0) return null;
-    return Math.log10(tg / hdl);
-  },
+    const albGL     = albumin * 10;
+    const creatUmol = creatinine * 88.42;
+    const glucMmol  = glucose / 18.0182;
+    const crpMgDl   = crp / 10;
+    const lnCrp     = Math.log(Math.max(crpMgDl, 0.001));
 
-  // Non-HDL-C = Total Cholesterol − HDL
-  non_hdl_cholesterol: (v) => {
-    const [tc, hdl] = all(v, 'total_cholesterol', 'hdl_cholesterol') ?? [null, null];
-    if (tc === null || hdl === null) return null;
-    return tc - hdl;
-  },
+    const ms =
+      -19.907
+      - 0.0336  * albGL
+      + 0.0095  * creatUmol
+      + 0.1953  * glucMmol
+      + 0.0954  * lnCrp
+      - 0.0120  * lympho
+      + 0.0268  * mcv
+      + 0.3306  * rdw
+      + 0.00188 * alp
+      + 0.0554  * userAge;
 
-  // Castelli Risk Index I = TC / HDL
-  castelli_risk_index_i: (v) => {
-    const [tc, hdl] = all(v, 'total_cholesterol', 'hdl_cholesterol') ?? [null, null];
-    if (tc === null || hdl === null || hdl === 0) return null;
-    return tc / hdl;
-  },
-
-  // Castelli Risk Index II = LDL / HDL
-  castelli_risk_index_ii: (v) => {
-    const [ldl, hdl] = all(v, 'ldl_cholesterol', 'hdl_cholesterol') ?? [null, null];
-    if (ldl === null || hdl === null || hdl === 0) return null;
-    return ldl / hdl;
-  },
-
-  // MAP — Mean Arterial Pressure: DBP + (SBP - DBP) / 3
-  mean_arterial_pressure: (v) => {
-    const [sbp, dbp] = all(v, 'systolic_bp', 'diastolic_bp') ?? [null, null];
-    if (sbp === null || dbp === null) return null;
-    return dbp + (sbp - dbp) / 3;
-  },
-
-  // Pulse Pressure = SBP − DBP
-  pulse_pressure: (v) => {
-    const [sbp, dbp] = all(v, 'systolic_bp', 'diastolic_bp') ?? [null, null];
-    if (sbp === null || dbp === null) return null;
-    return sbp - dbp;
-  },
-
-  // FIB-4 — liver fibrosis score: (age × AST) / (platelets × √ALT)
-  // age is not a biomarker slug — FIB-4 requires age from profile; return null if missing
-  fib4_index: (v) => {
-    const [ast, alt, platelets, age] = all(v, 'ast', 'alt', 'platelets', 'age_years') ?? [null, null, null, null];
-    if (ast === null || alt === null || platelets === null || age === null || alt <= 0 || platelets <= 0) return null;
-    return (age * ast) / (platelets * Math.sqrt(alt));
-  },
-
-  // De Ritis ratio = AST / ALT
-  de_ritis_ratio: (v) => {
-    const [ast, alt] = all(v, 'ast', 'alt') ?? [null, null];
-    if (ast === null || alt === null || alt === 0) return null;
-    return ast / alt;
-  },
-
-  // NLR — Neutrophil-to-Lymphocyte Ratio
-  neutrophil_lymphocyte_ratio: (v) => {
-    const [neut, lymph] = all(v, 'neutrophils', 'lymphocytes') ?? [null, null];
-    if (neut === null || lymph === null || lymph === 0) return null;
-    return neut / lymph;
-  },
-
-  // LMR — Lymphocyte-to-Monocyte Ratio
-  lymphocyte_monocyte_ratio: (v) => {
-    const [lymph, mono] = all(v, 'lymphocytes', 'monocytes') ?? [null, null];
-    if (lymph === null || mono === null || mono === 0) return null;
-    return lymph / mono;
-  },
-
-  // PLR — Platelet-to-Lymphocyte Ratio
-  platelet_lymphocyte_ratio: (v) => {
-    const [plt, lymph] = all(v, 'platelets', 'lymphocytes') ?? [null, null];
-    if (plt === null || lymph === null || lymph === 0) return null;
-    return plt / lymph;
-  },
-
-  // SII — Systemic Immune-Inflammation Index: platelets × NLR
-  systemic_immune_inflammation_index: (v) => {
-    const [plt, neut, lymph] = all(v, 'platelets', 'neutrophils', 'lymphocytes') ?? [null, null, null];
-    if (plt === null || neut === null || lymph === null || lymph === 0) return null;
-    return (plt * neut) / lymph;
-  },
-
-  // TSAT — Transferrin Saturation: (serum iron / TIBC) × 100
-  transferrin_saturation: (v) => {
-    const [iron, tibc] = all(v, 'serum_iron', 'tibc') ?? [null, null];
-    if (iron === null || tibc === null || tibc === 0) return null;
-    return (iron / tibc) * 100;
-  },
-
-  // WHtR — Waist-to-Height Ratio
-  waist_height_ratio: (v) => {
-    const [waist, height] = all(v, 'waist_circumference', 'height') ?? [null, null];
-    if (waist === null || height === null || height === 0) return null;
-    return waist / height;
-  },
-
-  // HOMA-β — Beta-cell function: (20 × insulin) / (glucose − 3.5)
-  homa_beta: (v) => {
-    const [glucose, insulin] = all(v, 'fasting_glucose', 'fasting_insulin') ?? [null, null];
-    if (glucose === null || insulin === null || glucose <= 3.5) return null;
-    return (20 * insulin) / (glucose - 3.5);
+    const mortalityRisk = 1 - Math.exp(-Math.exp(ms) * 0.0076927);
+    if (mortalityRisk <= 0 || mortalityRisk >= 1) return null;
+    return 141.50 + Math.log(-Math.log(1 - mortalityRisk)) / 0.09165;
   },
 };
 
 /**
- * Given a map of measured biomarker slug → numeric value,
- * returns all computable calculated markers as additional slug→value entries.
- * Already-measured values are NOT overwritten.
+ * Computes all derivable calculated markers from a slug→value map.
+ * Already-measured values are never overwritten.
+ *
+ * @param measured   slug → canonical-unit value from lab_results
+ * @param userAge    chronological age in years (from profiles.birthday)
+ * @param heightCm   height in cm (from profiles.height_cm) — for BMI / WHtR
  */
-export function computeAllCalculatedMarkers(measured: SlugValues): SlugValues {
-  const result: SlugValues = { ...measured };
+export function computeAllCalculatedMarkers(
+  measured: SlugValues,
+  userAge?: number,
+  heightCm?: number,
+): SlugValues {
+  const enriched: SlugValues = { ...measured };
+  if (userAge !== undefined)  enriched['age_years']  = userAge;
+  if (heightCm !== undefined) enriched['height_cm']  = heightCm;
+
+  const result: SlugValues = { ...enriched };
+
   for (const [slug, fn] of Object.entries(CALCULATED_MARKERS)) {
-    if (slug in result) continue; // don't overwrite a directly measured value
-    const val = fn(result);
+    if (slug in measured) continue;
+    const val = fn(enriched, userAge);
     if (val !== null && isFinite(val)) {
-      result[slug] = Math.round(val * 10000) / 10000; // 4 dp precision
+      result[slug] = Math.round(val * 10000) / 10000;
     }
   }
+
   return result;
 }
