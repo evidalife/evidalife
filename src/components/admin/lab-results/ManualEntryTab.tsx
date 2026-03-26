@@ -690,7 +690,7 @@ export default function ManualEntryTab() {
       {/* ── Section 4: Marker Rows Table ─────────────────────────────────── */}
       <div>
         <SectionHeading>Markers</SectionHeading>
-        <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-x-auto">
+        <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-visible">
           <table className="w-full text-xs min-w-[900px]">
             <thead>
               <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
