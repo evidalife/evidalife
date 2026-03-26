@@ -4,6 +4,7 @@ import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import { createClient } from '@/lib/supabase/server';
 import { T } from './translations';
+import BirthdayNudgeBanner from '@/components/health/BirthdayNudgeBanner';
 
 export const metadata = { title: 'Dashboard – Evida Life' };
 
@@ -216,6 +217,13 @@ export default async function DashboardPage() {
   const hasLabResults = latestResults.length > 0;
   const systemKeys    = Object.keys(bySystem).sort();
 
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('date_of_birth')
+    .eq('id', user.id)
+    .single();
+  const hasBirthday = !!profileData?.date_of_birth;
+
   const quickLinks = [
     { href: '/shop',         label: t.quickLinkLabels.shop,       icon: '🧪' },
     { href: '/daily-dozen',  label: t.quickLinkLabels.dailyDozen, icon: '🥗' },
@@ -308,6 +316,11 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* ── Birthday nudge ──────────────────────────────────────────────── */}
+        {hasLabResults && !hasBirthday && (
+          <BirthdayNudgeBanner locale={locale} />
+        )}
 
         {/* ── Latest biomarkers ───────────────────────────────────────────── */}
         <section>

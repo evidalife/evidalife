@@ -224,7 +224,7 @@ export async function POST(req: NextRequest) {
     if (labReportId && savedUserId && Object.keys(savedValues).length > 0) {
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('birthday, height_cm')
+        .select('birthday, height_cm, sex')
         .eq('id', savedUserId)
         .single();
 
@@ -235,14 +235,18 @@ export async function POST(req: NextRequest) {
           )
         : undefined;
       const heightCm = profileData?.height_cm ?? undefined;
+      const userSex = profileData?.sex === 'male' ? 'male'
+                    : profileData?.sex === 'female' ? 'female'
+                    : null;
 
-      const withCalc = computeAllCalculatedMarkers(savedValues, userAge, heightCm);
+      const withCalc = computeAllCalculatedMarkers(savedValues, userAge, heightCm, userSex);
 
       const newCalcEntries = Object.entries(withCalc).filter(
         ([slug]) =>
           !(slug in savedValues) &&
           slug !== 'age_years' &&
-          slug !== 'height_cm',
+          slug !== 'height_cm' &&
+          slug !== 'sex_code',
       );
 
       if (newCalcEntries.length > 0) {

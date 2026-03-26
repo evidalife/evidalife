@@ -387,12 +387,32 @@ export const CALCULATED_MARKERS: Record<string, CalculatedMarkerFn> = {
 
   // ── Organ Function ────────────────────────────────────────────────────────────
 
-  // eGFR — CKD-EPI 2021 race-free (sex-neutral approximation; requires userAge)
+  // eGFR — CKD-EPI 2021 race-free (Inker et al. NEJM 2021)
+  // sex_code: 0=female, 1=male, 0.5/undefined=unknown → average of M+F
   egfr: (v, userAge) => {
-    const cr = get(v, 'creatinine'); // mg/dL
+    const cr = get(v, 'creatinine'); // mg/dL canonical
     if (cr === null || cr <= 0 || !userAge) return null;
-    // Simplified neutral estimate — full CKD-EPI needs sex from profile
-    return Math.max(0, Math.round(75 * Math.pow(0.7 / cr, 0.411)));
+
+    const sexCode = get(v, 'sex_code'); // 0=female, 1=male, 0.5=unknown
+
+    function ckdEpi(creatinine: number, age: number, kappa: number, alpha: number, sexMult: number): number {
+      const ratio = creatinine / kappa;
+      const exp = ratio <= 1 ? alpha : -1.200;
+      return 142 * Math.pow(ratio, exp) * Math.pow(0.9938, age) * sexMult;
+    }
+
+    let result: number;
+    if (sexCode === 0) {
+      result = ckdEpi(cr, userAge, 0.7, -0.241, 1.012);
+    } else if (sexCode === 1) {
+      result = ckdEpi(cr, userAge, 0.9, -0.302, 1.0);
+    } else {
+      // Sex unknown: average of male and female
+      const female = ckdEpi(cr, userAge, 0.7, -0.241, 1.012);
+      const male   = ckdEpi(cr, userAge, 0.9, -0.302, 1.0);
+      result = (female + male) / 2;
+    }
+    return Math.max(0, Math.round(result));
   },
 
   // De Ritis Ratio = AST / ALT
@@ -513,15 +533,21 @@ export const CALCULATED_MARKERS: Record<string, CalculatedMarkerFn> = {
  * @param measured   slug → canonical-unit value from lab_results
  * @param userAge    chronological age in years (from profiles.birthday)
  * @param heightCm   height in cm (from profiles.height_cm) — for BMI / WHtR
+ * @param userSex    biological sex from profiles.sex — used for CKD-EPI eGFR
  */
 export function computeAllCalculatedMarkers(
   measured: SlugValues,
   userAge?: number,
   heightCm?: number,
+  userSex?: 'male' | 'female' | null,
 ): SlugValues {
   const enriched: SlugValues = { ...measured };
   if (userAge !== undefined)  enriched['age_years']  = userAge;
   if (heightCm !== undefined) enriched['height_cm']  = heightCm;
+  // Inject sex_code synthetic slug: 0=female, 1=male, 0.5=unknown
+  if (userSex !== undefined) {
+    enriched['sex_code'] = userSex === 'female' ? 0 : userSex === 'male' ? 1 : 0.5;
+  }
 
   const result: SlugValues = { ...enriched };
 
