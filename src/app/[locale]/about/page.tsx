@@ -30,7 +30,7 @@ export default async function AboutPage() {
           <div className="max-w-3xl mx-auto">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.eyebrow}</p>
             <h1 className="font-serif text-4xl sm:text-5xl text-white leading-tight mb-6">{t.heroHead}</h1>
-            <p className="text-white/60 text-lg leading-relaxed max-w-2xl">{t.heroSub}</p>
+            <p className="text-white/60 text-base leading-relaxed max-w-2xl">{t.heroSub}</p>
           </div>
         </section>
 

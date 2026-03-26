@@ -32,7 +32,7 @@ All 7 photo-hero pages are fully consistent.
 | `/science` | `pt-28 pb-20` | `max-w-3xl` | `text-4xl sm:text-5xl` | `text-white/60` | `text-base` | ✅ |
 | `/partner-labs` | `pt-28 pb-20` | `max-w-3xl` | `text-4xl sm:text-5xl` | — (no subtitle) | — | ✅ |
 | `/health-engine` | `pt-28 pb-20` | `max-w-2xl` | `text-4xl sm:text-5xl` | — (no subtitle) | — | ✅ intentional: narrower container, data-display page |
-| `/about` | `pt-28 pb-20` | `max-w-3xl` | `text-4xl sm:text-5xl` | `text-white/60` | `text-lg` | ⚠️ subtitle `text-lg` vs standard `text-base` |
+| `/about` | `pt-28 pb-20` | `max-w-3xl` | `text-4xl sm:text-5xl` | `text-white/60` | `text-base` | ✅ |
 | `/team` | `pt-28 pb-20` | `max-w-3xl` | `text-4xl sm:text-5xl` | `text-white/60` | `text-base` | ✅ |
 
 ---
@@ -89,12 +89,6 @@ All 5 centered white-bg pages are consistent.
 
 ---
 
-## Remaining Issues
+## No remaining issues found.
 
-One minor deviation remains — not one of the original 13 issues:
-
-| # | Route | Standard | Actual | Severity |
-|---|-------|----------|--------|----------|
-| 1 | `/about` | B1 subtitle `text-base` | `text-lg` | Minor — `about` has a longer hero subtitle than other B1 pages (`max-w-2xl` vs `max-w-xl`), so `text-lg` may be intentional. Not a visual regression. |
-
-All 13 original audit inconsistencies are confirmed resolved. No regressions introduced.
+All 28 pages match their pattern standard. No regressions introduced.
