@@ -12,10 +12,6 @@ export interface MapLab {
   test_categories: string[] | null;
 }
 
-interface Props {
-  labs: MapLab[];
-}
-
 // Category pill colours for map popups
 const CAT_COLOURS: Record<string, string> = {
   biomarker: '#0e393d',
@@ -35,14 +31,26 @@ const CAT_LABELS: Record<string, string> = {
   wearable: 'Wearable',
 };
 
-export default function LabMap({ labs }: Props) {
+interface Props {
+  labs: MapLab[];
+  onLabSelect?: (name: string) => void;
+}
+
+export default function LabMap({ labs, onLabSelect }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<unknown>(null);
+
+  // Expose callback via window so Leaflet popup HTML can invoke it
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__evidaLabSelect = onLabSelect;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return () => { delete (window as any).__evidaLabSelect; };
+  }, [onLabSelect]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current || labs.length === 0) return;
 
-    // Dynamically import Leaflet (browser only)
     import('leaflet').then((L) => {
       if (!containerRef.current || mapRef.current) return;
 
@@ -55,7 +63,6 @@ export default function LabMap({ labs }: Props) {
         shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
       });
 
-      // Create custom teal marker
       const tealIcon = L.divIcon({
         className: '',
         html: `<div style="width:20px;height:20px;background:#0e393d;border:2px solid white;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div>`,
@@ -64,7 +71,6 @@ export default function LabMap({ labs }: Props) {
         popupAnchor: [0, -12],
       });
 
-      // Calculate bounds
       const lats = labs.map((l) => l.latitude);
       const lngs = labs.map((l) => l.longitude);
       const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
@@ -78,17 +84,21 @@ export default function LabMap({ labs }: Props) {
         maxZoom: 18,
       }).addTo(map);
 
-      // Add markers
       labs.forEach((lab) => {
         const catPills = (lab.test_categories ?? [])
           .map((c) => `<span style="display:inline-block;background:${CAT_COLOURS[c] ?? '#666'};color:white;font-size:10px;padding:2px 6px;border-radius:99px;margin:1px 2px 1px 0">${CAT_LABELS[c] ?? c}</span>`)
           .join('');
+
+        // JSON.stringify safely escapes any special chars in the lab name
+        const safeNameJson = JSON.stringify(lab.name);
+        const showDetailsBtn = `<button onclick="window.__evidaLabSelect?.(${safeNameJson})" style="display:block;width:100%;margin-top:8px;padding:5px 10px;background:#0e393d;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;text-align:center">Show details ↓</button>`;
 
         const popupHtml = `
           <div style="min-width:180px;max-width:240px;font-family:inherit">
             <p style="font-weight:600;color:#0e393d;margin:0 0 4px 0;font-size:13px">${lab.name}</p>
             ${lab.city ? `<p style="color:#666;font-size:11px;margin:0 0 6px 0">${[lab.address, lab.city].filter(Boolean).join(', ')}</p>` : ''}
             <div>${catPills}</div>
+            ${showDetailsBtn}
           </div>`;
 
         L.marker([lab.latitude, lab.longitude], { icon: tealIcon })
@@ -96,7 +106,6 @@ export default function LabMap({ labs }: Props) {
           .bindPopup(popupHtml, { maxWidth: 260 });
       });
 
-      // Fit to markers if multiple, else set center + zoom
       if (labs.length === 1) {
         map.setView([centerLat, centerLng], 13);
       } else {

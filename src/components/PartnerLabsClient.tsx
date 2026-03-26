@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { MapLab } from './LabMap';
 
 const LabMap = dynamic(() => import('./LabMap'), { ssr: false });
@@ -65,6 +65,15 @@ export default function PartnerLabsClient({ labs, lang, t }: Props) {
   const [query, setQuery] = useState('');
   const [activeCategories, setActiveCategories] = useState<Set<CategoryValue>>(new Set());
   const [country, setCountry] = useState<string>('all');
+  const cardsRef = useRef<HTMLDivElement>(null);
+
+  const handleLabSelect = useCallback((name: string) => {
+    setQuery(name);
+    // Scroll to the cards section after a short delay so filtering can render
+    setTimeout(() => {
+      cardsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }, []);
 
   // Unique countries
   const countries = useMemo(() => {
@@ -104,15 +113,15 @@ export default function PartnerLabsClient({ labs, lang, t }: Props) {
     <>
       {/* Map */}
       {mapLabs.length > 0 && (
-        <section className="w-full border-b border-[#0e393d]/10">
+        <section className="w-full border-b border-[#0e393d]/10" style={{ position: 'relative', zIndex: 0 }}>
           <div style={{ height: '500px' }} className="w-full bg-[#e8efe9]">
-            <LabMap labs={mapLabs} />
+            <LabMap labs={mapLabs} onLabSelect={handleLabSelect} />
           </div>
         </section>
       )}
 
       {/* Search / filter + Lab cards */}
-      <section className="w-full max-w-5xl mx-auto px-6 py-8">
+      <section className="w-full max-w-5xl mx-auto px-6 py-8" ref={cardsRef}>
         {/* Filter bar */}
         <div className="flex flex-col gap-4 mb-8 pb-6 border-b border-[#0e393d]/10">
           {/* Text search + country */}
