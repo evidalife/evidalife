@@ -84,14 +84,17 @@ export default function LabMap({ labs, onLabSelect }: Props) {
         maxZoom: 18,
       }).addTo(map);
 
+      // Build a global name lookup keyed by UUID (UUIDs are safe in JS string literals)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).__evidaLabNames = Object.fromEntries(labs.map((l) => [l.id, l.name]));
+
       labs.forEach((lab) => {
         const catPills = (lab.test_categories ?? [])
           .map((c) => `<span style="display:inline-block;background:${CAT_COLOURS[c] ?? '#666'};color:white;font-size:10px;padding:2px 6px;border-radius:99px;margin:1px 2px 1px 0">${CAT_LABELS[c] ?? c}</span>`)
           .join('');
 
-        // JSON.stringify safely escapes any special chars in the lab name
-        const safeNameJson = JSON.stringify(lab.name);
-        const showDetailsBtn = `<button onclick="window.__evidaLabSelect?.(${safeNameJson})" style="display:block;width:100%;margin-top:8px;padding:5px 10px;background:#0e393d;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;text-align:center">Show details ↓</button>`;
+        // Use lab.id (UUID — alphanumeric + hyphens only) to avoid HTML attribute quoting issues
+        const showDetailsBtn = `<button onclick="window.__evidaLabSelect?.(window.__evidaLabNames?.['${lab.id}'])" style="display:block;width:100%;margin-top:8px;padding:5px 10px;background:#0e393d;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;text-align:center">Show details ↓</button>`;
 
         const popupHtml = `
           <div style="min-width:180px;max-width:240px;font-family:inherit">
