@@ -7,6 +7,26 @@ import { FLAG_COLOR_CLASS, FLAG_DOT_COLOR, FLAG_LABEL, StatusFlag } from '@/lib/
 export type { StatusFlag };
 export { FLAG_LABEL, FLAG_COLOR_CLASS, FLAG_DOT_COLOR };
 
+export const SOURCE_ICON: Record<string, string> = {
+  biomarker:           '🩸',
+  clinical_assessment: '🏥',
+  wearable:            '⌚',
+  bio_age:             '🧬',
+  epigenetic:          '🧬',
+  genetic:             '🔬',
+  microbiome:          '🦠',
+};
+
+export const SOURCE_LABEL: Record<string, string> = {
+  biomarker:           'Blood Marker',
+  clinical_assessment: 'Clinical',
+  wearable:            'Wearable',
+  bio_age:             'Biological Age',
+  epigenetic:          'Epigenetic',
+  genetic:             'Genetic',
+  microbiome:          'Microbiome',
+};
+
 export type LocalizedString = string | Record<string, string>;
 export function locName(field: LocalizedString | null | undefined): string {
   if (!field) return '';

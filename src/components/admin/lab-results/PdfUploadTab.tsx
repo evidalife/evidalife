@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
   Badge, FlagBadge, SectionHeading, Spinner, Toast, ToastContainer,
+  SOURCE_ICON, SOURCE_LABEL,
   fmtDate, locName, nextToastId,
 } from './shared';
 import { computeStatusFlag } from '@/lib/lab-results/flagging';
@@ -196,16 +197,6 @@ function ConfidenceBadge({ c }: { c: Confidence }) {
 
 // ─── Source badge ─────────────────────────────────────────────────────────────
 
-const SOURCE_ICON: Record<string, string> = {
-  biomarker:           '🩸',
-  clinical_assessment: '🏥',
-  wearable:            '⌚',
-  bio_age:             '🧬',
-  epigenetic:          '🧬',
-  genetic:             '🔬',
-  microbiome:          '🦠',
-};
-
 function SourceBadge({ source }: { source: string | null | undefined }) {
   if (!source) return <span className="text-[#1c2a2b]/25">—</span>;
   const icon = SOURCE_ICON[source] ?? '❓';
@@ -213,16 +204,6 @@ function SourceBadge({ source }: { source: string | null | undefined }) {
     <span title={source} className="text-base leading-none">{icon}</span>
   );
 }
-
-// ─── Report type options ───────────────────────────────────────────────────────
-
-type ReportType = 'blood' | 'clinical' | 'epigenetic';
-
-const REPORT_TYPE_OPTIONS: { value: ReportType; label: string; icon: string }[] = [
-  { value: 'blood',      label: 'Blood',      icon: '🩸' },
-  { value: 'clinical',   label: 'Clinical',   icon: '🏥' },
-  { value: 'epigenetic', label: 'Epigenetic', icon: '🧬' },
-];
 
 // ─── Lab label formatter ──────────────────────────────────────────────────────
 
@@ -285,8 +266,9 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
   const [openBmIdx, setOpenBmIdx] = useState<number | null>(null);
   const [bmSearchText, setBmSearchText] = useState('');
 
-  // Report type selector (Feature 1)
-  const [reportType, setReportType] = useState<ReportType>('blood');
+  // Report type selector (Feature 1) — null = All
+  const [reportType, setReportType] = useState<string | null>(null);
+  const [availableSources, setAvailableSources] = useState<string[]>([]);
 
   // Manual add rows in review screen (Feature 3)
   const [addingManualRow, setAddingManualRow] = useState(false);
@@ -337,7 +319,12 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
   useEffect(() => {
     loadUploads();
     supabase.from('biomarkers').select('id, name, unit, he_domain, source, ref_range_low, ref_range_high').eq('is_active', true)
-      .then(({ data }) => setAllBiomarkers((data as AllBiomarker[]) ?? []));
+      .then(({ data }) => {
+        const bms = (data as AllBiomarker[]) ?? [];
+        setAllBiomarkers(bms);
+        const unique = [...new Set(bms.map((b) => b.source).filter(Boolean) as string[])].sort();
+        setAvailableSources(unique);
+      });
     supabase.from('lab_partners').select('id, name, lab_type, lab_code, parent_lab_id, city, postal_code, address, phone, email, test_categories')
       .eq('is_active', true).order('name')
       .then(({ data }) => setLabs((data as LabOption[]) ?? []));
@@ -793,13 +780,8 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
   // ── Filtered biomarkers for epigenetic report type ────────────────────────────
 
   const filteredBiomarkers = useMemo(() => {
-    if (reportType === 'epigenetic') {
-      return allBiomarkers.filter((b) => b.source === 'bio_age' || b.source === 'epigenetic');
-    }
-    if (reportType === 'clinical') {
-      return allBiomarkers.filter((b) => b.source === 'clinical_assessment');
-    }
-    return allBiomarkers;
+    if (!reportType) return allBiomarkers;
+    return allBiomarkers.filter((b) => b.source === reportType);
   }, [allBiomarkers, reportType]);
 
   // ── Add manual row to review table ───────────────────────────────────────────
@@ -1057,33 +1039,47 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
           )}
 
           {/* ── 3b. Report Type ──────────────────────────────────────────── */}
-          <div>
-            <SectionHeading>Report Type</SectionHeading>
-            <div className="flex gap-2">
-              {REPORT_TYPE_OPTIONS.map(({ value, label, icon }) => (
+          {availableSources.length > 0 && (
+            <div>
+              <SectionHeading>Report Type</SectionHeading>
+              <div className="flex flex-wrap gap-2">
                 <button
-                  key={value}
-                  onClick={() => {
-                    if (value === 'clinical' && onSwitchToManual) {
-                      onSwitchToManual();
-                    } else {
-                      setReportType(value);
-                    }
-                  }}
+                  onClick={() => setReportType(null)}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                    reportType === value && value !== 'clinical'
+                    reportType === null
                       ? 'bg-[#0e393d] text-white'
                       : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
                   }`}
                 >
-                  {icon} {label}
+                  All
                 </button>
-              ))}
+                {availableSources.map((source) => (
+                  <button
+                    key={source}
+                    onClick={() => {
+                      if (source === 'clinical_assessment' && onSwitchToManual) {
+                        onSwitchToManual();
+                      } else {
+                        setReportType(source);
+                      }
+                    }}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                      reportType === source
+                        ? 'bg-[#0e393d] text-white'
+                        : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
+                    }`}
+                  >
+                    {SOURCE_ICON[source] ?? '🔬'} {SOURCE_LABEL[source] ?? source}
+                  </button>
+                ))}
+              </div>
+              {reportType && reportType !== 'biomarker' && (
+                <p className="mt-1.5 text-xs text-[#1c2a2b]/50">
+                  Showing only {SOURCE_LABEL[reportType] ?? reportType} markers
+                </p>
+              )}
             </div>
-            {reportType === 'epigenetic' && (
-              <p className="mt-1.5 text-xs text-[#1c2a2b]/50">Biomarker matching restricted to epigenetic markers</p>
-            )}
-          </div>
+          )}
 
           {/* ── 4. Drop zone ──────────────────────────────────────────────── */}
           {(() => {

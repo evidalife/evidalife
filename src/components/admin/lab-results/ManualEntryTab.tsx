@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
-  Badge, FlagBadge, SectionHeading, Spinner, Toast, ToastContainer,
+  FlagBadge, SectionHeading, Spinner, Toast, ToastContainer,
+  SOURCE_ICON, SOURCE_LABEL,
   fmtDate, locName, nextToastId,
 } from './shared';
 import { computeStatusFlag } from '@/lib/lab-results/flagging';
@@ -35,18 +36,6 @@ const LAB_SOURCE_OPTIONS: { value: LabSource; label: string }[] = [
 function newRow(): ManualRow {
   return { id: Math.random().toString(36).slice(2), bm: null, value: '', unit: '', notes: '', dropdownOpen: false, search: '' };
 }
-
-// ─── Source icon ──────────────────────────────────────────────────────────────
-
-const SOURCE_ICON: Record<string, string> = {
-  biomarker:           '🩸',
-  clinical_assessment: '🏥',
-  wearable:            '⌚',
-  bio_age:             '🧬',
-  epigenetic:          '🧬',
-  genetic:             '🔬',
-  microbiome:          '🦠',
-};
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
