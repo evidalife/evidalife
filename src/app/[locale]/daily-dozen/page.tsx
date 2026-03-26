@@ -493,15 +493,18 @@ const DD_CATEGORIES: Record<Lang, { emoji: string; name: string; servings: numbe
 
 const OATS_PHOTO = 'https://images.unsplash.com/photo-1517673400267-0251440c45dc?w=800&q=80';
 
-export default async function DailyDozenPage() {
+export default async function DailyDozenPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   const locale = await getLocale();
   const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
+
+  const params = await searchParams;
+  const viewInfo = params.view === 'info';
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // ─── Authenticated: show tracker ─────────────────────────────────────────────
-  if (user) {
+  // ─── Authenticated + not requesting info view: show tracker ──────────────────
+  if (user && !viewInfo) {
     const t = T_TRACKER[lang];
 
     const today = new Date().toISOString().split('T')[0];

@@ -12,7 +12,7 @@ type Locale = 'de' | 'en' | 'fr' | 'es' | 'it';
 
 // URL slugs for each section's dropdown items, matching nav.dropdowns.* order in translations
 const NAV_SLUG_MAP: Record<string, (string | null)[]> = {
-  Kitchen: ['/kitchen', '/recipes', '/blog', '/courses', '/daily-dozen', '/how-to-start', '/shopping-list'],
+  Kitchen: ['/kitchen', '/recipes', '/blog', '/courses', '/daily-dozen?view=info', '/how-to-start', '/shopping-list?view=info'],
   Health:  ['/health', '/health-engine', '/science', '/biomarkers', '/assessments', '/bioage', '/partner-labs'],
   Fit:     ['/fit', '/sleep', '/exercise', '/stress-recovery', '/coaching'],
   Shop:    ['/shop', '/shop?type=blood_test', '/shop?type=clinical_test', '/shop?type=epigenetic_test'],
@@ -25,11 +25,11 @@ type AuthDropdownItem = { label: string; href: string };
 
 const AUTH_DROPDOWN_ITEMS: Partial<Record<string, Record<Locale, AuthDropdownItem[]>>> = {
   Health: {
-    de: [{ label: 'Mein Dashboard',      href: '/dashboard' }],
-    en: [{ label: 'My Dashboard',        href: '/dashboard' }],
-    fr: [{ label: 'Mon tableau de bord', href: '/dashboard' }],
-    es: [{ label: 'Mi panel',            href: '/dashboard' }],
-    it: [{ label: 'La mia dashboard',    href: '/dashboard' }],
+    de: [{ label: 'Mein Health Engine',  href: '/dashboard' }],
+    en: [{ label: 'My Health Engine',    href: '/dashboard' }],
+    fr: [{ label: 'Mon Health Engine',   href: '/dashboard' }],
+    es: [{ label: 'Mi Health Engine',    href: '/dashboard' }],
+    it: [{ label: 'Il mio Health Engine', href: '/dashboard' }],
   },
   Kitchen: {
     de: [

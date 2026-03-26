@@ -169,15 +169,18 @@ function PublicIntro({ lang }: { lang: Lang }) {
   );
 }
 
-export default async function ShoppingListPage() {
+export default async function ShoppingListPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   const locale = await getLocale();
   const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const supabase = await createClient();
 
+  const params = await searchParams;
+  const viewInfo = params.view === 'info';
+
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Logged-out users get a rich public intro page
-  if (!user) {
+  // Logged-out users, or logged-in users requesting the info view, get the public intro page
+  if (!user || viewInfo) {
     return (
       <div className="min-h-screen bg-[#fafaf8] flex flex-col">
         <PublicNav />

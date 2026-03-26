@@ -111,9 +111,10 @@ export default function PartnerLabsClient({ labs, lang, t }: Props) {
         </section>
       )}
 
-      {/* Search / filter bar */}
-      <section className="w-full bg-white border-b border-[#0e393d]/10 px-6 py-5 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-5xl mx-auto flex flex-col gap-4">
+      {/* Search / filter + Lab cards */}
+      <section className="w-full max-w-5xl mx-auto px-6 py-8">
+        {/* Filter bar */}
+        <div className="flex flex-col gap-4 mb-8 pb-6 border-b border-[#0e393d]/10">
           {/* Text search + country */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
@@ -169,10 +170,6 @@ export default function PartnerLabsClient({ labs, lang, t }: Props) {
             )}
           </div>
         </div>
-      </section>
-
-      {/* Lab cards */}
-      <section className="w-full max-w-5xl mx-auto px-6 py-10">
         {filtered.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-sm text-[#1c2a2b]/40">{t.noResults}</p>
@@ -199,19 +196,21 @@ export default function PartnerLabsClient({ labs, lang, t }: Props) {
                   className="rounded-2xl border border-[#0e393d]/10 bg-white overflow-hidden flex flex-col hover:border-[#0e393d]/25 hover:shadow-md transition-all duration-200"
                 >
                   {/* Cover image */}
-                  {lab.cover_image_url ? (
-                    <div className="w-full aspect-video overflow-hidden">
-                      <img src={lab.cover_image_url} alt={lab.name} className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="w-full aspect-video bg-gradient-to-br from-[#0e393d]/8 to-[#ceab84]/15 flex items-center justify-center">
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0e393d" strokeWidth="1.25" opacity="0.3">
-                        <path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z"/>
-                        <circle cx="8.5" cy="8.5" r="1.5"/>
-                        <polyline points="21 15 16 10 5 21"/>
-                      </svg>
-                    </div>
-                  )}
+                  <div className="w-full aspect-video bg-gradient-to-br from-[#0e393d]/8 to-[#ceab84]/15 flex items-center justify-center overflow-hidden relative">
+                    {lab.cover_image_url && (
+                      <img
+                        src={lab.cover_image_url}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    )}
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0e393d" strokeWidth="1.25" opacity="0.3">
+                      <path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                  </div>
 
                   <div className="p-5 flex flex-col flex-1">
                     {/* Name + ISO */}
