@@ -5,37 +5,33 @@
     "login": "Login",
     "dropdowns": {
       "Kitchen": [
-        "How to Start",
-        "Daily Dozen",
+        "Overview",
         "Recipes",
-        "Shopping List",
-        null,
         "Blog",
-        "Courses"
+        "Courses",
+        "Daily Dozen",
+        "How to Start",
+        "Shopping List"
       ],
       "Health": [
-        "Health Overview",
-        "Biomarkers",
-        "BioAge",
-        "Clinical Assessments",
-        null,
+        "Overview",
         "Health Engine",
-        "Science"
+        "Science & Research",
+        "Biomarkers",
+        "Clinical Assessments",
+        "Biological Age",
+        "Partner Labs"
       ],
       "Fit": [
+        "Overview",
+        null,
         "Sleep",
         "Exercise",
         "Stress & Recovery",
-        null,
         "Coaching"
       ],
       "Shop": [
-        "Shop",
-        "Blood Tests",
-        "Clinical Tests",
-        "Epigenetic Tests",
-        null,
-        "Cart"
+        "Browse Shop"
       ]
     }
   },

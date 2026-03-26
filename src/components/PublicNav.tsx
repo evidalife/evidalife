@@ -12,13 +12,70 @@ type Locale = 'de' | 'en' | 'fr' | 'es' | 'it';
 
 // URL slugs for each section's dropdown items, matching nav.dropdowns.* order in translations
 const NAV_SLUG_MAP: Record<string, (string | null)[]> = {
-  Kitchen: ['/how-to-start', '/daily-dozen', '/recipes', '/shopping-list', null, '/blog', '/courses'],
-  Health:  ['/health', '/biomarkers', '/bioage', '/assessments', null, '/health-engine', '/science'],
-  Fit:     ['/sleep', '/exercise', '/stress-recovery', null, '/coaching'],
-  Shop:    ['/shop', '/shop?type=blood_test', '/shop?type=clinical_test', '/shop?type=epigenetic_test', null, '/cart'],
+  Kitchen: ['/kitchen', '/recipes', '/blog', '/courses', '/daily-dozen', '/how-to-start', '/shopping-list'],
+  Health:  ['/health', '/health-engine', '/science', '/biomarkers', '/assessments', '/bioage', '/partner-labs'],
+  Fit:     ['/fit', null, '/sleep', '/exercise', '/stress-recovery', '/coaching'],
+  Shop:    ['/shop'],
 };
 
 const NAV_SECTIONS = ['Kitchen', 'Health', 'Fit', 'Shop'] as const;
+
+// Auth-only items appended to each section dropdown (with a separator) when the user is logged in
+type AuthDropdownItem = { label: string; href: string };
+
+const AUTH_DROPDOWN_ITEMS: Partial<Record<string, Record<Locale, AuthDropdownItem[]>>> = {
+  Health: {
+    de: [{ label: 'Mein Dashboard',      href: '/dashboard' }],
+    en: [{ label: 'My Dashboard',        href: '/dashboard' }],
+    fr: [{ label: 'Mon tableau de bord', href: '/dashboard' }],
+    es: [{ label: 'Mi panel',            href: '/dashboard' }],
+    it: [{ label: 'La mia dashboard',    href: '/dashboard' }],
+  },
+  Kitchen: {
+    de: [
+      { label: 'Mein Daily Dozen',    href: '/daily-dozen' },
+      { label: 'Meine Einkaufsliste', href: '/shopping-list' },
+    ],
+    en: [
+      { label: 'My Daily Dozen',   href: '/daily-dozen' },
+      { label: 'My Shopping List', href: '/shopping-list' },
+    ],
+    fr: [
+      { label: 'Mon Daily Dozen',     href: '/daily-dozen' },
+      { label: 'Ma liste de courses', href: '/shopping-list' },
+    ],
+    es: [
+      { label: 'Mi Daily Dozen',        href: '/daily-dozen' },
+      { label: 'Mi lista de la compra', href: '/shopping-list' },
+    ],
+    it: [
+      { label: 'Il mio Daily Dozen',       href: '/daily-dozen' },
+      { label: 'La mia lista della spesa', href: '/shopping-list' },
+    ],
+  },
+  Shop: {
+    de: [
+      { label: 'Meine Bestellungen', href: '/profile?tab=orders' },
+      { label: 'Meine Rechnungen',   href: '/profile?tab=invoices' },
+    ],
+    en: [
+      { label: 'My Orders',   href: '/profile?tab=orders' },
+      { label: 'My Invoices', href: '/profile?tab=invoices' },
+    ],
+    fr: [
+      { label: 'Mes commandes', href: '/profile?tab=orders' },
+      { label: 'Mes factures',  href: '/profile?tab=invoices' },
+    ],
+    es: [
+      { label: 'Mis pedidos',  href: '/profile?tab=orders' },
+      { label: 'Mis facturas', href: '/profile?tab=invoices' },
+    ],
+    it: [
+      { label: 'I miei ordini',  href: '/profile?tab=orders' },
+      { label: 'Le mie fatture', href: '/profile?tab=invoices' },
+    ],
+  },
+};
 
 // ── Profile dropdown menu ─────────────────────────────────────────────────────
 
@@ -26,74 +83,54 @@ type MenuItem = { label: string; href: string; admin?: boolean } | { label: stri
 
 const PROFILE_MENU: Record<Locale, MenuItem[]> = {
   de: [
-    { label: 'Health Engine',  href: '/dashboard' },
-    { label: 'Laborwerte',     href: '/profile?tab=results' },
-    { label: 'Daily Dozen',    href: '/daily-dozen' },
-    { label: 'Einkaufsliste',  href: '/shopping-list' },
+    { label: 'Profil',       href: '/profile' },
+    { label: 'Bestellungen', href: '/profile?tab=orders' },
+    { label: 'Laborwerte',   href: '/profile?tab=results' },
+    { label: 'Rechnungen',   href: '/profile?tab=invoices' },
     'divider',
-    { label: 'Profil',         href: '/profile' },
-    { label: 'Bestellungen',   href: '/profile?tab=orders' },
-    { label: 'Rechnungen',     href: '/profile?tab=invoices' },
+    { label: 'Admin Panel',  href: '/admin', admin: true },
     'divider',
-    { label: 'Admin Panel',    href: '/admin', admin: true },
-    'divider',
-    { label: 'Abmelden',       action: 'signout' },
+    { label: 'Abmelden',     action: 'signout' },
   ],
   en: [
-    { label: 'Health Engine',  href: '/dashboard' },
-    { label: 'Lab Results',    href: '/profile?tab=results' },
-    { label: 'Daily Dozen',    href: '/daily-dozen' },
-    { label: 'Shopping List',  href: '/shopping-list' },
+    { label: 'Profile',     href: '/profile' },
+    { label: 'Orders',      href: '/profile?tab=orders' },
+    { label: 'Results',     href: '/profile?tab=results' },
+    { label: 'Invoices',    href: '/profile?tab=invoices' },
     'divider',
-    { label: 'Profile',        href: '/profile' },
-    { label: 'My Orders',      href: '/profile?tab=orders' },
-    { label: 'Invoices',       href: '/profile?tab=invoices' },
+    { label: 'Admin Panel', href: '/admin', admin: true },
     'divider',
-    { label: 'Admin Panel',    href: '/admin', admin: true },
-    'divider',
-    { label: 'Sign out',       action: 'signout' },
+    { label: 'Sign out',    action: 'signout' },
   ],
   fr: [
-    { label: 'Health Engine',        href: '/dashboard' },
-    { label: 'Résultats de labo',    href: '/profile?tab=results' },
-    { label: 'Daily Dozen',          href: '/daily-dozen' },
-    { label: 'Liste de courses',     href: '/shopping-list' },
+    { label: 'Profil',      href: '/profile' },
+    { label: 'Commandes',   href: '/profile?tab=orders' },
+    { label: 'Résultats',   href: '/profile?tab=results' },
+    { label: 'Factures',    href: '/profile?tab=invoices' },
     'divider',
-    { label: 'Profil',               href: '/profile' },
-    { label: 'Commandes',            href: '/profile?tab=orders' },
-    { label: 'Factures',             href: '/profile?tab=invoices' },
+    { label: 'Admin Panel', href: '/admin', admin: true },
     'divider',
-    { label: 'Admin Panel',          href: '/admin', admin: true },
-    'divider',
-    { label: 'Se déconnecter',       action: 'signout' },
+    { label: 'Se déconnecter', action: 'signout' },
   ],
   es: [
-    { label: 'Health Engine',        href: '/dashboard' },
-    { label: 'Resultados de lab.',   href: '/profile?tab=results' },
-    { label: 'Daily Dozen',          href: '/daily-dozen' },
-    { label: 'Lista de la compra',   href: '/shopping-list' },
+    { label: 'Perfil',      href: '/profile' },
+    { label: 'Pedidos',     href: '/profile?tab=orders' },
+    { label: 'Resultados',  href: '/profile?tab=results' },
+    { label: 'Facturas',    href: '/profile?tab=invoices' },
     'divider',
-    { label: 'Perfil',               href: '/profile' },
-    { label: 'Pedidos',              href: '/profile?tab=orders' },
-    { label: 'Facturas',             href: '/profile?tab=invoices' },
+    { label: 'Admin Panel', href: '/admin', admin: true },
     'divider',
-    { label: 'Admin Panel',          href: '/admin', admin: true },
-    'divider',
-    { label: 'Cerrar sesión',        action: 'signout' },
+    { label: 'Cerrar sesión', action: 'signout' },
   ],
   it: [
-    { label: 'Health Engine',        href: '/dashboard' },
-    { label: 'Risultati di lab.',    href: '/profile?tab=results' },
-    { label: 'Daily Dozen',          href: '/daily-dozen' },
-    { label: 'Lista della spesa',    href: '/shopping-list' },
+    { label: 'Profilo',    href: '/profile' },
+    { label: 'Ordini',     href: '/profile?tab=orders' },
+    { label: 'Risultati',  href: '/profile?tab=results' },
+    { label: 'Fatture',    href: '/profile?tab=invoices' },
     'divider',
-    { label: 'Profilo',              href: '/profile' },
-    { label: 'Ordini',               href: '/profile?tab=orders' },
-    { label: 'Fatture',              href: '/profile?tab=invoices' },
+    { label: 'Admin Panel', href: '/admin', admin: true },
     'divider',
-    { label: 'Admin Panel',          href: '/admin', admin: true },
-    'divider',
-    { label: 'Esci',                 action: 'signout' },
+    { label: 'Esci',       action: 'signout' },
   ],
 };
 
@@ -157,6 +194,7 @@ export default function PublicNav() {
           {NAV_SECTIONS.map((section) => {
             const items = dropdowns[section] ?? [];
             const slugs = NAV_SLUG_MAP[section] ?? [];
+            const authItems = user ? (AUTH_DROPDOWN_ITEMS[section]?.[locale] ?? []) : [];
             const isOpen = activeDropdown === section;
             return (
               <div
@@ -165,8 +203,9 @@ export default function PublicNav() {
                 onMouseEnter={() => setActiveDropdown(section)}
                 onMouseLeave={() => setActiveDropdown(null)}
               >
-                <Link
-                  href={`/${section.toLowerCase()}`}
+                {/* Trigger — dropdown only, not a nav link */}
+                <button
+                  onClick={() => setActiveDropdown(isOpen ? null : section)}
                   className={`flex items-center gap-1 text-[0.8rem] font-light cursor-pointer hover:text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors px-3 py-1.5 rounded-full ${
                     isOpen ? 'text-[#0e393d] bg-[#0e393d]/6' : 'text-[#5a6e6f]'
                   }`}
@@ -178,7 +217,7 @@ export default function PublicNav() {
                   >
                     <path d="M1.5 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                </Link>
+                </button>
 
                 {isOpen && (
                   <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50">
@@ -186,6 +225,7 @@ export default function PublicNav() {
                       className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.14)] border border-[#0e393d]/8 py-1.5 min-w-[210px]"
                       style={{ animation: 'dropdownIn 0.15s ease-out' }}
                     >
+                      {/* Public items */}
                       {items.map((label, i) => {
                         const href = slugs[i];
                         if (label === null || href === null) {
@@ -201,6 +241,22 @@ export default function PublicNav() {
                           </Link>
                         );
                       })}
+
+                      {/* Auth-only items — shown below a separator when logged in */}
+                      {authItems.length > 0 && (
+                        <>
+                          <div className="h-px bg-[#0e393d]/10 mx-4 my-1.5" />
+                          {authItems.map((item, i) => (
+                            <Link
+                              key={`auth-${i}`}
+                              href={item.href}
+                              className="block w-full text-left px-5 py-2.5 text-[13px] font-light text-[#0e393d]/70 hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
+                            >
+                              {item.label}
+                            </Link>
+                          ))}
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
@@ -291,7 +347,7 @@ export default function PublicNav() {
             )}
           </div>
 
-          {/* Login / User with logout dropdown */}
+          {/* Login / User with profile dropdown */}
           {user ? (
             <div
               className="relative"
@@ -376,10 +432,11 @@ export default function PublicNav() {
           {NAV_SECTIONS.map((section, si) => {
             const items = dropdowns[section] ?? [];
             const slugs = NAV_SLUG_MAP[section] ?? [];
+            const authItems = user ? (AUTH_DROPDOWN_ITEMS[section]?.[locale] ?? []) : [];
             const isExp = expandedSection === section;
             return (
               <div key={section} className={si > 0 ? 'border-t border-[#0e393d]/6' : ''}>
-                {/* Section row */}
+                {/* Section row — accordion trigger, not a link */}
                 <button
                   onClick={() => setExpandedSection(isExp ? null : section)}
                   aria-label={`Toggle ${section} menu`}
@@ -398,12 +455,13 @@ export default function PublicNav() {
                 {/* Sub-items accordion */}
                 <div
                   style={{
-                    maxHeight: isExp ? '400px' : '0',
+                    maxHeight: isExp ? '500px' : '0',
                     overflow: 'hidden',
                     transition: 'max-height 0.25s ease',
                   }}
                 >
                   <div className="pb-1.5">
+                    {/* Public items */}
                     {items.map((label, i) => {
                       const href = slugs[i];
                       if (label === null || href === null) {
@@ -419,6 +477,22 @@ export default function PublicNav() {
                         </Link>
                       );
                     })}
+
+                    {/* Auth-only items */}
+                    {authItems.length > 0 && (
+                      <>
+                        <div className="h-px bg-[#0e393d]/8 mx-5 my-1" />
+                        {authItems.map((item, i) => (
+                          <Link
+                            key={`auth-${i}`}
+                            href={item.href}
+                            className="block px-8 py-2.5 text-[13px] font-light text-[#0e393d]/70 hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
+                          >
+                            {item.label}
+                          </Link>
+                        ))}
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
