@@ -4,6 +4,12 @@ import type { NextConfig } from 'next';
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      // Orphan page — canonical location is profile tab
+      { source: '/:locale/orders', destination: '/:locale/profile?tab=orders', permanent: true },
+    ];
+  },
   images: {
     remotePatterns: [
       {
