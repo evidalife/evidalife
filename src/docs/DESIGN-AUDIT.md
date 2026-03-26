@@ -46,7 +46,7 @@
 
 ### Homepage (`/`)
 
-- **Hero**: Uses an inline `style={{ backgroundImage: url(...) }}` div (not an `<img>` tag and not Tailwind `bg-[url()]`). All other photo-hero pages use an `<img>` tag. This is the only page that does so.
+- **Hero**: Uses an inline `style={{ backgroundImage: url(...) }}` div (not an `<img>` tag and not a Tailwind background-image utility). All other photo-hero pages use an `<img>` tag. This is the only page that does so.
 - **Hero height**: `h-screen min-h-[620px]` — full viewport. All other photo-hero pages use fractional viewport (`h-[72vh]`, `h-[65vh]`, `h-[55vh]`).
 - **Gradient direction**: `bg-gradient-to-r` (left-to-right). All other photo pages use `bg-gradient-to-t` (bottom-up).
 - **H1 font size**: `text-5xl md:text-6xl lg:text-[5.5rem]` with `font-normal` modifier. Other pages omit `font-normal` on h1 (it's implied by `font-serif`).
