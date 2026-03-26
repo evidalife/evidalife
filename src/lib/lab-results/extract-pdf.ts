@@ -150,7 +150,7 @@ export async function matchAndConvertResults(
 ): Promise<ExtractedRow[]> {
   const { data: allBiomarkers } = await supabase
     .from('biomarkers')
-    .select('id, slug, name, unit, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, range_type')
+    .select('id, slug, name, name_short, source, unit, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, range_type')
     .eq('is_active', true);
 
   const dbBiomarkers = (allBiomarkers ?? []) as any[];

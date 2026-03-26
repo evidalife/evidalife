@@ -86,7 +86,7 @@ type UploadRecord = {
   patient: { first_name: string | null; last_name: string | null; email: string | null } | null;
 };
 
-type AllBiomarker = { id: string; name: any; unit: string | null; he_domain: string | null };
+type AllBiomarker = { id: string; name: any; unit: string | null; he_domain: string | null; source: string | null; ref_range_low: number | null; ref_range_high: number | null };
 
 // ─── Lab source options ───────────────────────────────────────────────────────
 
@@ -194,6 +194,36 @@ function ConfidenceBadge({ c }: { c: Confidence }) {
   return <Badge className={cls}>{dot} {label}</Badge>;
 }
 
+// ─── Source badge ─────────────────────────────────────────────────────────────
+
+const SOURCE_ICON: Record<string, string> = {
+  biomarker:           '🩸',
+  clinical_assessment: '🏥',
+  wearable:            '⌚',
+  bio_age:             '🧬',
+  epigenetic:          '🧬',
+  genetic:             '🔬',
+  microbiome:          '🦠',
+};
+
+function SourceBadge({ source }: { source: string | null | undefined }) {
+  if (!source) return <span className="text-[#1c2a2b]/25">—</span>;
+  const icon = SOURCE_ICON[source] ?? '❓';
+  return (
+    <span title={source} className="text-base leading-none">{icon}</span>
+  );
+}
+
+// ─── Report type options ───────────────────────────────────────────────────────
+
+type ReportType = 'blood' | 'clinical' | 'epigenetic';
+
+const REPORT_TYPE_OPTIONS: { value: ReportType; label: string; icon: string }[] = [
+  { value: 'blood',      label: 'Blood',      icon: '🩸' },
+  { value: 'clinical',   label: 'Clinical',   icon: '🏥' },
+  { value: 'epigenetic', label: 'Epigenetic', icon: '🧬' },
+];
+
 // ─── Lab label formatter ──────────────────────────────────────────────────────
 
 function labLabel(lab: LabOption): string {
@@ -210,7 +240,7 @@ function labLabel(lab: LabOption): string {
 
 type UserOption = { id: string; email: string | null; first_name: string | null; last_name: string | null };
 
-export default function PdfUploadTab() {
+export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: () => void }) {
   const supabase = createClient();
 
   const [file, setFile] = useState<File | null>(null);
@@ -255,6 +285,17 @@ export default function PdfUploadTab() {
   const [openBmIdx, setOpenBmIdx] = useState<number | null>(null);
   const [bmSearchText, setBmSearchText] = useState('');
 
+  // Report type selector (Feature 1)
+  const [reportType, setReportType] = useState<ReportType>('blood');
+
+  // Manual add rows in review screen (Feature 3)
+  const [addingManualRow, setAddingManualRow] = useState(false);
+  const [manualBmSearch, setManualBmSearch] = useState('');
+  const [manualBmDropdownOpen, setManualBmDropdownOpen] = useState(false);
+  const [manualBm, setManualBm] = useState<AllBiomarker | null>(null);
+  const [manualValue, setManualValue] = useState('');
+  const [manualUnit, setManualUnit] = useState('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Duplicate map for current extracted rows (matched_id → indices with 2+ rows)
@@ -295,7 +336,7 @@ export default function PdfUploadTab() {
   // Load all biomarker definitions and labs on mount
   useEffect(() => {
     loadUploads();
-    supabase.from('biomarkers').select('id, name, unit, he_domain').eq('is_active', true)
+    supabase.from('biomarkers').select('id, name, unit, he_domain, source, ref_range_low, ref_range_high').eq('is_active', true)
       .then(({ data }) => setAllBiomarkers((data as AllBiomarker[]) ?? []));
     supabase.from('lab_partners').select('id, name, lab_type, lab_code, parent_lab_id, city, postal_code, address, phone, email, test_categories')
       .eq('is_active', true).order('name')
@@ -742,6 +783,53 @@ export default function PdfUploadTab() {
     setReportNumber(null);
     setPdfSignedUrl(null);
     setLabMetadata({ title: '', test_date: '', lab_address: '', lab_email: '', lab_phone: '' });
+    setAddingManualRow(false);
+    setManualBm(null);
+    setManualValue('');
+    setManualUnit('');
+    setManualBmSearch('');
+  };
+
+  // ── Filtered biomarkers for epigenetic report type ────────────────────────────
+
+  const filteredBiomarkers = useMemo(() => {
+    if (reportType === 'epigenetic') {
+      return allBiomarkers.filter((b) => b.source === 'bio_age' || b.source === 'epigenetic');
+    }
+    if (reportType === 'clinical') {
+      return allBiomarkers.filter((b) => b.source === 'clinical_assessment');
+    }
+    return allBiomarkers;
+  }, [allBiomarkers, reportType]);
+
+  // ── Add manual row to review table ───────────────────────────────────────────
+
+  const handleAddManualRow = () => {
+    if (!manualBm || manualValue === '' || isNaN(parseFloat(manualValue))) return;
+    const v = parseFloat(manualValue);
+    const newRow: ExtractedRow = {
+      extracted_name: locName(manualBm.name),
+      value: v,
+      unit: manualUnit || manualBm.unit || '',
+      original_value: null,
+      original_unit: null,
+      was_converted: false,
+      ref_low: manualBm.ref_range_low ?? null,
+      ref_high: manualBm.ref_range_high ?? null,
+      flagged: false,
+      test_date: null,
+      matched_id: manualBm.id,
+      matched_name: locName(manualBm.name),
+      confidence: 'exact',
+      include: true,
+      db_biomarker: manualBm,
+    };
+    setExtracted((rows) => [...rows, newRow]);
+    setManualBm(null);
+    setManualValue('');
+    setManualUnit('');
+    setManualBmSearch('');
+    setAddingManualRow(false);
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -967,6 +1055,35 @@ export default function PdfUploadTab() {
               </select>
             </div>
           )}
+
+          {/* ── 3b. Report Type ──────────────────────────────────────────── */}
+          <div>
+            <SectionHeading>Report Type</SectionHeading>
+            <div className="flex gap-2">
+              {REPORT_TYPE_OPTIONS.map(({ value, label, icon }) => (
+                <button
+                  key={value}
+                  onClick={() => {
+                    if (value === 'clinical' && onSwitchToManual) {
+                      onSwitchToManual();
+                    } else {
+                      setReportType(value);
+                    }
+                  }}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                    reportType === value && value !== 'clinical'
+                      ? 'bg-[#0e393d] text-white'
+                      : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
+                  }`}
+                >
+                  {icon} {label}
+                </button>
+              ))}
+            </div>
+            {reportType === 'epigenetic' && (
+              <p className="mt-1.5 text-xs text-[#1c2a2b]/50">Biomarker matching restricted to epigenetic markers</p>
+            )}
+          </div>
 
           {/* ── 4. Drop zone ──────────────────────────────────────────────── */}
           {(() => {
@@ -1273,6 +1390,7 @@ export default function PdfUploadTab() {
                     <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Confidence</th>
                     <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Value</th>
                     <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Unit / Conversion</th>
+                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Type</th>
                     <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Flag</th>
                   </tr>
                 </thead>
@@ -1311,8 +1429,8 @@ export default function PdfUploadTab() {
                             const currentBm = row.matched_id ? allBiomarkers.find((b) => b.id === row.matched_id) : null;
                             const displayText = openBmIdx === idx ? bmSearchText : (currentBm ? locInLang(currentBm.name) : '');
                             const bmFiltered = (openBmIdx === idx && bmSearchText.trim()
-                              ? allBiomarkers.filter((b) => locInLang(b.name).toLowerCase().includes(bmSearchText.toLowerCase()))
-                              : allBiomarkers
+                              ? filteredBiomarkers.filter((b) => locInLang(b.name).toLowerCase().includes(bmSearchText.toLowerCase()))
+                              : filteredBiomarkers
                             ).slice(0, 30);
                             return (
                               <div className="relative">
@@ -1403,6 +1521,9 @@ export default function PdfUploadTab() {
                             <span className="font-medium">{row.unit || '—'}</span>
                           )}
                         </td>
+                        <td className="px-3 py-2.5">
+                          <SourceBadge source={row.db_biomarker?.source ?? null} />
+                        </td>
                         <td className="px-3 py-2.5"><FlagBadge flag={flag} /></td>
                       </tr>
                     );
@@ -1412,6 +1533,91 @@ export default function PdfUploadTab() {
             </div>
             );
           })()}
+
+          {/* ── Add marker manually (Feature 3) ──────────────────────── */}
+          {addingManualRow ? (
+            <div className="rounded-xl border border-[#0e393d]/15 bg-[#fafaf8] p-4 space-y-3">
+              <p className="text-xs font-medium text-[#0e393d]/70 uppercase tracking-wider">Add Marker</p>
+              <div className="flex gap-3 flex-wrap items-end">
+                {/* Biomarker search */}
+                <div className="flex-1 min-w-[200px] relative">
+                  <label className="block text-xs text-[#1c2a2b]/50 mb-1">Biomarker</label>
+                  <input
+                    type="text"
+                    placeholder="Search biomarker…"
+                    value={manualBm ? locName(manualBm.name) : manualBmSearch}
+                    onChange={(e) => { setManualBm(null); setManualBmSearch(e.target.value); setManualBmDropdownOpen(true); }}
+                    onFocus={() => setManualBmDropdownOpen(true)}
+                    onBlur={() => setTimeout(() => setManualBmDropdownOpen(false), 150)}
+                    className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                  />
+                  {manualBmDropdownOpen && !manualBm && (
+                    <div className="absolute top-full mt-0.5 left-0 w-72 bg-white border border-[#0e393d]/15 rounded-lg shadow-lg z-30 max-h-52 overflow-y-auto">
+                      {filteredBiomarkers
+                        .filter((b) => !manualBmSearch.trim() || locName(b.name).toLowerCase().includes(manualBmSearch.toLowerCase()))
+                        .slice(0, 30)
+                        .map((b) => (
+                          <button
+                            key={b.id}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => { setManualBm(b); setManualUnit(b.unit || ''); setManualBmDropdownOpen(false); }}
+                            className="w-full text-left px-3 py-1.5 text-xs text-[#1c2a2b] hover:bg-[#0e393d]/5"
+                          >
+                            {locName(b.name)}
+                            {b.unit && <span className="ml-1 text-[#1c2a2b]/40">{b.unit}</span>}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+                {/* Value */}
+                <div className="w-28">
+                  <label className="block text-xs text-[#1c2a2b]/50 mb-1">Value <span className="text-red-400">*</span></label>
+                  <input
+                    type="number" step="0.01"
+                    placeholder="0.00"
+                    value={manualValue}
+                    onChange={(e) => setManualValue(e.target.value)}
+                    className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                  />
+                </div>
+                {/* Unit */}
+                <div className="w-24">
+                  <label className="block text-xs text-[#1c2a2b]/50 mb-1">Unit</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. mg/dL"
+                    value={manualUnit}
+                    onChange={(e) => setManualUnit(e.target.value)}
+                    className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                  />
+                </div>
+                {/* Actions */}
+                <div className="flex gap-2 pb-0.5">
+                  <button
+                    onClick={handleAddManualRow}
+                    disabled={!manualBm || !manualValue}
+                    className="rounded-lg bg-[#0e393d] text-white px-4 py-2 text-xs font-medium hover:bg-[#0e393d]/85 transition disabled:opacity-40"
+                  >
+                    Add
+                  </button>
+                  <button
+                    onClick={() => { setAddingManualRow(false); setManualBm(null); setManualValue(''); setManualUnit(''); setManualBmSearch(''); }}
+                    className="rounded-lg border border-[#0e393d]/15 text-[#1c2a2b]/60 px-4 py-2 text-xs font-medium hover:border-[#0e393d]/30 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAddingManualRow(true)}
+              className="flex items-center gap-1.5 text-xs text-[#0e393d] hover:text-[#0e393d]/70 font-medium transition"
+            >
+              <span className="text-base leading-none">+</span> Add marker not found in PDF
+            </button>
+          )}
 
           <div className="flex gap-3">
             <button
