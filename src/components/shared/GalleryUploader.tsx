@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 
 interface Props {
   urls: string[];
@@ -43,15 +42,17 @@ async function compressAndUpload(file: File, bucket: string, outputWidth: number
 
 async function deleteStorageUrl(url: string, bucket: string) {
   try {
-    const bucketPrefix = `${bucket}/`;
-    const idx = url.indexOf(bucketPrefix);
-    if (idx === -1) return;
-    const path = url.substring(idx + bucketPrefix.length);
-    if (!path) return;
-    const supabase = createClient();
-    await supabase.storage.from(bucket).remove([path]);
+    const res = await fetch('/api/delete-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, bucket }),
+    });
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: res.statusText }));
+      console.error(`[GalleryUploader] Delete failed (${bucket}):`, error);
+    }
   } catch (e) {
-    console.error('[GalleryUploader] Delete failed:', e);
+    console.error('[GalleryUploader] Delete request failed:', e);
   }
 }
 

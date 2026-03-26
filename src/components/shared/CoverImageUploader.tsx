@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import SimpleCropModal from '@/components/admin/shared/SimpleCropModal';
 
 interface Props {
@@ -19,15 +18,17 @@ interface Props {
 async function deleteFromStorage(url: string | null, bucket: string) {
   if (!url) return;
   try {
-    const bucketPrefix = `${bucket}/`;
-    const idx = url.indexOf(bucketPrefix);
-    if (idx === -1) return;
-    const path = url.substring(idx + bucketPrefix.length);
-    if (!path) return;
-    const supabase = createClient();
-    await supabase.storage.from(bucket).remove([path]);
+    const res = await fetch('/api/delete-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, bucket }),
+    });
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: res.statusText }));
+      console.error(`[CoverImageUploader] Delete failed (${bucket}):`, error);
+    }
   } catch (e) {
-    console.error(`Failed to delete from ${bucket}:`, e);
+    console.error(`[CoverImageUploader] Delete request failed (${bucket}):`, e);
   }
 }
 
