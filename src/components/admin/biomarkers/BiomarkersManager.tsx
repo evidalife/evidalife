@@ -506,17 +506,50 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   // ── AI Translate ──────────────────────────────────────────────────────────
 
   const handleTranslate = async () => {
-    const srcName = form.name.en || form.name.de;
-    if (!srcName) { alert('Enter a DE or EN name first.'); return; }
+    // Use active description tab as source; fall back to first non-empty lang
+    const LANGS_ALL = ['de', 'en', 'fr', 'es', 'it'] as const;
+    const sourceLang = form.description[descLang]?.trim()
+      ? descLang
+      : LANGS_ALL.find((l) => form.description[l]?.trim());
+    const srcDesc = sourceLang ? form.description[sourceLang]?.trim() : '';
+    const srcName = form.name.en?.trim() || form.name.de?.trim();
+    if (!srcDesc && !srcName) { alert('Enter a name or description first.'); return; }
     setTranslating(true);
     try {
-      const res = await fetch('/api/admin/translate-product', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name_en: srcName }),
+      // Translate via the generic lab-partner endpoint (supports any source lang + all targets)
+      const targetLangs = LANGS_ALL.filter((l) => l !== sourceLang);
+      const [descRes, nameRes] = await Promise.all([
+        srcDesc && sourceLang
+          ? fetch('/api/admin/translate-lab-partner', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ sourceText: srcDesc, sourceLang, targetLangs }),
+            })
+          : Promise.resolve(null),
+        srcName
+          ? fetch('/api/admin/translate-product', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name_en: srcName }),
+            })
+          : Promise.resolve(null),
+      ]);
+
+      const descJson = descRes ? await descRes.json() : {};
+      const nameJson = nameRes ? await nameRes.json() : {};
+      if (descRes && !descRes.ok) throw new Error(descJson.error ?? 'Description translate failed');
+      if (nameRes && !nameRes.ok) throw new Error(nameJson.error ?? 'Name translate failed');
+
+      setForm((f) => {
+        const nextDesc = { ...f.description };
+        for (const l of targetLangs) {
+          if (descJson[l]) nextDesc[l] = descJson[l];
+        }
+        const nextName = { ...f.name };
+        if (nameJson.name_de) nextName.de = nameJson.name_de;
+        if (nameJson.name_fr) nextName.fr = nameJson.name_fr;
+        if (nameJson.name_es) nextName.es = nameJson.name_es;
+        if (nameJson.name_it) nextName.it = nameJson.name_it;
+        return { ...f, description: nextDesc, name: nextName };
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'Translate failed');
-      setForm((f) => ({ ...f, name: { ...f.name, fr: f.name.fr || json.name_fr || '', es: f.name.es || json.name_es || '', it: f.name.it || json.name_it || '' } }));
     } catch (e: unknown) { alert(e instanceof Error ? e.message : String(e)); }
     finally { setTranslating(false); }
   };

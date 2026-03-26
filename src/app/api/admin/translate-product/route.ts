@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
   const client = new Anthropic({ apiKey });
 
-  const prompt = `Translate this product name, short description, and description from English to French (fr), Spanish (es), and Italian (it).
+  const prompt = `Translate this product name, short description, and description from English to German (de), French (fr), Spanish (es), and Italian (it).
 Use natural, fluent phrasing appropriate for a health and longevity testing platform.
 
 NAME: ${name_en}
@@ -30,12 +30,15 @@ DESCRIPTION: ${description_en}
 
 Return ONLY valid JSON:
 {
+  "name_de": string,
   "name_fr": string,
   "name_es": string,
   "name_it": string,
+  "short_description_de": string,
   "short_description_fr": string,
   "short_description_es": string,
   "short_description_it": string,
+  "description_de": string,
   "description_fr": string,
   "description_es": string,
   "description_it": string
