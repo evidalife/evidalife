@@ -409,7 +409,7 @@ function DomainNormChart({ domain }: { domain: Domain }) {
             if (!active || !payload?.length) return null;
             const di = DATES.indexOf(label as string);
             return (
-              <div className="bg-white border border-[#0e393d]/10 rounded-lg p-2 shadow text-xs">
+              <div className="bg-white border border-[#0e393d]/10 rounded-lg p-2 shadow text-sm">
                 <div className="font-semibold text-[#0e393d] mb-1">{label}</div>
                 {payload.map((p, idx) => {
                   const mi = parseInt((p.dataKey as string).replace('m', ''));
@@ -447,36 +447,17 @@ function DomainNormChart({ domain }: { domain: Domain }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function HealthEnginePublic({ lang }: { lang: Lang }) {
-  const [activeLang, setActiveLang] = useState<Lang>(lang);
-  const t = T[activeLang];
+  const t = T[lang];
 
   // Domain tile expand (one at a time)
   const [openDomains, setOpenDomains] = useState<Set<number>>(new Set());
-  // Accordion (multiple can be open)
-  const [openAccordionDomains, setOpenAccordionDomains] = useState<Set<number>>(new Set());
-  // Key marker cards
-  const [openKeyMarkers, setOpenKeyMarkers] = useState<Set<number>>(new Set());
-  // Individual markers in accordion
+  // Individual markers in domain panel and biomarker section
   const [openBmMarkers, setOpenBmMarkers] = useState<Map<string, boolean>>(new Map());
 
   function toggleDomain(di: number) {
     setOpenDomains(prev => {
       const next = new Set<number>();
       if (!prev.has(di)) next.add(di);
-      return next;
-    });
-  }
-  function toggleAccDomain(di: number) {
-    setOpenAccordionDomains(prev => {
-      const next = new Set(prev);
-      next.has(di) ? next.delete(di) : next.add(di);
-      return next;
-    });
-  }
-  function toggleKeyMarker(fi: number) {
-    setOpenKeyMarkers(prev => {
-      const next = new Set(prev);
-      next.has(fi) ? next.delete(fi) : next.add(fi);
       return next;
     });
   }
@@ -502,7 +483,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
   // Radar data
   const radarData = D.map(d => ({
-    subject: d.nm[activeLang].split(' ')[0],
+    subject: d.nm[lang].split(' ')[0],
     current: d.sc[2],
     first: d.sc[0],
   }));
@@ -511,8 +492,6 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
   const flagCounts = { opt: 0, norm: 0, warn: 0 };
   D.forEach(d => d.m.forEach(m => { flagCounts[mStatus(m.v[2], m.r, m.o, m.dir)]++; }));
   const flagTotal = flagCounts.opt + flagCounts.norm + flagCounts.warn;
-
-  const LANGS: Lang[] = ['en', 'de', 'fr', 'es', 'it'];
 
   return (
     <div className="font-sans bg-[#fafaf8] text-[#1c2a2b] overflow-x-hidden">
@@ -524,23 +503,14 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
       <div className="max-w-[1060px] mx-auto px-8 md:px-12">
 
         {/* ── HERO ── */}
-        <section className="pt-20 pb-6">
+        <section className="pt-40 pb-6">
           <p className="text-[10px] font-semibold tracking-[.18em] uppercase text-[#c4a96a] mb-2.5">{t.tag}</p>
           <h1 className="font-serif text-[clamp(2rem,4vw,3rem)] text-[#0e393d] leading-[1.08] mb-2.5">{t.title}</h1>
-          <p className="text-[.9rem] font-light text-[#1c2a2b]/55 max-w-[480px] leading-relaxed mb-3.5">{t.sub}</p>
-          <div className="flex flex-wrap gap-4 text-[.68rem] text-[#1c2a2b]/55">
+          <p className="text-base font-light text-[#1c2a2b]/55 max-w-[480px] leading-relaxed mb-3.5">{t.sub}</p>
+          <div className="flex flex-wrap gap-4 text-sm text-[#1c2a2b]/55">
             <span className="flex items-center gap-[5px]"><span className="w-[6px] h-[6px] rounded-full bg-[#0C9C6C] shrink-0" />{t.heroDate}</span>
             <span className="flex items-center gap-[5px]"><span className="w-[6px] h-[6px] rounded-full bg-[#ceab84] shrink-0" />{t.heroTests}</span>
             <span className="flex items-center gap-[5px]"><span className="w-[6px] h-[6px] rounded-full bg-[#0e393d] shrink-0" />{t.heroKit}</span>
-          </div>
-          {/* Lang switcher */}
-          <div className="flex gap-[5px] pt-3.5">
-            {LANGS.map(l => (
-              <button key={l} onClick={() => setActiveLang(l)}
-                className={`px-3 py-1 rounded-full text-[.64rem] font-semibold border transition-all ${activeLang === l ? 'bg-[#0e393d] text-[#ceab84] border-[#0e393d]' : 'bg-white text-[#1c2a2b]/55 border-[#0e393d]/10 hover:border-[#0e393d]/25'}`}>
-                {l.toUpperCase()}
-              </button>
-            ))}
           </div>
         </section>
 
@@ -555,7 +525,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
             <div key={i} className={`shrink-0 flex items-center gap-[7px] px-[13px] py-[7px] rounded-[9px] border text-[#1c2a2b] ${item.cur ? 'border-[#0e393d] bg-[rgba(14,57,61,.03)]' : 'border-[#1c2a2b]/10 bg-white'} ${item.dashed ? 'opacity-35 border-dashed' : ''}`}>
               <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ background: item.dot }} />
               <div>
-                <div className="text-[.66rem] font-semibold text-[#0e393d]">{item.date}</div>
+                <div className="text-xs font-semibold text-[#0e393d]">{item.date}</div>
                 <div className="text-[.58rem] text-[#1c2a2b]/55">{item.label}</div>
               </div>
             </div>
@@ -567,26 +537,26 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
           <SectionHeader label={t.secScore} right="Weighted composite of 8 domains" />
 
           {/* Score row */}
-          <div className="grid md:grid-cols-[230px_1fr] gap-3.5 mb-3.5 items-stretch">
+          <div className="grid md:grid-cols-[300px_1fr] gap-3.5 mb-3.5 items-stretch">
 
             {/* Score card */}
             <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col">
               <div className="px-5 pt-5 pb-3.5 flex flex-col items-center gap-[5px]">
                 <div className="text-[8px] font-semibold tracking-[.16em] uppercase text-white/35">LONGEVITY SCORE</div>
                 <div className="mt-2 mb-1"><Gauge score={78} max={100} sz="lg" dark /></div>
-                <div className="text-[.66rem] font-semibold px-[9px] py-[2px] rounded-full bg-[rgba(12,156,108,.22)] text-[#6ee7b7]">+10 in 18 months</div>
+                <div className="text-xs font-semibold px-[9px] py-[2px] rounded-full bg-[rgba(12,156,108,.22)] text-[#6ee7b7]">+10 in 18 months</div>
                 <div className="text-[.58rem] text-white/30 text-center">{t.scMsg}</div>
               </div>
               <div className="grid grid-cols-2 border-t border-white/[.06]">
                 <div className="px-3.5 py-[11px] flex flex-col gap-0.5 border-r border-white/[.06]">
-                  <div className="text-[8px] font-semibold tracking-[.08em] uppercase text-white/28">Best Domain</div>
+                  <div className="text-[10px] font-semibold tracking-[.08em] uppercase text-white/28">Best Domain</div>
                   <div className="font-serif text-[1.3rem] leading-none text-[#0C9C6C]">88</div>
-                  <div className="text-[8px] text-white/22">Heart & Vessels</div>
+                  <div className="text-[10px] text-white/22">Heart &amp; Vessels</div>
                 </div>
                 <div className="px-3.5 py-[11px] flex flex-col gap-0.5">
-                  <div className="text-[8px] font-semibold tracking-[.08em] uppercase text-white/28">Focus Area</div>
+                  <div className="text-[10px] font-semibold tracking-[.08em] uppercase text-white/28">Focus Area</div>
                   <div className="font-serif text-[1.3rem] leading-none text-[#C4A96A]">58</div>
-                  <div className="text-[8px] text-white/22">Nutrients</div>
+                  <div className="text-[10px] text-white/22">Nutrients</div>
                 </div>
               </div>
               <div className="border-t border-white/[.06] px-4 py-3 bg-black/[.12]">
@@ -619,10 +589,10 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                 ].map((item, i) => (
                   <div key={i} className={`p-4 flex flex-col gap-[3px] ${i < 2 ? 'border-r border-white/[.06]' : ''}`}>
                     <div className="text-[8px] font-semibold tracking-[.1em] uppercase text-white/28 mb-1">{item.lbl}</div>
-                    <div className="text-[.58rem] text-white/18 line-through">{item.chron}</div>
+                    <div className="text-xs text-white/18 line-through">{item.chron}</div>
                     <div className={`font-serif text-[#0C9C6C] leading-[1.05] ${item.big ? 'text-[2.1rem]' : 'text-[1.6rem]'}`}>{item.val}</div>
-                    <div className="text-[.6rem] font-semibold text-[#0C9C6C]">{item.diff}</div>
-                    <div className="text-[.55rem] text-white/22 leading-[1.45] mt-[3px]">{item.sub}</div>
+                    <div className="text-xs font-semibold text-[#0C9C6C]">{item.diff}</div>
+                    <div className="text-[.6rem] text-white/22 leading-[1.45] mt-[3px]">{item.sub}</div>
                   </div>
                 ))}
               </div>
@@ -657,8 +627,8 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
             <div className="flex gap-3 items-start px-4 py-[13px] rounded-xl bg-[#fffbf0] border border-l-4 border-[rgba(212,131,10,.18)] border-l-[#b45309]">
               <span className="text-[16px] shrink-0 leading-[1.4]">⚠️</span>
               <div>
-                <div className="text-[.72rem] font-semibold mb-0.5">{t.alertWarnHead}</div>
-                <div className="text-[.64rem] text-[#1c2a2b]/55 leading-[1.55]">{t.alertWarnBody}</div>
+                <div className="text-sm font-semibold mb-0.5">{t.alertWarnHead}</div>
+                <div className="text-xs text-[#1c2a2b]/55 leading-[1.55]">{t.alertWarnBody}</div>
                 <div className="flex flex-wrap gap-[5px] mt-1.5">
                   <span className="text-[9px] font-semibold px-2 py-[2px] rounded-full bg-[rgba(180,83,9,.08)] text-[#b45309]">Pulse Pressure: 42 mmHg</span>
                 </div>
@@ -667,8 +637,8 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
             <div className="flex gap-3 items-start px-4 py-[13px] rounded-xl bg-[#f0fdf9] border border-l-4 border-[rgba(12,156,108,.15)] border-l-[#0C9C6C]">
               <span className="text-[16px] shrink-0 leading-[1.4]">✅</span>
               <div>
-                <div className="text-[.72rem] font-semibold mb-0.5">{t.alertOkHead}</div>
-                <div className="text-[.64rem] text-[#1c2a2b]/55 leading-[1.55]">{t.alertOkBody}</div>
+                <div className="text-sm font-semibold mb-0.5">{t.alertOkHead}</div>
+                <div className="text-xs text-[#1c2a2b]/55 leading-[1.55]">{t.alertOkBody}</div>
                 <div className="flex flex-wrap gap-[5px] mt-1.5">
                   {['↑ HOMA-IR', '↑ Omega-3 Index', '↑ Non-HDL Cholesterol', '↑ hsCRP'].map(pill => (
                     <span key={pill} className="text-[9px] font-semibold px-2 py-[2px] rounded-full bg-[rgba(12,156,108,.09)] text-[#0C9C6C]">{pill}</span>
@@ -699,8 +669,8 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
             ].map((card, i) => (
               <div key={i} className="bg-white border border-[#1c2a2b]/10 rounded-xl p-4">
                 <div className="w-[3px] h-[18px] rounded-full mb-[9px]" style={{ background: card.color }} />
-                <div className="text-[.72rem] font-semibold mb-1">{card.title}</div>
-                <div className="text-[.64rem] text-[#1c2a2b]/55 leading-[1.58]">{card.body}</div>
+                <div className="text-sm font-semibold mb-1">{card.title}</div>
+                <div className="text-xs text-[#1c2a2b]/55 leading-[1.58]">{card.body}</div>
                 <div className="flex flex-wrap gap-1 mt-[7px]">
                   {card.tags.map((tag, ti) => (
                     <span key={ti} className={`text-[9px] font-semibold px-[7px] py-[2px] rounded-[4px] ${tag.c === 'g' ? 'bg-[rgba(12,156,108,.09)] text-[#0C9C6C]' : tag.c === 'a' ? 'bg-[rgba(180,83,9,.08)] text-[#b45309]' : 'bg-[rgba(14,57,61,.06)] text-[#1c2a2b]/55'}`}>{tag.l}</span>
@@ -713,58 +683,51 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
         {/* ── KEY MARKERS ── */}
         <section className="pt-8">
-          <SectionHeader label={t.secKm} right="Your most impactful biomarkers — click to expand" />
+          <SectionHeader label={t.secKm} right="Your most impactful biomarkers" />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
             {FEATURED.map(({ di, mi, why }, fi) => {
               const domain = D[di];
               const m = domain.m[mi];
               const v = m.v[2];
               const s = mStatus(v, m.r, m.o, m.dir);
-              const cl = mColor(s);
               const prev = m.v[1];
               const delta = +(v - prev).toFixed(2);
               const improving = (m.dir === 'lower' && delta <= 0) || (m.dir === 'higher' && delta >= 0) || m.dir === 'range';
               const dCol = improving ? '#0C9C6C' : '#b45309';
-              const isOpen = openKeyMarkers.has(fi);
               const topBorder = s === 'opt' ? '#0C9C6C' : s === 'norm' ? '#c4a96a' : '#b45309';
               return (
-                <div key={fi} className="bg-white border border-[#1c2a2b]/10 rounded-2xl px-4 py-4 relative overflow-hidden cursor-pointer transition-all hover:shadow-md hover:-translate-y-px"
-                  style={{ borderTop: `3px solid ${topBorder}` }}
-                  onClick={() => toggleKeyMarker(fi)}>
+                <div key={fi} className="bg-white border border-[#1c2a2b]/10 rounded-2xl px-4 py-4 overflow-hidden"
+                  style={{ borderTop: `3px solid ${topBorder}` }}>
                   <div className="flex justify-between items-center mb-0.5">
-                    <span className="text-[.6rem] text-[#1c2a2b]/55 font-medium">{domain.nm[activeLang]}</span>
+                    <span className="text-xs text-[#1c2a2b]/55 font-medium">{domain.nm[lang]}</span>
                     <StatusBadge s={s} t={t} />
                   </div>
-                  <div className="text-[.72rem] font-semibold text-[#0e393d] mb-2.5">{m.n}</div>
+                  <div className="text-sm font-semibold text-[#0e393d] mb-2.5">{m.n}</div>
                   <div className="flex items-baseline gap-1 mb-1.5">
                     <span className="font-serif text-[2rem] text-[#1c2a2b] leading-none">{v}</span>
-                    <span className="text-[.62rem] text-[#1c2a2b]/55">{m.u}</span>
+                    <span className="text-xs text-[#1c2a2b]/55">{m.u}</span>
                   </div>
                   <div className="mb-1.5"><RangeBar v={v} r={m.r} o={m.o} dir={m.dir} /></div>
-                  <div className="text-[.62rem] mb-[5px]" style={{ color: dCol }}>
+                  <div className="text-xs mb-[5px]" style={{ color: dCol }}>
                     vs previous test: {delta >= 0 ? '+' : ''}{delta} {m.u}
                   </div>
-                  <div className="text-[.59rem] text-[#1c2a2b]/55 leading-[1.5] pt-[7px] border-t border-[#0e393d]/[.06]">{why}</div>
-                  {isOpen && (
-                    <div className="border-t border-[#0e393d]/[.06] mt-2.5 pt-3">
-                      <div className="h-[120px]"><MarkerHistoryChart m={m} height={120} /></div>
-                      <div className="text-[.63rem] text-[#1c2a2b]/55 leading-[1.65] p-[9px] bg-[rgba(14,57,61,.03)] rounded-lg mt-2.5 mb-2">
-                        {m.desc}
+                  <div className="text-xs text-[#1c2a2b]/55 leading-[1.5] pt-[7px] border-t border-[#0e393d]/[.06]">{why}</div>
+                  {/* Always-visible detail */}
+                  <div className="border-t border-[#0e393d]/[.06] mt-2.5 pt-3">
+                    <div className="h-[120px]"><MarkerHistoryChart m={m} height={120} /></div>
+                    <div className="text-sm text-[#1c2a2b]/55 leading-[1.65] p-[9px] bg-[rgba(14,57,61,.03)] rounded-lg mt-2.5 mb-2">
+                      {m.desc}
+                    </div>
+                    <div className="flex gap-3.5 text-xs text-[#1c2a2b]/55 flex-wrap">
+                      <div>
+                        <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.refRange}</span>
+                        {m.r[0]} – {m.r[1]} {m.u}
                       </div>
-                      <div className="flex gap-3.5 text-[.62rem] text-[#1c2a2b]/55 flex-wrap">
-                        <div>
-                          <span className="block text-[8px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.refRange}</span>
-                          {m.r[0]} – {m.r[1]} {m.u}
-                        </div>
-                        <div>
-                          <span className="block text-[8px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#0C9C6C]">{t.longevityOpt}</span>
-                          {m.o[0]} – {m.o[1]} {m.u}
-                        </div>
+                      <div>
+                        <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#0C9C6C]">{t.longevityOpt}</span>
+                        {m.o[0]} – {m.o[1]} {m.u}
                       </div>
                     </div>
-                  )}
-                  <div className="text-[.58rem] text-[#0e393d] text-right mt-[5px] opacity-60">
-                    {isOpen ? t.kmCollapse : t.kmExpand}
                   </div>
                 </div>
               );
@@ -777,11 +740,11 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
           <SectionHeader label={t.secDom} right="Click any domain to explore all markers" />
 
           {/* Radar + Flag */}
-          <div className="grid md:grid-cols-[1fr_240px] gap-3.5 mb-3">
+          <div className="grid md:grid-cols-[280px_1fr] gap-3.5 mb-3">
             {/* Radar */}
             <div className="bg-white border border-[#1c2a2b]/10 rounded-2xl p-4">
-              <div className="text-[.66rem] font-semibold text-[#1c2a2b]/55 uppercase tracking-[.06em] mb-2.5">{t.domBalance}</div>
-              <div className="h-[220px]">
+              <div className="text-sm font-semibold text-[#1c2a2b]/55 uppercase tracking-[.06em] mb-2.5">{t.domBalance}</div>
+              <div className="h-96">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="72%">
                     <PolarGrid stroke="rgba(14,57,61,.07)" />
@@ -795,7 +758,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
             </div>
             {/* Flag card */}
             <div className="bg-white border border-[#1c2a2b]/10 rounded-2xl p-4">
-              <div className="text-[.66rem] font-semibold text-[#1c2a2b]/55 uppercase tracking-[.06em] mb-3">{t.markerStatus}</div>
+              <div className="text-sm font-semibold text-[#1c2a2b]/55 uppercase tracking-[.06em] mb-3">{t.markerStatus}</div>
               {([
                 { k: 'opt' as MStatus, c: '#0C9C6C', l: t.optLabel },
                 { k: 'norm' as MStatus, c: '#C4A96A', l: t.normLabel },
@@ -806,11 +769,11 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                   <div className="flex-1 h-[5px] rounded-full bg-[#ede9e3] overflow-hidden">
                     <div className="h-full rounded-full" style={{ width: `${Math.round(flagCounts[row.k] / flagTotal * 100)}%`, background: row.c }} />
                   </div>
-                  <div className="text-[.7rem] font-semibold text-[#1c2a2b] w-6 text-right">{flagCounts[row.k]}</div>
-                  <div className="text-[.59rem] text-[#1c2a2b]/55 w-[68px]">{row.l}</div>
+                  <div className="text-sm font-semibold text-[#1c2a2b] w-6 text-right">{flagCounts[row.k]}</div>
+                  <div className="text-xs text-[#1c2a2b]/55 w-[68px]">{row.l}</div>
                 </div>
               ))}
-              <div className="mt-2.5 pt-2.5 border-t border-[#0e393d]/[.06] text-[.59rem] text-[#1c2a2b]/55 leading-[1.55]">
+              <div className="mt-2.5 pt-2.5 border-t border-[#0e393d]/[.06] text-xs text-[#1c2a2b]/55 leading-[1.55]">
                 <strong className="text-[#1c2a2b]">{flagTotal} markers measured.</strong>{' '}
                 <strong className="text-[#0C9C6C]">{flagCounts.opt} optimal</strong> — strong foundation. Focus: Nutrients &amp; Inflammation.
               </div>
@@ -832,12 +795,12 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                     <span className="text-[14px]">{d.ic}</span>
                     <StatusBadge s={st} t={t} />
                   </div>
-                  <div className="text-[.68rem] font-semibold text-[#0e393d] mb-0.5">{d.nm[activeLang]}</div>
-                  <div className="text-[.56rem] text-[#1c2a2b]/55">{d.m.length} {t.markersLabel} · {d.w}</div>
+                  <div className="text-sm font-semibold text-[#0e393d] mb-0.5">{d.nm[lang]}</div>
+                  <div className="text-xs text-[#1c2a2b]/55">{d.m.length} {t.markersLabel} · {d.w}</div>
                   <div className="flex items-baseline gap-[3px] my-[5px]">
                     <span className="font-serif text-[1.65rem] leading-none" style={{ color: cl }}>{s}</span>
-                    <span className="text-[.56rem] text-[#1c2a2b]/55">/100</span>
-                    <span className="text-[.56rem] font-semibold ml-[3px]" style={{ color: td > 0 ? '#0C9C6C' : '#c0392b' }}>
+                    <span className="text-xs text-[#1c2a2b]/55">/100</span>
+                    <span className="text-xs font-semibold ml-[3px]" style={{ color: td > 0 ? '#0C9C6C' : '#c0392b' }}>
                       {td > 0 ? '↑+' : '↓'}{Math.abs(td)}
                     </span>
                   </div>
@@ -859,8 +822,8 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
               <div key={di} className="mt-2 rounded-xl border border-[#0e393d] overflow-hidden">
                 <div className="bg-[#0e393d] px-4 py-3 flex items-center justify-between">
                   <div className="font-serif text-white flex items-center gap-2">
-                    {d.ic} <span>{d.nm[activeLang]}</span>
-                    <span className="text-[.65rem] text-white/35 font-sans">{s}/100</span>
+                    {d.ic} <span>{d.nm[lang]}</span>
+                    <span className="text-xs text-white/35 font-sans">{s}/100</span>
                   </div>
                   <button onClick={() => toggleDomain(di)}
                     className="w-[26px] h-[26px] rounded-full border border-white/20 text-white/50 hover:bg-white/12 hover:text-white transition-all flex items-center justify-center text-[13px]">
@@ -870,11 +833,11 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                 <div className="p-4 bg-[#fafaf8]">
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                      <div className="text-[.63rem] text-[#1c2a2b]/55 font-medium mb-2">{t.markerTrends}</div>
+                      <div className="text-sm text-[#1c2a2b]/55 font-medium mb-2">{t.markerTrends}</div>
                       <div className="h-[260px]"><DomainNormChart domain={d} /></div>
                     </div>
                     <div>
-                      <div className="text-[.63rem] text-[#1c2a2b]/55 font-medium mb-2">{d.m.length} {t.markersClick}</div>
+                      <div className="text-sm text-[#1c2a2b]/55 font-medium mb-2">{d.m.length} {t.markersClick}</div>
                       <div className="flex flex-col gap-1.5 overflow-y-auto max-h-[300px] pr-1">
                         {d.m.map((m, mi) => {
                           const v = m.v[2];
@@ -887,10 +850,10 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                               className={`bg-white rounded-[10px] border px-3 py-2.5 cursor-pointer transition-all ${isOpen ? 'border-[#0e393d] shadow-[0_0_0_2px_rgba(14,57,61,.03)]' : 'border-[#1c2a2b]/10 hover:border-[#1c2a2b]/20'}`}
                               onClick={() => toggleBmMarker(pKey)}>
                               <div className="flex items-center justify-between mb-[5px]">
-                                <div className="text-[.67rem] font-semibold text-[#0e393d]">{m.n}</div>
+                                <div className="text-sm font-semibold text-[#0e393d]">{m.n}</div>
                                 <div className="flex items-center gap-1 shrink-0">
-                                  <span className="text-[.7rem] font-bold" style={{ color: cl2 }}>{v}</span>
-                                  <span className="text-[.53rem] text-[#1c2a2b]/55">{m.u}</span>
+                                  <span className="text-sm font-bold" style={{ color: cl2 }}>{v}</span>
+                                  <span className="text-xs text-[#1c2a2b]/55">{m.u}</span>
                                   <StatusBadge s={s2} t={t} />
                                 </div>
                               </div>
@@ -903,14 +866,20 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                               {isOpen && (
                                 <div className="border-t border-[#0e393d]/[.06] mt-2 pt-2.5">
                                   <div className="h-[100px]"><MarkerHistoryChart m={m} height={100} /></div>
-                                  <div className="text-[.61rem] text-[#1c2a2b]/55 leading-[1.65] p-2 bg-[rgba(14,57,61,.02)] rounded-lg mt-2">
+                                  <div className="text-sm text-[#1c2a2b]/55 leading-[1.65] p-2 bg-[rgba(14,57,61,.02)] rounded-lg mt-2">
                                     {m.desc}
                                   </div>
-                                  <div className="flex gap-3.5 mt-1.5 text-[.61rem] text-[#1c2a2b]/55 flex-wrap">
-                                    <div><span className="block text-[.49rem] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.refRange}</span>{m.r[0]} – {m.r[1]} {m.u}</div>
-                                    <div><span className="block text-[.49rem] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#0C9C6C]">{t.longevityOpt}</span>{m.o[0]} – {m.o[1]} {m.u}</div>
+                                  <div className="flex gap-3.5 mt-1.5 text-xs text-[#1c2a2b]/55 flex-wrap">
                                     <div>
-                                      <span className="block text-[.49rem] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.changeLabel}</span>
+                                      <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.refRange}</span>
+                                      {m.r[0]} – {m.r[1]} {m.u}
+                                    </div>
+                                    <div>
+                                      <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#0C9C6C]">{t.longevityOpt}</span>
+                                      {m.o[0]} – {m.o[1]} {m.u}
+                                    </div>
+                                    <div>
+                                      <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.changeLabel}</span>
                                       <span style={{ color: ((m.dir === 'lower' && m.v[2] < m.v[0]) || (m.dir === 'higher' && m.v[2] > m.v[0])) ? '#0C9C6C' : '#b45309' }}>
                                         {((m.v[2] - m.v[0]) >= 0 ? '+' : '')}{(m.v[2] - m.v[0]).toFixed(2)} {m.u}
                                       </span>
@@ -930,69 +899,76 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
           })}
         </section>
 
-        {/* ── BIOMARKER ACCORDION ── */}
+        {/* ── BIOMARKER DETAILS ── */}
         <section className="pt-8 pb-12">
-          <SectionHeader label={t.secBm} right="Click a domain · Click a marker for history & explanation" />
-          <div className="flex flex-col gap-1.5">
+          <SectionHeader label={t.secBm} right="Click any marker for history & explanation" />
+          <div className="flex flex-col gap-8">
             {D.map((d, di) => {
               const s = d.sc[2];
               const cl = scoreColor(s / 100);
-              const isOpen = openAccordionDomains.has(di);
               return (
-                <div key={di} className="bg-white border border-[#1c2a2b]/10 rounded-[10px] overflow-hidden">
-                  <div className={`flex items-center justify-between px-4 py-3 cursor-pointer transition-colors select-none ${isOpen ? '' : 'hover:bg-[rgba(14,57,61,.015)]'}`}
-                    onClick={() => toggleAccDomain(di)}>
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-[14px]">{d.ic}</span>
-                      <div>
-                        <div className="text-[.72rem] font-semibold text-[#0e393d]">{d.nm[activeLang]}</div>
-                        <div className="text-[.59rem] text-[#1c2a2b]/55">{d.m.length} {t.markersLabel} · {d.w} {t.weightLabel}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-serif text-[.95rem]" style={{ color: cl }}>{s}/100</span>
-                      <span className={`text-[9px] text-[#1c2a2b]/55 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
-                    </div>
+                <div key={di}>
+                  {/* Domain header divider */}
+                  <div className="flex items-center gap-2.5 mb-3 pb-2 border-b border-[#0e393d]/[.08]">
+                    <span className="text-[14px]">{d.ic}</span>
+                    <div className="text-sm font-semibold text-[#0e393d]">{d.nm[lang]}</div>
+                    <span className="font-serif text-[.9rem]" style={{ color: cl }}>{s}/100</span>
+                    <div className="flex-1" />
+                    <span className="text-xs text-[#1c2a2b]/45">{d.m.length} {t.markersLabel} · {d.w}</span>
                   </div>
-
-                  {isOpen && (
-                    <div className="border-t border-[#0e393d]/[.06]">
-                      <div className="grid md:grid-cols-2">
-                        {d.m.map((m, mi) => {
-                          const v = m.v[2];
-                          const s2 = mStatus(v, m.r, m.o, m.dir);
-                          const cl2 = mColor(s2);
-                          const aKey = `ac${di}-${mi}`;
-                          const mOpen = !!openBmMarkers.get(aKey);
-                          const isLast = mi === d.m.length - 1;
-                          const isSecondLast = mi === d.m.length - 2;
-                          return (
-                            <div key={mi}
-                              className={`px-3.5 py-2.5 cursor-pointer transition-colors hover:bg-[rgba(14,57,61,.015)] ${!isLast && !(isSecondLast && d.m.length % 2 === 0) ? 'border-b border-[#0e393d]/[.06]' : ''} ${mi % 2 === 0 && mi < d.m.length - 1 ? 'md:border-r md:border-[#0e393d]/[.06]' : ''}`}
-                              onClick={() => toggleBmMarker(aKey)}>
-                              <div className="flex items-center justify-between mb-1">
-                                <div className="text-[.67rem] font-semibold text-[#0e393d]">{m.n}</div>
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <span className="text-[.7rem] font-bold" style={{ color: cl2 }}>{v}</span>
-                                  <span className="text-[.53rem] text-[#1c2a2b]/55">{m.u}</span>
-                                  <StatusBadge s={s2} t={t} />
+                  {/* 3-col marker grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                    {d.m.map((m, mi) => {
+                      const v = m.v[2];
+                      const s2 = mStatus(v, m.r, m.o, m.dir);
+                      const cl2 = mColor(s2);
+                      const topBorder = s2 === 'opt' ? '#0C9C6C' : s2 === 'norm' ? '#c4a96a' : '#b45309';
+                      const bmKey = `bm${di}-${mi}`;
+                      const mOpen = !!openBmMarkers.get(bmKey);
+                      const prev = m.v[1];
+                      const delta = +(v - prev).toFixed(2);
+                      const improving = (m.dir === 'lower' && delta <= 0) || (m.dir === 'higher' && delta >= 0) || m.dir === 'range';
+                      const dCol = improving ? '#0C9C6C' : '#b45309';
+                      return (
+                        <div key={mi}
+                          className="bg-white border border-[#1c2a2b]/10 rounded-2xl px-4 py-4 cursor-pointer transition-all hover:shadow-md hover:-translate-y-px"
+                          style={{ borderTop: `3px solid ${topBorder}` }}
+                          onClick={() => toggleBmMarker(bmKey)}>
+                          <div className="flex justify-between items-center mb-0.5">
+                            <span className="text-xs text-[#1c2a2b]/55 font-medium">{d.nm[lang]}</span>
+                            <StatusBadge s={s2} t={t} />
+                          </div>
+                          <div className="text-sm font-semibold text-[#0e393d] mb-2.5">{m.n}</div>
+                          <div className="flex items-baseline gap-1 mb-1.5">
+                            <span className="font-serif text-[2rem] text-[#1c2a2b] leading-none">{v}</span>
+                            <span className="text-xs text-[#1c2a2b]/55">{m.u}</span>
+                          </div>
+                          <div className="mb-1.5"><RangeBar v={v} r={m.r} o={m.o} dir={m.dir} /></div>
+                          <div className="text-xs mb-1" style={{ color: dCol }}>
+                            vs previous: {delta >= 0 ? '+' : ''}{delta} {m.u}
+                          </div>
+                          {mOpen && (
+                            <div className="border-t border-[#0e393d]/[.06] mt-2.5 pt-3">
+                              <div className="h-[120px]"><MarkerHistoryChart m={m} height={120} /></div>
+                              <div className="text-sm text-[#1c2a2b]/55 leading-[1.65] p-[9px] bg-[rgba(14,57,61,.03)] rounded-lg mt-2.5 mb-2">
+                                {m.desc}
+                              </div>
+                              <div className="flex gap-3.5 text-xs text-[#1c2a2b]/55 flex-wrap">
+                                <div>
+                                  <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.refRange}</span>
+                                  {m.r[0]} – {m.r[1]} {m.u}
+                                </div>
+                                <div>
+                                  <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#0C9C6C]">{t.longevityOpt}</span>
+                                  {m.o[0]} – {m.o[1]} {m.u}
                                 </div>
                               </div>
-                              <RangeBar v={v} r={m.r} o={m.o} dir={m.dir} />
-                              {mOpen && (
-                                <div className="border-t border-[#0e393d]/[.06] mt-2 pt-2.5">
-                                  <div className="h-[90px]"><MarkerHistoryChart m={m} height={90} /></div>
-                                  <div className="text-[.61rem] text-[#1c2a2b]/55 leading-[1.6] p-2 bg-[rgba(14,57,61,.02)] rounded-lg mt-2">
-                                    {m.desc}
-                                  </div>
-                                </div>
-                              )}
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}
