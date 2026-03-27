@@ -122,6 +122,14 @@ const T: Record<Lang, {
   markerTrends: string; markersClick: string;
   weightLabel: string; markersLabel: string;
   nextRec: string;
+  yourProgress: string; borderlineZoneHead: string; borderlineZoneBody: string;
+  improvedMarkersHead: string; improvedMarkersBody: string;
+  weightedComposite: string; impactfulBiomarkers: string;
+  clickDomainMarkers: string; biomarkerDetailsRight: string; epigeneticDisplay: string;
+  viewMarkers: string; closeDetails: string; secBmLabel: string;
+  colCode: string; colMarker: string; colUnit: string; colRefRange: string; colOptimal: string;
+  markersMeasured: string; strongFoundation: string; focusOn: string;
+  allBioClocksLabel: string; markerTrendsLabel: string; scoreHistoryLabel: string; basedOn8Domains: string;
 }> = {
   en: {
     tag: 'HEALTH ENGINE', title: 'Your Longevity Score.', sub: '46 biomarkers across 8 health domains. Track your score over time, see what improves, and know exactly what to focus on.',
@@ -139,6 +147,23 @@ const T: Record<Lang, {
     markersClick: 'markers — click any to expand history & explanation',
     weightLabel: 'weight', markersLabel: 'markers',
     nextRec: 'Next recommended',
+    yourProgress: 'YOUR PROGRESS',
+    borderlineZoneHead: '1 marker in the borderline zone',
+    borderlineZoneBody: 'Within laboratory reference range but below the longevity optimal target. Lifestyle interventions can often bring these into the optimal zone within 90 days.',
+    improvedMarkersHead: '11 markers improved since first test',
+    improvedMarkersBody: 'Your interventions are working. Keep up the current approach and continue tracking at your next test.',
+    weightedComposite: 'Weighted composite of 8 domains',
+    impactfulBiomarkers: 'Your most impactful biomarkers',
+    clickDomainMarkers: 'Click any domain to see all markers',
+    biomarkerDetailsRight: 'All measured values across every test',
+    epigeneticDisplay: 'Epigenetic & blood-based age estimates · display only, not scored',
+    viewMarkers: 'View markers', closeDetails: 'Close', secBmLabel: 'BIOMARKER DETAILS',
+    colCode: 'Code', colMarker: 'Marker', colUnit: 'Unit', colRefRange: 'Ref Range', colOptimal: 'Optimal',
+    markersMeasured: 'markers measured.', strongFoundation: 'strong foundation.', focusOn: 'Focus: Nutrients & Inflammation.',
+    allBioClocksLabel: 'ALL BIOLOGICAL CLOCKS VS CHRONOLOGICAL AGE — YEARS',
+    markerTrendsLabel: 'Marker trends — actual values',
+    scoreHistoryLabel: 'SCORE HISTORY — 3 TESTS',
+    basedOn8Domains: 'Based on 8 health domains · Epigenetics shown separately',
   },
   de: {
     tag: 'HEALTH ENGINE', title: 'Dein Longevity Score.', sub: '46 Biomarker in 8 Gesundheitsbereichen. Verfolge deinen Score über die Zeit, sieh was sich verbessert.',
@@ -156,6 +181,23 @@ const T: Record<Lang, {
     markersClick: 'Marker — klicke für Verlauf & Erklärung',
     weightLabel: 'Gewicht', markersLabel: 'Marker',
     nextRec: 'Nächste Empfehlung',
+    yourProgress: 'DEIN FORTSCHRITT',
+    borderlineZoneHead: '1 Marker im Grenzbereich',
+    borderlineZoneBody: 'Im Laborbereich, aber unter dem Longevity-Zielwert. Lifestyle-Maßnahmen können dies oft in 90 Tagen korrigieren.',
+    improvedMarkersHead: '11 Marker seit dem ersten Test verbessert',
+    improvedMarkersBody: 'Deine Interventionen wirken. Weiter so und beim nächsten Test fortsetzen.',
+    weightedComposite: 'Gewichtetes Komposit aus 8 Bereichen',
+    impactfulBiomarkers: 'Deine wirkungsvollsten Biomarker',
+    clickDomainMarkers: 'Klicke auf einen Bereich, um alle Marker zu sehen',
+    biomarkerDetailsRight: 'Alle gemessenen Werte aus jedem Test',
+    epigeneticDisplay: 'Epigenetische & blutbasierte Altersschätzungen · nur Anzeige, nicht bewertet',
+    viewMarkers: 'Marker anzeigen', closeDetails: 'Schließen', secBmLabel: 'BIOMARKER-DETAILS',
+    colCode: 'Code', colMarker: 'Marker', colUnit: 'Einheit', colRefRange: 'Referenzbereich', colOptimal: 'Optimal',
+    markersMeasured: 'Marker gemessen.', strongFoundation: 'starke Basis.', focusOn: 'Fokus: Nährstoffe & Entzündung.',
+    allBioClocksLabel: 'ALLE BIO-UHREN VS CHRONOLOGISCHES ALTER — JAHRE',
+    markerTrendsLabel: 'Marker-Trends — tatsächliche Werte',
+    scoreHistoryLabel: 'SCORE-VERLAUF — 3 TESTS',
+    basedOn8Domains: 'Basiert auf 8 Gesundheitsbereichen · Epigenetik separat',
   },
   fr: {
     tag: 'HEALTH ENGINE', title: 'Votre score de longévité.', sub: '46 biomarqueurs dans 8 domaines de santé. Suivez votre score dans le temps, voyez ce qui s\'améliore.',
@@ -173,6 +215,23 @@ const T: Record<Lang, {
     markersClick: 'marqueurs — cliquez pour l\'historique & l\'explication',
     weightLabel: 'poids', markersLabel: 'marqueurs',
     nextRec: 'Prochain recommandé',
+    yourProgress: 'VOTRE PROGRESSION',
+    borderlineZoneHead: '1 marqueur en zone limite',
+    borderlineZoneBody: 'Dans la plage de référence mais en dessous de la cible optimale de longévité. Des interventions lifestyle peuvent souvent corriger cela en 90 jours.',
+    improvedMarkersHead: '11 marqueurs améliorés depuis le premier test',
+    improvedMarkersBody: 'Vos interventions fonctionnent. Continuez et suivez au prochain test.',
+    weightedComposite: 'Composite pondéré de 8 domaines',
+    impactfulBiomarkers: 'Vos biomarqueurs les plus impactants',
+    clickDomainMarkers: 'Cliquez sur un domaine pour voir tous les marqueurs',
+    biomarkerDetailsRight: 'Toutes les valeurs mesurées de chaque test',
+    epigeneticDisplay: 'Estimations d\'âge épigénétiques & sanguines · affichage uniquement, non scoré',
+    viewMarkers: 'Voir les marqueurs', closeDetails: 'Fermer', secBmLabel: 'DÉTAILS BIOMARQUEURS',
+    colCode: 'Code', colMarker: 'Marqueur', colUnit: 'Unité', colRefRange: 'Plage de réf.', colOptimal: 'Optimal',
+    markersMeasured: 'marqueurs mesurés.', strongFoundation: 'base solide.', focusOn: 'Focus : Nutriments & Inflammation.',
+    allBioClocksLabel: 'TOUTES LES HORLOGES BIOLOGIQUES VS ÂGE CHRONOLOGIQUE — ANNÉES',
+    markerTrendsLabel: 'Tendances des marqueurs — valeurs réelles',
+    scoreHistoryLabel: 'HISTORIQUE DES SCORES — 3 TESTS',
+    basedOn8Domains: 'Basé sur 8 domaines de santé · Épigénétique affichée séparément',
   },
   es: {
     tag: 'HEALTH ENGINE', title: 'Tu puntuación de longevidad.', sub: '46 biomarcadores en 8 dominios de salud. Sigue tu puntuación a lo largo del tiempo.',
@@ -190,6 +249,23 @@ const T: Record<Lang, {
     markersClick: 'marcadores — clic para historial y explicación',
     weightLabel: 'peso', markersLabel: 'marcadores',
     nextRec: 'Próximo recomendado',
+    yourProgress: 'TU PROGRESO',
+    borderlineZoneHead: '1 marcador en zona límite',
+    borderlineZoneBody: 'Dentro del rango de referencia pero por debajo del objetivo óptimo de longevidad. Las intervenciones de estilo de vida a menudo pueden llevarlo a la zona óptima en 90 días.',
+    improvedMarkersHead: '11 marcadores mejorados desde el primer análisis',
+    improvedMarkersBody: 'Tus intervenciones están funcionando. Continúa y haz seguimiento en el próximo análisis.',
+    weightedComposite: 'Compuesto ponderado de 8 dominios',
+    impactfulBiomarkers: 'Tus biomarcadores más impactantes',
+    clickDomainMarkers: 'Haz clic en un dominio para ver todos los marcadores',
+    biomarkerDetailsRight: 'Todos los valores medidos en cada análisis',
+    epigeneticDisplay: 'Estimaciones de edad epigenética y sanguínea · solo visualización, no puntuado',
+    viewMarkers: 'Ver marcadores', closeDetails: 'Cerrar', secBmLabel: 'DETALLES BIOMARCADORES',
+    colCode: 'Código', colMarker: 'Marcador', colUnit: 'Unidad', colRefRange: 'Rango de ref.', colOptimal: 'Óptimo',
+    markersMeasured: 'marcadores medidos.', strongFoundation: 'base sólida.', focusOn: 'Enfoque: Nutrientes & Inflamación.',
+    allBioClocksLabel: 'TODOS LOS RELOJES BIOLÓGICOS VS EDAD CRONOLÓGICA — AÑOS',
+    markerTrendsLabel: 'Tendencias de marcadores — valores reales',
+    scoreHistoryLabel: 'HISTORIAL DE PUNTUACIONES — 3 PRUEBAS',
+    basedOn8Domains: 'Basado en 8 dominios de salud · Epigenética mostrada por separado',
   },
   it: {
     tag: 'HEALTH ENGINE', title: 'Il tuo punteggio di longevità.', sub: '46 biomarcatori in 8 domini della salute. Monitora il tuo punteggio nel tempo.',
@@ -207,6 +283,23 @@ const T: Record<Lang, {
     markersClick: 'marcatori — clicca per cronologia e spiegazione',
     weightLabel: 'peso', markersLabel: 'marcatori',
     nextRec: 'Prossimo consigliato',
+    yourProgress: 'I TUOI PROGRESSI',
+    borderlineZoneHead: '1 marcatore in zona limite',
+    borderlineZoneBody: 'Nel range di riferimento ma sotto il target ottimale di longevità. Gli interventi lifestyle spesso possono portarlo nella zona ottimale in 90 giorni.',
+    improvedMarkersHead: '11 marcatori migliorati dal primo test',
+    improvedMarkersBody: 'I tuoi interventi stanno funzionando. Continua e monitora al prossimo test.',
+    weightedComposite: 'Composito ponderato di 8 domini',
+    impactfulBiomarkers: 'I tuoi biomarcatori più impattanti',
+    clickDomainMarkers: 'Clicca su un dominio per vedere tutti i marcatori',
+    biomarkerDetailsRight: 'Tutti i valori misurati in ogni test',
+    epigeneticDisplay: 'Stime dell\'età epigenetica & ematica · solo visualizzazione, non valutata',
+    viewMarkers: 'Vedi marcatori', closeDetails: 'Chiudi', secBmLabel: 'DETTAGLI BIOMARCATORI',
+    colCode: 'Codice', colMarker: 'Marcatore', colUnit: 'Unità', colRefRange: 'Range di rif.', colOptimal: 'Ottimale',
+    markersMeasured: 'marcatori misurati.', strongFoundation: 'base solida.', focusOn: 'Focus: Nutrienti & Infiammazione.',
+    allBioClocksLabel: 'TUTTI I CLOCK BIOLOGICI VS ETÀ CRONOLOGICA — ANNI',
+    markerTrendsLabel: 'Tendenze marcatori — valori reali',
+    scoreHistoryLabel: 'STORICO PUNTEGGI — 3 TEST',
+    basedOn8Domains: 'Basato su 8 domini della salute · Epigenetica mostrata separatamente',
   },
 };
 
@@ -460,7 +553,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
         {/* ── SECTION A: LONGEVITY SCORE ── */}
         <section className="pt-10 pb-0">
-          <SectionHeader label="LONGEVITY SCORE" right="Weighted composite of 8 domains" />
+          <SectionHeader label={t.secScore} right={t.weightedComposite} />
           <div className="grid md:grid-cols-[1fr_2fr] gap-3.5 mb-3.5 items-stretch">
 
             {/* Score card */}
@@ -471,7 +564,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                 </div>
                 <div className="mt-2 mb-1"><Gauge score={78} max={100} sz="lg" dark /></div>
                 <div className="text-xs text-white/30 text-center">{t.scMsg}</div>
-                <div className="text-[10px] text-white/18 text-center leading-snug mt-1">Based on 8 health domains · Epigenetics shown separately</div>
+                <div className="text-[10px] text-white/18 text-center leading-snug mt-1">{t.basedOn8Domains}</div>
               </div>
               <div className="grid grid-cols-2 border-t border-white/[.06]">
                 <div className="px-3.5 py-[11px] flex flex-col gap-0.5 border-r border-white/[.06]">
@@ -486,7 +579,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                 </div>
               </div>
               <div className="border-t border-white/[.06] px-4 py-3 bg-black/[.12]">
-                <div className="text-[10px] font-semibold tracking-[.08em] uppercase text-white/22 mb-1.5">SCORE HISTORY — 3 TESTS</div>
+                <div className="text-[10px] font-semibold tracking-[.08em] uppercase text-white/22 mb-1.5">{t.scoreHistoryLabel}</div>
                 <div className="h-[110px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={scoreData} margin={{ top: 4, right: 4, bottom: 0, left: -28 }}>
@@ -510,7 +603,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
               {/* Header */}
               <div className="px-5 pt-4 pb-3 border-b border-white/[.06]">
-                <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-[#ceab84]">YOUR PROGRESS</div>
+                <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-[#ceab84]">{t.yourProgress}</div>
               </div>
 
               {/* Borderline section */}
@@ -518,11 +611,11 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-[3px] h-[14px] rounded-full bg-[#b45309] shrink-0" />
                   <div className="text-xs font-semibold tracking-[.06em] uppercase text-[#fbbf24]">
-                    1 marker in the borderline zone
+                    {t.borderlineZoneHead}
                   </div>
                 </div>
                 <div className="text-xs text-white/50 leading-[1.6] mb-3">
-                  Within laboratory reference range but below the longevity optimal target. Lifestyle interventions can often bring these into the optimal zone within 90 days.
+                  {t.borderlineZoneBody}
                 </div>
                 <div className="flex flex-wrap gap-[5px]">
                   <span className="text-[9px] font-semibold px-2.5 py-[3px] rounded-full bg-[rgba(180,83,9,.3)] text-[#fbbf24]">
@@ -536,11 +629,11 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-[3px] h-[14px] rounded-full bg-[#0C9C6C] shrink-0" />
                   <div className="text-xs font-semibold tracking-[.06em] uppercase text-[#6ee7b7]">
-                    11 markers improved since first test
+                    {t.improvedMarkersHead}
                   </div>
                 </div>
                 <div className="text-xs text-white/50 leading-[1.6] mb-3">
-                  Your interventions are working. Keep up the current approach and continue tracking at your next test.
+                  {t.improvedMarkersBody}
                 </div>
                 <div className="flex flex-wrap gap-[5px]">
                   {['↑ HOMA-IR', '↑ Omega-3 Index', '↑ Non-HDL Cholesterol', '↑ hsCRP'].map(pill => (
@@ -589,7 +682,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
         {/* ── SECTION B: BIOLOGICAL AGE CLOCKS ── */}
         <section className="pt-8">
-          <SectionHeader label="BIOLOGICAL AGE CLOCKS" right="Epigenetic & blood-based age estimates · display only, not scored" />
+          <SectionHeader label="BIOLOGICAL AGE CLOCKS" right={t.epigeneticDisplay} />
           <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col">
             <div className="grid grid-cols-3">
               {[
@@ -608,7 +701,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
             </div>
             <div className="border-t border-white/[.06] px-4 pt-3.5 pb-4 bg-black/[.1] flex flex-col">
               <div className="text-[8px] font-semibold tracking-[.08em] uppercase text-white/22 mb-2 shrink-0">
-                ALL BIOLOGICAL CLOCKS VS CHRONOLOGICAL AGE — YEARS
+                {t.allBioClocksLabel}
               </div>
               <div className="h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -634,7 +727,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
         {/* ── KEY MARKERS ── */}
         <section className="pt-8">
-          <SectionHeader label={t.secKm} right="Your most impactful biomarkers" />
+          <SectionHeader label={t.secKm} right={t.impactfulBiomarkers} />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
             {FEATURED.map(({ di, mi, why }, fi) => {
               const domain = D[di];
@@ -671,7 +764,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
         {/* ── 8 HEALTH DOMAINS ── */}
         <section className="pt-8">
-          <SectionHeader label={t.secDom} right="Click any domain to see all markers" />
+          <SectionHeader label={t.secDom} right={t.clickDomainMarkers} />
 
           {/* Radar + Flag */}
           <div className="bg-[#0e393d] rounded-2xl overflow-hidden mb-3">
@@ -735,8 +828,8 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                   </div>
                 ))}
                 <div className="mt-2.5 pt-2.5 border-t border-white/[.06] text-xs text-white/50 leading-[1.55]">
-                  <strong className="text-white">{flagTotal} markers measured.</strong>{' '}
-                  <strong className="text-[#0C9C6C]">{flagCounts.opt} optimal</strong> — strong foundation. Focus: Nutrients &amp; Inflammation.
+                  <strong className="text-white">{flagTotal} {t.markersMeasured}</strong>{' '}
+                  <strong className="text-[#0C9C6C]">{flagCounts.opt} {t.optLabel}</strong> — {t.strongFoundation} {t.focusOn}
                 </div>
               </div>
             </div>
@@ -800,7 +893,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
                         {/* Bottom strip */}
                         <div className="px-4 py-2 border-t border-[#1c2a2b]/[.05] bg-[#1c2a2b]/[.015] flex items-center justify-between">
-                          <span className="text-[9px] text-[#1c2a2b]/35 font-medium">{isOpen ? 'Close' : 'View markers'}</span>
+                          <span className="text-[9px] text-[#1c2a2b]/35 font-medium">{isOpen ? t.closeDetails : t.viewMarkers}</span>
                           <span className="text-[9px] text-[#1c2a2b]/30 transition-transform duration-200 inline-block"
                             style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
                         </div>
@@ -829,7 +922,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
                       {/* Marker trends — actual values */}
                       <div className="mb-5 px-1">
-                        <div className="text-[10px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/40 mb-2">Marker trends — actual values</div>
+                        <div className="text-[10px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/40 mb-2">{t.markerTrendsLabel}</div>
                         <div className="h-[180px]">
                           <ResponsiveContainer width="100%" height="100%">
                             <LineChart
@@ -935,7 +1028,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
         {/* ── BIOMARKER DETAILS TABLE ── */}
         <section className="pt-10 pb-12">
-          <SectionHeader label="BIOMARKER DETAILS" right="All measured values across every test" />
+          <SectionHeader label={t.secBmLabel} right={t.biomarkerDetailsRight} />
 
           {D.map((d, di) => (
             <div key={di} className="mb-8">
@@ -953,11 +1046,11 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-[#0e393d]/[.08]">
-                      <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/40 pb-2 pr-4 w-16">Code</th>
-                      <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/40 pb-2 pr-4">Marker</th>
-                      <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/40 pb-2 pr-4">Unit</th>
-                      <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/40 pb-2 pr-4">Ref Range</th>
-                      <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#0C9C6C] pb-2 pr-4">Optimal</th>
+                      <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/40 pb-2 pr-4 w-16">{t.colCode}</th>
+                      <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/40 pb-2 pr-4">{t.colMarker}</th>
+                      <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/40 pb-2 pr-4">{t.colUnit}</th>
+                      <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/40 pb-2 pr-4">{t.colRefRange}</th>
+                      <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#0C9C6C] pb-2 pr-4">{t.colOptimal}</th>
                       {DATES.slice(-3).map(date => (
                         <th key={date} className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/40 pb-2 pr-4 text-right">{date}</th>
                       ))}
