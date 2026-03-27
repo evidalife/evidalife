@@ -531,11 +531,15 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
         {/* ── SECTION A: LONGEVITY SCORE ── */}
         <section className="pt-10 pb-0">
-          <div className="grid md:grid-cols-[1fr_380px] gap-3.5 mb-3.5 items-stretch">
+          <SectionHeader label="LONGEVITY SCORE" right="Weighted composite of 8 domains" />
+          <div className="grid md:grid-cols-[1fr_2fr] gap-3.5 mb-3.5 items-stretch">
 
             {/* Score card */}
             <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col">
               <div className="px-5 pt-5 pb-3.5 flex flex-col items-center gap-[5px]">
+                <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-white/35 mb-1">
+                  LONGEVITY SCORE
+                </div>
                 <div className="mt-2 mb-1"><Gauge score={78} max={100} sz="lg" dark /></div>
                 <div className="text-[.58rem] text-white/30 text-center">{t.scMsg}</div>
                 <div className="text-[.55rem] text-white/18 text-center leading-snug mt-1">Based on 8 health domains · Epigenetics shown separately</div>
@@ -572,30 +576,50 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
               </div>
             </div>
 
-            {/* Alert strips (right column) */}
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-3 items-start px-4 py-[13px] rounded-xl bg-[#fffbf0] border border-l-4 border-[rgba(212,131,10,.18)] border-l-[#b45309]">
-                <span className="text-[16px] shrink-0 leading-[1.4]">⚠️</span>
+            {/* Insights panel (right column) */}
+            <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col gap-0">
+
+              {/* Amber alert */}
+              <div className="flex gap-3 items-start px-5 py-4 border-b border-white/[.06]">
+                <span className="text-[18px] shrink-0 leading-[1.3]">⚠️</span>
                 <div>
-                  <div className="text-sm font-semibold mb-0.5">{t.alertWarnHead}</div>
-                  <div className="text-xs text-[#1c2a2b]/55 leading-[1.55]">{t.alertWarnBody}</div>
-                  <div className="flex flex-wrap gap-[5px] mt-1.5">
-                    <span className="text-[9px] font-semibold px-2 py-[2px] rounded-full bg-[rgba(180,83,9,.08)] text-[#b45309]">Pulse Pressure: 42 mmHg</span>
+                  <div className="text-sm font-semibold text-white mb-0.5">
+                    1 marker in the borderline zone
+                  </div>
+                  <div className="text-xs text-white/50 leading-[1.55] mb-2">
+                    Within laboratory reference range but below the longevity optimal
+                    target. Lifestyle interventions can often bring these into the
+                    optimal zone within 90 days.
+                  </div>
+                  <div className="flex flex-wrap gap-[5px]">
+                    <span className="text-[9px] font-semibold px-2 py-[2px] rounded-full bg-[rgba(180,83,9,.25)] text-[#fbbf24]">
+                      Pulse Pressure: 42 mmHg
+                    </span>
                   </div>
                 </div>
               </div>
-              <div className="flex gap-3 items-start px-4 py-[13px] rounded-xl bg-[#f0fdf9] border border-l-4 border-[rgba(12,156,108,.15)] border-l-[#0C9C6C]">
-                <span className="text-[16px] shrink-0 leading-[1.4]">✅</span>
+
+              {/* Green alert */}
+              <div className="flex gap-3 items-start px-5 py-4">
+                <span className="text-[18px] shrink-0 leading-[1.3]">✅</span>
                 <div>
-                  <div className="text-sm font-semibold mb-0.5">{t.alertOkHead}</div>
-                  <div className="text-xs text-[#1c2a2b]/55 leading-[1.55]">{t.alertOkBody}</div>
-                  <div className="flex flex-wrap gap-[5px] mt-1.5">
+                  <div className="text-sm font-semibold text-white mb-0.5">
+                    11 markers have moved into a healthy range since your first test
+                  </div>
+                  <div className="text-xs text-white/50 leading-[1.55] mb-2">
+                    Your interventions are working. Keep up the current approach and
+                    continue tracking at your next test.
+                  </div>
+                  <div className="flex flex-wrap gap-[5px]">
                     {['↑ HOMA-IR', '↑ Omega-3 Index', '↑ Non-HDL Cholesterol', '↑ hsCRP'].map(pill => (
-                      <span key={pill} className="text-[9px] font-semibold px-2 py-[2px] rounded-full bg-[rgba(12,156,108,.09)] text-[#0C9C6C]">{pill}</span>
+                      <span key={pill} className="text-[9px] font-semibold px-2 py-[2px] rounded-full bg-[rgba(12,156,108,.25)] text-[#6ee7b7]">
+                        {pill}
+                      </span>
                     ))}
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
 
