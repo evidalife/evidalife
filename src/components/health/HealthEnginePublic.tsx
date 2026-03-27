@@ -473,28 +473,28 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                   LONGEVITY SCORE
                 </div>
                 <div className="mt-2 mb-1"><Gauge score={78} max={100} sz="lg" dark /></div>
-                <div className="text-[.58rem] text-white/30 text-center">{t.scMsg}</div>
-                <div className="text-[.55rem] text-white/18 text-center leading-snug mt-1">Based on 8 health domains · Epigenetics shown separately</div>
+                <div className="text-xs text-white/30 text-center">{t.scMsg}</div>
+                <div className="text-[10px] text-white/18 text-center leading-snug mt-1">Based on 8 health domains · Epigenetics shown separately</div>
               </div>
               <div className="grid grid-cols-2 border-t border-white/[.06]">
                 <div className="px-3.5 py-[11px] flex flex-col gap-0.5 border-r border-white/[.06]">
-                  <div className="text-[10px] font-semibold tracking-[.08em] uppercase text-white/28">Best Domain</div>
+                  <div className="text-xs font-semibold tracking-[.08em] uppercase text-white/28">Best Domain</div>
                   <div className="font-serif text-[1.3rem] leading-none text-[#0C9C6C]">88</div>
-                  <div className="text-[10px] text-white/22">Heart &amp; Vessels</div>
+                  <div className="text-xs text-white/22">Heart &amp; Vessels</div>
                 </div>
                 <div className="px-3.5 py-[11px] flex flex-col gap-0.5">
-                  <div className="text-[10px] font-semibold tracking-[.08em] uppercase text-white/28">Focus Area</div>
+                  <div className="text-xs font-semibold tracking-[.08em] uppercase text-white/28">Focus Area</div>
                   <div className="font-serif text-[1.3rem] leading-none text-[#C4A96A]">58</div>
-                  <div className="text-[10px] text-white/22">Nutrients</div>
+                  <div className="text-xs text-white/22">Nutrients</div>
                 </div>
               </div>
               <div className="border-t border-white/[.06] px-4 py-3 bg-black/[.12]">
-                <div className="text-[8px] font-semibold tracking-[.08em] uppercase text-white/22 mb-1.5">SCORE HISTORY — 3 TESTS</div>
+                <div className="text-[10px] font-semibold tracking-[.08em] uppercase text-white/22 mb-1.5">SCORE HISTORY — 3 TESTS</div>
                 <div className="h-[110px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={scoreData} margin={{ top: 4, right: 4, bottom: 0, left: -28 }}>
-                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
-                      <YAxis domain={[55, 90]} tick={{ fontSize: 10, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={4} />
+                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[55, 90]} tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={4} />
                       <RTooltip
                         formatter={(v: unknown) => [v as number, 'Score']}
                         contentStyle={{ fontSize: 11, background: '#0e393d', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8 }}
@@ -511,49 +511,46 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
             {/* Insights panel (right column) */}
             <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col">
 
-              {/* Card header */}
+              {/* Header */}
               <div className="px-5 pt-4 pb-3 border-b border-white/[.06]">
                 <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-[#ceab84]">YOUR PROGRESS</div>
               </div>
 
-              {/* Amber alert */}
-              <div className="flex gap-3 items-start px-5 py-4 border-b border-white/[.06]">
-                <span className="text-[16px] shrink-0 leading-[1.4] mt-0.5">⚠️</span>
-                <div>
-                  <div className="text-sm font-semibold text-white mb-1">
+              {/* Borderline section */}
+              <div className="px-5 py-4 border-b border-white/[.06]">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-[3px] h-[14px] rounded-full bg-[#b45309] shrink-0" />
+                  <div className="text-xs font-semibold tracking-[.06em] uppercase text-[#fbbf24]">
                     1 marker in the borderline zone
                   </div>
-                  <div className="text-xs text-white/50 leading-[1.6] mb-2.5">
-                    Within laboratory reference range but below the longevity optimal
-                    target. Lifestyle interventions can often bring these into the
-                    optimal zone within 90 days.
-                  </div>
-                  <div className="flex flex-wrap gap-[5px]">
-                    <span className="text-[9px] font-semibold px-2.5 py-[3px] rounded-full bg-[rgba(180,83,9,.3)] text-[#fbbf24]">
-                      Pulse Pressure: 42 mmHg
-                    </span>
-                  </div>
+                </div>
+                <div className="text-xs text-white/50 leading-[1.6] mb-3">
+                  Within laboratory reference range but below the longevity optimal target. Lifestyle interventions can often bring these into the optimal zone within 90 days.
+                </div>
+                <div className="flex flex-wrap gap-[5px]">
+                  <span className="text-[9px] font-semibold px-2.5 py-[3px] rounded-full bg-[rgba(180,83,9,.3)] text-[#fbbf24]">
+                    Pulse Pressure: 42 mmHg
+                  </span>
                 </div>
               </div>
 
-              {/* Green alert */}
-              <div className="flex gap-3 items-start px-5 py-4">
-                <span className="text-[16px] shrink-0 leading-[1.4] mt-0.5">✅</span>
-                <div>
-                  <div className="text-sm font-semibold text-white mb-1">
-                    11 markers have moved into a healthy range since your first test
+              {/* Improved section */}
+              <div className="px-5 py-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-[3px] h-[14px] rounded-full bg-[#0C9C6C] shrink-0" />
+                  <div className="text-xs font-semibold tracking-[.06em] uppercase text-[#6ee7b7]">
+                    11 markers improved since first test
                   </div>
-                  <div className="text-xs text-white/50 leading-[1.6] mb-2.5">
-                    Your interventions are working. Keep up the current approach and
-                    continue tracking at your next test.
-                  </div>
-                  <div className="flex flex-wrap gap-[5px]">
-                    {['↑ HOMA-IR', '↑ Omega-3 Index', '↑ Non-HDL Cholesterol', '↑ hsCRP'].map(pill => (
-                      <span key={pill} className="text-[9px] font-semibold px-2.5 py-[3px] rounded-full bg-[rgba(12,156,108,.3)] text-[#6ee7b7]">
-                        {pill}
-                      </span>
-                    ))}
-                  </div>
+                </div>
+                <div className="text-xs text-white/50 leading-[1.6] mb-3">
+                  Your interventions are working. Keep up the current approach and continue tracking at your next test.
+                </div>
+                <div className="flex flex-wrap gap-[5px]">
+                  {['↑ HOMA-IR', '↑ Omega-3 Index', '↑ Non-HDL Cholesterol', '↑ hsCRP'].map(pill => (
+                    <span key={pill} className="text-[9px] font-semibold px-2.5 py-[3px] rounded-full bg-[rgba(12,156,108,.3)] text-[#6ee7b7]">
+                      {pill}
+                    </span>
+                  ))}
                 </div>
               </div>
 
@@ -628,7 +625,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                     />
                     <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: 11, color: 'rgba(255,255,255,.5)', paddingTop: 6 }} />
                     <Line name="PhenoAge" type="monotone" dataKey="pheno" stroke="#0C9C6C" strokeWidth={2} dot={{ r: 3, fill: '#0C9C6C' }} activeDot={{ r: 5 }} />
-                    <Line name="GrimAge v2" type="monotone" dataKey="grim" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3, fill: '#8b5cf6' }} activeDot={{ r: 5 }} connectNulls={false} />
+                    <Line name="GrimAge v2" type="monotone" dataKey="grim" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3, fill: '#8b5cf6' }} activeDot={{ r: 5 }} connectNulls={true} />
                     <Line name="DunedinPACE×age" type="monotone" dataKey="pace" stroke="#ceab84" strokeWidth={2} dot={{ r: 3, fill: '#ceab84' }} activeDot={{ r: 5 }} />
                     <Line name="Chronological" type="monotone" dataKey="chron" stroke="rgba(255,255,255,.2)" strokeWidth={1} strokeDasharray="5 4" dot={false} />
                   </LineChart>
@@ -759,7 +756,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
               const topBorder = st === 'opt' ? '#0C9C6C' : st === 'norm' ? '#c4a96a' : '#b45309';
               return (
                 <div key={di}
-                  className={`bg-white border border-[#1c2a2b]/10 rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-md hover:-translate-y-px select-none ${isOpen ? 'shadow-md ring-1 ring-[#0e393d]/20' : ''}`}
+                  className={`bg-white rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-md hover:-translate-y-px select-none border ${isOpen ? 'shadow-md border-[#0e393d]/40' : 'border-[#1c2a2b]/10'}`}
                   style={{ borderTop: `3px solid ${topBorder}` }}
                   onClick={() => toggleDomain(di)}>
 
