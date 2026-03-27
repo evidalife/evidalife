@@ -487,6 +487,15 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
     chron: CHRON[i],
   }));
 
+  // Bio-age Y-axis dynamic range
+  const bioVals: number[] = bioData.flatMap(d => {
+    const vals: number[] = [d.pheno, d.pace, d.chron];
+    if (d.grim !== null) vals.push(d.grim);
+    return vals;
+  });
+  const bioYMin = Math.floor(Math.min(...bioVals) - 3);
+  const bioYMax = Math.ceil(Math.max(...bioVals) + 2);
+
   // Score history data
   const scoreData = DATES.map((d, i) => ({ date: d, score: OV[i] }));
 
@@ -513,29 +522,19 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
         {/* ── HERO ── */}
         <section className="pt-40 pb-6">
-          <p className="text-[10px] font-semibold tracking-[.18em] uppercase text-[#c4a96a] mb-2.5">{t.tag}</p>
+          <p className="mb-4"><span className="inline-flex items-center bg-[#0e393d] text-white rounded-full px-3 py-1 text-xs font-semibold tracking-widest uppercase">{t.tag}</span></p>
           <h1 className="font-serif text-[clamp(2rem,4vw,3rem)] text-[#0e393d] leading-[1.08] mb-2.5">{t.title}</h1>
-          <p className="text-base font-light text-[#1c2a2b]/55 max-w-[480px] leading-relaxed mb-3.5">{t.sub}</p>
-          <div className="flex flex-wrap gap-4 text-sm text-[#1c2a2b]/55">
-            <span className="flex items-center gap-[5px]"><span className="w-[6px] h-[6px] rounded-full bg-[#0C9C6C] shrink-0" />{t.heroDate}</span>
-            <span className="flex items-center gap-[5px]"><span className="w-[6px] h-[6px] rounded-full bg-[#ceab84] shrink-0" />{t.heroTests}</span>
-            <span className="flex items-center gap-[5px]"><span className="w-[6px] h-[6px] rounded-full bg-[#0e393d] shrink-0" />{t.heroKit}</span>
-          </div>
+          <p className="text-base font-light text-[#1c2a2b]/55 max-w-[480px] leading-relaxed">{t.sub}</p>
         </section>
 
-        {/* ── LONGEVITY SCORE ── */}
+        {/* ── SECTION A: LONGEVITY SCORE ── */}
         <section className="pt-2 pb-0">
-          <SectionHeader label={t.secScore} right="Weighted composite of 8 domains" />
-
-          {/* Score row */}
-          <div className="grid md:grid-cols-[300px_1fr] gap-3.5 mb-3.5 items-stretch">
+          <div className="grid md:grid-cols-[1fr_380px] gap-3.5 mb-3.5 items-stretch">
 
             {/* Score card */}
             <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col">
               <div className="px-5 pt-5 pb-3.5 flex flex-col items-center gap-[5px]">
-                <div className="text-[8px] font-semibold tracking-[.16em] uppercase text-white/35">LONGEVITY SCORE</div>
                 <div className="mt-2 mb-1"><Gauge score={78} max={100} sz="lg" dark /></div>
-                <div className="text-xs font-semibold px-[9px] py-[2px] rounded-full bg-[rgba(12,156,108,.22)] text-[#6ee7b7]">+10 in 18 months</div>
                 <div className="text-[.58rem] text-white/30 text-center">{t.scMsg}</div>
                 <div className="text-[.55rem] text-white/18 text-center leading-snug mt-1">Based on 8 health domains · Epigenetics shown separately</div>
               </div>
@@ -553,7 +552,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
               </div>
               <div className="border-t border-white/[.06] px-4 py-3 bg-black/[.12]">
                 <div className="text-[8px] font-semibold tracking-[.08em] uppercase text-white/22 mb-1.5">SCORE HISTORY — 3 TESTS</div>
-                <div className="h-[80px]">
+                <div className="h-[110px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={scoreData} margin={{ top: 4, right: 4, bottom: 0, left: -28 }}>
                       <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
@@ -571,70 +570,28 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
               </div>
             </div>
 
-            {/* Bio-age card */}
-            <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col">
-              <div className="grid grid-cols-3">
-                {[
-                  { lbl: 'PHENOAGE · LEVINE 2018', chron: '40.1 chronological', big: true, val: '33.9', diff: '↓ 6.2 years younger', sub: 'Calculated from 9 standard blood markers. Each year above chronological age ≈ +6% mortality risk.' },
-                  { lbl: 'GRIMAGE V2 · METHYLATION', chron: '40.1 chronological', big: false, val: '36.8', diff: '↓ 3.3 years younger', sub: 'Gold-standard DNA methylation clock. Most accurate predictor of healthspan and lifespan. Requires specialist lab.' },
-                  { lbl: 'DUNEDINPACE · AGING RATE', chron: 'rate × age = projected age', big: false, val: '32.5 yr', diff: '↓ 7.6 years younger (rate)', sub: 'Speed of aging: 0.81 yr/yr · population avg 1.0 · You age 9.7 months per calendar year.' },
-                ].map((item, i) => (
-                  <div key={i} className={`p-4 flex flex-col gap-[3px] ${i < 2 ? 'border-r border-white/[.06]' : ''}`}>
-                    <div className="text-[11px] font-semibold tracking-[.1em] uppercase text-white/28 mb-1">{item.lbl}</div>
-                    <div className="text-sm text-white/18 line-through">{item.chron}</div>
-                    <div className={`font-serif text-[#0C9C6C] leading-[1.05] ${item.big ? 'text-[2.2rem]' : 'text-[2.2rem]'}`}>{item.val}</div>
-                    <div className="text-sm font-semibold text-[#0C9C6C]">{item.diff}</div>
-                    <div className="text-xs text-white/22 leading-[1.45] mt-[3px]">{item.sub}</div>
+            {/* Alert strips (right column) */}
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-3 items-start px-4 py-[13px] rounded-xl bg-[#fffbf0] border border-l-4 border-[rgba(212,131,10,.18)] border-l-[#b45309]">
+                <span className="text-[16px] shrink-0 leading-[1.4]">⚠️</span>
+                <div>
+                  <div className="text-sm font-semibold mb-0.5">{t.alertWarnHead}</div>
+                  <div className="text-xs text-[#1c2a2b]/55 leading-[1.55]">{t.alertWarnBody}</div>
+                  <div className="flex flex-wrap gap-[5px] mt-1.5">
+                    <span className="text-[9px] font-semibold px-2 py-[2px] rounded-full bg-[rgba(180,83,9,.08)] text-[#b45309]">Pulse Pressure: 42 mmHg</span>
                   </div>
-                ))}
-              </div>
-              <div className="border-t border-white/[.06] px-4 pt-3.5 pb-4 bg-black/[.1] flex-1 flex flex-col min-h-[160px]">
-                <div className="text-[8px] font-semibold tracking-[.08em] uppercase text-white/22 mb-2 shrink-0">
-                  ALL BIOLOGICAL CLOCKS VS CHRONOLOGICAL AGE — YEARS
-                </div>
-                <div className="flex-1">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={bioData} margin={{ top: 4, right: 40, bottom: 0, left: -16 }}>
-                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
-                      <YAxis domain={[26, 42]} tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={5} />
-                      <RTooltip
-                        contentStyle={{ fontSize: 11, background: '#0e393d', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8 }}
-                        labelStyle={{ color: 'rgba(255,255,255,.5)' }}
-                        itemStyle={{ fontSize: 11 }}
-                      />
-                      <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: 11, color: 'rgba(255,255,255,.5)', paddingTop: 6 }} />
-                      <Line name="PhenoAge" type="monotone" dataKey="pheno" stroke="#0C9C6C" strokeWidth={2} dot={{ r: 3, fill: '#0C9C6C' }} activeDot={{ r: 5 }} />
-                      <Line name="GrimAge v2" type="monotone" dataKey="grim" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3, fill: '#8b5cf6' }} activeDot={{ r: 5 }} connectNulls={false} />
-                      <Line name="DunedinPACE×age" type="monotone" dataKey="pace" stroke="#ceab84" strokeWidth={2} dot={{ r: 3, fill: '#ceab84' }} activeDot={{ r: 5 }} />
-                      <Line name="Chronological" type="monotone" dataKey="chron" stroke="rgba(255,255,255,.2)" strokeWidth={1} strokeDasharray="5 4" dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Alert strip */}
-          <div className="flex flex-col gap-2 mt-3.5">
-            <div className="flex gap-3 items-start px-4 py-[13px] rounded-xl bg-[#fffbf0] border border-l-4 border-[rgba(212,131,10,.18)] border-l-[#b45309]">
-              <span className="text-[16px] shrink-0 leading-[1.4]">⚠️</span>
-              <div>
-                <div className="text-sm font-semibold mb-0.5">{t.alertWarnHead}</div>
-                <div className="text-xs text-[#1c2a2b]/55 leading-[1.55]">{t.alertWarnBody}</div>
-                <div className="flex flex-wrap gap-[5px] mt-1.5">
-                  <span className="text-[9px] font-semibold px-2 py-[2px] rounded-full bg-[rgba(180,83,9,.08)] text-[#b45309]">Pulse Pressure: 42 mmHg</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-3 items-start px-4 py-[13px] rounded-xl bg-[#f0fdf9] border border-l-4 border-[rgba(12,156,108,.15)] border-l-[#0C9C6C]">
-              <span className="text-[16px] shrink-0 leading-[1.4]">✅</span>
-              <div>
-                <div className="text-sm font-semibold mb-0.5">{t.alertOkHead}</div>
-                <div className="text-xs text-[#1c2a2b]/55 leading-[1.55]">{t.alertOkBody}</div>
-                <div className="flex flex-wrap gap-[5px] mt-1.5">
-                  {['↑ HOMA-IR', '↑ Omega-3 Index', '↑ Non-HDL Cholesterol', '↑ hsCRP'].map(pill => (
-                    <span key={pill} className="text-[9px] font-semibold px-2 py-[2px] rounded-full bg-[rgba(12,156,108,.09)] text-[#0C9C6C]">{pill}</span>
-                  ))}
+              <div className="flex gap-3 items-start px-4 py-[13px] rounded-xl bg-[#f0fdf9] border border-l-4 border-[rgba(12,156,108,.15)] border-l-[#0C9C6C]">
+                <span className="text-[16px] shrink-0 leading-[1.4]">✅</span>
+                <div>
+                  <div className="text-sm font-semibold mb-0.5">{t.alertOkHead}</div>
+                  <div className="text-xs text-[#1c2a2b]/55 leading-[1.55]">{t.alertOkBody}</div>
+                  <div className="flex flex-wrap gap-[5px] mt-1.5">
+                    {['↑ HOMA-IR', '↑ Omega-3 Index', '↑ Non-HDL Cholesterol', '↑ hsCRP'].map(pill => (
+                      <span key={pill} className="text-[9px] font-semibold px-2 py-[2px] rounded-full bg-[rgba(12,156,108,.09)] text-[#0C9C6C]">{pill}</span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -670,6 +627,51 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* ── SECTION B: BIOLOGICAL AGE CLOCKS ── */}
+        <section className="pt-8">
+          <SectionHeader label="BIOLOGICAL AGE CLOCKS" right="Epigenetic & blood-based age estimates · display only, not scored" />
+          <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col">
+            <div className="grid grid-cols-3">
+              {[
+                { lbl: 'PHENOAGE · LEVINE 2018', chron: '40.1 chronological', val: '33.9', diff: '↓ 6.2 years younger', sub: 'Calculated from 9 standard blood markers. Each year above chronological age ≈ +6% mortality risk.' },
+                { lbl: 'GRIMAGE V2 · METHYLATION', chron: '40.1 chronological', val: '36.8', diff: '↓ 3.3 years younger', sub: 'Gold-standard DNA methylation clock. Most accurate predictor of healthspan and lifespan. Requires specialist lab.' },
+                { lbl: 'DUNEDINPACE · AGING RATE', chron: 'rate × age = projected age', val: '32.5 yr', diff: '↓ 7.6 years younger (rate)', sub: 'Speed of aging: 0.81 yr/yr · population avg 1.0 · You age 9.7 months per calendar year.' },
+              ].map((item, i) => (
+                <div key={i} className={`p-4 flex flex-col gap-[3px] ${i < 2 ? 'border-r border-white/[.06]' : ''}`}>
+                  <div className="text-[11px] font-semibold tracking-[.1em] uppercase text-white/28 mb-1">{item.lbl}</div>
+                  <div className="text-sm text-white/18 line-through">{item.chron}</div>
+                  <div className="font-serif text-[#0C9C6C] leading-[1.05] text-[2.2rem]">{item.val}</div>
+                  <div className="text-sm font-semibold text-[#0C9C6C]">{item.diff}</div>
+                  <div className="text-xs text-white/22 leading-[1.45] mt-[3px]">{item.sub}</div>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-white/[.06] px-4 pt-3.5 pb-4 bg-black/[.1] flex flex-col">
+              <div className="text-[8px] font-semibold tracking-[.08em] uppercase text-white/22 mb-2 shrink-0">
+                ALL BIOLOGICAL CLOCKS VS CHRONOLOGICAL AGE — YEARS
+              </div>
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={bioData} margin={{ top: 4, right: 40, bottom: 0, left: -16 }}>
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[bioYMin, bioYMax]} tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={5} />
+                    <RTooltip
+                      contentStyle={{ fontSize: 11, background: '#0e393d', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8 }}
+                      labelStyle={{ color: 'rgba(255,255,255,.5)' }}
+                      itemStyle={{ fontSize: 11 }}
+                    />
+                    <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: 11, color: 'rgba(255,255,255,.5)', paddingTop: 6 }} />
+                    <Line name="PhenoAge" type="monotone" dataKey="pheno" stroke="#0C9C6C" strokeWidth={2} dot={{ r: 3, fill: '#0C9C6C' }} activeDot={{ r: 5 }} />
+                    <Line name="GrimAge v2" type="monotone" dataKey="grim" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3, fill: '#8b5cf6' }} activeDot={{ r: 5 }} connectNulls={false} />
+                    <Line name="DunedinPACE×age" type="monotone" dataKey="pace" stroke="#ceab84" strokeWidth={2} dot={{ r: 3, fill: '#ceab84' }} activeDot={{ r: 5 }} />
+                    <Line name="Chronological" type="monotone" dataKey="chron" stroke="rgba(255,255,255,.2)" strokeWidth={1} strokeDasharray="5 4" dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
         </section>
 
