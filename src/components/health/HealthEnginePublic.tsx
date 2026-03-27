@@ -756,31 +756,60 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
               const td = d.sc[2] - d.sc[0];
               const st = mStatus(d.sc[2] / 10, [0, 7], [7, 10], 'higher') as MStatus;
               const isOpen = openDomains.has(di);
+              const topBorder = st === 'opt' ? '#0C9C6C' : st === 'norm' ? '#c4a96a' : '#b45309';
               return (
                 <div key={di}
-                  className={`bg-white border border-[#1c2a2b]/10 rounded-2xl p-4 cursor-pointer transition-all hover:shadow-md hover:-translate-y-px select-none ${isOpen ? 'ring-2 ring-[#0e393d]/20 shadow-md' : ''}`}
+                  className={`bg-white border border-[#1c2a2b]/10 rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-md hover:-translate-y-px select-none ${isOpen ? 'shadow-md ring-1 ring-[#0e393d]/20' : ''}`}
+                  style={{ borderTop: `3px solid ${topBorder}` }}
                   onClick={() => toggleDomain(di)}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[14px]">{d.ic}</span>
-                    <StatusBadge s={st} t={t} />
+
+                  {/* Card body */}
+                  <div className="px-4 pt-4 pb-3">
+
+                    {/* Top row: domain label + status badge */}
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs text-[#1c2a2b]/55 font-medium">{d.nm[lang]}</span>
+                      <StatusBadge s={st} t={t} />
+                    </div>
+
+                    {/* Icon + marker count */}
+                    <div className="flex items-center gap-1.5 mb-2.5">
+                      <span className="text-[14px] leading-none">{d.ic}</span>
+                      <span className="text-xs text-[#1c2a2b]/40">{d.m.length} {t.markersLabel} · {d.w}</span>
+                    </div>
+
+                    {/* Score */}
+                    <div className="flex items-baseline gap-1 mb-1.5">
+                      <span className="font-serif text-[2rem] leading-none" style={{ color: cl }}>{s}</span>
+                      <span className="text-xs text-[#1c2a2b]/40">/100</span>
+                      <span className={`ml-1 text-[10px] font-semibold px-[5px] py-[2px] rounded-full ${td > 0 ? 'bg-[rgba(12,156,108,.1)] text-[#0C9C6C]' : 'bg-[rgba(192,57,43,.08)] text-[#c0392b]'}`}>
+                        {td > 0 ? '↑+' : '↓'}{Math.abs(td)}
+                      </span>
+                    </div>
+
+                    {/* Sparkline */}
+                    <div className="h-[44px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={DATES.map((date, i) => ({ date, score: d.sc[i] }))} margin={{ top: 4, right: 2, bottom: 4, left: 2 }}>
+                          <YAxis domain={['dataMin - 5', 'dataMax + 5']} hide={true} />
+                          <RTooltip
+                            formatter={(v: unknown) => [`${v as number}/100`, d.nm[lang]]}
+                            contentStyle={{ fontSize: 11, border: '1px solid rgba(14,57,61,.1)', borderRadius: 8, padding: '4px 8px' }}
+                            labelStyle={{ color: 'rgba(28,42,43,.45)', fontSize: 10 }} />
+                          <Line type="monotone" dataKey="score" stroke={cl} strokeWidth={2} dot={{ r: 2.5, fill: cl, strokeWidth: 0 }} activeDot={{ r: 4, fill: cl }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+
                   </div>
-                  <div className="text-sm font-semibold text-[#0e393d] mb-0.5">{d.nm[lang]}</div>
-                  <div className="text-xs text-[#1c2a2b]/55 mb-2">{d.m.length} {t.markersLabel} · {d.w}</div>
-                  <div className="flex items-baseline gap-[3px] mb-1">
-                    <span className="font-serif text-[1.65rem] leading-none" style={{ color: cl }}>{s}</span>
-                    <span className="text-xs text-[#1c2a2b]/55">/100</span>
-                    <span className="text-xs font-semibold ml-[3px]" style={{ color: td > 0 ? '#0C9C6C' : '#c0392b' }}>
-                      {td > 0 ? '↑+' : '↓'}{Math.abs(td)}
-                    </span>
+
+                  {/* Bottom strip */}
+                  <div className="px-4 py-2 border-t border-[#1c2a2b]/[.05] bg-[#1c2a2b]/[.015] flex items-center justify-between">
+                    <span className="text-[9px] text-[#1c2a2b]/35 font-medium">{isOpen ? 'Close' : 'View markers'}</span>
+                    <span className="text-[9px] text-[#1c2a2b]/30 transition-transform duration-200 inline-block"
+                      style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
                   </div>
-                  <div className="h-[32px] mt-1">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={DATES.map((date, i) => ({ date, score: d.sc[i] }))} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
-                        <Line type="monotone" dataKey="score" stroke={cl} strokeWidth={1.5} dot={{ r: 2, fill: cl }} activeDot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="text-[9px] text-[#0e393d]/40 text-right mt-1">{isOpen ? '▲' : '▼'}</div>
+
                 </div>
               );
             })}
