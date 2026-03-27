@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from '@/i18n/navigation';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip as RTooltip,
@@ -745,208 +745,267 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
             </div>
           </div>
 
-          {/* Tile grid — all 8 tiles */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-2.5">
-            {D.map((d, di) => {
-              const s = d.sc[2];
-              const cl = scoreColor(s / 100);
-              const td = d.sc[2] - d.sc[0];
-              const st = mStatus(d.sc[2] / 10, [0, 7], [7, 10], 'higher') as MStatus;
-              const isOpen = openDomains.has(di);
-              const topBorder = st === 'opt' ? '#0C9C6C' : st === 'norm' ? '#c4a96a' : '#b45309';
-              return (
-                <div key={di}
-                  className={`bg-white rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-md hover:-translate-y-px select-none border ${isOpen ? 'shadow-md border-[#0e393d]/40' : 'border-[#1c2a2b]/10'}`}
-                  style={{ borderTop: `3px solid ${topBorder}` }}
-                  onClick={() => toggleDomain(di)}>
+          {/* Domain tiles — 2 rows of 4, expand panel inserts between rows */}
+          {[0, 1].map(rowIdx => {
+            const rowTiles = D.slice(rowIdx * 4, rowIdx * 4 + 4);
+            const openInRow = rowTiles.findIndex((_, i) => openDomains.has(rowIdx * 4 + i));
+            const openDomainIdx = openInRow >= 0 ? rowIdx * 4 + openInRow : -1;
+            const openDomain = openDomainIdx >= 0 ? D[openDomainIdx] : null;
 
-                  {/* Card body */}
-                  <div className="px-4 pt-4 pb-3">
-
-                    {/* Top row: domain label + status badge */}
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="text-xs text-[#1c2a2b]/55 font-medium">{d.nm[lang]}</span>
-                      <StatusBadge s={st} t={t} />
-                    </div>
-
-                    {/* Icon + marker count */}
-                    <div className="flex items-center gap-1.5 mb-2.5">
-                      <span className="text-[14px] leading-none">{d.ic}</span>
-                      <span className="text-xs text-[#1c2a2b]/40">{d.m.length} {t.markersLabel} · {d.w}</span>
-                    </div>
-
-                    {/* Score */}
-                    <div className="flex items-baseline gap-1 mb-1.5">
-                      <span className="font-serif text-[2rem] leading-none" style={{ color: cl }}>{s}</span>
-                      <span className="text-xs text-[#1c2a2b]/40">/100</span>
-                      <span className={`ml-1 text-[10px] font-semibold px-[5px] py-[2px] rounded-full ${td > 0 ? 'bg-[rgba(12,156,108,.1)] text-[#0C9C6C]' : 'bg-[rgba(192,57,43,.08)] text-[#c0392b]'}`}>
-                        {td > 0 ? '↑+' : '↓'}{Math.abs(td)}
-                      </span>
-                    </div>
-
-                    {/* Sparkline */}
-                    <div className="h-[44px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={DATES.map((date, i) => ({ date, score: d.sc[i] }))} margin={{ top: 4, right: 2, bottom: 4, left: 2 }}>
-                          <YAxis domain={['dataMin - 5', 'dataMax + 5']} hide={true} />
-                          <RTooltip
-                            formatter={(v: unknown) => [`${v as number}/100`, d.nm[lang]]}
-                            contentStyle={{ fontSize: 11, border: '1px solid rgba(14,57,61,.1)', borderRadius: 8, padding: '4px 8px' }}
-                            labelStyle={{ color: 'rgba(28,42,43,.45)', fontSize: 10 }} />
-                          <Line type="monotone" dataKey="score" stroke={cl} strokeWidth={2} dot={{ r: 2.5, fill: cl, strokeWidth: 0 }} activeDot={{ r: 4, fill: cl }} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                  </div>
-
-                  {/* Bottom strip */}
-                  <div className="px-4 py-2 border-t border-[#1c2a2b]/[.05] bg-[#1c2a2b]/[.015] flex items-center justify-between">
-                    <span className="text-[9px] text-[#1c2a2b]/35 font-medium">{isOpen ? 'Close' : 'View markers'}</span>
-                    <span className="text-[9px] text-[#1c2a2b]/30 transition-transform duration-200 inline-block"
-                      style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
-                  </div>
-
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Expanded panel — full width, renders below entire grid */}
-          {D.map((d, di) => {
-            if (!openDomains.has(di)) return null;
             return (
-              <div key={`expand-${di}`} className="bg-white border border-[#0e393d]/15 rounded-2xl overflow-hidden mb-2.5 shadow-sm">
-                {/* Panel header */}
-                <div className="bg-[#0e393d] px-5 py-3 flex items-center justify-between">
-                  <div className="font-serif text-white flex items-center gap-2 text-[1.05rem]">
-                    {d.ic}
-                    <span>{d.nm[lang]}</span>
-                    <span className="text-xs text-white/35 font-sans ml-1">{d.sc[2]}/100</span>
-                  </div>
-                  <button onClick={(e) => { e.stopPropagation(); toggleDomain(di); }}
-                    className="w-[26px] h-[26px] rounded-full border border-white/20 text-white/50 hover:bg-white/12 hover:text-white transition-all flex items-center justify-center text-[13px]">
-                    ✕
-                  </button>
+              <React.Fragment key={rowIdx}>
+                {/* Row of 4 tiles */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-2.5">
+                  {rowTiles.map((d, i) => {
+                    const di = rowIdx * 4 + i;
+                    const s = d.sc[2];
+                    const cl = scoreColor(s / 100);
+                    const td = d.sc[2] - d.sc[0];
+                    const st = mStatus(d.sc[2] / 10, [0, 7], [7, 10], 'higher') as MStatus;
+                    const isOpen = openDomains.has(di);
+                    const topBorder = cl;
+                    return (
+                      <div key={di}
+                        className={`bg-white rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-md hover:-translate-y-px select-none border ${isOpen ? 'shadow-md border-[#0e393d]/40' : 'border-[#1c2a2b]/10'}`}
+                        style={{ borderTop: `3px solid ${topBorder}` }}
+                        onClick={() => toggleDomain(di)}>
+
+                        {/* Card body */}
+                        <div className="px-4 pt-4 pb-3">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-xs text-[#1c2a2b]/55 font-medium">{d.nm[lang]}</span>
+                            <StatusBadge s={st} t={t} />
+                          </div>
+                          <div className="flex items-center gap-1.5 mb-2.5">
+                            <span className="text-[14px] leading-none">{d.ic}</span>
+                            <span className="text-xs text-[#1c2a2b]/40">{d.m.length} {t.markersLabel} · {d.w}</span>
+                          </div>
+                          <div className="flex items-baseline gap-1 mb-1.5">
+                            <span className="font-serif text-[2rem] leading-none" style={{ color: cl }}>{s}</span>
+                            <span className="text-xs text-[#1c2a2b]/40">/100</span>
+                            <span className={`ml-1 text-[10px] font-semibold px-[5px] py-[2px] rounded-full ${td > 0 ? 'bg-[rgba(12,156,108,.1)] text-[#0C9C6C]' : 'bg-[rgba(192,57,43,.08)] text-[#c0392b]'}`}>
+                              {td > 0 ? '↑+' : '↓'}{Math.abs(td)}
+                            </span>
+                          </div>
+                          <div className="h-[44px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={DATES.map((date, i) => ({ date, score: d.sc[i] }))} margin={{ top: 4, right: 2, bottom: 4, left: 2 }}>
+                                <YAxis domain={['dataMin - 5', 'dataMax + 5']} hide={true} />
+                                <RTooltip
+                                  formatter={(v: unknown) => [`${v as number}/100`, d.nm[lang]]}
+                                  contentStyle={{ fontSize: 11, border: '1px solid rgba(14,57,61,.1)', borderRadius: 8, padding: '4px 8px' }}
+                                  labelStyle={{ color: 'rgba(28,42,43,.45)', fontSize: 10 }} />
+                                <Line type="monotone" dataKey="score" stroke={cl} strokeWidth={2} dot={{ r: 2.5, fill: cl, strokeWidth: 0 }} activeDot={{ r: 4, fill: cl }} />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+
+                        {/* Bottom strip */}
+                        <div className="px-4 py-2 border-t border-[#1c2a2b]/[.05] bg-[#1c2a2b]/[.015] flex items-center justify-between">
+                          <span className="text-[9px] text-[#1c2a2b]/35 font-medium">{isOpen ? 'Close' : 'View markers'}</span>
+                          <span className="text-[9px] text-[#1c2a2b]/30 transition-transform duration-200 inline-block"
+                            style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+                        </div>
+
+                      </div>
+                    );
+                  })}
                 </div>
 
-                {/* Panel content */}
-                <div className="p-5 pt-4 bg-[#fafaf8]">
+                {/* Expanded panel — only renders if a tile in THIS row is open */}
+                {openDomain && (
+                  <div className="bg-white border border-[#0e393d]/15 rounded-2xl overflow-hidden mb-2.5 shadow-sm">
+                    <div className="bg-[#0e393d] px-5 py-3 flex items-center justify-between">
+                      <div className="font-serif text-white flex items-center gap-2 text-[1.05rem]">
+                        {openDomain.ic}
+                        <span>{openDomain.nm[lang]}</span>
+                        <span className="text-xs text-white/35 font-sans ml-1">{openDomain.sc[2]}/100</span>
+                      </div>
+                      <button onClick={(e) => { e.stopPropagation(); toggleDomain(openDomainIdx); }}
+                        className="w-[26px] h-[26px] rounded-full border border-white/20 text-white/50 hover:bg-white/12 hover:text-white transition-all flex items-center justify-center text-[13px]">
+                        ✕
+                      </button>
+                    </div>
 
-                  {/* Marker trends — actual values */}
-                  <div className="mb-5 px-1">
-                    <div className="text-[10px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/40 mb-2">Marker trends — actual values</div>
-                    <div className="h-[180px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
-                          data={DATES.map((date, i) => {
-                            const point: Record<string, string | number> = { date };
-                            d.m.forEach((m, mi) => { point[`m${mi}`] = m.v[i]; });
-                            return point;
-                          })}
-                          margin={{ top: 8, right: 16, bottom: 0, left: -20 }}>
-                          <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'rgba(28,42,43,.4)' }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fontSize: 9, fill: 'rgba(28,42,43,.4)' }} axisLine={false} tickLine={false} tickCount={4}
-                            tickFormatter={(v: number) => Number.isInteger(v) ? String(v) : v.toFixed(2)} />
-                          <RTooltip
-                            formatter={(v: unknown, name: unknown) => {
-                              const mi = parseInt((name as string).replace('m', ''));
-                              const marker = d.m[mi];
-                              return [`${(+(v as number)).toFixed(2)} ${marker.u}`, marker.n];
-                            }}
-                            contentStyle={{ fontSize: 11, border: '1px solid rgba(14,57,61,.1)', borderRadius: 8, padding: '4px 8px' }} />
-                          <Legend
-                            formatter={(value: string) => {
-                              const mi = parseInt(value.replace('m', ''));
-                              return d.m[mi]?.n ?? value;
-                            }}
-                            iconSize={6} iconType="circle"
-                            wrapperStyle={{ fontSize: 9, color: 'rgba(28,42,43,.55)', paddingTop: 6 }} />
-                          {d.m.map((m, mi) => {
-                            const COLORS = [
-                              '#0C9C6C',
-                              '#ceab84',
-                              '#0e393d',
-                              '#c0392b',
-                              'rgba(14,57,61,.55)',
-                              '#c4a96a',
-                              'rgba(12,156,108,.6)',
-                              'rgba(14,57,61,.35)',
-                              '#b45309',
-                            ];
-                            return (
-                              <Line key={mi} type="monotone"
-                                dataKey={`m${mi}`} name={`m${mi}`}
-                                stroke={COLORS[mi % COLORS.length]}
-                                strokeWidth={1.5}
-                                dot={{ r: 2.5, fill: COLORS[mi % COLORS.length] }}
-                                activeDot={{ r: 4 }}
-                                connectNulls={false} />
-                            );
-                          })}
-                        </LineChart>
-                      </ResponsiveContainer>
+                    <div className="p-5 pt-4 bg-[#fafaf8]">
+
+                      {/* Marker trends — actual values */}
+                      <div className="mb-5 px-1">
+                        <div className="text-[10px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/40 mb-2">Marker trends — actual values</div>
+                        <div className="h-[180px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart
+                              data={DATES.map((date, i) => {
+                                const point: Record<string, string | number> = { date };
+                                openDomain.m.forEach((m, mi) => { point[`m${mi}`] = m.v[i]; });
+                                return point;
+                              })}
+                              margin={{ top: 8, right: 16, bottom: 0, left: -20 }}>
+                              <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'rgba(28,42,43,.4)' }} axisLine={false} tickLine={false} />
+                              <YAxis tick={{ fontSize: 9, fill: 'rgba(28,42,43,.4)' }} axisLine={false} tickLine={false} tickCount={4}
+                                tickFormatter={(v: number) => Number.isInteger(v) ? String(v) : v.toFixed(2)} />
+                              <RTooltip
+                                formatter={(v: unknown, name: unknown) => {
+                                  const mi = parseInt((name as string).replace('m', ''));
+                                  const marker = openDomain.m[mi];
+                                  return [`${(+(v as number)).toFixed(2)} ${marker.u}`, marker.n];
+                                }}
+                                contentStyle={{ fontSize: 11, border: '1px solid rgba(14,57,61,.1)', borderRadius: 8, padding: '4px 8px' }} />
+                              <Legend
+                                formatter={(value: string) => {
+                                  const mi = parseInt(value.replace('m', ''));
+                                  return openDomain.m[mi]?.n ?? value;
+                                }}
+                                iconSize={6} iconType="circle"
+                                wrapperStyle={{ fontSize: 9, color: 'rgba(28,42,43,.55)', paddingTop: 6 }} />
+                              {openDomain.m.map((m, mi) => {
+                                const COLORS = ['#0C9C6C', '#ceab84', '#0e393d', '#c0392b', 'rgba(14,57,61,.55)', '#c4a96a', 'rgba(12,156,108,.6)', 'rgba(14,57,61,.35)', '#b45309'];
+                                return (
+                                  <Line key={mi} type="monotone"
+                                    dataKey={`m${mi}`} name={`m${mi}`}
+                                    stroke={COLORS[mi % COLORS.length]}
+                                    strokeWidth={1.5}
+                                    dot={{ r: 2.5, fill: COLORS[mi % COLORS.length] }}
+                                    activeDot={{ r: 4 }}
+                                    connectNulls={false} />
+                                );
+                              })}
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+
+                      {/* 2-col marker card grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {openDomain.m.map((m, mi) => {
+                          const v = m.v[2];
+                          const s2 = mStatus(v, m.r, m.o, m.dir);
+                          const topBorder2 = s2 === 'opt' ? '#0C9C6C' : s2 === 'norm' ? '#c4a96a' : '#b45309';
+                          const bmKey = `bm${openDomainIdx}-${mi}`;
+                          const mOpen = !!openBmMarkers.get(bmKey);
+                          const prev = m.v[1];
+                          const delta = +(v - prev).toFixed(2);
+                          const improving = (m.dir === 'lower' && delta <= 0) || (m.dir === 'higher' && delta >= 0) || m.dir === 'range';
+                          const dCol = improving ? '#0C9C6C' : '#b45309';
+                          return (
+                            <div key={mi}
+                              className="bg-white border border-[#1c2a2b]/10 rounded-2xl px-4 py-4 cursor-pointer transition-all hover:shadow-md hover:-translate-y-px"
+                              style={{ borderTop: `3px solid ${topBorder2}` }}
+                              onClick={() => toggleBmMarker(bmKey)}>
+                              <div className="flex justify-between items-center mb-0.5">
+                                <span className="text-xs text-[#1c2a2b]/55 font-medium">{openDomain.nm[lang]}</span>
+                                <StatusBadge s={s2} t={t} />
+                              </div>
+                              <div className="text-sm font-semibold text-[#0e393d] mb-2.5">{m.n}</div>
+                              <div className="flex items-baseline gap-1 mb-1.5">
+                                <span className="font-serif text-[2rem] text-[#1c2a2b] leading-none">{v}</span>
+                                <span className="text-xs text-[#1c2a2b]/55">{m.u}</span>
+                              </div>
+                              <div className="mb-1.5"><RangeBar v={v} r={m.r} o={m.o} dir={m.dir} /></div>
+                              <div className="text-xs mb-1" style={{ color: dCol }}>
+                                vs previous: {delta >= 0 ? '+' : ''}{delta} {m.u}
+                              </div>
+                              {mOpen && (
+                                <div className="border-t border-[#0e393d]/[.06] mt-2.5 pt-3">
+                                  <div className="h-[120px]"><MarkerHistoryChart m={m} height={120} /></div>
+                                  <div className="text-sm text-[#1c2a2b]/55 leading-[1.65] p-[9px] bg-[rgba(14,57,61,.03)] rounded-lg mt-2.5 mb-2">
+                                    {m.desc}
+                                  </div>
+                                  <div className="flex gap-3.5 text-xs text-[#1c2a2b]/55 flex-wrap">
+                                    <div>
+                                      <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.refRange}</span>
+                                      {m.r[0]} – {m.r[1]} {m.u}
+                                    </div>
+                                    <div>
+                                      <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#0C9C6C]">{t.longevityOpt}</span>
+                                      {m.o[0]} – {m.o[1]} {m.u}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-
-                  {/* 2-col marker card grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {d.m.map((m, mi) => {
-                      const v = m.v[2];
-                      const s2 = mStatus(v, m.r, m.o, m.dir);
-                      const topBorder2 = s2 === 'opt' ? '#0C9C6C' : s2 === 'norm' ? '#c4a96a' : '#b45309';
-                      const bmKey = `bm${di}-${mi}`;
-                      const mOpen = !!openBmMarkers.get(bmKey);
-                      const prev = m.v[1];
-                      const delta = +(v - prev).toFixed(2);
-                      const improving = (m.dir === 'lower' && delta <= 0) || (m.dir === 'higher' && delta >= 0) || m.dir === 'range';
-                      const dCol = improving ? '#0C9C6C' : '#b45309';
-                      return (
-                        <div key={mi}
-                          className="bg-white border border-[#1c2a2b]/10 rounded-2xl px-4 py-4 cursor-pointer transition-all hover:shadow-md hover:-translate-y-px"
-                          style={{ borderTop: `3px solid ${topBorder2}` }}
-                          onClick={() => toggleBmMarker(bmKey)}>
-                          <div className="flex justify-between items-center mb-0.5">
-                            <span className="text-xs text-[#1c2a2b]/55 font-medium">{d.nm[lang]}</span>
-                            <StatusBadge s={s2} t={t} />
-                          </div>
-                          <div className="text-sm font-semibold text-[#0e393d] mb-2.5">{m.n}</div>
-                          <div className="flex items-baseline gap-1 mb-1.5">
-                            <span className="font-serif text-[2rem] text-[#1c2a2b] leading-none">{v}</span>
-                            <span className="text-xs text-[#1c2a2b]/55">{m.u}</span>
-                          </div>
-                          <div className="mb-1.5"><RangeBar v={v} r={m.r} o={m.o} dir={m.dir} /></div>
-                          <div className="text-xs mb-1" style={{ color: dCol }}>
-                            vs previous: {delta >= 0 ? '+' : ''}{delta} {m.u}
-                          </div>
-                          {mOpen && (
-                            <div className="border-t border-[#0e393d]/[.06] mt-2.5 pt-3">
-                              <div className="h-[120px]"><MarkerHistoryChart m={m} height={120} /></div>
-                              <div className="text-sm text-[#1c2a2b]/55 leading-[1.65] p-[9px] bg-[rgba(14,57,61,.03)] rounded-lg mt-2.5 mb-2">
-                                {m.desc}
-                              </div>
-                              <div className="flex gap-3.5 text-xs text-[#1c2a2b]/55 flex-wrap">
-                                <div>
-                                  <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.refRange}</span>
-                                  {m.r[0]} – {m.r[1]} {m.u}
-                                </div>
-                                <div>
-                                  <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#0C9C6C]">{t.longevityOpt}</span>
-                                  {m.o[0]} – {m.o[1]} {m.u}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
+                )}
+              </React.Fragment>
             );
           })}
         </section>
 
+        {/* ── BIOMARKER DETAILS TABLE ── */}
+        <section className="pt-10 pb-12">
+          <SectionHeader label="BIOMARKER DETAILS" right="All measured values across every test" />
+
+          {D.map((d, di) => (
+            <div key={di} className="mb-8">
+
+              {/* Domain header */}
+              <div className="flex items-center gap-2.5 mb-3 pb-2 border-b-2 border-[#0e393d]/10">
+                <span className="text-[14px]">{d.ic}</span>
+                <span className="text-sm font-semibold text-[#0e393d]">{d.nm[lang]}</span>
+                <span className="font-serif text-[.9rem]" style={{ color: scoreColor(d.sc[2] / 100) }}>{d.sc[2]}/100</span>
+                <span className="text-xs text-[#1c2a2b]/40 ml-1">{d.w}</span>
+              </div>
+
+              {/* Table */}
+              <div className="w-full overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#0e393d]/[.08]">
+                      <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/40 pb-2 pr-4 w-16">Code</th>
+                      <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/40 pb-2 pr-4">Marker</th>
+                      <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/40 pb-2 pr-4">Unit</th>
+                      <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/40 pb-2 pr-4">Ref Range</th>
+                      <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#0C9C6C] pb-2 pr-4">Optimal</th>
+                      {DATES.slice(-3).map(date => (
+                        <th key={date} className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/40 pb-2 pr-4 text-right">{date}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {d.m.map((m, mi) => {
+                      const latestV = m.v[2];
+                      const s2 = mStatus(latestV, m.r, m.o, m.dir);
+                      const rowColor = s2 === 'opt' ? '#0C9C6C' : s2 === 'norm' ? '#c4a96a' : '#b45309';
+                      const abbrev = m.n.split(/[\s-]/).map(w => w[0]).join('').toUpperCase().slice(0, 4);
+                      return (
+                        <tr key={mi} className="border-b border-[#0e393d]/[.04] hover:bg-[rgba(14,57,61,.02)] transition-colors">
+                          <td className="py-2.5 pr-4">
+                            <span className="text-[10px] font-mono font-semibold text-[#1c2a2b]/45">{abbrev}</span>
+                          </td>
+                          <td className="py-2.5 pr-4">
+                            <span className="text-xs font-medium text-[#0e393d]">{m.n}</span>
+                          </td>
+                          <td className="py-2.5 pr-4">
+                            <span className="text-xs text-[#1c2a2b]/40">{m.u}</span>
+                          </td>
+                          <td className="py-2.5 pr-4">
+                            <span className="text-xs text-[#1c2a2b]/55">{m.r[0]}–{m.r[1]}</span>
+                          </td>
+                          <td className="py-2.5 pr-4">
+                            <span className="text-xs text-[#0C9C6C]">{m.o[0]}–{m.o[1]}</span>
+                          </td>
+                          {m.v.slice(-3).map((val, vi) => (
+                            <td key={vi} className="py-2.5 pr-4 text-right">
+                              <span className="text-xs font-semibold tabular-nums"
+                                style={{ color: vi === m.v.slice(-3).length - 1 ? rowColor : 'rgba(28,42,43,.55)' }}>
+                                {val}
+                              </span>
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </section>
 
       </div>
     </div>
