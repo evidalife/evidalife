@@ -721,7 +721,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
           </div>
 
           {/* Domain tile grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {D.map((d, di) => {
               const s = d.sc[2], prev = d.sc[1], td = s - prev;
               const cl = scoreColor(s / 100);
@@ -771,33 +771,55 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                   </button>
                 </div>
                 <div className="p-4 bg-[#fafaf8]">
-                  <div className="border-t border-[#0e393d]/[.08] pt-4 pb-2">
+                  <div className="border-t border-[#0e393d]/[.08] pt-5 pb-6">
 
-                    {/* Domain score trend */}
-                    <div className="mb-4 px-1">
-                      <div className="text-[10px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/40 mb-2">Domain score trend</div>
-                      <div className="h-[60px]">
+                    {/* Marker trends — actual values */}
+                    <div className="mb-5 px-1">
+                      <div className="text-[10px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/40 mb-2">Marker trends — actual values</div>
+                      <div className="h-[180px]">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart
-                            data={DATES.map((date, i) => ({ date, score: d.sc[i] }))}
-                            margin={{ top: 4, right: 8, bottom: 0, left: -28 }}>
+                            data={DATES.map((date, i) => {
+                              const point: Record<string, string | number> = { date };
+                              d.m.forEach((m, mi) => { point[`m${mi}`] = m.v[i]; });
+                              return point;
+                            })}
+                            margin={{ top: 8, right: 16, bottom: 0, left: -20 }}>
                             <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'rgba(28,42,43,.4)' }} axisLine={false} tickLine={false} />
-                            <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: 'rgba(28,42,43,.4)' }} axisLine={false} tickLine={false} tickCount={3} />
+                            <YAxis tick={{ fontSize: 9, fill: 'rgba(28,42,43,.4)' }} axisLine={false} tickLine={false} tickCount={4} />
                             <RTooltip
-                              formatter={(v: unknown) => [`${v as number}/100`, d.nm[lang]]}
+                              formatter={(v: unknown, name: unknown) => {
+                                const mi = parseInt((name as string).replace('m', ''));
+                                const marker = d.m[mi];
+                                return [`${v as number} ${marker.u}`, marker.n];
+                              }}
                               contentStyle={{ fontSize: 11, border: '1px solid rgba(14,57,61,.1)', borderRadius: 8, padding: '4px 8px' }} />
-                            <Line type="monotone" dataKey="score"
-                              stroke={scoreColor(d.sc[2] / 100)}
-                              strokeWidth={2}
-                              dot={{ r: 3, fill: scoreColor(d.sc[2] / 100) }}
-                              activeDot={{ r: 5 }} />
+                            <Legend
+                              formatter={(value: string) => {
+                                const mi = parseInt(value.replace('m', ''));
+                                return d.m[mi]?.n ?? value;
+                              }}
+                              iconSize={6} iconType="circle"
+                              wrapperStyle={{ fontSize: 9, color: 'rgba(28,42,43,.55)', paddingTop: 6 }} />
+                            {d.m.map((m, mi) => {
+                              const COLORS = ['#0C9C6C', '#ceab84', '#8b5cf6', '#f59e0b', '#3b82f6', '#ef4444', '#10b981', '#f97316', '#6366f1'];
+                              return (
+                                <Line key={mi} type="monotone"
+                                  dataKey={`m${mi}`} name={`m${mi}`}
+                                  stroke={COLORS[mi % COLORS.length]}
+                                  strokeWidth={1.5}
+                                  dot={{ r: 2.5, fill: COLORS[mi % COLORS.length] }}
+                                  activeDot={{ r: 4 }}
+                                  connectNulls={false} />
+                              );
+                            })}
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
                     </div>
 
-                    {/* 3-col marker card grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                    {/* 2-col marker card grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {d.m.map((m, mi) => {
                         const v = m.v[2];
                         const s2 = mStatus(v, m.r, m.o, m.dir);
