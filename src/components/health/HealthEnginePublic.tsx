@@ -359,8 +359,6 @@ function StatusBadge({ s, t }: { s: MStatus; t: typeof T['en'] }) {
 }
 
 // ── Marker history chart ──────────────────────────────────────────────────────
-const CHART_COLORS = ['#0e393d', '#0C9C6C', '#d4830a', '#c0392b', '#8b5cf6', '#0ea5e9', '#ceab84', '#f59e0b'];
-
 function MarkerHistoryChart({ m, height = 90 }: { m: Marker; height?: number }) {
   const vals = m.v as number[];
   const mn = Math.min(...vals) * 0.88;
@@ -385,65 +383,6 @@ function MarkerHistoryChart({ m, height = 90 }: { m: Marker; height?: number }) 
   );
 }
 
-// ── Domain panel normalised chart ─────────────────────────────────────────────
-function DomainNormChart({ domain }: { domain: Domain }) {
-  const markers = domain.m.slice(0, 8);
-  const rawData = DATES.map((date, i) => {
-    const entry: Record<string, number | string> = { date };
-    markers.forEach((m, mi) => {
-      const v = m.v;
-      const mn = Math.min(...v), mx = Math.max(...v), rng = mx - mn || 1;
-      entry[`m${mi}`] = Math.round(((v[i] - mn) / rng) * 80 + 10);
-      entry[`r${mi}`] = v[i];
-    });
-    return entry;
-  });
-
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={rawData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
-        <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#5a6e6f' }} axisLine={false} tickLine={false} />
-        <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: '#5a6e6f' }} axisLine={false} tickLine={false} tickCount={5} />
-        <RTooltip
-          content={({ active, payload, label }) => {
-            if (!active || !payload?.length) return null;
-            const di = DATES.indexOf(label as string);
-            return (
-              <div className="bg-white border border-[#0e393d]/10 rounded-lg p-2 shadow text-sm">
-                <div className="font-semibold text-[#0e393d] mb-1">{label}</div>
-                {payload.map((p, idx) => {
-                  const mi = parseInt((p.dataKey as string).replace('m', ''));
-                  const marker = markers[mi];
-                  if (!marker) return null;
-                  const raw = di >= 0 ? marker.v[di] : null;
-                  return (
-                    <div key={idx} style={{ color: p.stroke as string }} className="text-[11px]">
-                      {marker.n}: <span className="font-medium">{raw ?? '—'} {marker.u}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          }}
-        />
-        <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: 9, color: '#5a6e6f' }}
-          formatter={(_v, entry) => {
-            const mi = parseInt((entry.dataKey as string).replace('m', ''));
-            return markers[mi]?.n ?? '';
-          }}
-        />
-        {markers.map((m, mi) => (
-          <Line
-            key={mi} type="monotone" dataKey={`m${mi}`} name={m.n}
-            stroke={CHART_COLORS[mi % CHART_COLORS.length]} strokeWidth={2}
-            dot={{ r: 4, fill: CHART_COLORS[mi % CHART_COLORS.length] }}
-            activeDot={{ r: 6 }} connectNulls={false}
-          />
-        ))}
-      </LineChart>
-    </ResponsiveContainer>
-  );
-}
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function HealthEnginePublic({ lang }: { lang: Lang }) {
@@ -736,7 +675,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
         {/* ── 8 HEALTH DOMAINS ── */}
         <section className="pt-8">
-          <SectionHeader label={t.secDom} right="Click any domain to explore all markers" />
+          <SectionHeader label={t.secDom} right="Click any domain to see all markers" />
 
           {/* Radar + Flag */}
           <div className="bg-[#0e393d] rounded-2xl overflow-hidden mb-3">
@@ -832,66 +771,82 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                   </button>
                 </div>
                 <div className="p-4 bg-[#fafaf8]">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <div className="text-sm text-[#1c2a2b]/55 font-medium mb-2">{t.markerTrends}</div>
-                      <div className="h-[260px]"><DomainNormChart domain={d} /></div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-[#1c2a2b]/55 font-medium mb-2">{d.m.length} {t.markersClick}</div>
-                      <div className="flex flex-col gap-1.5 overflow-y-auto max-h-[300px] pr-1">
-                        {d.m.map((m, mi) => {
-                          const v = m.v[2];
-                          const s2 = mStatus(v, m.r, m.o, m.dir);
-                          const cl2 = mColor(s2);
-                          const pKey = `dp${di}-${mi}`;
-                          const isOpen = !!openBmMarkers.get(pKey);
-                          return (
-                            <div key={mi}
-                              className={`bg-white rounded-[10px] border px-3 py-2.5 cursor-pointer transition-all ${isOpen ? 'border-[#0e393d] shadow-[0_0_0_2px_rgba(14,57,61,.03)]' : 'border-[#1c2a2b]/10 hover:border-[#1c2a2b]/20'}`}
-                              onClick={() => toggleBmMarker(pKey)}>
-                              <div className="flex items-center justify-between mb-[5px]">
-                                <div className="text-sm font-semibold text-[#0e393d]">{m.n}</div>
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <span className="text-sm font-bold" style={{ color: cl2 }}>{v}</span>
-                                  <span className="text-xs text-[#1c2a2b]/55">{m.u}</span>
-                                  <StatusBadge s={s2} t={t} />
-                                </div>
-                              </div>
-                              <RangeBar v={v} r={m.r} o={m.o} dir={m.dir} />
-                              <div className="flex justify-between text-[.49rem] text-[#1c2a2b]/55 mt-0.5">
-                                <span>{m.r[0]} {m.u}</span>
-                                <span style={{ color: '#0C9C6C', fontSize: '.48rem' }}>● opt: {m.o[0]}–{m.o[1]}</span>
-                                <span>{m.r[1]} {m.u}</span>
-                              </div>
-                              {isOpen && (
-                                <div className="border-t border-[#0e393d]/[.06] mt-2 pt-2.5">
-                                  <div className="h-[100px]"><MarkerHistoryChart m={m} height={100} /></div>
-                                  <div className="text-sm text-[#1c2a2b]/55 leading-[1.65] p-2 bg-[rgba(14,57,61,.02)] rounded-lg mt-2">
-                                    {m.desc}
-                                  </div>
-                                  <div className="flex gap-3.5 mt-1.5 text-xs text-[#1c2a2b]/55 flex-wrap">
-                                    <div>
-                                      <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.refRange}</span>
-                                      {m.r[0]} – {m.r[1]} {m.u}
-                                    </div>
-                                    <div>
-                                      <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#0C9C6C]">{t.longevityOpt}</span>
-                                      {m.o[0]} – {m.o[1]} {m.u}
-                                    </div>
-                                    <div>
-                                      <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.changeLabel}</span>
-                                      <span style={{ color: ((m.dir === 'lower' && m.v[2] < m.v[0]) || (m.dir === 'higher' && m.v[2] > m.v[0])) ? '#0C9C6C' : '#b45309' }}>
-                                        {((m.v[2] - m.v[0]) >= 0 ? '+' : '')}{(m.v[2] - m.v[0]).toFixed(2)} {m.u}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                  <div className="border-t border-[#0e393d]/[.08] pt-4 pb-2">
+
+                    {/* Domain score trend */}
+                    <div className="mb-4 px-1">
+                      <div className="text-[10px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/40 mb-2">Domain score trend</div>
+                      <div className="h-[60px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={DATES.map((date, i) => ({ date, score: d.sc[i] }))}
+                            margin={{ top: 4, right: 8, bottom: 0, left: -28 }}>
+                            <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'rgba(28,42,43,.4)' }} axisLine={false} tickLine={false} />
+                            <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: 'rgba(28,42,43,.4)' }} axisLine={false} tickLine={false} tickCount={3} />
+                            <RTooltip
+                              formatter={(v: unknown) => [`${v as number}/100`, d.nm[lang]]}
+                              contentStyle={{ fontSize: 11, border: '1px solid rgba(14,57,61,.1)', borderRadius: 8, padding: '4px 8px' }} />
+                            <Line type="monotone" dataKey="score"
+                              stroke={scoreColor(d.sc[2] / 100)}
+                              strokeWidth={2}
+                              dot={{ r: 3, fill: scoreColor(d.sc[2] / 100) }}
+                              activeDot={{ r: 5 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
                       </div>
+                    </div>
+
+                    {/* 3-col marker card grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                      {d.m.map((m, mi) => {
+                        const v = m.v[2];
+                        const s2 = mStatus(v, m.r, m.o, m.dir);
+                        const topBorder2 = s2 === 'opt' ? '#0C9C6C' : s2 === 'norm' ? '#c4a96a' : '#b45309';
+                        const bmKey = `bm${di}-${mi}`;
+                        const mOpen = !!openBmMarkers.get(bmKey);
+                        const prev = m.v[1];
+                        const delta = +(v - prev).toFixed(2);
+                        const improving = (m.dir === 'lower' && delta <= 0) || (m.dir === 'higher' && delta >= 0) || m.dir === 'range';
+                        const dCol = improving ? '#0C9C6C' : '#b45309';
+                        return (
+                          <div key={mi}
+                            className="bg-white border border-[#1c2a2b]/10 rounded-2xl px-4 py-4 cursor-pointer transition-all hover:shadow-md hover:-translate-y-px"
+                            style={{ borderTop: `3px solid ${topBorder2}` }}
+                            onClick={() => toggleBmMarker(bmKey)}>
+                            <div className="flex justify-between items-center mb-0.5">
+                              <span className="text-xs text-[#1c2a2b]/55 font-medium">{d.nm[lang]}</span>
+                              <StatusBadge s={s2} t={t} />
+                            </div>
+                            <div className="text-sm font-semibold text-[#0e393d] mb-2.5">{m.n}</div>
+                            <div className="flex items-baseline gap-1 mb-1.5">
+                              <span className="font-serif text-[2rem] text-[#1c2a2b] leading-none">{v}</span>
+                              <span className="text-xs text-[#1c2a2b]/55">{m.u}</span>
+                            </div>
+                            <div className="mb-1.5"><RangeBar v={v} r={m.r} o={m.o} dir={m.dir} /></div>
+                            <div className="text-xs mb-1" style={{ color: dCol }}>
+                              vs previous: {delta >= 0 ? '+' : ''}{delta} {m.u}
+                            </div>
+                            {mOpen && (
+                              <div className="border-t border-[#0e393d]/[.06] mt-2.5 pt-3">
+                                <div className="h-[120px]"><MarkerHistoryChart m={m} height={120} /></div>
+                                <div className="text-sm text-[#1c2a2b]/55 leading-[1.65] p-[9px] bg-[rgba(14,57,61,.03)] rounded-lg mt-2.5 mb-2">
+                                  {m.desc}
+                                </div>
+                                <div className="flex gap-3.5 text-xs text-[#1c2a2b]/55 flex-wrap">
+                                  <div>
+                                    <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.refRange}</span>
+                                    {m.r[0]} – {m.r[1]} {m.u}
+                                  </div>
+                                  <div>
+                                    <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#0C9C6C]">{t.longevityOpt}</span>
+                                    {m.o[0]} – {m.o[1]} {m.u}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -900,81 +855,6 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
           })}
         </section>
 
-        {/* ── BIOMARKER DETAILS ── */}
-        <section className="pt-8 pb-12">
-          <SectionHeader label={t.secBm} right="Click any marker for history & explanation" />
-          <div className="flex flex-col gap-8">
-            {D.map((d, di) => {
-              const s = d.sc[2];
-              const cl = scoreColor(s / 100);
-              return (
-                <div key={di}>
-                  {/* Domain header divider */}
-                  <div className="flex items-center gap-2.5 mb-3 pb-2 border-b border-[#0e393d]/[.08]">
-                    <span className="text-[14px]">{d.ic}</span>
-                    <div className="text-sm font-semibold text-[#0e393d]">{d.nm[lang]}</div>
-                    <span className="font-serif text-[.9rem]" style={{ color: cl }}>{s}/100</span>
-                    <div className="flex-1" />
-                    <span className="text-xs text-[#1c2a2b]/45">{d.m.length} {t.markersLabel} · {d.w}</span>
-                  </div>
-                  {/* 3-col marker grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                    {d.m.map((m, mi) => {
-                      const v = m.v[2];
-                      const s2 = mStatus(v, m.r, m.o, m.dir);
-                      const cl2 = mColor(s2);
-                      const topBorder = s2 === 'opt' ? '#0C9C6C' : s2 === 'norm' ? '#c4a96a' : '#b45309';
-                      const bmKey = `bm${di}-${mi}`;
-                      const mOpen = !!openBmMarkers.get(bmKey);
-                      const prev = m.v[1];
-                      const delta = +(v - prev).toFixed(2);
-                      const improving = (m.dir === 'lower' && delta <= 0) || (m.dir === 'higher' && delta >= 0) || m.dir === 'range';
-                      const dCol = improving ? '#0C9C6C' : '#b45309';
-                      return (
-                        <div key={mi}
-                          className="bg-white border border-[#1c2a2b]/10 rounded-2xl px-4 py-4 cursor-pointer transition-all hover:shadow-md hover:-translate-y-px"
-                          style={{ borderTop: `3px solid ${topBorder}` }}
-                          onClick={() => toggleBmMarker(bmKey)}>
-                          <div className="flex justify-between items-center mb-0.5">
-                            <span className="text-xs text-[#1c2a2b]/55 font-medium">{d.nm[lang]}</span>
-                            <StatusBadge s={s2} t={t} />
-                          </div>
-                          <div className="text-sm font-semibold text-[#0e393d] mb-2.5">{m.n}</div>
-                          <div className="flex items-baseline gap-1 mb-1.5">
-                            <span className="font-serif text-[2rem] text-[#1c2a2b] leading-none">{v}</span>
-                            <span className="text-xs text-[#1c2a2b]/55">{m.u}</span>
-                          </div>
-                          <div className="mb-1.5"><RangeBar v={v} r={m.r} o={m.o} dir={m.dir} /></div>
-                          <div className="text-xs mb-1" style={{ color: dCol }}>
-                            vs previous: {delta >= 0 ? '+' : ''}{delta} {m.u}
-                          </div>
-                          {mOpen && (
-                            <div className="border-t border-[#0e393d]/[.06] mt-2.5 pt-3">
-                              <div className="h-[120px]"><MarkerHistoryChart m={m} height={120} /></div>
-                              <div className="text-sm text-[#1c2a2b]/55 leading-[1.65] p-[9px] bg-[rgba(14,57,61,.03)] rounded-lg mt-2.5 mb-2">
-                                {m.desc}
-                              </div>
-                              <div className="flex gap-3.5 text-xs text-[#1c2a2b]/55 flex-wrap">
-                                <div>
-                                  <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.refRange}</span>
-                                  {m.r[0]} – {m.r[1]} {m.u}
-                                </div>
-                                <div>
-                                  <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#0C9C6C]">{t.longevityOpt}</span>
-                                  {m.o[0]} – {m.o[1]} {m.u}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
 
       </div>
     </div>
