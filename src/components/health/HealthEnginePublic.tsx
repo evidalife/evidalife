@@ -451,8 +451,6 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
   // Domain tile expand (one at a time)
   const [openDomains, setOpenDomains] = useState<Set<number>>(new Set());
-  // Key marker cards expand
-  const [openKeyMarkers, setOpenKeyMarkers] = useState<Set<number>>(new Set());
   // Individual markers in domain panel and biomarker section
   const [openBmMarkers, setOpenBmMarkers] = useState<Map<string, boolean>>(new Map());
 
@@ -460,13 +458,6 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
     setOpenDomains(prev => {
       const next = new Set<number>();
       if (!prev.has(di)) next.add(di);
-      return next;
-    });
-  }
-  function toggleKeyMarker(fi: number) {
-    setOpenKeyMarkers(prev => {
-      const next = new Set(prev);
-      next.has(fi) ? next.delete(fi) : next.add(fi);
       return next;
     });
   }
@@ -537,7 +528,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
             {/* Score card */}
             <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col">
               <div className="px-5 pt-5 pb-3.5 flex flex-col items-center gap-[5px]">
-                <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-white/35 mb-1">
+                <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-[#ceab84] mb-2 self-start">
                   LONGEVITY SCORE
                 </div>
                 <div className="mt-2 mb-1"><Gauge score={78} max={100} sz="lg" dark /></div>
@@ -577,22 +568,27 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
             </div>
 
             {/* Insights panel (right column) */}
-            <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col gap-0">
+            <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col">
+
+              {/* Card header */}
+              <div className="px-5 pt-4 pb-3 border-b border-white/[.06]">
+                <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-[#ceab84]">YOUR PROGRESS</div>
+              </div>
 
               {/* Amber alert */}
               <div className="flex gap-3 items-start px-5 py-4 border-b border-white/[.06]">
-                <span className="text-[18px] shrink-0 leading-[1.3]">⚠️</span>
+                <span className="text-[16px] shrink-0 leading-[1.4] mt-0.5">⚠️</span>
                 <div>
-                  <div className="text-sm font-semibold text-white mb-0.5">
+                  <div className="text-sm font-semibold text-white mb-1">
                     1 marker in the borderline zone
                   </div>
-                  <div className="text-xs text-white/50 leading-[1.55] mb-2">
+                  <div className="text-xs text-white/50 leading-[1.6] mb-2.5">
                     Within laboratory reference range but below the longevity optimal
                     target. Lifestyle interventions can often bring these into the
                     optimal zone within 90 days.
                   </div>
                   <div className="flex flex-wrap gap-[5px]">
-                    <span className="text-[9px] font-semibold px-2 py-[2px] rounded-full bg-[rgba(180,83,9,.25)] text-[#fbbf24]">
+                    <span className="text-[9px] font-semibold px-2.5 py-[3px] rounded-full bg-[rgba(180,83,9,.3)] text-[#fbbf24]">
                       Pulse Pressure: 42 mmHg
                     </span>
                   </div>
@@ -601,18 +597,18 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
               {/* Green alert */}
               <div className="flex gap-3 items-start px-5 py-4">
-                <span className="text-[18px] shrink-0 leading-[1.3]">✅</span>
+                <span className="text-[16px] shrink-0 leading-[1.4] mt-0.5">✅</span>
                 <div>
-                  <div className="text-sm font-semibold text-white mb-0.5">
+                  <div className="text-sm font-semibold text-white mb-1">
                     11 markers have moved into a healthy range since your first test
                   </div>
-                  <div className="text-xs text-white/50 leading-[1.55] mb-2">
+                  <div className="text-xs text-white/50 leading-[1.6] mb-2.5">
                     Your interventions are working. Keep up the current approach and
                     continue tracking at your next test.
                   </div>
                   <div className="flex flex-wrap gap-[5px]">
                     {['↑ HOMA-IR', '↑ Omega-3 Index', '↑ Non-HDL Cholesterol', '↑ hsCRP'].map(pill => (
-                      <span key={pill} className="text-[9px] font-semibold px-2 py-[2px] rounded-full bg-[rgba(12,156,108,.25)] text-[#6ee7b7]">
+                      <span key={pill} className="text-[9px] font-semibold px-2.5 py-[3px] rounded-full bg-[rgba(12,156,108,.3)] text-[#6ee7b7]">
                         {pill}
                       </span>
                     ))}
@@ -624,7 +620,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
           </div>
 
           {/* Insight cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-2.5">
+          <div className="grid grid-cols-3 gap-3.5">
             {[
               {
                 color: '#0C9C6C', title: t.insStrT,
@@ -667,7 +663,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                 { lbl: 'DUNEDINPACE · AGING RATE', chron: 'rate × age = projected age', val: '32.5 yr', diff: '↓ 7.6 years younger (rate)', sub: 'Speed of aging: 0.81 yr/yr · population avg 1.0 · You age 9.7 months per calendar year.' },
               ].map((item, i) => (
                 <div key={i} className={`p-4 flex flex-col gap-[3px] ${i < 2 ? 'border-r border-white/[.06]' : ''}`}>
-                  <div className="text-[11px] font-semibold tracking-[.1em] uppercase text-white/28 mb-1">{item.lbl}</div>
+                  <div className="text-[11px] font-semibold tracking-[.1em] uppercase text-[#ceab84] mb-1">{item.lbl}</div>
                   <div className="text-sm text-white/18 line-through">{item.chron}</div>
                   <div className="font-serif text-[#0C9C6C] leading-[1.05] text-[2.2rem]">{item.val}</div>
                   <div className="text-sm font-semibold text-[#0C9C6C]">{item.diff}</div>
@@ -703,8 +699,8 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
         {/* ── KEY MARKERS ── */}
         <section className="pt-8">
-          <SectionHeader label={t.secKm} right="Your most impactful biomarkers — click to expand" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+          <SectionHeader label={t.secKm} right="Your most impactful biomarkers" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
             {FEATURED.map(({ di, mi, why }, fi) => {
               const domain = D[di];
               const m = domain.m[mi];
@@ -714,12 +710,10 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
               const delta = +(v - prev).toFixed(2);
               const improving = (m.dir === 'lower' && delta <= 0) || (m.dir === 'higher' && delta >= 0) || m.dir === 'range';
               const dCol = improving ? '#0C9C6C' : '#b45309';
-              const isOpen = openKeyMarkers.has(fi);
               const topBorder = s === 'opt' ? '#0C9C6C' : s === 'norm' ? '#c4a96a' : '#b45309';
               return (
-                <div key={fi} className="bg-white border border-[#1c2a2b]/10 rounded-2xl px-4 py-4 overflow-hidden cursor-pointer transition-all hover:shadow-md hover:-translate-y-px"
-                  style={{ borderTop: `3px solid ${topBorder}` }}
-                  onClick={() => toggleKeyMarker(fi)}>
+                <div key={fi} className="bg-white border border-[#1c2a2b]/10 rounded-2xl px-4 py-4 overflow-hidden"
+                  style={{ borderTop: `3px solid ${topBorder}` }}>
                   <div className="flex justify-between items-center mb-0.5">
                     <span className="text-xs text-[#1c2a2b]/55 font-medium">{domain.nm[lang]}</span>
                     <StatusBadge s={s} t={t} />
@@ -734,27 +728,6 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                     vs previous test: {delta >= 0 ? '+' : ''}{delta} {m.u}
                   </div>
                   <div className="text-xs text-[#1c2a2b]/55 leading-[1.5] pt-[7px] border-t border-[#0e393d]/[.06]">{why}</div>
-                  {isOpen && (
-                    <div className="border-t border-[#0e393d]/[.06] mt-2.5 pt-3">
-                      <div className="h-[120px]"><MarkerHistoryChart m={m} height={120} /></div>
-                      <div className="text-sm text-[#1c2a2b]/55 leading-[1.65] p-[9px] bg-[rgba(14,57,61,.03)] rounded-lg mt-2.5 mb-2">
-                        {m.desc}
-                      </div>
-                      <div className="flex gap-3.5 text-xs text-[#1c2a2b]/55 flex-wrap">
-                        <div>
-                          <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.refRange}</span>
-                          {m.r[0]} – {m.r[1]} {m.u}
-                        </div>
-                        <div>
-                          <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#0C9C6C]">{t.longevityOpt}</span>
-                          {m.o[0]} – {m.o[1]} {m.u}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  <div className="text-[.58rem] text-[#0e393d] text-right mt-[5px] opacity-60">
-                    {isOpen ? t.kmCollapse : t.kmExpand}
-                  </div>
                 </div>
               );
             })}
