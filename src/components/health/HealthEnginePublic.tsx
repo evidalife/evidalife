@@ -103,7 +103,7 @@ const FEATURED: Featured[] = [
   { di: 4, mi: 0, why: 'Vitamin D at 24 ng/mL is your most actionable opportunity. Below optimal 40–60 ng/mL. Supplement 4,000 IU/day.' },
   { di: 0, mi: 2, why: 'HDL rose from 48 to 62 mg/dL — significant reverse cholesterol transport improvement. Diet and exercise are working.' },
   { di: 4, mi: 5, why: 'Omega-3 Index climbing from 4.2% to 6.8%. Above 8% is the longevity optimal. You are on track.' },
-  { di: 5, mi: 0, why: 'Testosterone rising from 480 to 580 ng/dL, now in the optimal zone. Consistent resistance training is working.' },
+  { di: 2, mi: 0, why: 'Primary inflammaging marker. hsCRP at 1.8 mg/L is improving but still above the 1.0 mg/L longevity optimal. Keep the anti-inflammatory momentum.' },
 ];
 
 // ── Translations ──────────────────────────────────────────────────────────────
@@ -248,7 +248,7 @@ function Gauge({ score, max, sz, dark = false }: { score: number; max: number; s
   const MX = sz === 'lg' ? 26  : 9;
   const W  = sz === 'lg' ? 260 : 96;
   const H  = sz === 'lg' ? 210 : 74;
-  const dW = sz === 'lg' ? 200 : 78;
+  const dW = sz === 'lg' ? 160 : 78;
   const fz = sz === 'lg' ? 42  : 14;
   const sy = sz === 'lg' ? 180 : 66;
   const SEGS = 12, GAP = 2.5, START = 135, ARC = 270;
@@ -451,6 +451,8 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
   // Domain tile expand (one at a time)
   const [openDomains, setOpenDomains] = useState<Set<number>>(new Set());
+  // Key marker cards expand
+  const [openKeyMarkers, setOpenKeyMarkers] = useState<Set<number>>(new Set());
   // Individual markers in domain panel and biomarker section
   const [openBmMarkers, setOpenBmMarkers] = useState<Map<string, boolean>>(new Map());
 
@@ -458,6 +460,13 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
     setOpenDomains(prev => {
       const next = new Set<number>();
       if (!prev.has(di)) next.add(di);
+      return next;
+    });
+  }
+  function toggleKeyMarker(fi: number) {
+    setOpenKeyMarkers(prev => {
+      const next = new Set(prev);
+      next.has(fi) ? next.delete(fi) : next.add(fi);
       return next;
     });
   }
@@ -514,24 +523,6 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
           </div>
         </section>
 
-        {/* ── TIMELINE ── */}
-        <div className="flex gap-1.5 mb-7 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-          {[
-            { date: 'Sep 2024', label: 'Test #1', dot: '#94a3b8', cur: false },
-            { date: 'Jun 2025', label: 'Test #2', dot: '#ceab84', cur: false },
-            { date: 'Mar 2026 · Current', label: 'Test #3', dot: '#0C9C6C', cur: true },
-            { date: 'Sep 2026', label: t.nextRec, dot: '#ddd', cur: false, dashed: true },
-          ].map((item, i) => (
-            <div key={i} className={`shrink-0 flex items-center gap-[7px] px-[13px] py-[7px] rounded-[9px] border text-[#1c2a2b] ${item.cur ? 'border-[#0e393d] bg-[rgba(14,57,61,.03)]' : 'border-[#1c2a2b]/10 bg-white'} ${item.dashed ? 'opacity-35 border-dashed' : ''}`}>
-              <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ background: item.dot }} />
-              <div>
-                <div className="text-xs font-semibold text-[#0e393d]">{item.date}</div>
-                <div className="text-[.58rem] text-[#1c2a2b]/55">{item.label}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
         {/* ── LONGEVITY SCORE ── */}
         <section className="pt-2 pb-0">
           <SectionHeader label={t.secScore} right="Weighted composite of 8 domains" />
@@ -546,6 +537,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                 <div className="mt-2 mb-1"><Gauge score={78} max={100} sz="lg" dark /></div>
                 <div className="text-xs font-semibold px-[9px] py-[2px] rounded-full bg-[rgba(12,156,108,.22)] text-[#6ee7b7]">+10 in 18 months</div>
                 <div className="text-[.58rem] text-white/30 text-center">{t.scMsg}</div>
+                <div className="text-[.55rem] text-white/18 text-center leading-snug mt-1">Based on 8 health domains · Epigenetics shown separately</div>
               </div>
               <div className="grid grid-cols-2 border-t border-white/[.06]">
                 <div className="px-3.5 py-[11px] flex flex-col gap-0.5 border-r border-white/[.06]">
@@ -564,8 +556,8 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                 <div className="h-[80px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={scoreData} margin={{ top: 4, right: 4, bottom: 0, left: -28 }}>
-                      <XAxis dataKey="date" tick={{ fontSize: 8, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
-                      <YAxis domain={[55, 90]} tick={{ fontSize: 8, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={4} />
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[55, 90]} tick={{ fontSize: 10, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={4} />
                       <RTooltip
                         formatter={(v: unknown) => [v as number, 'Score']}
                         contentStyle={{ fontSize: 11, background: '#0e393d', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8 }}
@@ -588,11 +580,11 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                   { lbl: 'DUNEDINPACE · AGING RATE', chron: 'rate × age = projected age', big: false, val: '32.5 yr', diff: '↓ 7.6 years younger (rate)', sub: 'Speed of aging: 0.81 yr/yr · population avg 1.0 · You age 9.7 months per calendar year.' },
                 ].map((item, i) => (
                   <div key={i} className={`p-4 flex flex-col gap-[3px] ${i < 2 ? 'border-r border-white/[.06]' : ''}`}>
-                    <div className="text-[8px] font-semibold tracking-[.1em] uppercase text-white/28 mb-1">{item.lbl}</div>
-                    <div className="text-xs text-white/18 line-through">{item.chron}</div>
-                    <div className={`font-serif text-[#0C9C6C] leading-[1.05] ${item.big ? 'text-[2.1rem]' : 'text-[1.6rem]'}`}>{item.val}</div>
-                    <div className="text-xs font-semibold text-[#0C9C6C]">{item.diff}</div>
-                    <div className="text-[.6rem] text-white/22 leading-[1.45] mt-[3px]">{item.sub}</div>
+                    <div className="text-[11px] font-semibold tracking-[.1em] uppercase text-white/28 mb-1">{item.lbl}</div>
+                    <div className="text-sm text-white/18 line-through">{item.chron}</div>
+                    <div className={`font-serif text-[#0C9C6C] leading-[1.05] ${item.big ? 'text-[2.2rem]' : 'text-[2.2rem]'}`}>{item.val}</div>
+                    <div className="text-sm font-semibold text-[#0C9C6C]">{item.diff}</div>
+                    <div className="text-xs text-white/22 leading-[1.45] mt-[3px]">{item.sub}</div>
                   </div>
                 ))}
               </div>
@@ -603,14 +595,14 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                 <div className="flex-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={bioData} margin={{ top: 4, right: 40, bottom: 0, left: -16 }}>
-                      <XAxis dataKey="date" tick={{ fontSize: 8, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
-                      <YAxis domain={[26, 42]} tick={{ fontSize: 8, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={5} />
+                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[26, 42]} tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={5} />
                       <RTooltip
                         contentStyle={{ fontSize: 11, background: '#0e393d', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8 }}
                         labelStyle={{ color: 'rgba(255,255,255,.5)' }}
-                        itemStyle={{ fontSize: 10 }}
+                        itemStyle={{ fontSize: 11 }}
                       />
-                      <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: 8, color: 'rgba(255,255,255,.5)', paddingTop: 6 }} />
+                      <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: 11, color: 'rgba(255,255,255,.5)', paddingTop: 6 }} />
                       <Line name="PhenoAge" type="monotone" dataKey="pheno" stroke="#0C9C6C" strokeWidth={2} dot={{ r: 3, fill: '#0C9C6C' }} activeDot={{ r: 5 }} />
                       <Line name="GrimAge v2" type="monotone" dataKey="grim" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3, fill: '#8b5cf6' }} activeDot={{ r: 5 }} connectNulls={false} />
                       <Line name="DunedinPACE×age" type="monotone" dataKey="pace" stroke="#ceab84" strokeWidth={2} dot={{ r: 3, fill: '#ceab84' }} activeDot={{ r: 5 }} />
@@ -683,8 +675,8 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
 
         {/* ── KEY MARKERS ── */}
         <section className="pt-8">
-          <SectionHeader label={t.secKm} right="Your most impactful biomarkers" />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+          <SectionHeader label={t.secKm} right="Your most impactful biomarkers — click to expand" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             {FEATURED.map(({ di, mi, why }, fi) => {
               const domain = D[di];
               const m = domain.m[mi];
@@ -694,10 +686,12 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
               const delta = +(v - prev).toFixed(2);
               const improving = (m.dir === 'lower' && delta <= 0) || (m.dir === 'higher' && delta >= 0) || m.dir === 'range';
               const dCol = improving ? '#0C9C6C' : '#b45309';
+              const isOpen = openKeyMarkers.has(fi);
               const topBorder = s === 'opt' ? '#0C9C6C' : s === 'norm' ? '#c4a96a' : '#b45309';
               return (
-                <div key={fi} className="bg-white border border-[#1c2a2b]/10 rounded-2xl px-4 py-4 overflow-hidden"
-                  style={{ borderTop: `3px solid ${topBorder}` }}>
+                <div key={fi} className="bg-white border border-[#1c2a2b]/10 rounded-2xl px-4 py-4 overflow-hidden cursor-pointer transition-all hover:shadow-md hover:-translate-y-px"
+                  style={{ borderTop: `3px solid ${topBorder}` }}
+                  onClick={() => toggleKeyMarker(fi)}>
                   <div className="flex justify-between items-center mb-0.5">
                     <span className="text-xs text-[#1c2a2b]/55 font-medium">{domain.nm[lang]}</span>
                     <StatusBadge s={s} t={t} />
@@ -712,22 +706,26 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                     vs previous test: {delta >= 0 ? '+' : ''}{delta} {m.u}
                   </div>
                   <div className="text-xs text-[#1c2a2b]/55 leading-[1.5] pt-[7px] border-t border-[#0e393d]/[.06]">{why}</div>
-                  {/* Always-visible detail */}
-                  <div className="border-t border-[#0e393d]/[.06] mt-2.5 pt-3">
-                    <div className="h-[120px]"><MarkerHistoryChart m={m} height={120} /></div>
-                    <div className="text-sm text-[#1c2a2b]/55 leading-[1.65] p-[9px] bg-[rgba(14,57,61,.03)] rounded-lg mt-2.5 mb-2">
-                      {m.desc}
-                    </div>
-                    <div className="flex gap-3.5 text-xs text-[#1c2a2b]/55 flex-wrap">
-                      <div>
-                        <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.refRange}</span>
-                        {m.r[0]} – {m.r[1]} {m.u}
+                  {isOpen && (
+                    <div className="border-t border-[#0e393d]/[.06] mt-2.5 pt-3">
+                      <div className="h-[120px]"><MarkerHistoryChart m={m} height={120} /></div>
+                      <div className="text-sm text-[#1c2a2b]/55 leading-[1.65] p-[9px] bg-[rgba(14,57,61,.03)] rounded-lg mt-2.5 mb-2">
+                        {m.desc}
                       </div>
-                      <div>
-                        <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#0C9C6C]">{t.longevityOpt}</span>
-                        {m.o[0]} – {m.o[1]} {m.u}
+                      <div className="flex gap-3.5 text-xs text-[#1c2a2b]/55 flex-wrap">
+                        <div>
+                          <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.refRange}</span>
+                          {m.r[0]} – {m.r[1]} {m.u}
+                        </div>
+                        <div>
+                          <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#0C9C6C]">{t.longevityOpt}</span>
+                          {m.o[0]} – {m.o[1]} {m.u}
+                        </div>
                       </div>
                     </div>
+                  )}
+                  <div className="text-[.58rem] text-[#0e393d] text-right mt-[5px] opacity-60">
+                    {isOpen ? t.kmCollapse : t.kmExpand}
                   </div>
                 </div>
               );
@@ -740,15 +738,15 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
           <SectionHeader label={t.secDom} right="Click any domain to explore all markers" />
 
           {/* Radar + Flag */}
-          <div className="grid md:grid-cols-[280px_1fr] gap-3.5 mb-3">
+          <div className="grid md:grid-cols-2 gap-3.5 mb-3">
             {/* Radar */}
             <div className="bg-white border border-[#1c2a2b]/10 rounded-2xl p-4">
               <div className="text-sm font-semibold text-[#1c2a2b]/55 uppercase tracking-[.06em] mb-2.5">{t.domBalance}</div>
-              <div className="h-96">
+              <div className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="72%">
                     <PolarGrid stroke="rgba(14,57,61,.07)" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: '#5a6e6f' }} />
+                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 13, fill: '#5a6e6f' }} />
                     <Radar name="Current" dataKey="current" fill="rgba(14,57,61,.09)" stroke="rgba(14,57,61,.65)" strokeWidth={2} />
                     <Radar name="First test" dataKey="first" fill="none" stroke="rgba(206,171,132,.45)" strokeWidth={1.5} strokeDasharray="4 3" />
                     <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: 9 }} />
