@@ -739,42 +739,44 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
           <SectionHeader label={t.secDom} right="Click any domain to explore all markers" />
 
           {/* Radar + Flag */}
-          <div className="grid md:grid-cols-2 gap-3.5 mb-3">
-            {/* Radar */}
-            <div className="bg-white border border-[#1c2a2b]/10 rounded-2xl p-4">
-              <div className="text-sm font-semibold text-[#1c2a2b]/55 uppercase tracking-[.06em] mb-2.5">{t.domBalance}</div>
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="72%">
-                    <PolarGrid stroke="rgba(14,57,61,.07)" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 13, fill: '#5a6e6f' }} />
-                    <Radar name="Current" dataKey="current" fill="rgba(14,57,61,.09)" stroke="rgba(14,57,61,.65)" strokeWidth={2} />
-                    <Radar name="First test" dataKey="first" fill="none" stroke="rgba(206,171,132,.45)" strokeWidth={1.5} strokeDasharray="4 3" />
-                    <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: 9 }} />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-            {/* Flag card */}
-            <div className="bg-white border border-[#1c2a2b]/10 rounded-2xl p-4">
-              <div className="text-sm font-semibold text-[#1c2a2b]/55 uppercase tracking-[.06em] mb-3">{t.markerStatus}</div>
-              {([
-                { k: 'opt' as MStatus, c: '#0C9C6C', l: t.optLabel },
-                { k: 'norm' as MStatus, c: '#C4A96A', l: t.normLabel },
-                { k: 'warn' as MStatus, c: '#b45309', l: t.warnLabel },
-              ]).map(row => (
-                <div key={row.k} className="flex items-center gap-2 mb-[9px]">
-                  <div className="w-2 h-2 rounded-[2px] shrink-0" style={{ background: row.c }} />
-                  <div className="flex-1 h-[5px] rounded-full bg-[#ede9e3] overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${Math.round(flagCounts[row.k] / flagTotal * 100)}%`, background: row.c }} />
-                  </div>
-                  <div className="text-sm font-semibold text-[#1c2a2b] w-6 text-right">{flagCounts[row.k]}</div>
-                  <div className="text-xs text-[#1c2a2b]/55 w-[68px]">{row.l}</div>
+          <div className="bg-[#0e393d] rounded-2xl overflow-hidden mb-3">
+            <div className="grid md:grid-cols-2 divide-x divide-white/[.06]">
+              {/* Radar */}
+              <div className="p-5 flex flex-col">
+                <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-[#ceab84] mb-3">{t.domBalance}</div>
+                <div className="h-[360px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="72%">
+                      <PolarGrid stroke="rgba(255,255,255,.08)" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 13, fill: 'rgba(255,255,255,.55)' }} />
+                      <Radar name="Current" dataKey="current" fill="rgba(206,171,132,.12)" stroke="rgba(206,171,132,.8)" strokeWidth={2} />
+                      <Radar name="First test" dataKey="first" fill="none" stroke="rgba(255,255,255,.2)" strokeWidth={1.5} strokeDasharray="4 3" />
+                      <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: 9, color: 'rgba(255,255,255,.45)' }} />
+                    </RadarChart>
+                  </ResponsiveContainer>
                 </div>
-              ))}
-              <div className="mt-2.5 pt-2.5 border-t border-[#0e393d]/[.06] text-xs text-[#1c2a2b]/55 leading-[1.55]">
-                <strong className="text-[#1c2a2b]">{flagTotal} markers measured.</strong>{' '}
-                <strong className="text-[#0C9C6C]">{flagCounts.opt} optimal</strong> — strong foundation. Focus: Nutrients &amp; Inflammation.
+              </div>
+              {/* Flag card */}
+              <div className="p-5 flex flex-col">
+                <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-[#ceab84] mb-4">{t.markerStatus}</div>
+                {([
+                  { k: 'opt' as MStatus, c: '#0C9C6C', l: t.optLabel },
+                  { k: 'norm' as MStatus, c: '#C4A96A', l: t.normLabel },
+                  { k: 'warn' as MStatus, c: '#b45309', l: t.warnLabel },
+                ]).map(row => (
+                  <div key={row.k} className="flex items-center gap-2 mb-[9px]">
+                    <div className="w-2 h-2 rounded-[2px] shrink-0" style={{ background: row.c }} />
+                    <div className="flex-1 h-[5px] rounded-full bg-white/10 overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${Math.round(flagCounts[row.k] / flagTotal * 100)}%`, background: row.c }} />
+                    </div>
+                    <div className="text-sm font-semibold text-white w-6 text-right">{flagCounts[row.k]}</div>
+                    <div className="text-xs text-white/50 w-[68px]">{row.l}</div>
+                  </div>
+                ))}
+                <div className="mt-2.5 pt-2.5 border-t border-white/[.06] text-xs text-white/50 leading-[1.55]">
+                  <strong className="text-white">{flagTotal} markers measured.</strong>{' '}
+                  <strong className="text-[#0C9C6C]">{flagCounts.opt} optimal</strong> — strong foundation. Focus: Nutrients &amp; Inflammation.
+                </div>
               </div>
             </div>
           </div>
