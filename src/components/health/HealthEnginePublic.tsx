@@ -371,7 +371,8 @@ function MarkerHistoryChart({ m, height = 90 }: { m: Marker; height?: number }) 
       <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
         <ReferenceArea y1={m.o[0]} y2={m.o[1]} fill="rgba(12,156,108,0.08)" />
         <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#5a6e6f' }} axisLine={false} tickLine={false} />
-        <YAxis domain={[mn, mx]} tick={{ fontSize: 9, fill: '#5a6e6f' }} axisLine={false} tickLine={false} tickCount={4} />
+        <YAxis domain={[mn, mx]} tick={{ fontSize: 9, fill: '#5a6e6f' }} axisLine={false} tickLine={false} tickCount={4}
+          tickFormatter={(v: number) => Number.isInteger(v) ? String(v) : parseFloat(v.toFixed(2)).toString()} />
         <RTooltip
           formatter={(v: unknown) => [`${v as number} ${m.u}`, m.n]}
           contentStyle={{ fontSize: 11, border: '1px solid rgba(14,57,61,.1)', borderRadius: 8, padding: '4px 8px' }}
@@ -720,156 +721,172 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
             </div>
           </div>
 
-          {/* Domain tile grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {/* Tile grid — all 8 tiles */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-2.5">
             {D.map((d, di) => {
-              const s = d.sc[2], prev = d.sc[1], td = s - prev;
+              const s = d.sc[2];
               const cl = scoreColor(s / 100);
-              const st: MStatus = s >= 85 ? 'opt' : s >= 70 ? 'norm' : 'warn';
-              const isActive = openDomains.has(di);
+              const td = d.sc[2] - d.sc[0];
+              const st = mStatus(d.sc[2] / 10, [0, 7], [7, 10], 'higher') as MStatus;
+              const isOpen = openDomains.has(di);
               return (
                 <div key={di}
-                  className={`bg-white border rounded-[10px] p-3 cursor-pointer transition-all relative hover:-translate-y-px ${isActive ? 'border-[#0e393d] shadow-[0_0_0_2px_rgba(14,57,61,.06)]' : 'border-[#1c2a2b]/10 hover:border-[#1c2a2b]/15 hover:shadow-md'}`}
+                  className={`bg-white border border-[#1c2a2b]/10 rounded-2xl p-4 cursor-pointer transition-all hover:shadow-md hover:-translate-y-px select-none ${isOpen ? 'ring-2 ring-[#0e393d]/20 shadow-md' : ''}`}
                   onClick={() => toggleDomain(di)}>
-                  <div className="flex justify-between items-start mb-[7px]">
+                  <div className="flex items-center justify-between mb-1">
                     <span className="text-[14px]">{d.ic}</span>
                     <StatusBadge s={st} t={t} />
                   </div>
                   <div className="text-sm font-semibold text-[#0e393d] mb-0.5">{d.nm[lang]}</div>
-                  <div className="text-xs text-[#1c2a2b]/55">{d.m.length} {t.markersLabel} · {d.w}</div>
-                  <div className="flex items-baseline gap-[3px] my-[5px]">
+                  <div className="text-xs text-[#1c2a2b]/55 mb-2">{d.m.length} {t.markersLabel} · {d.w}</div>
+                  <div className="flex items-baseline gap-[3px] mb-1">
                     <span className="font-serif text-[1.65rem] leading-none" style={{ color: cl }}>{s}</span>
                     <span className="text-xs text-[#1c2a2b]/55">/100</span>
                     <span className="text-xs font-semibold ml-[3px]" style={{ color: td > 0 ? '#0C9C6C' : '#c0392b' }}>
                       {td > 0 ? '↑+' : '↓'}{Math.abs(td)}
                     </span>
                   </div>
-                  <div className="h-[3px] bg-[#ede9e3] rounded-full overflow-hidden mb-[5px]">
-                    <div className="h-full rounded-full" style={{ width: `${s}%`, background: cl }} />
+                  <div className="h-[32px] mt-1">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={DATES.map((date, i) => ({ date, score: d.sc[i] }))} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+                        <Line type="monotone" dataKey="score" stroke={cl} strokeWidth={1.5} dot={{ r: 2, fill: cl }} activeDot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
-                  <div className="h-6"><Sparkline vals={[...d.sc]} color={cl} /></div>
-                  <span className={`text-[8px] text-[#1c2a2b]/55 absolute bottom-[9px] right-2.5 transition-transform ${isActive ? 'rotate-180' : ''}`}>▼</span>
+                  <div className="text-[9px] text-[#0e393d]/40 text-right mt-1">{isOpen ? '▲' : '▼'}</div>
                 </div>
               );
             })}
           </div>
 
-          {/* Domain expanded panel */}
+          {/* Expanded panel — full width, renders below entire grid */}
           {D.map((d, di) => {
             if (!openDomains.has(di)) return null;
-            const s = d.sc[2];
             return (
-              <div key={di} className="mt-2 rounded-xl border border-[#0e393d] overflow-hidden">
-                <div className="bg-[#0e393d] px-4 py-3 flex items-center justify-between">
-                  <div className="font-serif text-white flex items-center gap-2">
-                    {d.ic} <span>{d.nm[lang]}</span>
-                    <span className="text-xs text-white/35 font-sans">{s}/100</span>
+              <div key={`expand-${di}`} className="bg-white border border-[#0e393d]/15 rounded-2xl overflow-hidden mb-2.5 shadow-sm">
+                {/* Panel header */}
+                <div className="bg-[#0e393d] px-5 py-3 flex items-center justify-between">
+                  <div className="font-serif text-white flex items-center gap-2 text-[1.05rem]">
+                    {d.ic}
+                    <span>{d.nm[lang]}</span>
+                    <span className="text-xs text-white/35 font-sans ml-1">{d.sc[2]}/100</span>
                   </div>
-                  <button onClick={() => toggleDomain(di)}
+                  <button onClick={(e) => { e.stopPropagation(); toggleDomain(di); }}
                     className="w-[26px] h-[26px] rounded-full border border-white/20 text-white/50 hover:bg-white/12 hover:text-white transition-all flex items-center justify-center text-[13px]">
                     ✕
                   </button>
                 </div>
-                <div className="p-4 bg-[#fafaf8]">
-                  <div className="border-t border-[#0e393d]/[.08] pt-5 pb-6">
 
-                    {/* Marker trends — actual values */}
-                    <div className="mb-5 px-1">
-                      <div className="text-[10px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/40 mb-2">Marker trends — actual values</div>
-                      <div className="h-[180px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart
-                            data={DATES.map((date, i) => {
-                              const point: Record<string, string | number> = { date };
-                              d.m.forEach((m, mi) => { point[`m${mi}`] = m.v[i]; });
-                              return point;
-                            })}
-                            margin={{ top: 8, right: 16, bottom: 0, left: -20 }}>
-                            <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'rgba(28,42,43,.4)' }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 9, fill: 'rgba(28,42,43,.4)' }} axisLine={false} tickLine={false} tickCount={4} />
-                            <RTooltip
-                              formatter={(v: unknown, name: unknown) => {
-                                const mi = parseInt((name as string).replace('m', ''));
-                                const marker = d.m[mi];
-                                return [`${v as number} ${marker.u}`, marker.n];
-                              }}
-                              contentStyle={{ fontSize: 11, border: '1px solid rgba(14,57,61,.1)', borderRadius: 8, padding: '4px 8px' }} />
-                            <Legend
-                              formatter={(value: string) => {
-                                const mi = parseInt(value.replace('m', ''));
-                                return d.m[mi]?.n ?? value;
-                              }}
-                              iconSize={6} iconType="circle"
-                              wrapperStyle={{ fontSize: 9, color: 'rgba(28,42,43,.55)', paddingTop: 6 }} />
-                            {d.m.map((m, mi) => {
-                              const COLORS = ['#0C9C6C', '#ceab84', '#8b5cf6', '#f59e0b', '#3b82f6', '#ef4444', '#10b981', '#f97316', '#6366f1'];
-                              return (
-                                <Line key={mi} type="monotone"
-                                  dataKey={`m${mi}`} name={`m${mi}`}
-                                  stroke={COLORS[mi % COLORS.length]}
-                                  strokeWidth={1.5}
-                                  dot={{ r: 2.5, fill: COLORS[mi % COLORS.length] }}
-                                  activeDot={{ r: 4 }}
-                                  connectNulls={false} />
-                              );
-                            })}
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
+                {/* Panel content */}
+                <div className="p-5 pt-4 bg-[#fafaf8]">
+
+                  {/* Marker trends — actual values */}
+                  <div className="mb-5 px-1">
+                    <div className="text-[10px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/40 mb-2">Marker trends — actual values</div>
+                    <div className="h-[180px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                          data={DATES.map((date, i) => {
+                            const point: Record<string, string | number> = { date };
+                            d.m.forEach((m, mi) => { point[`m${mi}`] = m.v[i]; });
+                            return point;
+                          })}
+                          margin={{ top: 8, right: 16, bottom: 0, left: -20 }}>
+                          <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'rgba(28,42,43,.4)' }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 9, fill: 'rgba(28,42,43,.4)' }} axisLine={false} tickLine={false} tickCount={4}
+                            tickFormatter={(v: number) => Number.isInteger(v) ? String(v) : v.toFixed(2)} />
+                          <RTooltip
+                            formatter={(v: unknown, name: unknown) => {
+                              const mi = parseInt((name as string).replace('m', ''));
+                              const marker = d.m[mi];
+                              return [`${(+(v as number)).toFixed(2)} ${marker.u}`, marker.n];
+                            }}
+                            contentStyle={{ fontSize: 11, border: '1px solid rgba(14,57,61,.1)', borderRadius: 8, padding: '4px 8px' }} />
+                          <Legend
+                            formatter={(value: string) => {
+                              const mi = parseInt(value.replace('m', ''));
+                              return d.m[mi]?.n ?? value;
+                            }}
+                            iconSize={6} iconType="circle"
+                            wrapperStyle={{ fontSize: 9, color: 'rgba(28,42,43,.55)', paddingTop: 6 }} />
+                          {d.m.map((m, mi) => {
+                            const COLORS = [
+                              '#0C9C6C',
+                              '#ceab84',
+                              '#0e393d',
+                              '#c0392b',
+                              'rgba(14,57,61,.55)',
+                              '#c4a96a',
+                              'rgba(12,156,108,.6)',
+                              'rgba(14,57,61,.35)',
+                              '#b45309',
+                            ];
+                            return (
+                              <Line key={mi} type="monotone"
+                                dataKey={`m${mi}`} name={`m${mi}`}
+                                stroke={COLORS[mi % COLORS.length]}
+                                strokeWidth={1.5}
+                                dot={{ r: 2.5, fill: COLORS[mi % COLORS.length] }}
+                                activeDot={{ r: 4 }}
+                                connectNulls={false} />
+                            );
+                          })}
+                        </LineChart>
+                      </ResponsiveContainer>
                     </div>
+                  </div>
 
-                    {/* 2-col marker card grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {d.m.map((m, mi) => {
-                        const v = m.v[2];
-                        const s2 = mStatus(v, m.r, m.o, m.dir);
-                        const topBorder2 = s2 === 'opt' ? '#0C9C6C' : s2 === 'norm' ? '#c4a96a' : '#b45309';
-                        const bmKey = `bm${di}-${mi}`;
-                        const mOpen = !!openBmMarkers.get(bmKey);
-                        const prev = m.v[1];
-                        const delta = +(v - prev).toFixed(2);
-                        const improving = (m.dir === 'lower' && delta <= 0) || (m.dir === 'higher' && delta >= 0) || m.dir === 'range';
-                        const dCol = improving ? '#0C9C6C' : '#b45309';
-                        return (
-                          <div key={mi}
-                            className="bg-white border border-[#1c2a2b]/10 rounded-2xl px-4 py-4 cursor-pointer transition-all hover:shadow-md hover:-translate-y-px"
-                            style={{ borderTop: `3px solid ${topBorder2}` }}
-                            onClick={() => toggleBmMarker(bmKey)}>
-                            <div className="flex justify-between items-center mb-0.5">
-                              <span className="text-xs text-[#1c2a2b]/55 font-medium">{d.nm[lang]}</span>
-                              <StatusBadge s={s2} t={t} />
-                            </div>
-                            <div className="text-sm font-semibold text-[#0e393d] mb-2.5">{m.n}</div>
-                            <div className="flex items-baseline gap-1 mb-1.5">
-                              <span className="font-serif text-[2rem] text-[#1c2a2b] leading-none">{v}</span>
-                              <span className="text-xs text-[#1c2a2b]/55">{m.u}</span>
-                            </div>
-                            <div className="mb-1.5"><RangeBar v={v} r={m.r} o={m.o} dir={m.dir} /></div>
-                            <div className="text-xs mb-1" style={{ color: dCol }}>
-                              vs previous: {delta >= 0 ? '+' : ''}{delta} {m.u}
-                            </div>
-                            {mOpen && (
-                              <div className="border-t border-[#0e393d]/[.06] mt-2.5 pt-3">
-                                <div className="h-[120px]"><MarkerHistoryChart m={m} height={120} /></div>
-                                <div className="text-sm text-[#1c2a2b]/55 leading-[1.65] p-[9px] bg-[rgba(14,57,61,.03)] rounded-lg mt-2.5 mb-2">
-                                  {m.desc}
+                  {/* 2-col marker card grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {d.m.map((m, mi) => {
+                      const v = m.v[2];
+                      const s2 = mStatus(v, m.r, m.o, m.dir);
+                      const topBorder2 = s2 === 'opt' ? '#0C9C6C' : s2 === 'norm' ? '#c4a96a' : '#b45309';
+                      const bmKey = `bm${di}-${mi}`;
+                      const mOpen = !!openBmMarkers.get(bmKey);
+                      const prev = m.v[1];
+                      const delta = +(v - prev).toFixed(2);
+                      const improving = (m.dir === 'lower' && delta <= 0) || (m.dir === 'higher' && delta >= 0) || m.dir === 'range';
+                      const dCol = improving ? '#0C9C6C' : '#b45309';
+                      return (
+                        <div key={mi}
+                          className="bg-white border border-[#1c2a2b]/10 rounded-2xl px-4 py-4 cursor-pointer transition-all hover:shadow-md hover:-translate-y-px"
+                          style={{ borderTop: `3px solid ${topBorder2}` }}
+                          onClick={() => toggleBmMarker(bmKey)}>
+                          <div className="flex justify-between items-center mb-0.5">
+                            <span className="text-xs text-[#1c2a2b]/55 font-medium">{d.nm[lang]}</span>
+                            <StatusBadge s={s2} t={t} />
+                          </div>
+                          <div className="text-sm font-semibold text-[#0e393d] mb-2.5">{m.n}</div>
+                          <div className="flex items-baseline gap-1 mb-1.5">
+                            <span className="font-serif text-[2rem] text-[#1c2a2b] leading-none">{v}</span>
+                            <span className="text-xs text-[#1c2a2b]/55">{m.u}</span>
+                          </div>
+                          <div className="mb-1.5"><RangeBar v={v} r={m.r} o={m.o} dir={m.dir} /></div>
+                          <div className="text-xs mb-1" style={{ color: dCol }}>
+                            vs previous: {delta >= 0 ? '+' : ''}{delta} {m.u}
+                          </div>
+                          {mOpen && (
+                            <div className="border-t border-[#0e393d]/[.06] mt-2.5 pt-3">
+                              <div className="h-[120px]"><MarkerHistoryChart m={m} height={120} /></div>
+                              <div className="text-sm text-[#1c2a2b]/55 leading-[1.65] p-[9px] bg-[rgba(14,57,61,.03)] rounded-lg mt-2.5 mb-2">
+                                {m.desc}
+                              </div>
+                              <div className="flex gap-3.5 text-xs text-[#1c2a2b]/55 flex-wrap">
+                                <div>
+                                  <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.refRange}</span>
+                                  {m.r[0]} – {m.r[1]} {m.u}
                                 </div>
-                                <div className="flex gap-3.5 text-xs text-[#1c2a2b]/55 flex-wrap">
-                                  <div>
-                                    <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#1c2a2b]/55">{t.refRange}</span>
-                                    {m.r[0]} – {m.r[1]} {m.u}
-                                  </div>
-                                  <div>
-                                    <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#0C9C6C]">{t.longevityOpt}</span>
-                                    {m.o[0]} – {m.o[1]} {m.u}
-                                  </div>
+                                <div>
+                                  <span className="block text-[10px] font-semibold uppercase tracking-[.07em] mb-0.5 text-[#0C9C6C]">{t.longevityOpt}</span>
+                                  {m.o[0]} – {m.o[1]} {m.u}
                                 </div>
                               </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
