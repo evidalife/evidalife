@@ -518,17 +518,19 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
         {t.sample}
       </div>
 
+      {/* ── HERO — Pattern B1 dark teal band ── */}
+      <div className="bg-[#0e393d] w-full">
+        <div className="max-w-[1060px] mx-auto px-8 md:px-12 pt-28 pb-20">
+          <p className="text-[10px] font-semibold tracking-[.18em] uppercase text-[#ceab84] mb-3">{t.tag}</p>
+          <h1 className="font-serif text-[clamp(2.2rem,4vw,3.2rem)] text-white leading-[1.08] mb-4 max-w-2xl">{t.title}</h1>
+          <p className="text-base font-light text-white/60 max-w-lg leading-relaxed">{t.sub}</p>
+        </div>
+      </div>
+
       <div className="max-w-[1060px] mx-auto px-8 md:px-12">
 
-        {/* ── HERO ── */}
-        <section className="pt-40 pb-6">
-          <p className="mb-4"><span className="inline-flex items-center bg-[#0e393d] text-white rounded-full px-3 py-1 text-xs font-semibold tracking-widest uppercase">{t.tag}</span></p>
-          <h1 className="font-serif text-[clamp(2rem,4vw,3rem)] text-[#0e393d] leading-[1.08] mb-2.5">{t.title}</h1>
-          <p className="text-base font-light text-[#1c2a2b]/55 max-w-[480px] leading-relaxed">{t.sub}</p>
-        </section>
-
         {/* ── SECTION A: LONGEVITY SCORE ── */}
-        <section className="pt-2 pb-0">
+        <section className="pt-10 pb-0">
           <div className="grid md:grid-cols-[1fr_380px] gap-3.5 mb-3.5 items-stretch">
 
             {/* Score card */}
