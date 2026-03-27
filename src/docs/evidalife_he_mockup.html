@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Health Engine – Evida Life · Mockup v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --teal:#0e393d;--t03:rgba(14,57,61,.03);--t06:rgba(14,57,61,.06);--t10:rgba(14,57,61,.10);--t15:rgba(14,57,61,.15);
+  --gold:#ceab84;--gold2:#c4a96a;
+  --green:#0C9C6C;--gbg:rgba(12,156,108,.09);--gbd:rgba(12,156,108,.22);
+  --amber:#b45309;--abg:rgba(180,83,9,.08);
+  --red:#c0392b;--rbg:rgba(192,57,43,.08);
+  --warm:#fafaf8;--white:#ffffff;--text:#1c2a2b;--muted:rgba(28,42,43,.55);--border:rgba(28,42,43,.10);
+  --r:16px;--rsm:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--warm);color:var(--text);-webkit-font-smoothing:antialiased;line-height:1.6}
+h1,h2,h3,h4{font-family:'Playfair Display',Georgia,serif;font-weight:600;line-height:1.1}
+
+.W{max-width:1060px;margin:0 auto;padding:0 32px}
+@media(max-width:768px){.W{padding:0 18px}}
+
+/* NAV */
+.mock-nav{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);border-radius:99px;border:1px solid rgba(255,255,255,.7);box-shadow:0 4px 24px rgba(14,57,61,.1);margin:16px auto;max-width:1060px;padding:10px 18px}
+.nav-brand{font-size:13px;font-weight:700;letter-spacing:.05em;color:var(--teal);display:flex;align-items:center;gap:8px}
+.nav-dot{width:6px;height:6px;background:var(--gold);border-radius:50%}
+.nav-links{display:flex;gap:2px}
+.nl{padding:5px 12px;border-radius:99px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s;text-decoration:none}
+.nl:hover{background:var(--t06);color:var(--text)}
+.nav-av{width:32px;height:32px;border-radius:50%;background:var(--teal);color:var(--gold);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+
+/* SECTION HEADER */
+.sh{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.st{font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--gold2);white-space:nowrap}
+.sl{flex:1;height:1px;background:var(--t06)}
+.slr{font-size:10px;color:var(--muted);white-space:nowrap}
+.sec{padding:32px 0 0}
+
+/* HERO */
+.hero{padding:80px 0 24px}
+.hero-tag{font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--gold2);margin-bottom:10px}
+.hero-h1{font-size:clamp(2rem,4vw,3rem);color:var(--teal);margin-bottom:10px}
+.hero-sub{font-size:.9rem;color:var(--muted);font-weight:300;max-width:480px;line-height:1.65}
+.hero-meta{display:flex;gap:16px;margin-top:14px;flex-wrap:wrap}
+.hpill{display:flex;align-items:center;gap:5px;font-size:.68rem;color:var(--muted)}
+.hdot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.lang-bar{display:flex;gap:5px;padding:14px 0 0}
+.lang-btn{padding:4px 12px;border-radius:99px;font-size:.64rem;font-weight:600;cursor:pointer;border:1px solid var(--t10);background:var(--white);color:var(--muted);transition:all .12s}
+.lang-btn.on{background:var(--teal);color:var(--gold);border-color:var(--teal)}
+
+/* TIMELINE */
+.tl{display:flex;gap:6px;margin:0 0 28px;overflow-x:auto;scrollbar-width:none}
+.tl::-webkit-scrollbar{display:none}
+.tl-item{flex-shrink:0;background:var(--white);border:1px solid var(--border);border-radius:9px;padding:7px 13px;display:flex;align-items:center;gap:7px}
+.tl-item.cur{border-color:var(--teal);background:var(--t03)}
+.tl-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.tl-date{font-size:.66rem;font-weight:600;color:var(--teal)}
+.tl-lbl{font-size:.58rem;color:var(--muted)}
+
+/* SCORE ROW */
+.score-row{display:grid;grid-template-columns:230px 1fr;gap:14px;margin-bottom:14px;align-items:stretch}
+@media(max-width:768px){.score-row{grid-template-columns:1fr}}
+
+/* Score card dark */
+.score-card{background:var(--teal);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
+.sc-top{padding:20px 20px 14px;display:flex;flex-direction:column;align-items:center;gap:5px}
+.sc-lbl{font-size:8px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.35)}
+.sc-gauge{margin:8px 0 4px}
+.sc-change{font-size:.66rem;font-weight:600;padding:2px 9px;border-radius:99px;background:rgba(12,156,108,.22);color:#6ee7b7}
+.sc-sub{font-size:.58rem;color:rgba(255,255,255,.3);text-align:center}
+.sc-stats{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(255,255,255,.06)}
+.sc-stat{padding:11px 14px;display:flex;flex-direction:column;gap:2px;border-right:1px solid rgba(255,255,255,.06)}
+.sc-stat:last-child{border-right:none}
+.sc-stat-lbl{font-size:.5rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.28)}
+.sc-stat-val{font-family:'Playfair Display',serif;font-size:1.3rem;line-height:1}
+.sc-stat-sub{font-size:.5rem;color:rgba(255,255,255,.22)}
+.sc-chart-sec{border-top:1px solid rgba(255,255,255,.06);padding:12px 16px;background:rgba(0,0,0,.12)}
+.sc-chart-lbl{font-size:.52rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.22);margin-bottom:7px}
+.sc-chart-wrap{position:relative;height:80px}
+.sc-chart-wrap canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
+
+/* Bio age dark card */
+.ba-card{background:var(--teal);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
+.ba-trio{display:grid;grid-template-columns:repeat(3,1fr)}
+.ba-m{padding:16px;display:flex;flex-direction:column;gap:3px;border-right:1px solid rgba(255,255,255,.06)}
+.ba-m:last-child{border-right:none}
+.ba-mlbl{font-size:8px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:4px}
+.ba-chron{font-size:.58rem;color:rgba(255,255,255,.18);text-decoration:line-through}
+.ba-big{font-family:'Playfair Display',serif;font-size:2.1rem;color:var(--green);line-height:1.05}
+.ba-med{font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--green);line-height:1.05}
+.ba-diff{font-size:.6rem;font-weight:600;color:var(--green)}
+.ba-sub{font-size:.55rem;color:rgba(255,255,255,.22);line-height:1.45;margin-top:3px}
+/* Bio chart fills remaining height */
+.ba-chart-sec{border-top:1px solid rgba(255,255,255,.06);padding:14px 18px;background:rgba(0,0,0,.1);flex:1;display:flex;flex-direction:column;min-height:160px}
+.ba-chart-lbl{font-size:.52rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.22);margin-bottom:8px;flex-shrink:0}
+.ba-chart-wrap{position:relative;flex:1}
+.ba-chart-wrap canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
+
+/* ALERTS */
+.alert-strip{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.alert{display:flex;gap:12px;align-items:flex-start;padding:13px 16px;border-radius:12px}
+.alert.warn{background:#fffbf0;border:1px solid rgba(212,131,10,.18);border-left:4px solid var(--amber)}
+.alert.ok{background:#f0fdf9;border:1px solid rgba(12,156,108,.15);border-left:4px solid var(--green)}
+.alert-ico{font-size:16px;flex-shrink:0;line-height:1.4}
+.alert-head{font-size:.72rem;font-weight:600;color:var(--text);margin-bottom:2px}
+.alert-text{font-size:.64rem;color:var(--muted);line-height:1.55}
+.alert-pills{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.ap{font-size:9px;font-weight:600;padding:2px 8px;border-radius:99px}
+.ap.ok{background:var(--gbg);color:var(--green)}
+.ap.warn{background:var(--abg);color:var(--amber)}
+
+/* INSIGHTS */
+.ins-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+@media(max-width:700px){.ins-row{grid-template-columns:1fr}}
+.ic{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:15px 16px}
+.ic-acc{width:3px;height:18px;border-radius:99px;margin-bottom:9px}
+.ic-head{font-size:.72rem;font-weight:600;color:var(--text);margin-bottom:4px}
+.ic-body{font-size:.64rem;color:var(--muted);line-height:1.58}
+.ic-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:7px}
+.ict{font-size:9px;font-weight:600;padding:2px 7px;border-radius:4px}
+.ict.g{background:var(--gbg);color:var(--green)}
+.ict.a{background:var(--abg);color:var(--amber)}
+.ict.n{background:var(--t06);color:var(--muted)}
+
+/* KEY MARKERS */
+.km-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:900px){.km-grid{grid-template-columns:repeat(2,1fr)}}
+.km{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;position:relative;overflow:hidden;cursor:pointer;transition:all .15s}
+.km:hover{box-shadow:0 6px 20px rgba(14,57,61,.07);transform:translateY(-1px)}
+.km::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.km.opt::before{background:var(--green)}
+.km.norm::before{background:var(--gold2)}
+.km.warn::before{background:var(--amber)}
+.km-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
+.km-domain{font-size:.6rem;color:var(--muted);font-weight:500}
+.km-badge{font-size:9px;font-weight:600;padding:2px 7px;border-radius:99px}
+.km-badge.opt{background:var(--gbg);color:var(--green)}
+.km-badge.norm{background:rgba(196,169,106,.1);color:#9a6e20}
+.km-badge.warn{background:var(--abg);color:var(--amber)}
+.km-name{font-size:.72rem;font-weight:600;color:var(--teal);margin-bottom:9px}
+.km-val-row{display:flex;align-items:baseline;gap:4px;margin-bottom:7px}
+.km-val{font-family:'Playfair Display',serif;font-size:2rem;color:var(--text);line-height:1}
+.km-unit{font-size:.62rem;color:var(--muted)}
+.km-rng{position:relative;height:5px;border-radius:99px;margin-bottom:7px}
+.km-rng-bg{position:absolute;inset:0;border-radius:99px;background:#ede9e3}
+.km-rng-opt{position:absolute;top:0;height:100%;border-radius:99px;background:rgba(12,156,108,.2)}
+.km-rng-dot{position:absolute;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;border:2px solid var(--white);box-shadow:0 1px 3px rgba(0,0,0,.18);z-index:2}
+.km-trend{font-size:.62rem;color:var(--muted);margin-bottom:5px}
+.km-why{font-size:.59rem;color:var(--muted);line-height:1.5;padding-top:7px;border-top:1px solid var(--t06)}
+/* Expanded key marker detail */
+.km-detail{display:none;border-top:1px solid var(--t06);margin-top:10px;padding-top:12px}
+.km-detail.open{display:block}
+.km-detail-chart{position:relative;height:120px;margin-bottom:10px}
+.km-detail-chart canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
+.km-detail-desc{font-size:.63rem;color:var(--muted);line-height:1.65;padding:9px 11px;background:var(--t03);border-radius:8px;margin-bottom:8px}
+.km-detail-ranges{display:flex;gap:14px;font-size:.62rem;color:var(--muted);flex-wrap:wrap}
+.kdr-lbl{font-size:.5rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:2px}
+.km-expand-hint{font-size:.58rem;color:var(--teal);text-align:right;margin-top:5px;opacity:.6}
+
+/* DOMAIN SECTION */
+.dom-top{display:grid;grid-template-columns:1fr 240px;gap:14px;margin-bottom:12px}
+@media(max-width:800px){.dom-top{grid-template-columns:1fr}}
+.radar-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.radar-t{font-size:.66rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.radar-wrap{position:relative;height:220px}
+.radar-wrap canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
+.flag-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.flag-t{font-size:.66rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.frow{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.fdot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.fbg{flex:1;height:5px;border-radius:99px;background:#ede9e3;overflow:hidden}
+.ffill{height:100%;border-radius:99px}
+.fn{font-size:.7rem;font-weight:600;color:var(--text);width:24px;text-align:right}
+.fl{font-size:.59rem;color:var(--muted);width:68px}
+.fsum{margin-top:10px;padding-top:10px;border-top:1px solid var(--t06);font-size:.59rem;color:var(--muted);line-height:1.55}
+
+/* DOMAIN TILES */
+.dom-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media(max-width:700px){.dom-grid{grid-template-columns:1fr 1fr}}
+.dc{background:var(--white);border:1px solid var(--border);border-radius:var(--rsm);padding:12px 14px;cursor:pointer;transition:all .15s;position:relative}
+.dc:hover{border-color:var(--t15);box-shadow:0 4px 14px rgba(14,57,61,.07);transform:translateY(-1px)}
+.dc.active{border-color:var(--teal);box-shadow:0 0 0 2px var(--t06)}
+.dc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px}
+.dc-ico{font-size:14px}
+.dc-badge{font-size:9px;font-weight:600;padding:2px 6px;border-radius:99px}
+.dc-badge.opt{background:var(--gbg);color:var(--green)}
+.dc-badge.norm{background:rgba(196,169,106,.1);color:#9a6e20}
+.dc-badge.warn{background:var(--abg);color:var(--amber)}
+.dc-name{font-size:.68rem;font-weight:600;color:var(--teal);margin-bottom:1px}
+.dc-cnt{font-size:.56rem;color:var(--muted)}
+.dc-score-row{display:flex;align-items:baseline;gap:3px;margin:5px 0}
+.dc-score{font-family:'Playfair Display',serif;font-size:1.65rem;line-height:1}
+.dc-mx{font-size:.56rem;color:var(--muted)}
+.dc-trend{font-size:.56rem;font-weight:600;margin-left:3px}
+.dc-bar{height:3px;background:#ede9e3;border-radius:99px;overflow:hidden;margin-bottom:5px}
+.dc-bar-fill{height:100%;border-radius:99px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.dc-spark{height:24px;width:100%}
+.dc-chev{font-size:8px;color:var(--muted);position:absolute;bottom:9px;right:10px;transition:transform .22s}
+.dc.active .dc-chev{transform:rotate(180deg)}
+
+/* DOMAIN EXPANDED PANEL */
+.dom-panel{display:none;border-radius:12px;border:1px solid var(--teal);overflow:hidden;margin-bottom:10px}
+.dom-panel.open{display:block}
+.dp-hdr{background:var(--teal);padding:13px 18px;display:flex;align-items:center;justify-content:space-between}
+.dp-title{font-family:'Playfair Display',serif;font-size:1rem;color:var(--white);display:flex;align-items:center;gap:8px}
+.dp-sc{font-size:.65rem;color:rgba(255,255,255,.35);font-family:'DM Sans',sans-serif}
+.dp-close{width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all .13s}
+.dp-close:hover{background:rgba(255,255,255,.12);color:var(--white)}
+.dp-body{padding:18px 20px;background:var(--warm)}
+.dp-inner{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:800px){.dp-inner{grid-template-columns:1fr}}
+.dp-chart-wrap{position:relative;height:260px}
+.dp-chart-wrap canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
+.dp-lbl{font-size:.63rem;color:var(--muted);margin-bottom:8px;font-weight:500}
+.dp-markers{display:flex;flex-direction:column;gap:7px;overflow-y:auto;max-height:300px;padding-right:4px}
+
+/* MARKER ROW (in domain panel and accordion) */
+.mr{background:var(--white);border-radius:var(--rsm);border:1px solid var(--border);padding:9px 12px;cursor:pointer;transition:all .13s}
+.mr:hover{border-color:var(--t10);box-shadow:0 2px 8px rgba(14,57,61,.05)}
+.mr.exp{border-color:var(--teal);box-shadow:0 0 0 2px var(--t03)}
+.mr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.mr-name{font-size:.67rem;font-weight:600;color:var(--teal)}
+.mr-r{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.mr-val{font-size:.7rem;font-weight:700}
+.mr-unit{font-size:.53rem;color:var(--muted)}
+.mr-flag{font-size:9px;font-weight:600;padding:1px 6px;border-radius:99px}
+.mr-flag.opt{background:var(--gbg);color:var(--green)}
+.mr-flag.norm{background:rgba(196,169,106,.1);color:#9a6e20}
+.mr-flag.warn{background:var(--abg);color:var(--amber)}
+.rng{position:relative;height:4px;border-radius:99px}
+.rng-bg{position:absolute;inset:0;border-radius:99px;background:#ede9e3}
+.rng-opt{position:absolute;top:0;height:100%;border-radius:99px;background:rgba(12,156,108,.2)}
+.rng-dot{position:absolute;top:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;border:1.5px solid var(--white);box-shadow:0 1px 3px rgba(0,0,0,.18);z-index:2}
+.rng-lbls{display:flex;justify-content:space-between;font-size:.49rem;color:var(--muted);margin-top:2px}
+.mr-detail{display:none;border-top:1px solid var(--t06);margin-top:8px;padding-top:10px}
+.mr-detail.open{display:block}
+.mr-hist-wrap{position:relative;height:100px;margin-bottom:8px}
+.mr-hist-wrap canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
+.mr-desc{font-size:.61rem;color:var(--muted);line-height:1.65;padding:8px 10px;background:var(--t03);border-radius:7px;margin-bottom:6px}
+.mr-ranges{display:flex;gap:14px;font-size:.61rem;color:var(--muted);flex-wrap:wrap}
+.mr-rlbl{font-size:.49rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:2px}
+
+/* ACCORDION */
+.bm-accord{display:flex;flex-direction:column;gap:6px;padding-bottom:48px}
+.bm-dom{background:var(--white);border:1px solid var(--border);border-radius:var(--rsm);overflow:hidden}
+.bm-dom-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;transition:background .13s;user-select:none}
+.bm-dom-hdr:hover{background:var(--t03)}
+.bm-dom-left{display:flex;align-items:center;gap:10px}
+.bm-dom-ico{font-size:14px}
+.bm-dom-name{font-size:.72rem;font-weight:600;color:var(--teal)}
+.bm-dom-cnt{font-size:.59rem;color:var(--muted)}
+.bm-dom-right{display:flex;align-items:center;gap:8px}
+.bm-dom-score{font-family:'Playfair Display',serif;font-size:.95rem;color:var(--teal)}
+.bm-dom-chev{font-size:9px;color:var(--muted);transition:transform .22s}
+.bm-dom.open .bm-dom-chev{transform:rotate(180deg)}
+.bm-body{display:none;border-top:1px solid var(--t06)}
+.bm-body.open{display:block}
+.bm-inner{display:grid;grid-template-columns:1fr 1fr;gap:0}
+@media(max-width:600px){.bm-inner{grid-template-columns:1fr}}
+.bm-mr{padding:10px 14px;border-bottom:1px solid var(--t06);cursor:pointer;transition:background .12s}
+.bm-mr:last-child{border-bottom:none}
+.bm-mr:hover{background:var(--t03)}
+.bm-mr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.bm-mr-name{font-size:.67rem;font-weight:600;color:var(--teal)}
+.bm-mr-r{display:flex;align-items:center;gap:4px}
+.bm-mr-val{font-size:.7rem;font-weight:700}
+.bm-mr-unit{font-size:.53rem;color:var(--muted)}
+.bm-mr-flag{font-size:9px;font-weight:600;padding:1px 6px;border-radius:99px}
+.bm-mr-flag.opt{background:var(--gbg);color:var(--green)}
+.bm-mr-flag.norm{background:rgba(196,169,106,.1);color:#9a6e20}
+.bm-mr-flag.warn{background:var(--abg);color:var(--amber)}
+.bm-mr-detail{display:none;border-top:1px solid var(--t06);margin-top:8px;padding-top:10px}
+.bm-mr-detail.open{display:block}
+.bm-hist-wrap{position:relative;height:90px;margin-bottom:7px}
+.bm-hist-wrap canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
+.bm-mr-desc{font-size:.61rem;color:var(--muted);line-height:1.6;padding:8px 10px;background:var(--t03);border-radius:7px}
+
+/* MISC */
+.sample-badge{position:fixed;bottom:10px;right:10px;z-index:999;background:var(--teal);color:rgba(206,171,132,.65);font-size:9px;font-weight:600;padding:5px 12px;border-radius:99px;letter-spacing:.06em;pointer-events:none}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fadeUp .4s ease both}
+</style>
+</head>
+<body>
+<div class="sample-badge">PREVIEW — Sample Data</div>
+
+<div class="W">
+<!-- NAV -->
+<div class="mock-nav">
+  <div class="nav-brand"><div class="nav-dot"></div>EVIDA LIFE</div>
+  <div class="nav-links">
+    <a class="nl">Kitchen</a><a class="nl">Health</a><a class="nl">Fit</a><a class="nl">Shop</a>
+  </div>
+  <div class="nav-av">MR</div>
+</div>
+
+<!-- HERO -->
+<section class="hero fu">
+  <p class="hero-tag" id="h-tag">HEALTH ENGINE</p>
+  <h1 class="hero-h1" id="h-title">Your Longevity Score.</h1>
+  <p class="hero-sub" id="h-sub">46 biomarkers across 8 health domains. Track your score over time, see what improves, and know exactly what to focus on.</p>
+  <div class="hero-meta">
+    <div class="hpill"><div class="hdot" style="background:var(--green)"></div><span id="h-date">Last tested: Mar 15, 2026</span></div>
+    <div class="hpill"><div class="hdot" style="background:var(--gold)"></div><span id="h-tests">3 tests completed</span></div>
+    <div class="hpill"><div class="hdot" style="background:var(--teal)"></div><span id="h-kit">Evida Complete (46 markers)</span></div>
+  </div>
+  <div class="lang-bar">
+    <button class="lang-btn on" onclick="setLang('en',this)">EN</button>
+    <button class="lang-btn" onclick="setLang('de',this)">DE</button>
+    <button class="lang-btn" onclick="setLang('fr',this)">FR</button>
+    <button class="lang-btn" onclick="setLang('es',this)">ES</button>
+    <button class="lang-btn" onclick="setLang('it',this)">IT</button>
+  </div>
+</section>
+
+<!-- TIMELINE -->
+<div class="tl">
+  <div class="tl-item"><div class="tl-dot" style="background:#94a3b8"></div><div><div class="tl-date">Sep 2024</div><div class="tl-lbl">Test #1</div></div></div>
+  <div class="tl-item"><div class="tl-dot" style="background:var(--gold)"></div><div><div class="tl-date">Jun 2025</div><div class="tl-lbl">Test #2</div></div></div>
+  <div class="tl-item cur"><div class="tl-dot" style="background:var(--green)"></div><div><div class="tl-date">Mar 2026 · Current</div><div class="tl-lbl">Test #3</div></div></div>
+  <div class="tl-item" style="opacity:.35;border-style:dashed"><div class="tl-dot" style="background:#ddd"></div><div><div class="tl-date">Sep 2026</div><div class="tl-lbl">Next recommended</div></div></div>
+</div>
+
+<!-- LONGEVITY SCORE -->
+<section class="sec fu">
+  <div class="sh"><span class="st" id="sec-score">LONGEVITY SCORE</span><div class="sl"></div><span class="slr">Weighted composite of 8 domains</span></div>
+  <div class="score-row">
+    <div class="score-card">
+      <div class="sc-top">
+        <div class="sc-lbl">LONGEVITY SCORE</div>
+        <div class="sc-gauge" id="gauge-wrap"></div>
+        <div class="sc-change">+10 in 18 months</div>
+        <div class="sc-sub" id="sc-msg">Good — above average for your age</div>
+      </div>
+      <div class="sc-stats">
+        <div class="sc-stat"><div class="sc-stat-lbl">Best Domain</div><div class="sc-stat-val" style="color:#0C9C6C">88</div><div class="sc-stat-sub">Heart & Vessels</div></div>
+        <div class="sc-stat"><div class="sc-stat-lbl">Focus Area</div><div class="sc-stat-val" style="color:#C4A96A">58</div><div class="sc-stat-sub">Nutrients</div></div>
+      </div>
+      <div class="sc-chart-sec">
+        <div class="sc-chart-lbl">SCORE HISTORY — 3 TESTS</div>
+        <div class="sc-chart-wrap"><canvas id="score-hist"></canvas></div>
+      </div>
+    </div>
+    <div class="ba-card">
+      <div class="ba-trio">
+        <div class="ba-m">
+          <div class="ba-mlbl">PHENOAGE · LEVINE 2018</div>
+          <div class="ba-chron">40.1 chronological</div>
+          <div class="ba-big">33.9</div>
+          <div class="ba-diff">↓ 6.2 years younger</div>
+          <div class="ba-sub">Calculated from 9 standard blood markers. Each year above chronological age ≈ +6% mortality risk.</div>
+        </div>
+        <div class="ba-m">
+          <div class="ba-mlbl">GRIMAGE V2 · METHYLATION</div>
+          <div class="ba-chron">40.1 chronological</div>
+          <div class="ba-med">36.8</div>
+          <div class="ba-diff">↓ 3.3 years younger</div>
+          <div class="ba-sub">Gold-standard DNA methylation clock. Most accurate predictor of healthspan and lifespan. Requires specialist lab.</div>
+        </div>
+        <div class="ba-m">
+          <div class="ba-mlbl">DUNEDINPACE · AGING RATE</div>
+          <div class="ba-chron">rate × age = projected age</div>
+          <div class="ba-med">32.5 yr</div>
+          <div class="ba-diff">↓ 7.6 years younger (rate)</div>
+          <div class="ba-sub">Speed of aging: 0.81 yr/yr · population avg 1.0 · You age 9.7 months per calendar year.</div>
+        </div>
+      </div>
+      <div class="ba-chart-sec">
+        <div class="ba-chart-lbl">ALL BIOLOGICAL CLOCKS VS CHRONOLOGICAL AGE — YEARS</div>
+        <div class="ba-chart-wrap"><canvas id="bio-chart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerts -->
+  <div class="alert-strip">
+    <div class="alert warn">
+      <div class="alert-ico">⚠️</div>
+      <div>
+        <div class="alert-head">1 marker in the borderline zone</div>
+        <div class="alert-text">Within laboratory reference range but below the longevity optimal target. Lifestyle interventions can often bring these into the optimal zone within 90 days.</div>
+        <div class="alert-pills"><span class="ap warn">Pulse Pressure: 42 mmHg</span></div>
+      </div>
+    </div>
+    <div class="alert ok">
+      <div class="alert-ico">✅</div>
+      <div>
+        <div class="alert-head">11 markers have moved into a healthy range since your first test</div>
+        <div class="alert-text">Your interventions are working. Keep up the current approach and continue tracking at your next test.</div>
+        <div class="alert-pills">
+          <span class="ap ok">↑ HOMA-IR</span><span class="ap ok">↑ Omega-3 Index</span><span class="ap ok">↑ Non-HDL Cholesterol</span><span class="ap ok">↑ hsCRP</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Insights -->
+  <div class="ins-row">
+    <div class="ic"><div class="ic-acc" style="background:var(--green)"></div>
+      <div class="ic-head" id="ins-str-t">Top Strength</div>
+      <div class="ic-body"><strong style="color:var(--green)">Cardiovascular health (88/100)</strong> — LDL at 82 mg/dL, ApoB at 0.72 g/L. Both in optimal longevity ranges.</div>
+      <div class="ic-tags"><span class="ict g">↑ LDL improved 24%</span><span class="ict g">↑ ApoB improved 22%</span></div>
+    </div>
+    <div class="ic"><div class="ic-acc" style="background:var(--amber)"></div>
+      <div class="ic-head" id="ins-pri-t">Priority Action</div>
+      <div class="ic-body"><strong style="color:var(--amber)">Vitamin D at 24 ng/mL</strong> — well below optimal 40–60. Dragging Nutrients to 58/100. Supplement 4,000 IU daily.</div>
+      <div class="ic-tags"><span class="ict a">↓ Vit D −16%</span><span class="ict n">→ hsCRP stable</span></div>
+    </div>
+    <div class="ic"><div class="ic-acc" style="background:var(--teal)"></div>
+      <div class="ic-head" id="ins-prog-t">18-Month Progress</div>
+      <div class="ic-body">Score: <strong style="color:var(--green)">68 → 78 (+10)</strong>. Wins: glucose ↓14%, Omega-3 ↑62%, LDL ↓24%. Declining: Vitamin D ↓15%.</div>
+      <div class="ic-tags"><span class="ict g">↑ PhenoAge −2.9yr</span><span class="ict g">↑ VO₂max +19%</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- KEY MARKERS -->
+<section class="sec fu">
+  <div class="sh"><span class="st" id="sec-km">KEY MARKERS</span><div class="sl"></div><span class="slr">Your most impactful biomarkers — click to expand</span></div>
+  <div class="km-grid" id="km-grid"></div>
+</section>
+
+<!-- 8 HEALTH DOMAINS -->
+<section class="sec fu">
+  <div class="sh"><span class="st" id="sec-dom">8 HEALTH DOMAINS</span><div class="sl"></div><span class="slr">Click any domain to explore all markers</span></div>
+  <div class="dom-top">
+    <div class="radar-card">
+      <div class="radar-t">DOMAIN BALANCE</div>
+      <div class="radar-wrap"><canvas id="radar"></canvas></div>
+    </div>
+    <div class="flag-card">
+      <div class="flag-t">MARKER STATUS</div>
+      <div id="flag-rows"></div>
+      <div class="fsum" id="flag-sum"></div>
+    </div>
+  </div>
+  <div class="dom-grid" id="dom-grid"></div>
+  <div id="dom-panels"></div>
+</section>
+
+<!-- BIOMARKER DETAILS -->
+<section class="sec fu">
+  <div class="sh"><span class="st" id="sec-bm">BIOMARKER DETAILS</span><div class="sl"></div><span class="slr">Click a domain · Click a marker for history &amp; explanation</span></div>
+  <div class="bm-accord" id="bm-accord"></div>
+</section>
+
+</div><!-- /W -->
+
+<script>
+// ═══════════════════════════════════════════════════════
+// TRANSLATIONS
+// ═══════════════════════════════════════════════════════
+const T={
+  en:{tag:'HEALTH ENGINE',title:'Your Longevity Score.',sub:'46 biomarkers across 8 health domains. Track your score over time, see what improves, and know exactly what to focus on.',heroDate:'Last tested: Mar 15, 2026',heroTests:'3 tests completed',heroKit:'Evida Complete (46 markers)',scMsg:'Good — above average for your age',secScore:'LONGEVITY SCORE',secKm:'KEY MARKERS',secDom:'8 HEALTH DOMAINS',secBm:'BIOMARKER DETAILS',insStrT:'Top Strength',insPriT:'Priority Action',insProgT:'18-Month Progress'},
+  de:{tag:'HEALTH ENGINE',title:'Dein Longevity Score.',sub:'46 Biomarker in 8 Gesundheitsbereichen. Verfolge deinen Score über die Zeit, sieh was sich verbessert.',heroDate:'Zuletzt getestet: 15. März 2026',heroTests:'3 Tests abgeschlossen',heroKit:'Evida Complete (46 Marker)',scMsg:'Gut — über dem Durchschnitt für dein Alter',secScore:'LONGEVITY SCORE',secKm:'SCHLÜSSEL-MARKER',secDom:'8 GESUNDHEITSBEREICHE',secBm:'BIOMARKER-DETAILS',insStrT:'Top-Stärke',insPriT:'Priorität',insProgT:'18-Monats-Fortschritt'},
+  fr:{tag:'HEALTH ENGINE',title:'Votre score de longévité.',sub:'46 biomarqueurs dans 8 domaines de santé. Suivez votre score dans le temps, voyez ce qui s\'améliore.',heroDate:'Dernier test : 15 mars 2026',heroTests:'3 tests complétés',heroKit:'Evida Complete (46 marqueurs)',scMsg:'Bien — au-dessus de la moyenne pour votre âge',secScore:'SCORE DE LONGÉVITÉ',secKm:'MARQUEURS CLÉS',secDom:'8 DOMAINES DE SANTÉ',secBm:'DÉTAILS BIOMARQUEURS',insStrT:'Point fort',insPriT:'Action prioritaire',insProgT:'Progrès 18 mois'},
+  es:{tag:'HEALTH ENGINE',title:'Tu puntuación de longevidad.',sub:'46 biomarcadores en 8 dominios de salud. Sigue tu puntuación a lo largo del tiempo.',heroDate:'Último análisis: 15 mar 2026',heroTests:'3 pruebas completadas',heroKit:'Evida Complete (46 marcadores)',scMsg:'Bien — por encima de la media para tu edad',secScore:'PUNTUACIÓN DE LONGEVIDAD',secKm:'MARCADORES CLAVE',secDom:'8 DOMINIOS DE SALUD',secBm:'DETALLES BIOMARCADORES',insStrT:'Punto fuerte',insPriT:'Acción prioritaria',insProgT:'Progreso 18 meses'},
+  it:{tag:'HEALTH ENGINE',title:'Il tuo punteggio di longevità.',sub:'46 biomarcatori in 8 domini della salute. Monitora il tuo punteggio nel tempo.',heroDate:'Ultimo test: 15 mar 2026',heroTests:'3 test completati',heroKit:'Evida Complete (46 marcatori)',scMsg:'Buono — sopra la media per la tua età',secScore:'PUNTEGGIO DI LONGEVITÀ',secKm:'MARCATORI CHIAVE',secDom:'8 DOMINI DELLA SALUTE',secBm:'DETTAGLI BIOMARCATORI',insStrT:'Punto di forza',insPriT:'Azione prioritaria',insProgT:'Progressi 18 mesi'}
+};
+let lang='en';
+function setLang(l,btn){
+  lang=l;document.querySelectorAll('.lang-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  const t=T[l];
+  ['h-tag','h-title','h-sub','h-date','h-tests','h-kit','sc-msg','sec-score','sec-km','sec-dom','sec-bm','ins-str-t','ins-pri-t','ins-prog-t'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.textContent=t[{
+      'h-tag':'tag','h-title':'title','h-sub':'sub','h-date':'heroDate','h-tests':'heroTests','h-kit':'heroKit',
+      'sc-msg':'scMsg','sec-score':'secScore','sec-km':'secKm','sec-dom':'secDom','sec-bm':'secBm',
+      'ins-str-t':'insStrT','ins-pri-t':'insPriT','ins-prog-t':'insProgT'
+    }[id]];
+  });
+  // update domain names in tiles
+  document.querySelectorAll('[data-dom-idx]').forEach(el=>{
+    const i=+el.dataset.domIdx;el.textContent=D[i].nm[l];
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// SAMPLE DATA (from DB: biomarkers, lab_results tables)
+// ═══════════════════════════════════════════════════════
+const DATES=['Sep 2024','Jun 2025','Mar 2026'];
+const OV=[68,74,78];
+const CHRON=[38.5,39.2,40.1];
+
+const D=[
+  {ic:'❤️',nm:{en:'Heart & Vessels',de:'Herz & Gefäße',fr:'Cœur & Vaisseaux',es:'Corazón & Vasos',it:'Cuore & Vasi'},sc:[72,82,88],w:'20%',col:'#dc2626',m:[
+    {n:'LDL Cholesterol',u:'mg/dL',v:[108,94,82],r:[0,130],o:[50,100],dir:'lower',desc:'Primary driver of atherosclerotic cardiovascular disease. LDL particles penetrate and accumulate in arterial walls. Below 100 mg/dL is longevity optimal. Your 24% improvement over 18 months is clinically significant.'},
+    {n:'ApoB',u:'g/L',v:[0.92,0.81,0.72],r:[0.4,1.3],o:[0.5,0.9],dir:'lower',desc:'Most accurate single cardiovascular risk marker — counts every atherogenic particle. The European Society of Cardiology recommends ApoB as the primary cardiovascular target. Your ApoB fell 22%, now in the optimal zone.'},
+    {n:'HDL Cholesterol',u:'mg/dL',v:[48,55,62],r:[40,100],o:[50,90],dir:'higher',desc:'Reverse cholesterol transport — removes cholesterol from arterial walls. Higher HDL correlates with lower cardiovascular risk. Your HDL has risen significantly, reflecting improved diet and exercise.'},
+    {n:'Triglycerides',u:'mg/dL',v:[118,95,78],r:[0,150],o:[0,100],dir:'lower',desc:'Diet-sensitive lipid. TG/HDL ratio below 1.5 is a strong cardiovascular health marker. Your triglycerides have fallen 34%, reflecting improved insulin sensitivity and dietary changes.'},
+    {n:'Lp(a)',u:'nmol/L',v:[32,32,32],r:[0,75],o:[0,50],dir:'lower',desc:'Genetically determined cardiovascular risk. Largely unmodifiable by lifestyle. Your value of 32 nmol/L is in the normal range — a genetic advantage.'},
+    {n:'Homocysteine',u:'µmol/L',v:[12.1,10.4,9.2],r:[5,15],o:[5,10],dir:'lower',desc:'Elevated homocysteine damages blood vessel walls and increases clot risk. B vitamins (B6, B12, folate) are the primary intervention. Your homocysteine is now in the optimal zone.'},
+  ]},
+  {ic:'⚡',nm:{en:'Metabolism',de:'Stoffwechsel',fr:'Métabolisme',es:'Metabolismo',it:'Metabolismo'},sc:[65,76,82],w:'18%',col:'#059669',m:[
+    {n:'Fasting Glucose',u:'mg/dL',v:[102,94,88],r:[70,100],o:[72,90],dir:'lower',desc:'Primary blood sugar marker. Optimal range (72–90 mg/dL) is associated with lowest all-cause mortality. Chronically elevated glucose drives glycation — the sugar-coating of proteins — accelerating biological aging.'},
+    {n:'HbA1c',u:'%',v:[5.6,5.3,5.1],r:[4,5.7],o:[4.5,5.3],dir:'lower',desc:'3-month average blood sugar. Each 0.1% reduction correlates with meaningfully lower cardiovascular and all-cause mortality risk. Your trend from 5.6% to 5.1% over 18 months represents a clinically meaningful improvement.'},
+    {n:'Fasting Insulin',u:'mIU/L',v:[9.2,7.1,5.8],r:[2.6,24.9],o:[2.5,8],dir:'lower',desc:'The most sensitive early indicator of metabolic dysfunction. Elevated insulin drives fat storage, inflammation, and cardiovascular risk. Longevity optimal below 8 mIU/L. Your improvement from 9.2 to 5.8 is excellent.'},
+    {n:'HOMA-IR',u:'index',v:[2.31,1.64,1.26],r:[0,2.5],o:[0,1.5],dir:'lower',desc:'Gold standard insulin resistance index. Below 1.5 indicates excellent insulin sensitivity. Your improvement from 2.31 to 1.26 — crossing into the optimal zone — is clinically exceptional.'},
+    {n:'Uric Acid',u:'mg/dL',v:[6.4,6.0,5.8],r:[3.5,7.2],o:[3.5,5.5],dir:'lower',desc:'Elevated uric acid drives gout, kidney stones, hypertension, and cardiovascular disease through inflammatory pathways. Optimal range is 3.5–5.5 mg/dL. Your level is trending in the right direction.'},
+  ]},
+  {ic:'🛡️',nm:{en:'Inflammation',de:'Entzündung',fr:'Inflammation',es:'Inflamación',it:'Infiammazione'},sc:[52,58,61],w:'15%',col:'#d97706',m:[
+    {n:'hsCRP',u:'mg/L',v:[2.8,2.2,1.8],r:[0,3],o:[0,1],dir:'lower',desc:'Primary systemic inflammation marker. Chronic low-grade inflammation — "inflammaging" — accelerates virtually every aging process. Below 1.0 mg/L is the longevity optimal target. Your hsCRP is still above optimal but showing the right trend.'},
+    {n:'Fibrinogen',u:'mg/dL',v:[320,295,285],r:[200,400],o:[200,300],dir:'lower',desc:'A clotting protein and acute-phase reactant. Elevated fibrinogen predicts cardiovascular events and stroke. Optimal below 300 mg/dL. Your trend is improving.'},
+    {n:'WBC',u:'×10³/µL',v:[7.1,6.8,6.2],r:[4,10],o:[4,6.5],dir:'lower',desc:'Total white blood cell count reflects overall immune activation. Chronically elevated WBC — even within the laboratory reference range — independently predicts increased all-cause mortality. Optimal 4–6.5 × 10³/µL.'},
+    {n:'ESR',u:'mm/hr',v:[15,14,12],r:[0,20],o:[0,10],dir:'lower',desc:'Erythrocyte Sedimentation Rate — a non-specific inflammation marker. Optimal below 10 mm/hr. Your trend is positive.'},
+    {n:'IL-6',u:'pg/mL',v:[3.2,2.6,2.1],r:[0,7],o:[0,1.8],dir:'lower',desc:'Interleukin-6 is a key cytokine in the inflammaging cascade. Chronically elevated IL-6 drives muscle catabolism, insulin resistance, and cancer risk. Optimal below 1.8 pg/mL.'},
+  ]},
+  {ic:'🫁',nm:{en:'Organ Function',de:'Organfunktion',fr:'Fonction des organes',es:'Función orgánica',it:'Funzione degli organi'},sc:[80,83,85],w:'15%',col:'#7c3aed',m:[
+    {n:'GGT',u:'U/L',v:[32,26,22],r:[0,65],o:[0,30],dir:'lower',desc:'Highly sensitive liver marker — elevated even by moderate alcohol. A strong independent predictor of all-cause mortality within the lab reference range. Longevity optimal below 30 U/L. Your GGT has fallen into the optimal zone.'},
+    {n:'ALT',u:'U/L',v:[28,26,24],r:[0,50],o:[0,30],dir:'lower',desc:'Primary liver enzyme. Elevated ALT signals liver cell damage from fatty liver, alcohol, or medications. Longevity optimal below 30 U/L. Your ALT is now in the optimal zone.'},
+    {n:'AST',u:'U/L',v:[24,22,21],r:[0,50],o:[0,30],dir:'lower',desc:'Liver and muscle enzyme. Interpreted alongside ALT via the De Ritis ratio to differentiate sources. Both below 30 U/L is the longevity optimal target. Your AST is excellent.'},
+    {n:'Creatinine',u:'mg/dL',v:[0.98,0.96,0.95],r:[0.7,1.2],o:[0.7,1.1],dir:'range',desc:'Muscle metabolism waste filtered by kidneys. Used to calculate eGFR. Your creatinine is optimal and stable.'},
+    {n:'eGFR',u:'mL/min',v:[95,97,98],r:[60,120],o:[90,120],dir:'higher',desc:'CKD-EPI 2021 kidney function estimate. Kidney function normally declines ~1 mL/min/year after 40. Your eGFR is excellent and actually improving — an exceptional finding.'},
+    {n:'TSH',u:'mIU/L',v:[2.8,2.4,2.1],r:[0.4,4],o:[0.5,2.5],dir:'range',desc:'Thyroid Stimulating Hormone controls metabolism throughout the body. Longevity optimal range 0.5–2.5 mIU/L. Your TSH is trending toward the center of the optimal range.'},
+    {n:'Free T4',u:'ng/dL',v:[1.12,1.15,1.18],r:[0.8,1.8],o:[1,1.5],dir:'range',desc:'Prohormone converted to active T3 in peripheral tissues. Optimal 1.0–1.5 ng/dL. Your fT4 is optimal and gently rising.'},
+  ]},
+  {ic:'🥗',nm:{en:'Nutrients',de:'Nährstoffe',fr:'Nutriments',es:'Nutrientes',it:'Nutrienti'},sc:[42,50,58],w:'12%',col:'#10b981',m:[
+    {n:'Vitamin D',u:'ng/mL',v:[18,28,24],r:[20,100],o:[40,60],dir:'higher',desc:'Functions more like a hormone than a vitamin. Receptors found in virtually every tissue. Deficiency linked to cardiovascular disease, autoimmune conditions, cancer, and all-cause mortality. Longevity optimal 40–60 ng/mL. Your most actionable improvement — supplement 4,000 IU/day.'},
+    {n:'Vitamin B12',u:'pg/mL',v:[310,420,485],r:[200,900],o:[400,800],dir:'higher',desc:'Critical for neurological function, DNA synthesis, and homocysteine regulation. Deficiency common with plant-based diets and aging. Optimal above 400 pg/mL. Your B12 has improved significantly.'},
+    {n:'Folate',u:'ng/mL',v:[8.5,12.1,14.2],r:[3,20],o:[10,20],dir:'higher',desc:'Essential for DNA synthesis, red blood cell formation, and homocysteine regulation. Optimal above 10 ng/mL. Your folate has crossed into the optimal range.'},
+    {n:'Iron (Serum)',u:'µg/dL',v:[82,90,95],r:[60,170],o:[70,150],dir:'range',desc:'Serum iron reflects currently circulating iron available for cellular functions. Interpreted alongside ferritin, transferrin, and TSAT for complete iron status. Your serum iron is optimal.'},
+    {n:'Ferritin',u:'ng/mL',v:[62,54,48],r:[20,200],o:[40,100],dir:'range',desc:'Iron storage protein and acute-phase inflammatory marker. Both low (<50) and high (>200) ferritin increase mortality risk. Your ferritin is declining — monitor at next test to ensure it stays above 40 ng/mL.'},
+    {n:'Omega-3 Index',u:'%',v:[4.2,5.4,6.8],r:[4,12],o:[8,12],dir:'higher',desc:'EPA+DHA as % of red blood cell fatty acids. Above 8% is associated with lowest rates of cardiovascular disease, sudden cardiac death, and all-cause mortality. You are on an excellent trajectory toward this target.'},
+  ]},
+  {ic:'🧬',nm:{en:'Hormones',de:'Hormone',fr:'Hormones',es:'Hormonas',it:'Ormoni'},sc:[70,75,79],w:'10%',col:'#f59e0b',m:[
+    {n:'Testosterone',u:'ng/dL',v:[480,540,580],r:[270,1070],o:[500,900],dir:'higher',desc:'Critical for muscle, bone density, libido, cognition, and cardiovascular health. Declines ~1–2%/year after 30. Longevity optimal 500–900 ng/dL. Your testosterone is in the optimal range and rising.'},
+    {n:'Free Testosterone',u:'pg/mL',v:[9.8,11.2,12.5],r:[5,25],o:[10,22],dir:'higher',desc:'Biologically active fraction not bound to SHBG. More clinically relevant than total testosterone for symptoms of deficiency. Optimal 10–22 pg/mL. Your free T is in the optimal range and rising.'},
+    {n:'Cortisol (AM)',u:'µg/dL',v:[18.5,16.2,14.2],r:[6,23],o:[8,15],dir:'lower',desc:'Chronically elevated cortisol drives muscle breakdown, visceral fat accumulation, immune suppression, and cognitive decline. Optimal morning cortisol 8–15 µg/dL. Your cortisol is trending downward — suggesting improved stress management.'},
+    {n:'DHEA-S',u:'µg/dL',v:[280,295,310],r:[80,560],o:[200,450],dir:'higher',desc:'Master precursor hormone, declines dramatically with age. Lower DHEA-S predicts higher all-cause mortality. Your DHEA-S is in the optimal range and rising — a positive sign.'},
+  ]},
+  {ic:'🏋️',nm:{en:'Body Composition',de:'Körperzusammensetzung',fr:'Composition corporelle',es:'Composición corporal',it:'Composizione corporea'},sc:[62,70,74],w:'5%',col:'#0ea5e9',m:[
+    {n:'BMI',u:'kg/m²',v:[26.8,25.4,24.6],r:[18.5,30],o:[20,25],dir:'range',desc:'Body mass index. Limited for athletes as it cannot distinguish muscle from fat. Your BMI of 24.6 is now in the optimal range.'},
+    {n:'Body Fat',u:'%',v:[24.5,21.8,19.6],r:[8,30],o:[12,20],dir:'lower',desc:'DEXA body fat percentage reflects true adiposity. For men, 12–20% is the optimal range. Your body fat has fallen 5% over 18 months — significant body recomposition.'},
+    {n:'Visceral Fat',u:'cm²',v:[112,95,82],r:[10,150],o:[10,100],dir:'lower',desc:'Fat deposited around internal organs — metabolically far more dangerous than subcutaneous fat. Directly linked to insulin resistance and cardiovascular risk. Your visceral fat has fallen 27% into the optimal zone.'},
+    {n:'Lean Mass',u:'kg',v:[58.2,60.5,62.1],r:[45,85],o:[55,75],dir:'higher',desc:'Skeletal muscle mass is one of the strongest predictors of longevity. Muscle is the primary organ for glucose disposal. Your lean mass has increased 3.9 kg — exceptional result.'},
+    {n:'Bone Density',u:'T-score',v:[-0.4,-0.2,0.1],r:[-2.5,2],o:[-1,2],dir:'higher',desc:'DEXA T-score comparing your bone density to a young adult reference. Above 0 means your bones are denser than the young adult average. Your trend is excellent — weight training is working.'},
+  ]},
+  {ic:'🏃',nm:{en:'Fitness & Recovery',de:'Fitness & Erholung',fr:'Forme & Récupération',es:'Fitness & Recuperación',it:'Fitness & Recupero'},sc:[55,65,72],w:'5%',col:'#16a34a',m:[
+    {n:'VO₂max',u:'mL/kg/min',v:[38.5,42.1,45.8],r:[20,60],o:[40,55],dir:'higher',desc:'The single strongest predictor of all-cause mortality. Each 1 mL/kg/min improvement reduces mortality risk meaningfully. You improved 19% from below-average to above-average for your age group — the most impactful change in your report.'},
+    {n:'Resting Heart Rate',u:'bpm',v:[68,62,58],r:[40,100],o:[45,60],dir:'lower',desc:'Lower RHR reflects a more efficient cardiovascular system. Regular aerobic training reduces RHR ~1 bpm per week. Your RHR has fallen from 68 to 58 — reflecting significant aerobic fitness improvement.'},
+    {n:'HRV (RMSSD)',u:'ms',v:[32,41,48],r:[15,100],o:[40,80],dir:'higher',desc:'Heart rate variability reflects autonomic nervous system balance. High HRV indicates good recovery, low stress, and high fitness. Your HRV has improved dramatically from 32 to 48 ms — now in the optimal zone.'},
+    {n:'Recovery Score',u:'/100',v:[62,71,78],r:[0,100],o:[70,100],dir:'higher',desc:'Composite recovery metric from wearable device data. Above 70 is optimal. Your recovery has improved from 62 to 78 — consistent with the improvements in HRV, RHR, and VO₂max.'},
+  ]},
+];
+
+// Featured key markers: [domainIndex, markerIndex, whyText]
+const FEATURED=[
+  {di:0,mi:1,why:'Your ApoB fell from 0.92 to 0.72 g/L — a 22% drop into the optimal zone. This is your strongest cardiovascular achievement.'},
+  {di:1,mi:3,why:'HOMA-IR dropped from 2.31 to 1.26 in 18 months — crossing from insulin resistant to optimal. One of the most meaningful changes in your report.'},
+  {di:2,mi:0,why:'hsCRP has improved from 2.8 to 1.8 mg/L — still above the 1.0 optimal threshold. Keep the anti-inflammatory momentum.'},
+  {di:7,mi:0,why:'Most dramatic improvement: VO₂max jumped 19% from below-average to above-average for your age group.'},
+  {di:4,mi:0,why:'Vitamin D at 24 ng/mL is your most actionable opportunity. Below optimal 40–60 ng/mL. Supplement 4,000 IU/day.'},
+  {di:0,mi:2,why:'HDL rose from 48 to 62 mg/dL — significant reverse cholesterol transport improvement. Diet and exercise are working.'},
+  {di:4,mi:5,why:'Omega-3 Index climbing from 4.2% to 6.8%. Above 8% is the longevity optimal. You are on track.'},
+  {di:5,mi:0,why:'Testosterone rising from 480 to 580 ng/dL, now in the optimal zone. Consistent resistance training is working.'},
+];
+
+// ═══════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════
+function sColor(r){return r>=.85?'#0C9C6C':r>=.70?'#C4A96A':'#c0392b'}
+function mStatus(v,r,o,dir){
+  if(dir==='lower'){return v<=o[1]?'opt':v<=r[1]?'norm':'warn'}
+  if(dir==='higher'){return v>=o[0]?'opt':v>=r[0]?'norm':'warn'}
+  return(v>=o[0]&&v<=o[1])?'opt':(v>=r[0]&&v<=r[1])?'norm':'warn';
+}
+function mLbl(s){return{opt:'Optimal',norm:'Normal',warn:'Borderline'}[s]||'—'}
+function mCol(s){return{opt:'#0C9C6C',norm:'#C4A96A',warn:'#b45309'}[s]||'#888'}
+function rPct(v,r,o,dir){
+  let lo,hi;
+  if(dir==='lower'){lo=0;hi=r[1]*1.5}
+  else if(dir==='higher'){lo=0;hi=Math.max(o[0]*2,r[1])}
+  else{lo=r[0]*.7;hi=r[1]*1.3}
+  return Math.max(2,Math.min(97,((v-lo)/(hi-lo))*100));
+}
+function oZone(r,o,dir){
+  if(dir==='lower'){const hi=r[1]*1.5;return{l:0,w:Math.min(80,(o[1]/hi)*100)}}
+  if(dir==='higher'){const hi=Math.max(o[0]*2,r[1]);return{l:Math.max(0,Math.min(80,(o[0]/hi)*100)),w:25}}
+  const lo=r[0]*.7,hi=r[1]*1.3,rng=hi-lo;
+  return{l:Math.max(0,Math.min(90,((o[0]-lo)/rng)*100)),w:Math.max(5,Math.min(80,((o[1]-o[0])/rng)*100))};
+}
+
+// ═══════════════════════════════════════════════════════
+// SVG GAUGE — verbatim from HealthEnginePublic.tsx
+// ═══════════════════════════════════════════════════════
+function makeGauge(score,max,sz,dark=false){
+  const CX=sz==='lg'?130:48,CY=sz==='lg'?115:42,R=sz==='lg'?85:30;
+  const MT=sz==='lg'?10:3.5,MX=sz==='lg'?26:9;
+  const W=sz==='lg'?260:96,H=sz==='lg'?210:74;
+  const dW=sz==='lg'?200:78,fz=sz==='lg'?42:14,sy=sz==='lg'?180:66;
+  const SEGS=12,GAP=2.5,START=135,ARC=270;
+  const SA=(ARC-(SEGS-1)*GAP)/SEGS;
+  const rt=score/max,filled=Math.round(rt*SEGS);
+  const bw=sz==='lg'?1.8:1,tl=sz==='lg'?9:4,hr=sz==='lg'?5:2.5;
+  const na=(START+rt*ARC)*Math.PI/180,pa=na+Math.PI/2,tr=R-MX/2+2;
+  const cl=sColor(rt);
+  const ef=dark?'rgba(255,255,255,0.04)':'rgba(14,57,61,0.06)';
+  const nf=dark?'rgba(255,255,255,0.4)':'#1c2a2b';
+  const h1=dark?'rgba(255,255,255,0.1)':'#1c2a2b';
+  const h2=dark?'rgba(255,255,255,0.6)':'white';
+  const h2s=dark?'rgba(255,255,255,0.3)':'#1c2a2b';
+  let segs='';
+  for(let i=0;i<SEGS;i++){
+    const sa=(START+i*(SA+GAP))*Math.PI/180,ea=(START+i*(SA+GAP)+SA)*Math.PI/180;
+    const thick=MT+(MX-MT)*(i/(SEGS-1)),ri=R-thick/2,ro=R+thick/2;
+    const d=`M${(CX+ro*Math.cos(sa)).toFixed(1)},${(CY+ro*Math.sin(sa)).toFixed(1)} A${ro},${ro} 0 0,1 ${(CX+ro*Math.cos(ea)).toFixed(1)},${(CY+ro*Math.sin(ea)).toFixed(1)} L${(CX+ri*Math.cos(ea)).toFixed(1)},${(CY+ri*Math.sin(ea)).toFixed(1)} A${ri},${ri} 0 0,0 ${(CX+ri*Math.cos(sa)).toFixed(1)},${(CY+ri*Math.sin(sa)).toFixed(1)} Z`;
+    segs+=`<path d="${d}" fill="${i<filled?cl:ef}"/>`;
+  }
+  const nd=`M${(CX+tr*Math.cos(na)).toFixed(1)},${(CY+tr*Math.sin(na)).toFixed(1)} L${(CX+bw*Math.cos(pa)).toFixed(1)},${(CY+bw*Math.sin(pa)).toFixed(1)} L${(CX-tl*Math.cos(na)).toFixed(1)},${(CY-tl*Math.sin(na)).toFixed(1)} L${(CX-bw*Math.cos(pa)).toFixed(1)},${(CY-bw*Math.sin(pa)).toFixed(1)} Z`;
+  const lbl=sz==='lg'?`<text x="26" y="174" text-anchor="middle" font-size="8" fill="#5a6e6f">0</text><text x="234" y="174" text-anchor="middle" font-size="8" fill="#5a6e6f">${max}</text>`:'';
+  return `<svg viewBox="0 0 ${W} ${H}" width="${dW}" style="display:block">${segs}<path d="${nd}" fill="${nf}" opacity="${dark?1:0.55}"/><circle cx="${CX}" cy="${CY}" r="${hr}" fill="${h1}" opacity="${dark?1:0.12}"/><circle cx="${CX}" cy="${CY}" r="${hr*.55}" fill="${h2}" stroke="${h2s}" stroke-width="0.7"/><text x="${CX}" y="${sy}" text-anchor="middle" font-family="'Playfair Display',Georgia,serif" font-weight="600" font-size="${fz}" fill="${cl}">${score}</text>${lbl}</svg>`;
+}
+
+// Chart registry
+const CH={};
+
+// ═══════════════════════════════════════════════════════
+// MAIN CHARTS
+// ═══════════════════════════════════════════════════════
+function initCharts(){
+  document.getElementById('gauge-wrap').innerHTML=makeGauge(78,100,'lg',true);
+
+  if(CH.sh)CH.sh.destroy();
+  CH.sh=new Chart(document.getElementById('score-hist').getContext('2d'),{
+    type:'line',
+    data:{labels:DATES,datasets:[{label:'Score',data:OV,borderColor:'rgba(255,255,255,.7)',backgroundColor:'rgba(255,255,255,.07)',borderWidth:2,fill:true,tension:.35,pointBackgroundColor:['rgba(255,255,255,.4)','rgba(255,255,255,.4)','#0C9C6C'],pointBorderColor:['rgba(255,255,255,.6)','rgba(255,255,255,.6)','#0C9C6C'],pointBorderWidth:2,pointRadius:[3.5,3.5,5]}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:55,max:90,grid:{color:'rgba(255,255,255,.06)'},ticks:{font:{size:8},color:'rgba(255,255,255,.4)',stepSize:10}},x:{grid:{display:false},ticks:{font:{size:8},color:'rgba(255,255,255,.4)'}}},plugins:{legend:{display:false}}}
+  });
+
+  const paceYrs=CHRON.map((c,i)=>+([0.91,0.87,0.84][i]*c).toFixed(1));
+  if(CH.bio)CH.bio.destroy();
+  CH.bio=new Chart(document.getElementById('bio-chart').getContext('2d'),{
+    type:'line',
+    data:{labels:DATES,datasets:[
+      {label:'PhenoAge',data:[34.1,31.8,28.3],borderColor:'#0C9C6C',borderWidth:2,fill:false,tension:.35,pointRadius:3,pointBackgroundColor:'#0C9C6C'},
+      {label:'GrimAge v2',data:[35.2,null,28.3],borderColor:'#8b5cf6',borderWidth:2,fill:false,tension:.35,pointRadius:3,pointBackgroundColor:'#8b5cf6',spanGaps:false},
+      {label:'DunedinPACE×age',data:paceYrs,borderColor:'#ceab84',borderWidth:2,fill:false,tension:.35,pointRadius:3,pointBackgroundColor:'#ceab84'},
+      {label:'Chronological',data:CHRON,borderColor:'rgba(255,255,255,.2)',borderWidth:1,borderDash:[5,4],fill:false,tension:.3,pointRadius:0},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{
+        y:{min:26,max:42,grid:{color:'rgba(255,255,255,.07)'},ticks:{font:{size:8},color:'rgba(255,255,255,.4)',stepSize:4},title:{display:true,text:'Age (years)',font:{size:8},color:'rgba(255,255,255,.3)'}},
+        x:{grid:{display:false},ticks:{font:{size:8},color:'rgba(255,255,255,.4)'}}
+      },
+      plugins:{legend:{position:'bottom',labels:{font:{size:8},color:'rgba(255,255,255,.5)',usePointStyle:true,padding:8,boxWidth:8}},tooltip:{mode:'index',intersect:false}}
+    }
+  });
+
+  if(CH.radar)CH.radar.destroy();
+  CH.radar=new Chart(document.getElementById('radar').getContext('2d'),{
+    type:'radar',
+    data:{
+      labels:D.map(d=>d.nm.en.split(' ')[0]),
+      datasets:[
+        {label:'Current',data:D.map(d=>d.sc[2]),fill:true,backgroundColor:'rgba(14,57,61,.09)',borderColor:'rgba(14,57,61,.65)',borderWidth:2,pointBackgroundColor:'#0e393d',pointRadius:3},
+        {label:'First test',data:D.map(d=>d.sc[0]),fill:false,borderColor:'rgba(206,171,132,.45)',borderWidth:1.5,borderDash:[4,3],pointRadius:2,pointBackgroundColor:'#ceab84'}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{r:{min:0,max:100,ticks:{display:false},grid:{color:'rgba(14,57,61,.07)'},pointLabels:{font:{size:9,family:'DM Sans'},color:'#5a6e6f'},angleLines:{color:'rgba(14,57,61,.07)'}}},
+      plugins:{legend:{position:'bottom',labels:{font:{size:9},usePointStyle:true,padding:6,boxWidth:8}}}
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// FLAG ROWS
+// ═══════════════════════════════════════════════════════
+function buildFlags(){
+  const cnt={opt:0,norm:0,warn:0};
+  D.forEach(d=>d.m.forEach(m=>{const s=mStatus(m.v[2],m.r,m.o,m.dir);cnt[s]=(cnt[s]||0)+1}));
+  const total=cnt.opt+cnt.norm+cnt.warn;
+  document.getElementById('flag-rows').innerHTML=[
+    {k:'opt',c:'#0C9C6C',l:'Optimal'},{k:'norm',c:'#C4A96A',l:'Normal'},{k:'warn',c:'#b45309',l:'Borderline'}
+  ].map(r=>`<div class="frow"><div class="fdot" style="background:${r.c}"></div><div class="fbg"><div class="ffill" style="width:${Math.round((cnt[r.k]||0)/total*100)}%;background:${r.c}"></div></div><div class="fn">${cnt[r.k]||0}</div><div class="fl">${r.l}</div></div>`).join('');
+  document.getElementById('flag-sum').innerHTML=`<strong style="color:var(--text)">${total} markers measured.</strong> <strong style="color:#0C9C6C">${cnt.opt} optimal</strong> — strong foundation. Focus: Nutrients &amp; Inflammation.`;
+}
+
+// ═══════════════════════════════════════════════════════
+// KEY MARKERS — with expand + chart + description
+// ═══════════════════════════════════════════════════════
+function buildKeyMarkers(){
+  const grid=document.getElementById('km-grid');grid.innerHTML='';
+  FEATURED.forEach(({di,mi,why},fi)=>{
+    const d=D[di],m=d.m[mi],v=m.v[2],s=mStatus(v,m.r,m.o,m.dir);
+    const pct=rPct(v,m.r,m.o,m.dir),oz=oZone(m.r,m.o,m.dir),cl=mCol(s);
+    const prev=m.v[1]??m.v[0],delta=v-prev;
+    const dCol=(m.dir==='lower'&&delta<0)||(m.dir==='higher'&&delta>0)?'#0C9C6C':'#b45309';
+    const card=document.createElement('div');
+    card.className=`km ${s}`;card.id=`km-${fi}`;
+    card.innerHTML=`
+      <div class="km-top">
+        <span class="km-domain">${d.nm.en}</span>
+        <span class="km-badge ${s}">${mLbl(s)}</span>
+      </div>
+      <div class="km-name">${m.n}</div>
+      <div class="km-val-row"><span class="km-val">${v}</span><span class="km-unit">${m.u}</span></div>
+      <div class="km-rng">
+        <div class="km-rng-bg"></div>
+        <div class="km-rng-opt" style="left:${oz.l}%;width:${oz.w}%"></div>
+        <div class="km-rng-dot" style="left:${pct}%;background:${cl}"></div>
+      </div>
+      <div class="km-trend" style="color:${dCol}">vs previous test: ${delta>=0?'+':''}${delta.toFixed(1)} ${m.u}</div>
+      <div class="km-why">${why}</div>
+      <div class="km-detail" id="kmd-${fi}">
+        <div class="km-detail-chart"><canvas id="kmc-${fi}"></canvas></div>
+        <div class="km-detail-desc">${m.desc}</div>
+        <div class="km-detail-ranges">
+          <div><span class="kdr-lbl" style="color:var(--muted)">Reference range</span>${m.r[0]} – ${m.r[1]} ${m.u}</div>
+          <div><span class="kdr-lbl" style="color:#0C9C6C">Longevity optimal</span>${m.o[0]} – ${m.o[1]} ${m.u}</div>
+        </div>
+      </div>
+      <div class="km-expand-hint" id="kmh-${fi}">▼ expand</div>`;
+    card.onclick=()=>{
+      const det=document.getElementById(`kmd-${fi}`);
+      const hint=document.getElementById(`kmh-${fi}`);
+      const open=det.classList.toggle('open');
+      hint.textContent=open?'▲ collapse':'▼ expand';
+      if(open)buildKmChart(fi,m);
+    };
+    grid.appendChild(card);
+  });
+}
+
+function buildKmChart(fi,m){
+  const canvas=document.getElementById(`kmc-${fi}`);
+  if(!canvas||CH[`km-${fi}`])return;
+  const vals=m.v.filter(v=>v!=null);
+  const mn=Math.min(...vals)*.88,mx=Math.max(...vals)*1.12;
+  const cl=mCol(mStatus(m.v[2],m.r,m.o,m.dir));
+  const olo=m.o[0],ohi=m.o[1];
+  CH[`km-${fi}`]=new Chart(canvas.getContext('2d'),{
+    type:'line',
+    data:{labels:DATES,datasets:[
+      {label:'Optimal zone',data:DATES.map(()=>ohi||mx),fill:{target:{value:olo||mn},above:'rgba(12,156,108,.08)',below:'transparent'},borderColor:'rgba(12,156,108,.2)',borderWidth:1,borderDash:[3,3],pointRadius:0,tension:0},
+      {label:m.n,data:m.v,borderColor:cl,borderWidth:2.5,fill:false,tension:.35,
+        pointBackgroundColor:m.v.map((v,i)=>i===2?cl:'white'),
+        pointBorderColor:m.v.map(()=>cl),pointBorderWidth:2,
+        pointRadius:m.v.map((v,i)=>v!=null?(i===2?5:4):0),spanGaps:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{y:{min:mn,max:mx,grid:{color:'rgba(14,57,61,.04)'},ticks:{font:{size:9},color:'#5a6e6f',maxTicksLimit:4},title:{display:true,text:m.u,font:{size:9},color:'#5a6e6f'}},x:{grid:{display:false},ticks:{font:{size:9},color:'#5a6e6f'}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.raw} ${m.u}`}}}
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// DOMAIN GRID + EXPANDED PANELS
+// ═══════════════════════════════════════════════════════
+function buildDomGrid(){
+  const grid=document.getElementById('dom-grid');
+  const panels=document.getElementById('dom-panels');
+  grid.innerHTML='';panels.innerHTML='';
+
+  D.forEach((d,di)=>{
+    const s=d.sc[2],prev=d.sc[1],td=s-prev,cl=sColor(s/100);
+    const st=s>=85?'opt':s>=70?'norm':'warn';
+
+    // Tile
+    const tile=document.createElement('div');
+    tile.className='dc';tile.id=`dc-${di}`;
+    tile.innerHTML=`
+      <div class="dc-top"><span class="dc-ico">${d.ic}</span><span class="dc-badge ${st}">${s>=85?'Optimal':s>=70?'Good':'Fair'}</span></div>
+      <div class="dc-name" data-dom-idx="${di}">${d.nm[lang]}</div>
+      <div class="dc-cnt">${d.m.length} markers · ${d.w}</div>
+      <div class="dc-score-row"><span class="dc-score" style="color:${cl}">${s}</span><span class="dc-mx">/100</span><span class="dc-trend" style="color:${td>0?'#0C9C6C':'#c0392b'}">${td>0?'↑+':'↓'}${Math.abs(td)}</span></div>
+      <div class="dc-bar"><div class="dc-bar-fill" style="width:${s}%;background:${cl}"></div></div>
+      <svg class="dc-spark" id="spark-${di}"></svg>
+      <span class="dc-chev">▼</span>`;
+    tile.onclick=()=>toggleDomain(di);
+    grid.appendChild(tile);
+    setTimeout(()=>drawSpark(`spark-${di}`,d.sc,cl),60);
+
+    // Expanded panel
+    const panel=document.createElement('div');
+    panel.className='dom-panel';panel.id=`dp-${di}`;
+    const mkRows=d.m.map((m,mi)=>mkMrRow(m,`dp${di}-${mi}`)).join('');
+    panel.innerHTML=`
+      <div class="dp-hdr">
+        <div class="dp-title">${d.ic} <span data-dom-idx="${di}">${d.nm[lang]}</span> <span class="dp-sc">${s}/100</span></div>
+        <button class="dp-close" onclick="closeDomain(${di})">✕</button>
+      </div>
+      <div class="dp-body">
+        <div class="dp-inner">
+          <div>
+            <div class="dp-lbl">Marker trends — each line normalised to its own range · hover for exact values</div>
+            <div class="dp-chart-wrap"><canvas id="dpc-${di}"></canvas></div>
+          </div>
+          <div>
+            <div class="dp-lbl">${d.m.length} markers — click any to expand history &amp; explanation</div>
+            <div class="dp-markers">${mkRows}</div>
+          </div>
+        </div>
+      </div>`;
+    panels.appendChild(panel);
+  });
+}
+
+function mkMrRow(m,id){
+  const v=m.v[2],s=mStatus(v,m.r,m.o,m.dir),cl=mCol(s);
+  const pct=rPct(v,m.r,m.o,m.dir),oz=oZone(m.r,m.o,m.dir);
+  return `<div class="mr" id="mr-${id}" onclick="toggleMr('${id}')">
+    <div class="mr-top">
+      <div class="mr-name">${m.n}</div>
+      <div class="mr-r"><span class="mr-val" style="color:${cl}">${v}</span><span class="mr-unit">${m.u}</span><span class="mr-flag ${s}">${mLbl(s)}</span></div>
+    </div>
+    <div class="rng"><div class="rng-bg"></div><div class="rng-opt" style="left:${oz.l}%;width:${oz.w}%"></div><div class="rng-dot" style="left:${pct}%;background:${cl}"></div></div>
+    <div class="rng-lbls"><span>${m.r[0]||''} ${m.u}</span><span style="color:#0C9C6C;font-size:.48rem">● opt: ${m.o[0]}–${m.o[1]}</span><span>${m.r[1]||''} ${m.u}</span></div>
+    <div class="mr-detail" id="mrd-${id}">
+      <div class="mr-hist-wrap"><canvas id="mrc-${id}"></canvas></div>
+      <div class="mr-desc">${m.desc}</div>
+      <div class="mr-ranges">
+        <div><span class="mr-rlbl" style="color:var(--muted)">Reference</span>${m.r[0]} – ${m.r[1]} ${m.u}</div>
+        <div><span class="mr-rlbl" style="color:#0C9C6C">Optimal</span>${m.o[0]} – ${m.o[1]} ${m.u}</div>
+        <div><span class="mr-rlbl" style="color:var(--muted)">Change</span><span style="color:${(m.dir==='lower'&&m.v[2]<m.v[0])||(m.dir==='higher'&&m.v[2]>m.v[0])?'#0C9C6C':'#b45309'}">${((m.v[2]-m.v[0])>=0?'+':'') + (m.v[2]-m.v[0]).toFixed(2)} ${m.u}</span></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleMr(id){
+  const det=document.getElementById(`mrd-${id}`);
+  const row=document.getElementById(`mr-${id}`);
+  if(!det)return;
+  const open=det.classList.toggle('open');
+  row.classList.toggle('exp',open);
+  if(open){
+    const canvas=document.getElementById(`mrc-${id}`);
+    if(canvas&&!CH[`mr-${id}`]){
+      // find the marker
+      let m=null;
+      const parts=id.split('-');
+      // id format: dp{di}-{mi}
+      const base=parts[0];
+      const mi=+parts[1];
+      const di=+base.replace('dp','');
+      if(!isNaN(di)&&!isNaN(mi))m=D[di]?.m[mi];
+      if(!m&&!isNaN(+parts[1])){// accordion format: ac{di}-{mi}
+        const di2=+base.replace('ac','');
+        m=D[di2]?.m[mi];
+      }
+      if(m)buildMrChart(`mr-${id}`,canvas,m);
+    }
+  }
+}
+
+function buildMrChart(key,canvas,m){
+  if(CH[key])return;
+  const vals=m.v.filter(v=>v!=null);
+  const mn=Math.min(...vals)*.88,mx=Math.max(...vals)*1.12;
+  const cl=mCol(mStatus(m.v[2],m.r,m.o,m.dir));
+  CH[key]=new Chart(canvas.getContext('2d'),{
+    type:'line',
+    data:{labels:DATES,datasets:[
+      {label:'Optimal',data:DATES.map(()=>m.o[1]||mx),fill:{target:{value:m.o[0]||mn},above:'rgba(12,156,108,.08)',below:'transparent'},borderColor:'rgba(12,156,108,.2)',borderWidth:1,borderDash:[3,3],pointRadius:0,tension:0},
+      {label:m.n,data:m.v,borderColor:cl,borderWidth:2.5,fill:false,tension:.35,
+        pointBackgroundColor:m.v.map((v,i)=>i===2?cl:'white'),
+        pointBorderColor:m.v.map(()=>cl),pointBorderWidth:2,
+        pointRadius:m.v.map((v,i)=>v!=null?(i===2?5:4):0),spanGaps:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{y:{min:mn,max:mx,grid:{color:'rgba(14,57,61,.04)'},ticks:{font:{size:9},color:'#5a6e6f',maxTicksLimit:4},title:{display:true,text:m.u,font:{size:9},color:'#5a6e6f'}},x:{grid:{display:false},ticks:{font:{size:9},color:'#5a6e6f'}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.raw} ${m.u}`}}}
+    }
+  });
+}
+
+function toggleDomain(di){
+  const panel=document.getElementById(`dp-${di}`);
+  const tile=document.getElementById(`dc-${di}`);
+  const open=panel.classList.contains('open');
+  document.querySelectorAll('.dom-panel.open').forEach(p=>p.classList.remove('open'));
+  document.querySelectorAll('.dc.active').forEach(c=>c.classList.remove('active'));
+  if(!open){
+    panel.classList.add('open');tile.classList.add('active');
+    setTimeout(()=>{buildDomainChart(di);panel.scrollIntoView({behavior:'smooth',block:'nearest'})},60);
+  }
+}
+function closeDomain(di){
+  document.getElementById(`dp-${di}`).classList.remove('open');
+  document.getElementById(`dc-${di}`).classList.remove('active');
+}
+function buildDomainChart(di){
+  const canvas=document.getElementById(`dpc-${di}`);if(!canvas)return;
+  const d=D[di];
+  const ms=d.m.filter(m=>m.v.filter(v=>v!=null).length>=2).slice(0,8);
+  if(CH[`dp-${di}`])CH[`dp-${di}`].destroy();
+  const cols=['#0e393d','#0C9C6C','#d4830a','#c0392b','#8b5cf6','#0ea5e9','#ceab84','#f59e0b'];
+  CH[`dp-${di}`]=new Chart(canvas.getContext('2d'),{
+    type:'line',
+    data:{labels:DATES,datasets:ms.map((m,i)=>{
+      const vals=m.v.filter(v=>v!=null);
+      const mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
+      return{label:m.n,data:m.v.map(v=>v!=null?Math.round(((v-mn)/rng)*80+10):null),
+        borderColor:cols[i%cols.length],borderWidth:2,fill:false,tension:.45,
+        pointBackgroundColor:cols[i%cols.length],pointRadius:4,pointHoverRadius:6,spanGaps:false};
+    })},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{
+        y:{min:0,max:100,title:{display:true,text:'Relative progress (normalised)',font:{size:9},color:'#5a6e6f'},grid:{color:'rgba(14,57,61,.04)'},ticks:{font:{size:9},color:'#5a6e6f',maxTicksLimit:5}},
+        x:{grid:{display:false},ticks:{font:{size:9},color:'#5a6e6f'}}
+      },
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:9},usePointStyle:true,padding:8,boxWidth:8}},
+        tooltip:{mode:'index',intersect:false,callbacks:{
+          label:ctx=>{const m=ms[ctx.datasetIndex];const raw=m.v[ctx.dataIndex];return raw!=null?`${m.n}: ${raw} ${m.u}`:`${m.n}: —`;}
+        }}
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// BIOMARKER ACCORDION
+// ═══════════════════════════════════════════════════════
+const openDoms=new Set();
+function buildAccordion(){
+  const accord=document.getElementById('bm-accord');accord.innerHTML='';
+  D.forEach((d,di)=>{
+    const s=d.sc[2],cl=sColor(s/100),isOpen=openDoms.has(di);
+    const row=document.createElement('div');
+    row.className=`bm-dom${isOpen?' open':''}`;
+    const body=isOpen?`<div class="bm-body open"><div class="bm-inner">${d.m.map((m,mi)=>{
+      const v=m.v[2],st=mStatus(v,m.r,m.o,m.dir),col=mCol(st),pct=rPct(v,m.r,m.o,m.dir),oz=oZone(m.r,m.o,m.dir);
+      const id=`ac${di}-${mi}`;
+      return`<div class="bm-mr" id="bmmr-${id}" onclick="toggleBmMr('${id}',${di},${mi})">
+        <div class="bm-mr-top">
+          <div class="bm-mr-name">${m.n}</div>
+          <div class="bm-mr-r"><span class="bm-mr-val" style="color:${col}">${v}</span><span class="bm-mr-unit">${m.u}</span><span class="bm-mr-flag ${st}">${mLbl(st)}</span></div>
+        </div>
+        <div class="rng"><div class="rng-bg"></div><div class="rng-opt" style="left:${oz.l}%;width:${oz.w}%"></div><div class="rng-dot" style="left:${pct}%;background:${col}"></div></div>
+        <div class="bm-mr-detail" id="bmmrd-${id}">
+          <div class="bm-hist-wrap"><canvas id="bmrc-${id}"></canvas></div>
+          <div class="bm-mr-desc">${m.desc}</div>
+        </div>
+      </div>`;
+    }).join('')}</div></div>`:'<div class="bm-body"></div>';
+    row.innerHTML=`
+      <div class="bm-dom-hdr" onclick="toggleAccDom(${di})">
+        <div class="bm-dom-left"><span class="bm-dom-ico">${d.ic}</span><div><div class="bm-dom-name" data-dom-idx="${di}">${d.nm[lang]}</div><div class="bm-dom-cnt">${d.m.length} markers · ${d.w} weight</div></div></div>
+        <div class="bm-dom-right"><div class="bm-dom-score" style="color:${cl}">${s}/100</div><span class="bm-dom-chev">▼</span></div>
+      </div>${body}`;
+    accord.appendChild(row);
+  });
+}
+function toggleAccDom(di){
+  if(openDoms.has(di))openDoms.delete(di);else openDoms.add(di);
+  buildAccordion();
+}
+function toggleBmMr(id,di,mi){
+  const det=document.getElementById(`bmmrd-${id}`);
+  const row=document.getElementById(`bmmr-${id}`);
+  if(!det)return;
+  const open=det.classList.toggle('open');
+  if(open){
+    const canvas=document.getElementById(`bmrc-${id}`);
+    if(canvas&&!CH[`bm-${id}`]){
+      buildMrChart(`bm-${id}`,canvas,D[di].m[mi]);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// SPARKLINES
+// ═══════════════════════════════════════════════════════
+function drawSpark(id,data,color){
+  const el=document.getElementById(id);if(!el)return;
+  const w=el.clientWidth||120,h=24;
+  el.setAttribute('viewBox',`0 0 ${w} ${h}`);
+  const mn=Math.min(...data)-2,mx=Math.max(...data)+2;
+  const pts=data.map((v,i)=>({x:(i/(data.length-1))*(w-8)+4,y:h-(((v-mn)/(mx-mn))*(h-6)+3)}));
+  let d=`M${pts[0].x},${pts[0].y}`;
+  for(let i=1;i<pts.length;i++){const m=(pts[i-1].x+pts[i].x)/2;d+=` C${m},${pts[i-1].y} ${m},${pts[i].y} ${pts[i].x},${pts[i].y}`}
+  el.innerHTML=`<path d="${d}" fill="none" stroke="${color}" stroke-width="1.5"/>${pts.map((p,i)=>`<circle cx="${p.x}" cy="${p.y}" r="${i===pts.length-1?3.5:2}" fill="${i===pts.length-1?'#0e393d':color}"/>`).join('')}`;
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  initCharts();
+  buildFlags();
+  buildKeyMarkers();
+  buildDomGrid();
+  buildAccordion();
+});
+</script>
+</body>
+</html>
