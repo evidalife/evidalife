@@ -434,6 +434,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
   const radarData = D.map(d => ({
     subject: d.nm[lang].split(' ')[0],
     current: d.sc[2],
+    mid: d.sc[1],
     first: d.sc[0],
   }));
 
@@ -689,9 +690,35 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                     <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="72%">
                       <PolarGrid stroke="rgba(255,255,255,.08)" />
                       <PolarAngleAxis dataKey="subject" tick={{ fontSize: 13, fill: 'rgba(255,255,255,.55)' }} />
-                      <Radar name="Current" dataKey="current" fill="rgba(206,171,132,.12)" stroke="rgba(206,171,132,.8)" strokeWidth={2} />
-                      <Radar name="First test" dataKey="first" fill="none" stroke="rgba(255,255,255,.2)" strokeWidth={1.5} strokeDasharray="4 3" />
+                      <Radar name={DATES[2]} dataKey="current" fill="rgba(206,171,132,.12)" stroke="rgba(206,171,132,.8)" strokeWidth={2} />
+                      <Radar name={DATES[1]} dataKey="mid" fill="none" stroke="rgba(206,171,132,.4)" strokeWidth={1.5} strokeDasharray="3 3" />
+                      <Radar name={DATES[0]} dataKey="first" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth={1} strokeDasharray="4 3" />
                       <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: 9, color: 'rgba(255,255,255,.45)' }} />
+                      <RTooltip
+                        content={({ active, payload }: { active?: boolean; payload?: ReadonlyArray<{ payload?: { subject?: string } }> }) => {
+                          if (!active || !payload?.length) return null;
+                          const subject = payload[0]?.payload?.subject;
+                          const domain = D.find(d => d.nm[lang].split(' ')[0] === subject);
+                          if (!domain) return null;
+                          return (
+                            <div style={{ background: '#0e2c2f', border: '1px solid rgba(206,171,132,.25)', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: 'white', minWidth: 160 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#ceab84', marginBottom: 8 }}>
+                                {domain.nm[lang]}
+                              </div>
+                              {([
+                                { label: DATES[0], val: domain.sc[0], color: 'rgba(255,255,255,.35)' },
+                                { label: DATES[1], val: domain.sc[1], color: '#ceab84' },
+                                { label: DATES[2], val: domain.sc[2], color: '#0C9C6C' },
+                              ] as { label: string; val: number; color: string }[]).map(({ label, val, color }) => (
+                                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 20, marginBottom: 3, color: 'rgba(255,255,255,.6)', fontSize: 11 }}>
+                                  <span>{label}</span>
+                                  <span style={{ fontWeight: 700, color }}>{val}/100</span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }}
+                      />
                     </RadarChart>
                   </ResponsiveContainer>
                 </div>
