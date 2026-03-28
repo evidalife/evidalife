@@ -1104,18 +1104,14 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
                 <div className="flex items-center justify-between rounded-lg border border-[#0e393d]/10 px-4 py-3">
                   <div>
                     <p className="text-sm font-medium text-[#1c2a2b]">Different ranges for male vs female</p>
-                    <p className="text-xs text-[#1c2a2b]/40">When enabled, the existing reference/optimal ranges become male/universal values</p>
+                    <p className="text-xs text-[#1c2a2b]/40">Existing ranges become male/universal values</p>
                   </div>
                   <Toggle checked={form.has_sex_specific_ranges} onChange={(v) => setForm((f) => ({ ...f, has_sex_specific_ranges: v }))} />
                 </div>
                 {form.has_sex_specific_ranges && (
-                  <div className="grid grid-cols-2 gap-6 mt-2">
-                    <div>
-                      <p className="text-xs font-semibold text-[#0e393d]/60 mb-3">♂ Male / Universal</p>
-                      <p className="text-[11px] text-[#1c2a2b]/40 mb-2">Use the Reference Ranges section above to set male/universal values.</p>
-                    </div>
-                    <div className="space-y-3">
-                      <p className="text-xs font-semibold text-[#0e393d]/60 mb-1">♀ Female override</p>
+                  <div className="mt-2">
+                    <p className="text-[11px] text-[#1c2a2b]/40 mb-3">Male/universal values are set in Reference Ranges above. Female overrides below — leave blank to inherit.</p>
+                    <div className="grid grid-cols-2 gap-3">
                       <Field label="Ref Low (F)">
                         <input type="number" className={inputCls} value={form.ref_range_low_f}
                           onChange={(e) => setForm((f) => ({ ...f, ref_range_low_f: e.target.value }))}
@@ -1143,18 +1139,20 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
 
               {/* Collection Conditions */}
               <SectionBlock title="Collection Conditions" open={openSections.collection} onToggle={() => toggleSection('collection')}>
-                <div className="grid grid-cols-3 gap-4 items-start">
-                  <div className="flex items-center gap-3 rounded-lg border border-[#0e393d]/10 px-4 py-3">
-                    <label className="text-sm font-medium text-[#1c2a2b]">Requires fasting</label>
-                    <Toggle checked={form.requires_fasting} onChange={(v) => setForm((f) => ({ ...f, requires_fasting: v }))} />
+                <div className="grid grid-cols-2 gap-4 items-start">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 rounded-lg border border-[#0e393d]/10 px-4 py-3">
+                      <label className="text-sm font-medium text-[#1c2a2b]">Requires fasting</label>
+                      <Toggle checked={form.requires_fasting} onChange={(v) => setForm((f) => ({ ...f, requires_fasting: v }))} />
+                    </div>
+                    {form.requires_fasting && (
+                      <Field label="Fasting hours">
+                        <input type="number" className={inputCls} value={form.fasting_hours}
+                          onChange={(e) => setForm((f) => ({ ...f, fasting_hours: e.target.value }))}
+                          placeholder="8" min={0} step={1} />
+                      </Field>
+                    )}
                   </div>
-                  {form.requires_fasting && (
-                    <Field label="Fasting hours">
-                      <input type="number" className={inputCls} value={form.fasting_hours}
-                        onChange={(e) => setForm((f) => ({ ...f, fasting_hours: e.target.value }))}
-                        placeholder="8" min={0} step={1} />
-                    </Field>
-                  )}
                   <Field label="Preferred draw time">
                     <select className={selectCls} value={form.preferred_draw_time} onChange={(e) => setForm((f) => ({ ...f, preferred_draw_time: e.target.value }))}>
                       <option value="">Any time</option>
