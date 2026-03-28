@@ -851,7 +851,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                     const s = d.sc[2];
                     const cl = scoreColor(s / 100);
                     const td = d.sc[2] - d.sc[0];
-                    const st = mStatus(d.sc[2] / 10, [0, 7], [7, 10], 'higher') as MStatus;
+                    const st: MStatus = d.sc[2] >= 80 ? 'opt' : d.sc[2] >= 60 ? 'norm' : 'warn';
                     const isOpen = openDomains.has(di);
                     const topBorder = cl;
                     return (
