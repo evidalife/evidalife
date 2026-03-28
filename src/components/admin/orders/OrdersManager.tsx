@@ -474,7 +474,7 @@ function TestItemsChecklist({ orderId }: { orderId: string }) {
       <div className="rounded-lg border border-[#0e393d]/8 overflow-hidden">
         <table className="w-full text-xs">
           <thead>
-            <tr className="bg-[#0e393d]/3 border-b border-[#0e393d]/8">
+            <tr className="bg-[#0e393d]/[0.03] border-b border-[#0e393d]/8">
               <th className="px-3 py-2 text-left font-medium text-[#0e393d]/60">Biomarker</th>
               <th className="px-3 py-2 text-center font-medium text-[#0e393d]/60">Status</th>
               <th className="px-3 py-2 text-right font-medium text-[#0e393d]/60">Result</th>
@@ -800,7 +800,7 @@ function CustomerContext({ order }: { order: Order }) {
           <div className="rounded-lg border border-[#0e393d]/8 overflow-hidden">
             <table className="w-full text-xs">
               <thead>
-                <tr className="bg-[#0e393d]/3 border-b border-[#0e393d]/8">
+                <tr className="bg-[#0e393d]/[0.03] border-b border-[#0e393d]/8">
                   <th className="px-3 py-2 text-left font-medium text-[#0e393d]/60">Order #</th>
                   <th className="px-3 py-2 text-left font-medium text-[#0e393d]/60">Status</th>
                   <th className="px-3 py-2 text-right font-medium text-[#0e393d]/60">Total</th>
@@ -1281,7 +1281,7 @@ function NewOrderPanel({ onClose, onCreated, addToast }: {
                         </td>
                       </tr>
                     ))}
-                    <tr className="bg-[#0e393d]/3 border-t border-[#0e393d]/10">
+                    <tr className="bg-[#0e393d]/[0.03] border-t border-[#0e393d]/10">
                       <td colSpan={2} className="px-3 py-2.5 text-right font-semibold text-[#0e393d]">Total</td>
                       <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-[#0e393d]">{fmt(total, currency)}</td>
                       <td />
@@ -1538,7 +1538,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="font-serif text-2xl text-[#0e393d]">Orders</h1>
-          <p className="mt-0.5 text-sm text-[#1c2a2b]/50">
+          <p className="text-sm text-[#1c2a2b]/40 mt-1">
             {orders.length} total · {stats.completed} completed · {stats.pending + stats.paid} open
           </p>
         </div>
@@ -1557,7 +1557,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
           </a>
           <button
             onClick={() => setShowNewOrder(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-[#0e393d] text-white hover:bg-[#0e393d]/85 transition"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-[#0e393d] text-white hover:bg-[#0e393d]/85 transition shadow-sm shadow-[#0e393d]/20"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
@@ -1655,7 +1655,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
       <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-x-auto">
         <table className="w-full text-sm min-w-[920px]">
           <thead>
-            <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
+            <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/[0.03]">
               <th className="px-4 py-3 w-8">
                 <input
                   type="checkbox"
@@ -1700,7 +1700,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
               return (
                 <tr
                   key={order.id}
-                  className={`hover:bg-[#fafaf8] transition-colors cursor-pointer ${isSelected ? 'bg-[#0e393d]/3' : ''}`}
+                  className={`hover:bg-[#fafaf8] transition-colors cursor-pointer ${isSelected ? 'bg-[#0e393d]/[0.03]' : ''}`}
                   onClick={() => { setSelectedOrder(order); setDetailTab('fulfilment'); }}
                 >
                   {/* Checkbox */}
@@ -2021,7 +2021,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                     <div className="rounded-lg border border-[#0e393d]/8 overflow-hidden">
                       <table className="w-full text-xs">
                         <thead>
-                          <tr className="bg-[#0e393d]/3 border-b border-[#0e393d]/8">
+                          <tr className="bg-[#0e393d]/[0.03] border-b border-[#0e393d]/8">
                             <th className="px-4 py-2 text-left font-medium text-[#0e393d]/60">Product</th>
                             <th className="px-4 py-2 text-center font-medium text-[#0e393d]/60">Qty</th>
                             <th className="px-4 py-2 text-right font-medium text-[#0e393d]/60">Unit</th>
@@ -2045,7 +2045,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                           ))}
                         </tbody>
                         <tfoot>
-                          <tr className="border-t border-[#0e393d]/10 bg-[#0e393d]/3">
+                          <tr className="border-t border-[#0e393d]/10 bg-[#0e393d]/[0.03]">
                             <td colSpan={3} className="px-4 py-2.5 text-right font-semibold text-[#0e393d]">Total</td>
                             <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-[#0e393d]">{fmt(selectedOrder.total_amount, selectedOrder.currency)}</td>
                           </tr>

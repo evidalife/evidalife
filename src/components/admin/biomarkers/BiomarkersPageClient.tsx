@@ -66,46 +66,84 @@ function LinkedProductsTab() {
     : products;
 
   return (
-    <div className="px-8 py-6">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-[#0e393d]/50">{products.length} products linked to biomarkers</p>
-        <input
-          type="text"
-          placeholder="Search products or biomarkers…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="border border-[#0e393d]/20 rounded-lg px-3 py-1.5 text-sm w-64 focus:outline-none focus:border-[#0e393d]/50"
-        />
+    <div className="px-8 py-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="font-serif text-2xl text-[#0e393d]">Linked Products</h1>
+          <p className="text-sm text-[#1c2a2b]/40 mt-1">Products and their associated biomarkers</p>
+        </div>
+        <div className="relative w-64">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1c2a2b]/30 pointer-events-none">
+            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search products or biomarkers…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full rounded-xl border border-[#0e393d]/12 bg-white pl-9 pr-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/8 transition"
+          />
+        </div>
+      </div>
+
+      {/* Stats card */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="rounded-xl border border-[#0e393d]/8 bg-gradient-to-br from-white to-[#0e393d]/[0.02] px-4 py-3">
+          <div className="text-2xl font-semibold text-[#0e393d]">{products.length}</div>
+          <div className="text-xs text-[#1c2a2b]/50 mt-0.5">Linked products</div>
+        </div>
+        <div className="rounded-xl border border-[#0e393d]/8 bg-gradient-to-br from-white to-[#0e393d]/[0.02] px-4 py-3">
+          <div className="text-2xl font-semibold text-[#0e393d]">{products.reduce((sum, p) => sum + p.biomarkers.length, 0)}</div>
+          <div className="text-xs text-[#1c2a2b]/50 mt-0.5">Total links</div>
+        </div>
+        <div className="rounded-xl border border-[#0e393d]/8 bg-gradient-to-br from-white to-[#0e393d]/[0.02] px-4 py-3">
+          <div className="text-2xl font-semibold text-[#0e393d]">{products.length > 0 ? Math.round(products.reduce((sum, p) => sum + p.biomarkers.length, 0) / products.length) : 0}</div>
+          <div className="text-xs text-[#1c2a2b]/50 mt-0.5">Avg. per product</div>
+        </div>
       </div>
 
       {loading ? (
-        <div className="text-sm text-[#0e393d]/40 py-12 text-center">Loading…</div>
+        <div className="text-sm text-[#0e393d]/30 py-16 text-center">Loading…</div>
       ) : filtered.length === 0 ? (
-        <div className="text-sm text-[#0e393d]/40 py-12 text-center">No results</div>
+        <div className="py-16 text-center">
+          <div className="text-[#1c2a2b]/30 text-sm">No products found</div>
+          <p className="text-xs text-[#1c2a2b]/20 mt-1">Try adjusting your search</p>
+        </div>
       ) : (
-        <div className="border border-[#0e393d]/12 rounded-xl overflow-hidden">
+        <div className="border border-[#0e393d]/10 rounded-xl overflow-hidden shadow-sm bg-white">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-[#0e393d]/4 text-left text-xs font-semibold text-[#0e393d]/50 uppercase tracking-wide">
-                <th className="px-4 py-3">Product Name</th>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3 w-16 text-center">Count</th>
-                <th className="px-4 py-3">Biomarkers</th>
+              <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/[0.03]">
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider">Product Name</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider">Type</th>
+                <th className="px-4 py-3 w-20 text-center text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider">Count</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider">Biomarkers</th>
               </tr>
             </thead>
-            <tbody>
-              {filtered.map((p, i) => (
-                <tr key={p.id} className={i % 2 === 0 ? 'bg-white' : 'bg-[#0e393d]/2'}>
+            <tbody className="divide-y divide-[#0e393d]/5">
+              {filtered.map((p) => (
+                <tr key={p.id} className="hover:bg-[#fafaf8] transition-colors">
                   <td className="px-4 py-3 font-medium text-[#0e393d]">{p.name}</td>
-                  <td className="px-4 py-3 text-[#0e393d]/60 capitalize">{p.product_type ?? '—'}</td>
-                  <td className="px-4 py-3 text-center text-[#0e393d]/60">{p.biomarkers.length}</td>
+                  <td className="px-4 py-3">
+                    {p.product_type
+                      ? <span className="inline-flex items-center rounded-md bg-[#ceab84]/10 px-2 py-0.5 text-[11px] font-medium text-[#8a6a3e] ring-1 ring-inset ring-[#ceab84]/20 capitalize">{p.product_type}</span>
+                      : <span className="text-[#1c2a2b]/25">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#0e393d]/6 text-xs font-semibold text-[#0e393d]/70">{p.biomarkers.length}</span>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
-                      {p.biomarkers.map(b => (
-                        <span key={b.id} className="bg-[#0e393d]/8 text-[#0e393d]/70 text-xs px-2 py-0.5 rounded-full">
+                      {p.biomarkers.slice(0, 6).map(b => (
+                        <span key={b.id} className="bg-[#0e393d]/5 text-[#0e393d]/60 text-[10px] px-1.5 py-0.5 rounded-md">
                           {b.name}
                         </span>
                       ))}
+                      {p.biomarkers.length > 6 && (
+                        <span className="text-[10px] text-[#1c2a2b]/35 px-1 py-0.5">+{p.biomarkers.length - 6} more</span>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -114,6 +152,11 @@ function LinkedProductsTab() {
           </table>
         </div>
       )}
+
+      {/* Footer */}
+      <div className="mt-3 text-xs text-[#1c2a2b]/40 px-1">
+        Showing {filtered.length} of {products.length} products
+      </div>
     </div>
   );
 }
@@ -133,20 +176,25 @@ export default function BiomarkersPageClient({ initialItems }: { initialItems: I
   return (
     <div>
       {/* Tab bar */}
-      <div className="flex gap-2 px-8 pt-6 pb-4">
-        {tabs.map(({ id, label }) => (
-          <button
-            key={id}
-            onClick={() => setActiveTab(id)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition ${
-              activeTab === id
-                ? 'bg-[#0e393d] text-white'
-                : 'bg-[#0e393d]/6 text-[#0e393d]/60 hover:bg-[#0e393d]/12'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="border-b border-[#0e393d]/8 px-8 pt-5">
+        <div className="flex gap-1">
+          {tabs.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`relative px-4 py-2.5 text-sm font-medium transition-colors rounded-t-lg ${
+                activeTab === id
+                  ? 'text-[#0e393d] bg-white'
+                  : 'text-[#0e393d]/45 hover:text-[#0e393d]/70 hover:bg-[#0e393d]/[0.03]'
+              }`}
+            >
+              {label}
+              {activeTab === id && (
+                <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#0e393d] rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {activeTab === 'biomarkers'  && <BiomarkersManager initialItems={initialItems} />}

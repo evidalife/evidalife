@@ -26,7 +26,7 @@ export default function LabResultsManager() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-serif text-2xl text-[#0e393d]">Lab Results</h1>
-        <p className="mt-0.5 text-sm text-[#1c2a2b]/50">Enter results, extract from PDFs, manage review queue, and browse all results</p>
+        <p className="text-sm text-[#1c2a2b]/40 mt-1">Enter results, extract from PDFs, manage review queue, and browse all results</p>
       </div>
 
       {/* Tabs */}

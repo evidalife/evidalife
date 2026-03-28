@@ -578,7 +578,7 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="font-serif text-2xl text-[#0e393d]">Units</h1>
-          <p className="mt-0.5 text-sm text-[#1c2a2b]/50">
+          <p className="text-sm text-[#1c2a2b]/40 mt-1">
             {units.length} total
           </p>
         </div>
@@ -587,7 +587,7 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
           <button
             onClick={() => { if (reviewScanStatus !== 'scanning') handleReviewScan(); }}
             disabled={reviewScanStatus === 'scanning'}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#0e393d]/20 text-[#0e393d] text-xs font-medium hover:bg-[#0e393d]/5 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#0e393d]/20 text-[#0e393d] text-xs font-medium hover:bg-[#0e393d]/5 disabled:opacity-50 disabled:cursor-not-allowed transition"
             title="Scan units for missing translations"
           >
             {reviewScanStatus === 'scanning' ? (
@@ -616,13 +616,16 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
 
       {/* Search */}
       <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Search…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition w-52"
-        />
+        <div className="relative w-52">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1c2a2b]/40 pointer-events-none"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input
+            type="text"
+            placeholder="Search…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-xl border border-[#0e393d]/12 bg-white px-3 py-2 pl-9 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
+          />
+        </div>
       </div>
 
       {error && (
@@ -630,10 +633,10 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
       )}
 
       {/* Table */}
-      <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
+      <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
+            <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/[0.03]">
               {([
                 { key: 'code',       label: 'Code'       },
                 { key: 'name_en',    label: 'Name (EN)'  },
@@ -645,14 +648,14 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
                 <th
                   key={i}
                   onClick={key ? () => handleSort(key) : undefined}
-                  className={`px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider whitespace-nowrap${key ? ' cursor-pointer select-none hover:text-[#0e393d]' : ''}`}
+                  className={`px-4 py-3 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider whitespace-nowrap${key ? ' cursor-pointer select-none hover:text-[#0e393d]' : ''}`}
                 >
                   {label}{key ? <>{' '}{sortCol === key && sortDir === 'asc' ? '▲' : sortCol === key && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}</> : null}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#0e393d]/6">
+          <tbody className="divide-y divide-[#0e393d]/5">
 
             {/* Add row */}
             {adding && (
@@ -671,9 +674,7 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
 
             {sorted.length === 0 && !adding && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
-                  No units found.
-                </td>
+                <td colSpan={6} className="px-4 py-12 text-center"><div className="text-sm text-[#1c2a2b]/40">No units found.</div></td>
               </tr>
             )}
 

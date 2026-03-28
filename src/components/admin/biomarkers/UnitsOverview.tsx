@@ -142,31 +142,56 @@ export default function UnitsOverview() {
   }
 
   return (
-    <div className="p-8 pt-2 space-y-10">
+    <div className="p-8 pt-4 space-y-8">
+
+      {/* ── Summary cards ── */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-xl border border-[#0e393d]/8 bg-gradient-to-br from-white to-[#0e393d]/[0.02] px-4 py-3">
+          <div className="text-2xl font-semibold text-[#0e393d]">{canonicalUnits.length}</div>
+          <div className="text-xs text-[#1c2a2b]/50 mt-0.5">Canonical units</div>
+        </div>
+        <div className="rounded-xl border border-[#0e393d]/8 bg-gradient-to-br from-white to-[#0e393d]/[0.02] px-4 py-3">
+          <div className="text-2xl font-semibold text-[#0e393d]">{altUnits.length}</div>
+          <div className="text-xs text-[#1c2a2b]/50 mt-0.5">Conversion rules</div>
+        </div>
+        <div className={`rounded-xl border px-4 py-3 ${gapBiomarkers.length === 0 ? 'border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30' : 'border-amber-200/60 bg-gradient-to-br from-white to-amber-50/30'}`}>
+          <div className={`text-2xl font-semibold ${gapBiomarkers.length === 0 ? 'text-emerald-700' : 'text-amber-700'}`}>{gapBiomarkers.length}</div>
+          <div className={`text-xs mt-0.5 ${gapBiomarkers.length === 0 ? 'text-emerald-600/60' : 'text-amber-600/60'}`}>Coverage gaps</div>
+        </div>
+      </div>
 
       {/* ── Section 1: Canonical Units ───────────────────────────────────────── */}
       <div>
         <div className="mb-3">
-          <h2 className="font-serif text-xl text-[#0e393d]">Canonical Units</h2>
-          <p className="text-xs text-[#1c2a2b]/50 mt-0.5">
+          <h2 className="font-serif text-lg text-[#0e393d]">Canonical Units</h2>
+          <p className="text-xs text-[#1c2a2b]/40 mt-0.5">
             The standard unit stored in the DB for each biomarker. Values are always converted to these before saving.
           </p>
         </div>
-        <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
+        <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
+              <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/[0.03]">
                 {['Unit', '# Biomarkers', 'Examples'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#0e393d]/60">{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/50">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#0e393d]/6">
+            <tbody className="divide-y divide-[#0e393d]/5">
               {canonicalUnits.map(({ unit, count, examples }) => (
                 <tr key={unit} className="hover:bg-[#fafaf8] transition-colors">
-                  <td className="px-4 py-3 font-mono text-sm font-medium text-[#0e393d]">{unit}</td>
-                  <td className="px-4 py-3 text-sm text-[#1c2a2b]">{count}</td>
-                  <td className="px-4 py-3 text-xs text-[#1c2a2b]/60">
+                  <td className="px-4 py-3">
+                    <span className="font-mono text-sm font-medium text-[#0e393d] bg-[#0e393d]/[0.03] px-2 py-0.5 rounded">{unit}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-[#1c2a2b]">{count}</span>
+                      <div className="h-1.5 bg-[#0e393d]/8 rounded-full flex-1 max-w-24 overflow-hidden">
+                        <div className="h-full bg-[#0e393d]/30 rounded-full" style={{ width: `${Math.min(100, (count / Math.max(...canonicalUnits.map(c => c.count))) * 100)}%` }} />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-[#1c2a2b]/50">
                     {examples.join(', ')}{count > examples.length ? `, +${count - examples.length} more` : ''}
                   </td>
                 </tr>
@@ -179,36 +204,45 @@ export default function UnitsOverview() {
       {/* ── Section 2: Alternative Units ─────────────────────────────────────── */}
       <div>
         <div className="mb-3">
-          <h2 className="font-serif text-xl text-[#0e393d]">Alternative Units</h2>
-          <p className="text-xs text-[#1c2a2b]/50 mt-0.5">
-            Non-canonical units supported via the conversion table. These are accepted on input and automatically converted.
+          <h2 className="font-serif text-lg text-[#0e393d]">Alternative Units</h2>
+          <p className="text-xs text-[#1c2a2b]/40 mt-0.5">
+            Non-canonical units supported via the conversion table. Accepted on input and automatically converted.
           </p>
         </div>
-        <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
+        <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-                {['Alt Unit', '→ Canonical', 'Multiplier', 'Biomarkers'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#0e393d]/60">{h}</th>
+              <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/[0.03]">
+                {['Alt Unit', '→ Canonical', 'Formula', 'Biomarkers'].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/50">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#0e393d]/6">
+            <tbody className="divide-y divide-[#0e393d]/5">
               {altUnits.length === 0 ? (
-                <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-[#1c2a2b]/40">No conversions defined yet.</td></tr>
+                <tr><td colSpan={4} className="px-4 py-12 text-center text-sm text-[#1c2a2b]/30">No conversions defined yet</td></tr>
               ) : altUnits.map((entry, i) => (
                 <tr key={i} className="hover:bg-[#fafaf8] transition-colors">
-                  <td className="px-4 py-3 font-mono text-sm text-[#1c2a2b]">{entry.alt_unit}</td>
-                  <td className="px-4 py-3 font-mono text-sm text-[#0e393d]">{entry.canonical_unit}</td>
                   <td className="px-4 py-3">
-                    <span className="font-mono text-xs text-[#1c2a2b]">×{entry.multiplier}</span>
-                    {entry.offset_value !== 0 && (
-                      <span className="font-mono text-xs text-[#1c2a2b]/50"> + {entry.offset_value}</span>
-                    )}
+                    <span className="font-mono text-sm text-[#1c2a2b] bg-[#0e393d]/[0.03] px-2 py-0.5 rounded">{entry.alt_unit}</span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-[#1c2a2b]/60">
-                    {entry.biomarkers.slice(0, 3).join(', ')}
-                    {entry.biomarkers.length > 3 && `, +${entry.biomarkers.length - 3} more`}
+                  <td className="px-4 py-3">
+                    <span className="font-mono text-sm text-[#0e393d] bg-[#0e393d]/[0.03] px-2 py-0.5 rounded">{entry.canonical_unit}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-mono text-xs text-[#1c2a2b]/70 bg-[#fafaf8] px-2 py-1 rounded border border-[#0e393d]/6">
+                      ×{entry.multiplier}{entry.offset_value !== 0 && <span className="text-[#1c2a2b]/40"> + {entry.offset_value}</span>}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {entry.biomarkers.slice(0, 3).map((b) => (
+                        <span key={b} className="bg-[#0e393d]/5 text-[#1c2a2b]/60 text-[10px] px-1.5 py-0.5 rounded-md">{b}</span>
+                      ))}
+                      {entry.biomarkers.length > 3 && (
+                        <span className="text-[10px] text-[#1c2a2b]/35 px-1 py-0.5">+{entry.biomarkers.length - 3}</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -220,27 +254,28 @@ export default function UnitsOverview() {
       {/* ── Section 3: Coverage Gaps ──────────────────────────────────────────── */}
       <div>
         <div className="mb-3">
-          <h2 className="font-serif text-xl text-[#0e393d]">
+          <h2 className="font-serif text-lg text-[#0e393d] flex items-center gap-2">
             Coverage Gaps
-            <span className="ml-2 text-sm font-sans font-normal text-[#1c2a2b]/40">
-              {gapBiomarkers.length} biomarker{gapBiomarkers.length !== 1 ? 's' : ''} with no conversion rules
+            <span className={`text-xs font-sans font-medium px-2 py-0.5 rounded-full ${gapBiomarkers.length === 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+              {gapBiomarkers.length}
             </span>
           </h2>
-          <p className="text-xs text-[#1c2a2b]/50 mt-0.5">
-            These biomarkers only accept their canonical unit. Add conversion rules in the Unit Conversions tab to support alternatives.
+          <p className="text-xs text-[#1c2a2b]/40 mt-0.5">
+            Biomarkers that only accept their canonical unit. Add conversion rules in the Unit Conversions tab.
           </p>
         </div>
         {gapBiomarkers.length === 0 ? (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-700">
-            All biomarkers have at least one conversion rule.
+          <div className="rounded-xl border border-emerald-200/60 bg-emerald-50/50 px-5 py-5 text-center">
+            <div className="text-emerald-600 text-sm font-medium">All biomarkers have at least one conversion rule</div>
+            <p className="text-xs text-emerald-600/50 mt-1">Great coverage across all units</p>
           </div>
         ) : (
-          <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 divide-y divide-[#0e393d]/6 sm:divide-y-0">
-              {gapBiomarkers.map(({ name, unit }) => (
-                <div key={name} className="px-4 py-3 border-b border-r border-[#0e393d]/6 last:border-b-0">
+          <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+              {gapBiomarkers.map(({ name, unit }, idx) => (
+                <div key={name} className={`px-4 py-3 border-b border-r border-[#0e393d]/6 hover:bg-amber-50/30 transition-colors ${idx >= gapBiomarkers.length - (gapBiomarkers.length % 4 || 4) ? 'border-b-0' : ''}`}>
                   <div className="text-xs font-medium text-[#1c2a2b]">{name}</div>
-                  <div className="text-[11px] font-mono text-[#1c2a2b]/40 mt-0.5">{unit}</div>
+                  <div className="text-[11px] font-mono text-[#1c2a2b]/35 mt-0.5">{unit}</div>
                 </div>
               ))}
             </div>

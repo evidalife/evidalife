@@ -37,21 +37,26 @@ export default function ContactMessagesViewer({ messages }: { messages: ContactM
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="font-serif text-2xl text-[#0e393d]">Contact Messages</h1>
-          <p className="text-sm text-[#1c2a2b]/40 mt-0.5">{messages.length} total</p>
+          <p className="text-sm text-[#1c2a2b]/40 mt-1">{messages.length} total</p>
         </div>
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search name, email, message…"
-          className="w-64 rounded-xl border border-[#0e393d]/15 bg-white px-4 py-2 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/35 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
-        />
+        <div className="relative w-64">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1c2a2b]/40 pointer-events-none"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name, email, message…"
+            className="w-full rounded-xl border border-[#0e393d]/12 bg-white px-4 py-2 pl-9 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/35 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
+          />
+        </div>
       </div>
 
       {/* Empty state */}
       {filtered.length === 0 && (
-        <div className="rounded-xl border border-[#0e393d]/10 bg-white py-16 text-center text-sm text-[#1c2a2b]/40">
-          {messages.length === 0 ? 'No messages yet.' : 'No messages match your search.'}
+        <div className="rounded-xl border border-[#0e393d]/10 bg-white py-12 text-center shadow-sm">
+          <div className="text-sm text-[#1c2a2b]/40">
+            {messages.length === 0 ? 'No messages yet.' : 'No messages match your search.'}
+          </div>
         </div>
       )}
 

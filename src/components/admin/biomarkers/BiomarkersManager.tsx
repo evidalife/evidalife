@@ -325,8 +325,8 @@ function RangeBar({ refLow, refHigh, optLow, optHigh }: {
   if (max === 0) return null;
   const pct = (v: number) => `${Math.min(100, Math.max(0, (v / max) * 100)).toFixed(1)}%`;
   return (
-    <div className="space-y-1">
-      <div className="relative h-3 rounded-full bg-[#0e393d]/8 overflow-hidden">
+    <div className="w-full">
+      <div className="relative h-2.5 rounded-full bg-[#0e393d]/8 overflow-hidden">
         {refLow != null && refHigh != null && (
           <div className="absolute h-full bg-emerald-100"
             style={{ left: pct(refLow), width: `calc(${pct(refHigh)} - ${pct(refLow)})` }} />
@@ -344,11 +344,18 @@ function RangeBar({ refLow, refHigh, optLow, optHigh }: {
         {refLow != null && <div className="absolute top-0 h-full w-px bg-emerald-600" style={{ left: pct(refLow) }} />}
         {refHigh != null && <div className="absolute top-0 h-full w-px bg-emerald-600" style={{ left: pct(refHigh) }} />}
       </div>
-      <div className="flex justify-between text-[10px] text-[#1c2a2b]/40">
-        <span>0</span>
-        {refLow != null && <span className="text-emerald-700">{refLow}</span>}
-        {refHigh != null && <span className="text-emerald-700">{refHigh}</span>}
-        <span>{max.toFixed(0)}</span>
+      <div className="flex justify-between mt-0.5">
+        <span className="text-[9px] font-mono text-[#1c2a2b]/40 tabular-nums">
+          {refLow != null ? refLow : ''}
+        </span>
+        {optLow != null && optHigh != null && (
+          <span className="text-[9px] font-mono text-emerald-600/60 tabular-nums">
+            {optLow}–{optHigh}
+          </span>
+        )}
+        <span className="text-[9px] font-mono text-[#1c2a2b]/40 tabular-nums">
+          {refHigh != null ? refHigh : ''}
+        </span>
       </div>
     </div>
   );
@@ -592,7 +599,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   const [typeFilter, setTypeFilter] = useState('');
   const [domainFilter, setDomainFilter] = useState('');
   const [calcFilter, setCalcFilter] = useState<'calculated' | 'measured' | null>(null);
-  type SortCol = 'name' | 'type' | 'domain' | 'unit' | 'ranges' | 'status' | null;
+  type SortCol = 'name' | 'type' | 'domain' | 'unit' | 'rangeType' | 'ranges' | 'description' | 'sort' | 'quality' | 'status' | null;
   const [sortCol, setSortCol] = useState<SortCol>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [panelOpen, setPanelOpen]   = useState(false);
@@ -913,14 +920,28 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
     );
   });
 
+  const qualityScore = (item: ItemDefinition) => {
+    const checks = [
+      !!item.name?.en, !!item.name?.de, !!item.description?.en,
+      !!item.unit, !!item.he_domain, !!item.range_type,
+      item.ref_range_low != null || item.ref_range_high != null,
+      item.optimal_range_low != null || item.optimal_range_high != null,
+    ];
+    return checks.filter(Boolean).length;
+  };
+
   const sorted = sortCol === null ? filtered : [...filtered].sort((a, b) => {
     let cmp = 0;
-    if (sortCol === 'name')   cmp = (a.name?.en || a.name?.de || '').localeCompare(b.name?.en || b.name?.de || '');
-    if (sortCol === 'type')   cmp = (a.item_type || '').localeCompare(b.item_type || '');
-    if (sortCol === 'domain') cmp = (a.he_domain || '').localeCompare(b.he_domain || '');
-    if (sortCol === 'unit')   cmp = (a.unit || '').localeCompare(b.unit || '');
-    if (sortCol === 'ranges') cmp = (a.ref_range_low ?? -Infinity) - (b.ref_range_low ?? -Infinity);
-    if (sortCol === 'status') cmp = (a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1);
+    if (sortCol === 'name')        cmp = (a.name?.en || a.name?.de || '').localeCompare(b.name?.en || b.name?.de || '');
+    if (sortCol === 'type')        cmp = (a.item_type || '').localeCompare(b.item_type || '');
+    if (sortCol === 'domain')      cmp = (a.he_domain || '').localeCompare(b.he_domain || '');
+    if (sortCol === 'unit')        cmp = (a.unit || '').localeCompare(b.unit || '');
+    if (sortCol === 'rangeType')   cmp = (a.range_type || '').localeCompare(b.range_type || '');
+    if (sortCol === 'ranges')      cmp = (a.ref_range_low ?? -Infinity) - (b.ref_range_low ?? -Infinity);
+    if (sortCol === 'description') cmp = (a.description?.en || '').localeCompare(b.description?.en || '');
+    if (sortCol === 'sort')        cmp = (a.sort_order ?? 9999) - (b.sort_order ?? 9999);
+    if (sortCol === 'quality')     cmp = qualityScore(a) - qualityScore(b);
+    if (sortCol === 'status')      cmp = (a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1);
     return sortDir === 'asc' ? cmp : -cmp;
   });
 
@@ -932,82 +953,129 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
     <div className="p-8">
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-serif text-2xl text-[#0e393d]">Biomarker Registry</h1>
+          <p className="text-sm text-[#1c2a2b]/40 mt-1">Manage all biomarkers, reference ranges, and clinical metadata</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 transition"
-          >
-            <span className="text-lg leading-none">+</span> New Biomarker
-          </button>
-        </div>
+        <button
+          onClick={openCreate}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 shadow-sm shadow-[#0e393d]/20 transition"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+          New Biomarker
+        </button>
       </div>
 
-      {/* ── Stats bar ── */}
-      <div className="flex items-center gap-3 mb-5 text-sm text-[#1c2a2b]/50">
-        <span>{items.length} total</span>
-        <span className="text-[#0e393d]/20">·</span>
-        <span>{items.filter((i) => i.is_active).length} active</span>
-        <span className="text-[#0e393d]/20">·</span>
-        <span>⚡ {items.filter((i) => i.is_calculated).length} calculated</span>
-      </div>
+      {/* ── Stats cards ── */}
+      {(() => {
+        const active = items.filter((i) => i.is_active).length;
+        const inactive = items.length - active;
+        const calculated = items.filter((i) => i.is_calculated).length;
+        const measured = items.length - calculated;
+        const withRanges = items.filter((i) => i.ref_range_low != null || i.ref_range_high != null).length;
+        const withLoinc = items.filter((i) => i.loinc_code).length;
+        const withFasting = items.filter((i) => i.requires_fasting).length;
+        const withSexSpecific = items.filter((i) => i.has_sex_specific_ranges).length;
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div className="rounded-xl border border-[#0e393d]/8 bg-gradient-to-br from-white to-[#0e393d]/[0.02] px-4 py-3">
+              <div className="text-2xl font-semibold text-[#0e393d]">{items.length}</div>
+              <div className="text-xs text-[#1c2a2b]/50 mt-0.5">Total biomarkers</div>
+              <div className="flex gap-2 mt-2 text-[10px]">
+                <span className="text-emerald-600">{active} active</span>
+                {inactive > 0 && <span className="text-[#1c2a2b]/30">{inactive} inactive</span>}
+              </div>
+            </div>
+            <div className="rounded-xl border border-purple-200/60 bg-gradient-to-br from-white to-purple-50/30 px-4 py-3">
+              <div className="text-2xl font-semibold text-purple-700">{calculated}</div>
+              <div className="text-xs text-purple-600/60 mt-0.5">Calculated</div>
+              <div className="flex gap-2 mt-2 text-[10px]">
+                <span className="text-sky-600">{measured} measured</span>
+              </div>
+            </div>
+            <div className="rounded-xl border border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30 px-4 py-3">
+              <div className="text-2xl font-semibold text-emerald-700">{withRanges}</div>
+              <div className="text-xs text-emerald-600/60 mt-0.5">With ranges defined</div>
+              <div className="flex gap-2 mt-2 text-[10px]">
+                <span className="text-[#1c2a2b]/40">{items.length - withRanges} missing</span>
+              </div>
+            </div>
+            <div className="rounded-xl border border-[#ceab84]/30 bg-gradient-to-br from-white to-[#ceab84]/[0.04] px-4 py-3">
+              <div className="text-2xl font-semibold text-[#8a6a3e]">{withLoinc}</div>
+              <div className="text-xs text-[#8a6a3e]/60 mt-0.5">LOINC coded</div>
+              <div className="flex gap-2 mt-2 text-[10px]">
+                <span className="text-[#1c2a2b]/40">{withFasting} fasting · {withSexSpecific} sex-specific</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Filters ── */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-5">
+        {/* Search */}
+        <div className="relative">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1c2a2b]/30 pointer-events-none">
+            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            type="text" placeholder="Search biomarkers…" value={search} onChange={(e) => setSearch(e.target.value)}
+            className="w-56 rounded-xl border border-[#0e393d]/12 bg-white pl-9 pr-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/8 transition"
+          />
+        </div>
+        <div className="w-px h-6 bg-[#0e393d]/10 mx-1" />
         {/* Type pills */}
         <div className="flex flex-wrap gap-1.5">
           {[{ value: '', label: 'All', icon: '' }, ...TEST_CATEGORIES].map(({ value, label, icon }) => (
             <button key={value} onClick={() => setTypeFilter(value)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition ${typeFilter === value ? 'bg-[#0e393d] text-white' : 'bg-[#0e393d]/8 text-[#0e393d]/70 hover:bg-[#0e393d]/15'}`}>
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${typeFilter === value ? 'bg-[#0e393d] text-white shadow-sm' : 'bg-[#0e393d]/5 text-[#0e393d]/60 hover:bg-[#0e393d]/12'}`}>
               {icon && <span className="mr-1">{icon}</span>}{label}
             </button>
           ))}
         </div>
+        <div className="w-px h-6 bg-[#0e393d]/10 mx-1" />
         {/* Calculated / Measured pills */}
         <div className="flex gap-1.5">
           <button onClick={() => setCalcFilter(calcFilter === 'calculated' ? null : 'calculated')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition border ${calcFilter === 'calculated' ? 'bg-purple-600 text-white border-purple-600' : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'}`}>
-            ⚡ Calculated ({items.filter((b) => b.is_calculated).length})
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${calcFilter === 'calculated' ? 'bg-purple-600 text-white shadow-sm' : 'bg-purple-50 text-purple-600/70 hover:bg-purple-100'}`}>
+            ⚡ Calculated
           </button>
           <button onClick={() => setCalcFilter(calcFilter === 'measured' ? null : 'measured')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition border ${calcFilter === 'measured' ? 'bg-sky-600 text-white border-sky-600' : 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100'}`}>
-            🔬 Measured ({items.filter((b) => !b.is_calculated).length})
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${calcFilter === 'measured' ? 'bg-sky-600 text-white shadow-sm' : 'bg-sky-50 text-sky-600/70 hover:bg-sky-100'}`}>
+            🔬 Measured
           </button>
         </div>
+        <div className="w-px h-6 bg-[#0e393d]/10 mx-1" />
         {/* Domain filter */}
         <select
           value={domainFilter}
           onChange={(e) => setDomainFilter(e.target.value)}
-          className="rounded-lg border border-[#0e393d]/15 bg-white px-3 py-1.5 text-xs text-[#1c2a2b] focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 cursor-pointer"
+          className="rounded-lg border border-[#0e393d]/12 bg-white px-3 py-1.5 text-xs text-[#1c2a2b] focus:outline-none focus:ring-2 focus:ring-[#0e393d]/8 cursor-pointer"
         >
           <option value="">All domains</option>
           {HE_DOMAINS.filter((d) => d.value).map((d) => (
             <option key={d.value} value={d.value}>{d.label}</option>
           ))}
         </select>
-        {/* Search */}
-        <input
-          type="text" placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)}
-          className="ml-auto w-48 rounded-lg border border-[#0e393d]/15 bg-white px-3 py-1.5 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
-        />
       </div>
 
       {/* ── Table ── */}
-      <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
+      <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-              {(['name', 'type', 'domain', 'unit', 'ranges', 'status'] as const).map((col) => {
-                const labels: Record<string, string> = { name: 'Name', type: 'Type', domain: 'Health Domain', unit: 'Unit', ranges: 'Ranges', status: 'Status' };
+            <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/[0.03]">
+              {(['name', 'description', 'type', 'domain', 'unit', 'rangeType', 'ranges', 'sort', 'quality', 'status'] as const).map((col) => {
+                const labels: Record<string, string> = { name: 'Name', description: 'Description', type: 'Type', domain: 'Domain', unit: 'Unit', rangeType: 'R.Type', ranges: 'Ranges', sort: '#', quality: 'Data', status: 'Status' };
+                const widths: Record<string, string> = { name: 'w-[180px]', description: '', type: '', domain: '', unit: 'w-16', rangeType: 'w-14', ranges: 'w-[180px]', sort: 'w-10', quality: 'w-14', status: 'w-20' };
+                const paddings: Record<string, string> = { description: 'pl-1 pr-1' };
                 const active = sortCol === col;
                 return (
-                  <th key={col} className="px-4 py-3 text-left">
+                  <th key={col} className={`${paddings[col] || 'px-2'} py-3 text-left ${widths[col] ?? ''}`}>
                     <button
-                      onClick={() => handleSort(col)}
-                      className={`flex items-center gap-1 text-xs font-medium uppercase tracking-wider transition hover:text-[#0e393d] ${active ? 'text-[#0e393d]' : 'text-[#0e393d]/60'}`}
+                      onClick={() => handleSort(col as SortCol)}
+                      className={`flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider transition hover:text-[#0e393d] ${active ? 'text-[#0e393d]' : 'text-[#0e393d]/50'}`}
                     >
                       {labels[col]}
                       <span className="text-[10px] leading-none">
@@ -1017,70 +1085,141 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
                   </th>
                 );
               })}
-              <th className="px-4 py-3 text-right text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Actions</th>
+              <th className="px-2 py-3 w-8" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#0e393d]/6">
+          <tbody className="divide-y divide-[#0e393d]/5">
             {sorted.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">No biomarkers found.</td></tr>
+              <tr><td colSpan={11} className="px-4 py-16 text-center">
+                <div className="text-[#1c2a2b]/30 text-sm">No biomarkers found</div>
+                <p className="text-xs text-[#1c2a2b]/20 mt-1">Try adjusting your search or filters</p>
+              </td></tr>
             )}
             {sorted.map((item) => {
+              const cat = TEST_CATEGORIES.find((t) => t.value === item.item_type);
+              const hasRange = item.ref_range_low != null || item.ref_range_high != null;
+              const rangeTypeIcon = item.range_type === 'lower_is_better' ? '↓' : item.range_type === 'higher_is_better' ? '↑' : item.range_type === 'range' ? '↔' : null;
+              const rangeTypeColor = item.range_type === 'lower_is_better' ? 'text-blue-500 bg-blue-50' : item.range_type === 'higher_is_better' ? 'text-orange-500 bg-orange-50' : 'text-emerald-600 bg-emerald-50';
+              const descSnippet = item.description?.en ? (item.description.en.length > 60 ? item.description.en.slice(0, 60) + '…' : item.description.en) : null;
               return (
-                <tr key={item.id} className="hover:bg-[#fafaf8] transition-colors cursor-pointer" onClick={() => openEdit(item)}>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div>
-                        <div className="font-medium text-[#0e393d]">
-                          {item.name_short?.en || item.name?.en || item.name?.de || <span className="text-[#1c2a2b]/30">—</span>}
+                <tr key={item.id} className="hover:bg-[#fafaf8] transition-colors cursor-pointer group" onClick={() => openEdit(item)}>
+                  {/* Name: badges → abbreviation → full name, LOINC below */}
+                  <td className="px-2 py-2 w-[180px]">
+                    <div className="flex items-start gap-1.5 min-w-0">
+                      {/* Indicator badges */}
+                      <div className="flex gap-0.5 shrink-0 mt-0.5">
+                        {item.requires_fasting && <span className="inline-flex items-center justify-center rounded bg-amber-50 w-4 h-3.5 text-[7px] font-bold text-amber-600 ring-1 ring-inset ring-amber-200/60" title={`Fasting ${item.fasting_hours ? item.fasting_hours + 'h' : ''}`}>F</span>}
+                        {item.has_sex_specific_ranges && <span className="inline-flex items-center justify-center rounded bg-pink-50 w-4 h-3.5 text-[7px] font-bold text-pink-600 ring-1 ring-inset ring-pink-200/60" title="Sex-specific">♀♂</span>}
+                        {item.age_stratified && <span className="inline-flex items-center justify-center rounded bg-blue-50 w-4 h-3.5 text-[7px] font-bold text-blue-600 ring-1 ring-inset ring-blue-200/60" title="Age-stratified">A</span>}
+                        {item.is_calculated && <span className="inline-flex items-center justify-center rounded bg-purple-50 w-4 h-3.5 text-[7px] font-bold text-purple-600 ring-1 ring-inset ring-purple-200/60" title="Calculated">⚡</span>}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        {/* Row 1: abbreviation + full name */}
+                        <div className="flex items-baseline gap-1.5 truncate">
+                          <span className="font-semibold text-[#0e393d] text-[13px] shrink-0">
+                            {item.name_short?.en || item.name?.en || item.name?.de || <span className="text-[#1c2a2b]/30 italic">?</span>}
+                          </span>
+                          {item.name_short?.en && (item.name?.en || item.name?.de) && (
+                            <span className="text-[11px] text-[#1c2a2b]/40 truncate">{item.name?.en || item.name?.de}</span>
+                          )}
                         </div>
-                        <div className="text-xs text-[#1c2a2b]/40 mt-0.5">
-                          {item.name?.en || item.name?.de || ''}
-                        </div>
+                        {/* Row 2: LOINC code */}
+                        {item.loinc_code && <div className="font-mono text-[9px] text-[#0e393d]/35 mt-px">{item.loinc_code}</div>}
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-1">
-                      {item.item_type ? (
-                        <span className="inline-flex items-center rounded-full bg-[#ceab84]/15 px-2 py-0.5 text-[11px] font-medium text-[#8a6a3e] ring-1 ring-inset ring-[#ceab84]/30">
-                          {TEST_CATEGORIES.find((t) => t.value === item.item_type)?.label ?? item.item_type}
-                        </span>
-                      ) : <span className="text-[#1c2a2b]/30">—</span>}
-                      {item.is_calculated && (
-                        <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-[11px] font-medium text-purple-700 ring-1 ring-inset ring-purple-200">
-                          ⚡ Calculated
-                        </span>
-                      )}
-                    </div>
+                  {/* Description — tighter padding to sit close to Type */}
+                  <td className="pl-1 pr-1 py-2">
+                    {descSnippet
+                      ? <span className="text-[11px] text-[#1c2a2b]/45 leading-tight line-clamp-2">{descSnippet}</span>
+                      : <span className="text-[#1c2a2b]/20 text-[11px]">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-xs text-[#1c2a2b]/60">
+                  {/* Type */}
+                  <td className="px-2 py-2">
+                    {cat ? (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-[#ceab84]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#8a6a3e] ring-1 ring-inset ring-[#ceab84]/20 whitespace-nowrap">
+                        <span>{cat.icon}</span>{cat.label}
+                      </span>
+                    ) : <span className="text-[#1c2a2b]/25 text-[11px]">—</span>}
+                  </td>
+                  {/* Domain */}
+                  <td className="px-2 py-2">
                     {item.he_domain
-                      ? domainLabel(item.he_domain)
-                      : <span className="flex items-center gap-1"><WarningIcon title="Missing — click to edit" /><span className="text-amber-600">Missing</span></span>}
+                      ? <span className="text-[11px] text-[#1c2a2b]/65 whitespace-nowrap">{domainLabel(item.he_domain)}</span>
+                      : <span className="flex items-center gap-0.5"><WarningIcon title="Missing" /><span className="text-amber-600/70 text-[10px]">—</span></span>}
                   </td>
-                  <td className="px-4 py-3 text-xs font-mono text-[#0e393d]/70">
-                    {item.unit || <span className="flex items-center gap-1"><WarningIcon title="Missing — click to edit" /><span className="text-amber-600">Missing</span></span>}
+                  {/* Unit */}
+                  <td className="px-2 py-2 w-16">
+                    {item.unit
+                      ? <span className="font-mono text-[11px] text-[#0e393d]/60 bg-[#0e393d]/[0.03] px-1 py-0.5 rounded">{item.unit}</span>
+                      : <span className="text-[#1c2a2b]/20 text-[11px]">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-xs text-[#1c2a2b]/50">
-                    {item.ref_range_low != null && item.ref_range_high != null
-                      ? `${item.ref_range_low}–${item.ref_range_high}`
-                      : item.ref_range_high != null ? `< ${item.ref_range_high}`
-                      : item.ref_range_low != null  ? `> ${item.ref_range_low}`
-                      : '—'}
+                  {/* Range Type */}
+                  <td className="px-2 py-2 w-14 text-center">
+                    {rangeTypeIcon ? (
+                      <span className={`inline-flex items-center justify-center w-6 h-5 rounded text-[11px] font-bold ${rangeTypeColor}`} title={item.range_type || ''}>
+                        {rangeTypeIcon}
+                      </span>
+                    ) : <span className="text-[#1c2a2b]/20 text-[11px]">—</span>}
                   </td>
-                  <td className="px-4 py-3">
+                  {/* Ranges — fixed width for alignment */}
+                  <td className="px-2 py-2 w-[180px]">
+                    {hasRange ? (
+                      <div className="w-full">
+                        <RangeBar refLow={item.ref_range_low} refHigh={item.ref_range_high} optLow={item.optimal_range_low} optHigh={item.optimal_range_high} />
+                      </div>
+                    ) : (
+                      <span className="text-[#1c2a2b]/20 text-[11px]">—</span>
+                    )}
+                  </td>
+                  {/* Sort order */}
+                  <td className="px-2 py-2 w-10 text-center">
+                    {item.sort_order != null
+                      ? <span className="text-[11px] font-mono text-[#1c2a2b]/40 tabular-nums">{item.sort_order}</span>
+                      : <span className="text-[#1c2a2b]/15 text-[11px]">—</span>}
+                  </td>
+                  {/* Data quality */}
+                  <td className="px-2 py-2 w-14 text-center">
+                    {(() => {
+                      const filled = qualityScore(item);
+                      const total = 8;
+                      const pct = Math.round((filled / total) * 100);
+                      const color = pct === 100 ? 'text-emerald-600 bg-emerald-50' : pct >= 75 ? 'text-[#0e393d] bg-[#0e393d]/5' : pct >= 50 ? 'text-amber-600 bg-amber-50' : 'text-red-500 bg-red-50';
+                      return (
+                        <span className={`inline-flex items-center justify-center rounded-md px-1 py-0.5 text-[10px] font-semibold tabular-nums ${color}`} title={`${filled}/${total} fields filled`}>
+                          {pct}%
+                        </span>
+                      );
+                    })()}
+                  </td>
+                  {/* Status */}
+                  <td className="px-2 py-2">
                     {item.is_active
-                      ? <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">Active</span>
-                      : <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-600 ring-1 ring-inset ring-gray-500/20">Inactive</span>}
+                      ? <span className="inline-flex items-center rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">Active</span>
+                      : <span className="inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 ring-1 ring-inset ring-gray-300/40">Off</span>}
                   </td>
-                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    <button onClick={() => openEdit(item)} className="px-3 py-1 rounded-md text-xs font-medium text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition">Edit</button>
+                  {/* Edit */}
+                  <td className="px-2 py-2 w-8 text-right" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={() => openEdit(item)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
+                    </button>
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* ── Table footer ── */}
+      <div className="flex items-center justify-between mt-3 text-xs text-[#1c2a2b]/40 px-1">
+        <span>Showing {sorted.length} of {items.length} biomarkers</span>
+        {(search || typeFilter || domainFilter || calcFilter) && (
+          <button onClick={() => { setSearch(''); setTypeFilter(''); setDomainFilter(''); setCalcFilter(null); }}
+            className="text-[#0e393d]/60 hover:text-[#0e393d] underline underline-offset-2 transition">
+            Clear all filters
+          </button>
+        )}
       </div>
 
       {/* ── AI Suggestion Modal ── */}
@@ -1092,18 +1231,24 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
       {panelOpen && (
         <>
           <div className="fixed inset-0 bg-black/20 z-40 backdrop-blur-[1px]" onClick={closePanel} />
-          <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col bg-white shadow-2xl">
+          <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col bg-white shadow-2xl rounded-l-2xl">
 
             {/* Panel header */}
             <div className="flex items-center justify-between border-b border-[#0e393d]/10 px-6 py-4 shrink-0">
               <div>
-                <h2 className="font-serif text-lg text-[#0e393d]">{editingId ? 'Edit Biomarker' : 'New Biomarker'}</h2>
-                {editingId && <p className="text-xs text-[#1c2a2b]/40 mt-0.5">{items.find((i) => i.id === editingId)?.slug ?? ''}</p>}
+                <div className="flex items-center gap-2">
+                  <h2 className="font-serif text-lg text-[#0e393d]">{editingId ? 'Edit Biomarker' : 'New Biomarker'}</h2>
+                  {editingId && (items.find((i) => i.id === editingId)?.is_active
+                    ? <span className="inline-flex items-center rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">Active</span>
+                    : <span className="inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 ring-1 ring-inset ring-gray-300/40">Inactive</span>
+                  )}
+                </div>
+                {editingId && <p className="text-[11px] text-[#1c2a2b]/35 mt-0.5 font-mono">{items.find((i) => i.id === editingId)?.slug ?? ''}</p>}
               </div>
-              <div className="flex items-center gap-3">
-                <AiBtn onClick={handleAutocomplete} loading={autocompleting} label="✦ AI Autocomplete" />
-                <button onClick={closePanel} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" /></svg>
+              <div className="flex items-center gap-2">
+                <AiBtn onClick={handleAutocomplete} loading={autocompleting} label="✦ AI Fill" gold />
+                <button onClick={closePanel} className="p-1.5 rounded-lg text-[#1c2a2b]/40 hover:text-[#1c2a2b] hover:bg-[#0e393d]/5 transition">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" /></svg>
                 </button>
               </div>
             </div>

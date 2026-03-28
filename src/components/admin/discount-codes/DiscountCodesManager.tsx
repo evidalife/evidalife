@@ -359,27 +359,30 @@ export default function DiscountCodesManager({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-serif text-2xl text-[#0e393d]">Discount Codes</h1>
-          <p className="mt-0.5 text-sm text-[#1c2a2b]/50">
+          <p className="text-sm text-[#1c2a2b]/40 mt-1">
             {codes.length} total · {codes.filter((dc) => dc.is_active && !isExpired(dc)).length} active
           </p>
         </div>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 transition"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 transition shadow-sm shadow-[#0e393d]/20"
         >
-          <span className="text-lg leading-none">+</span> New Code
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> New Code
         </button>
       </div>
 
       {/* Search + filter */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <input
-          type="text"
-          placeholder="Search by code…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-xs rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
-        />
+        <div className="relative w-full max-w-xs">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1c2a2b]/40 pointer-events-none"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input
+            type="text"
+            placeholder="Search by code…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-xl border border-[#0e393d]/12 bg-white px-3 py-2 pl-9 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
+          />
+        </div>
         <div className="flex gap-1.5">
           {filterPills.map((p) => (
             <button
@@ -398,10 +401,10 @@ export default function DiscountCodesManager({
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
+      <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
+            <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/[0.03]">
               {([
                 { key: 'code',       label: 'Code',       align: 'left'  },
                 { key: null,         label: 'Discount',   align: 'left'  },
@@ -413,19 +416,17 @@ export default function DiscountCodesManager({
                 <th
                   key={label}
                   onClick={key ? () => handleSort(key) : undefined}
-                  className={`px-4 py-3 text-${align} text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider${key ? ' cursor-pointer select-none hover:text-[#0e393d]' : ''}`}
+                  className={`px-4 py-3 text-${align} text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider${key ? ' cursor-pointer select-none hover:text-[#0e393d]' : ''}`}
                 >
                   {label}{key ? <>{' '}{sortCol === key && sortDir === 'asc' ? '▲' : sortCol === key && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}</> : null}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#0e393d]/6">
+          <tbody className="divide-y divide-[#0e393d]/5">
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
-                  No discount codes found.
-                </td>
+                <td colSpan={6} className="px-4 py-12 text-center"><div className="text-sm text-[#1c2a2b]/40">No discount codes found.</div></td>
               </tr>
             )}
             {sorted.map((dc) => (
@@ -494,7 +495,7 @@ export default function DiscountCodesManager({
           />
 
           {/* Panel */}
-          <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col bg-white shadow-2xl">
+          <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col bg-white shadow-2xl rounded-l-2xl">
 
             {/* Panel header */}
             <div className="flex items-center justify-between border-b border-[#0e393d]/10 px-6 py-4">
@@ -503,11 +504,11 @@ export default function DiscountCodesManager({
               </h2>
               <button
                 onClick={closePanel}
-                className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition"
+                className="p-1.5 rounded-lg text-[#1c2a2b]/40 hover:bg-[#0e393d]/5 hover:text-[#1c2a2b] transition"
               >
                 <svg
-                  width="20"
-                  height="20"
+                  width="18"
+                  height="18"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"

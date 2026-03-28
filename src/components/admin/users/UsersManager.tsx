@@ -333,34 +333,45 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
     <div className="p-8">
 
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="font-serif text-2xl text-[#0e393d]">Users</h1>
-        <p className="mt-0.5 text-sm text-[#1c2a2b]/50">View registered users and manage account details.</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="font-serif text-2xl text-[#0e393d]">Users</h1>
+          <p className="text-sm text-[#1c2a2b]/40 mt-1">View registered users and manage account details</p>
+        </div>
       </div>
 
-      {/* Stats strip — active users only */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        {[
-          { label: 'Total users', value: totalUsers },
-          { label: 'Admins',      value: adminCount  },
-          { label: 'Members',     value: memberCount },
-        ].map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-[#0e393d]/10 bg-white px-5 py-4">
-            <p className="text-2xl font-semibold text-[#0e393d] tabular-nums">{stat.value}</p>
-            <p className="mt-0.5 text-xs text-[#1c2a2b]/50">{stat.label}</p>
-          </div>
-        ))}
+      {/* Stats cards */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="rounded-xl border border-[#0e393d]/8 bg-gradient-to-br from-white to-[#0e393d]/[0.02] px-4 py-3">
+          <div className="text-2xl font-semibold text-[#0e393d] tabular-nums">{totalUsers}</div>
+          <div className="text-xs text-[#1c2a2b]/50 mt-0.5">Total users</div>
+        </div>
+        <div className="rounded-xl border border-[#ceab84]/30 bg-gradient-to-br from-white to-[#ceab84]/[0.04] px-4 py-3">
+          <div className="text-2xl font-semibold text-[#8a6a3e] tabular-nums">{adminCount}</div>
+          <div className="text-xs text-[#8a6a3e]/60 mt-0.5">Admins</div>
+        </div>
+        <div className="rounded-xl border border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30 px-4 py-3">
+          <div className="text-2xl font-semibold text-emerald-700 tabular-nums">{memberCount}</div>
+          <div className="text-xs text-emerald-600/60 mt-0.5">Members</div>
+        </div>
       </div>
 
       {/* Search + filter pills */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <input
-          type="text"
-          placeholder="Search by name or email…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-xs rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
-        />
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
+        <div className="relative w-64">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1c2a2b]/30 pointer-events-none">
+            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search by name or email…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-xl border border-[#0e393d]/12 bg-white pl-9 pr-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/8 transition"
+          />
+        </div>
+        <div className="w-px h-6 bg-[#0e393d]/10" />
         <div className="flex gap-1.5">
           {([
             { key: 'all',         label: 'All'         },
@@ -371,12 +382,12 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
             <button
               key={pill.key}
               onClick={() => setFilter(pill.key)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                 filter === pill.key
                   ? pill.key === 'deactivated'
-                    ? 'bg-red-600 text-white'
-                    : 'bg-[#0e393d] text-white'
-                  : 'bg-[#0e393d]/8 text-[#0e393d]/70 hover:bg-[#0e393d]/15'
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'bg-[#0e393d] text-white shadow-sm'
+                  : 'bg-[#0e393d]/5 text-[#0e393d]/60 hover:bg-[#0e393d]/12'
               }`}
             >
               {pill.label}
@@ -391,36 +402,37 @@ export default function UsersManager({ initialProfiles }: { initialProfiles: Pro
           Admin toggle failed: {toggleError}
         </div>
       )}
-      <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
+      <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
+            <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/[0.03]">
               {(['email', 'display_name'] as const).map((col) => (
-                <th key={col} className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider cursor-pointer select-none hover:text-[#0e393d]" onClick={() => handleSort(col)}>
+                <th key={col} className="px-3 py-3 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider cursor-pointer select-none hover:text-[#0e393d]" onClick={() => handleSort(col)}>
                   {col === 'email' ? 'User' : 'Display name'}
                   {' '}{sortCol === col && sortDir === 'asc' ? '▲' : sortCol === col && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}
                 </th>
               ))}
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">
+              <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider">
                 {isDeactivatedView ? 'Status' : 'Role'}
               </th>
               {!isDeactivatedView && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">Admin</th>
+                <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider">Admin</th>
               )}
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider cursor-pointer select-none hover:text-[#0e393d]" onClick={() => handleSort('created_at')}>
+              <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider cursor-pointer select-none hover:text-[#0e393d]" onClick={() => handleSort('created_at')}>
                 Joined{' '}{sortCol === 'created_at' && sortDir === 'asc' ? '▲' : sortCol === 'created_at' && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider">
+              <th className="px-3 py-3 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider">
                 {isDeactivatedView ? 'Deactivated on' : 'Last updated'}
               </th>
-              <th className="px-4 py-3 w-10" />
+              <th className="px-3 py-3 w-10" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#0e393d]/6">
+          <tbody className="divide-y divide-[#0e393d]/5">
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
-                  No users found.
+                <td colSpan={6} className="px-4 py-16 text-center">
+                  <div className="text-[#1c2a2b]/30 text-sm">No users found</div>
+                  <p className="text-xs text-[#1c2a2b]/20 mt-1">Try adjusting your search or filters</p>
                 </td>
               </tr>
             )}

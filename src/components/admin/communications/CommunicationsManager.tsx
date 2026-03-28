@@ -541,7 +541,7 @@ export default function CommunicationsManager() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-serif text-2xl text-[#0e393d]">Communications</h1>
-        <p className="mt-0.5 text-sm text-[#1c2a2b]/50">Email templates, preview, and delivery log</p>
+        <p className="text-sm text-[#1c2a2b]/40 mt-1">Email templates, preview, and delivery log</p>
       </div>
 
       {/* Tabs */}
