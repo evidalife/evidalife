@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Badge, FlagBadge, SectionHeading, Spinner, Toast, ToastContainer, fmtDate, locName, nextToastId } from './shared';
+import { Badge, FlagBadge, Spinner, Toast, ToastContainer, fmtDate, locName, nextToastId } from './shared';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -166,40 +166,59 @@ export default function ReviewQueueTab({ onCountChange }: { onCountChange?: (n: 
     return sortDir === 'asc' ? cmp : -cmp;
   }), [filtered, sortCol, sortDir]);
 
-  // Stats
   const typeCounts = reviews.reduce((acc: Record<string, number>, r) => {
     acc[r.review_type] = (acc[r.review_type] || 0) + 1;
     return acc;
   }, {});
 
+  const criticalCount = reviews.filter(r => r.severity === 'critical').length;
+  const warningCount = reviews.filter(r => r.severity === 'warning').length;
+
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
+    <div className="p-8">
       <ToastContainer toasts={toasts} dismiss={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: 'Total Pending', value: reviews.length, cls: 'text-[#0e393d]' },
-          { label: 'Low Confidence', value: typeCounts.low_confidence ?? 0, cls: 'text-amber-600' },
-          { label: 'Plausibility', value: typeCounts.plausibility_warning ?? 0, cls: 'text-red-600' },
-          { label: 'Duplicates', value: typeCounts.duplicate_detected ?? 0, cls: 'text-violet-600' },
-        ].map(({ label, value, cls }) => (
-          <div key={label} className="rounded-lg border border-[#0e393d]/8 bg-white px-4 py-3 text-center">
-            <div className={`text-2xl font-bold ${cls}`}>{value}</div>
-            <div className="text-xs text-[#1c2a2b]/50 mt-0.5">{label}</div>
-          </div>
-        ))}
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="font-serif text-2xl text-[#0e393d]">Review Queue</h1>
+          <p className="text-sm text-[#1c2a2b]/40 mt-1">Flagged results and reports requiring manual review</p>
+        </div>
       </div>
 
-      {/* Pending reports awaiting review */}
+      {/* ── Stat cards ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="rounded-xl bg-gradient-to-br from-[#0e393d] to-[#154347] p-4 text-white">
+          <div className="text-2xl font-bold">{reviews.length}</div>
+          <div className="text-xs text-white/60 mt-0.5">Pending Reviews</div>
+          <div className="text-[10px] text-white/40 mt-1">{pendingReports.length} reports awaiting</div>
+        </div>
+        <div className={`rounded-xl p-4 text-white ${criticalCount > 0 ? 'bg-gradient-to-br from-red-500 to-red-600' : 'bg-gradient-to-br from-emerald-500 to-emerald-600'}`}>
+          <div className="text-2xl font-bold">{criticalCount}</div>
+          <div className="text-xs text-white/70 mt-0.5">Critical</div>
+          <div className="text-[10px] text-white/50 mt-1">{criticalCount > 0 ? 'needs immediate attention' : 'all clear'}</div>
+        </div>
+        <div className="rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 p-4 text-white">
+          <div className="text-2xl font-bold">{warningCount}</div>
+          <div className="text-xs text-white/70 mt-0.5">Warnings</div>
+          <div className="text-[10px] text-white/50 mt-1">plausibility + low confidence</div>
+        </div>
+        <div className="rounded-xl bg-gradient-to-br from-[#ceab84] to-[#b8976e] p-4 text-white">
+          <div className="text-2xl font-bold">{typeCounts.duplicate_detected ?? 0}</div>
+          <div className="text-xs text-white/70 mt-0.5">Duplicates</div>
+          <div className="text-[10px] text-white/50 mt-1">{(typeCounts.unmapped_biomarker ?? 0)} unmapped</div>
+        </div>
+      </div>
+
+      {/* ── Pending reports ── */}
       {pendingReports.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#0e393d]/60 mb-2">
+        <div className="mb-6">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/50 mb-2">
             Reports Awaiting Review ({pendingReports.length})
-          </p>
-          <div className="space-y-2">
+          </div>
+          <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm divide-y divide-[#0e393d]/5">
             {pendingReports.map((r) => {
               const userName = r.profiles
                 ? [r.profiles.first_name, r.profiles.last_name].filter(Boolean).join(' ') || r.profiles.email
@@ -209,15 +228,15 @@ export default function ReviewQueueTab({ onCountChange }: { onCountChange?: (n: 
                 : 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20';
               const statusLabel = r.status === 'ai_extracted' ? '🤖 AI Extracted' : '⏳ Review Pending';
               return (
-                <div key={r.id} className="rounded-xl border border-[#0e393d]/10 bg-white px-4 py-3 flex items-center gap-4 flex-wrap">
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${statusCls}`}>
+                <div key={r.id} className="px-4 py-3 flex items-center gap-3 hover:bg-[#fafaf8] transition-colors">
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${statusCls}`}>
                     {statusLabel}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#1c2a2b] truncate">{r.title}</p>
-                    <p className="text-xs text-[#1c2a2b]/40">{userName} · {fmtDate(r.test_date ?? r.created_at)}</p>
+                    <span className="text-[13px] font-medium text-[#0e393d]">{r.title}</span>
+                    <span className="text-[11px] text-[#1c2a2b]/40 ml-2">{userName} · {fmtDate(r.test_date ?? r.created_at)}</span>
                   </div>
-                  <p className="text-xs text-[#1c2a2b]/40 shrink-0">Open the PDF Upload tab to review</p>
+                  <span className="text-[10px] text-[#1c2a2b]/30 shrink-0">Open PDF Upload to review</span>
                 </div>
               );
             })}
@@ -225,50 +244,62 @@ export default function ReviewQueueTab({ onCountChange }: { onCountChange?: (n: 
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2">
-        {(['all', 'low_confidence', 'plausibility_warning', 'duplicate_detected', 'unmapped_biomarker'] as TypeFilter[]).map((t) => (
-          <button key={t} onClick={() => setTypeFilter(t)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${typeFilter === t ? 'bg-[#0e393d] text-white' : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'}`}>
-            {t === 'all' ? `All (${reviews.length})` : `${TYPE_LABEL[t]} (${typeCounts[t] ?? 0})`}
-          </button>
-        ))}
-        <span className="border-l border-[#0e393d]/10 mx-1" />
-        {(['all', 'critical', 'warning', 'info'] as SeverityFilter[]).map((s) => (
-          <button key={s} onClick={() => setSeverityFilter(s)}
-            className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition ${severityFilter === s ? 'bg-[#0e393d] text-white' : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'}`}>
-            {s === 'all' ? 'All severities' : s}
-          </button>
-        ))}
-      </div>
+      {/* ── Filters ── */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        {/* Type pills */}
+        <div className="flex gap-1.5">
+          {(['all', 'low_confidence', 'plausibility_warning', 'duplicate_detected', 'unmapped_biomarker'] as TypeFilter[]).map((t) => (
+            <button key={t} onClick={() => setTypeFilter(t)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${typeFilter === t ? 'bg-[#0e393d] text-white shadow-sm' : 'bg-[#0e393d]/5 text-[#0e393d]/60 hover:bg-[#0e393d]/10'}`}>
+              {t === 'all' ? `All (${reviews.length})` : `${TYPE_LABEL[t]} (${typeCounts[t] ?? 0})`}
+            </button>
+          ))}
+        </div>
 
-      {/* Sort bar */}
-      {!loading && filtered.length > 0 && (
-        <div className="flex items-center gap-1 text-xs text-[#1c2a2b]/50">
-          <span className="mr-1">Sort:</span>
+        <div className="w-px h-6 bg-[#0e393d]/10" />
+
+        {/* Severity pills */}
+        <div className="flex gap-1.5">
+          {(['all', 'critical', 'warning', 'info'] as SeverityFilter[]).map((s) => {
+            const colors: Record<string, string> = {
+              all: severityFilter === 'all' ? 'bg-[#ceab84] text-white shadow-sm' : 'bg-[#ceab84]/10 text-[#ceab84]/70 hover:bg-[#ceab84]/20',
+              critical: severityFilter === 'critical' ? 'bg-red-500 text-white shadow-sm' : 'bg-red-50 text-red-600/70 hover:bg-red-100',
+              warning: severityFilter === 'warning' ? 'bg-amber-500 text-white shadow-sm' : 'bg-amber-50 text-amber-600/70 hover:bg-amber-100',
+              info: severityFilter === 'info' ? 'bg-sky-500 text-white shadow-sm' : 'bg-sky-50 text-sky-600/70 hover:bg-sky-100',
+            };
+            return (
+              <button key={s} onClick={() => setSeverityFilter(s)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition ${colors[s]}`}>
+                {s === 'all' ? 'All severities' : s}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="w-px h-6 bg-[#0e393d]/10" />
+
+        {/* Sort */}
+        <div className="flex gap-1">
           {([
-            { key: 'created_at', label: 'Date' },
-            { key: 'severity',   label: 'Severity' },
-          ] as { key: typeof sortCol; label: string }[]).map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => handleSort(key)}
-              className={`px-2 py-1 rounded transition ${sortCol === key ? 'font-medium text-[#0e393d]' : 'hover:text-[#0e393d]/70'}`}
-            >
+            { key: 'created_at' as const, label: 'Date' },
+            { key: 'severity' as const,   label: 'Severity' },
+          ]).map(({ key, label }) => (
+            <button key={key} onClick={() => handleSort(key)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs transition ${sortCol === key ? 'font-semibold text-[#0e393d] bg-[#0e393d]/5' : 'text-[#1c2a2b]/40 hover:text-[#0e393d]/70'}`}>
               {label}{sortCol === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
             </button>
           ))}
         </div>
-      )}
+      </div>
 
-      {/* Review list */}
+      {/* ── Review cards ── */}
       {loading ? (
-        <div className="flex justify-center py-10"><Spinner size={6} /></div>
+        <div className="flex justify-center py-12"><Spinner size={5} /></div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-[#0e393d]/10 bg-[#fafaf8] py-12 text-center">
+        <div className="rounded-xl border border-[#0e393d]/10 bg-white px-6 py-16 text-center">
           <div className="text-4xl mb-3">✅</div>
           <p className="font-medium text-[#0e393d]">Review queue is clear</p>
-          <p className="text-xs text-[#1c2a2b]/40 mt-1">No pending reviews match the current filters.</p>
+          <p className="text-xs text-[#1c2a2b]/20 mt-1">No pending reviews match the current filters</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -282,104 +313,114 @@ export default function ReviewQueueTab({ onCountChange }: { onCountChange?: (n: 
             const actionBusy = actionLoading?.startsWith(review.id);
 
             return (
-              <div key={review.id} className={`rounded-xl border bg-white px-5 py-4 space-y-3 ${review.severity === 'critical' ? 'border-red-200' : 'border-[#0e393d]/10'}`}>
-                {/* Header */}
-                <div className="flex items-start gap-3 flex-wrap">
-                  <Badge className={TYPE_COLOR[review.review_type] ?? 'bg-gray-50 text-gray-600 ring-gray-500/20'}>
-                    {TYPE_LABEL[review.review_type] ?? review.review_type}
-                  </Badge>
-                  <Badge className={SEVERITY_COLOR[review.severity] ?? 'bg-gray-50 text-gray-600 ring-gray-500/20'}>
-                    {review.severity}
-                  </Badge>
-                  <span className="text-xs text-[#1c2a2b]/40 mt-0.5">{fmtDate(review.created_at)}</span>
-                </div>
-
-                {/* Message */}
-                <p className="text-sm text-[#1c2a2b]">{review.message}</p>
-
-                {/* Lab result details */}
-                {lr && (
-                  <div className="rounded-lg bg-[#fafaf8] border border-[#0e393d]/6 px-4 py-3 flex items-center gap-6 flex-wrap">
-                    <div>
-                      <div className="text-[10px] text-[#1c2a2b]/40 uppercase tracking-wider mb-0.5">Biomarker</div>
-                      <div className="text-xs font-medium text-[#1c2a2b]">{bmName}</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-[#1c2a2b]/40 uppercase tracking-wider mb-0.5">Patient</div>
-                      <div className="text-xs text-[#1c2a2b]">{userName}</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-[#1c2a2b]/40 uppercase tracking-wider mb-0.5">Value</div>
-                      <div className="text-xs font-medium text-[#0e393d]">{lr.value_numeric} {lr.unit}</div>
-                    </div>
-                    {review.original_value && (
-                      <div>
-                        <div className="text-[10px] text-[#1c2a2b]/40 uppercase tracking-wider mb-0.5">Original</div>
-                        <div className="text-xs text-[#1c2a2b]">{review.original_value}</div>
-                      </div>
-                    )}
-                    <FlagBadge flag={lr.status_flag} />
-                    <div>
-                      <div className="text-[10px] text-[#1c2a2b]/40 uppercase tracking-wider mb-0.5">Source</div>
-                      <div className="text-xs text-[#1c2a2b]/60">{lr.source || 'manual'}</div>
-                    </div>
-                    {lr.measured_at && (
-                      <div>
-                        <div className="text-[10px] text-[#1c2a2b]/40 uppercase tracking-wider mb-0.5">Date</div>
-                        <div className="text-xs text-[#1c2a2b]/60">{fmtDate(lr.measured_at)}</div>
-                      </div>
-                    )}
+              <div key={review.id} className={`rounded-xl border bg-white overflow-hidden shadow-sm transition ${
+                review.severity === 'critical' ? 'border-red-200 ring-1 ring-red-100' : 'border-[#0e393d]/10'
+              }`}>
+                <div className="px-5 py-4 space-y-3">
+                  {/* Header row */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge className={TYPE_COLOR[review.review_type] ?? 'bg-gray-50 text-gray-600 ring-gray-500/20'}>
+                      {TYPE_LABEL[review.review_type] ?? review.review_type}
+                    </Badge>
+                    <Badge className={SEVERITY_COLOR[review.severity] ?? 'bg-gray-50 text-gray-600 ring-gray-500/20'}>
+                      {review.severity}
+                    </Badge>
+                    <span className="text-[10px] text-[#1c2a2b]/35 ml-auto tabular-nums">{fmtDate(review.created_at)}</span>
                   </div>
-                )}
 
-                {/* Edit & approve input */}
-                {isEditing && (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number" step="0.01"
-                      placeholder="Corrected value"
-                      value={editValues[review.id] ?? lr?.value_numeric ?? ''}
-                      onChange={(e) => setEditValues((prev) => ({ ...prev, [review.id]: e.target.value }))}
-                      className="rounded-lg border border-[#0e393d]/15 bg-white px-3 py-1.5 text-sm w-36 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
-                    />
+                  {/* Message */}
+                  <p className="text-[13px] text-[#1c2a2b]/80">{review.message}</p>
+
+                  {/* Lab result details */}
+                  {lr && (
+                    <div className="rounded-lg bg-[#0e393d]/[0.02] border border-[#0e393d]/6 px-4 py-3 flex items-center gap-6 flex-wrap">
+                      <div>
+                        <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Biomarker</div>
+                        <div className="text-[12px] font-medium text-[#0e393d]">{bmName}</div>
+                      </div>
+                      <div>
+                        <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Patient</div>
+                        <div className="text-[12px] text-[#1c2a2b]/70">{userName}</div>
+                      </div>
+                      <div>
+                        <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Value</div>
+                        <div className="text-[12px] font-semibold text-[#0e393d]">{lr.value_numeric} <span className="font-normal text-[#1c2a2b]/40">{lr.unit}</span></div>
+                      </div>
+                      {review.original_value && (
+                        <div>
+                          <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Original</div>
+                          <div className="text-[12px] text-[#1c2a2b]/60">{review.original_value}</div>
+                        </div>
+                      )}
+                      <FlagBadge flag={lr.status_flag} />
+                      <div>
+                        <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Source</div>
+                        <div className="text-[12px] text-[#1c2a2b]/50">{lr.source || 'manual'}</div>
+                      </div>
+                      {lr.measured_at && (
+                        <div>
+                          <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Date</div>
+                          <div className="text-[12px] text-[#1c2a2b]/50 tabular-nums">{fmtDate(lr.measured_at)}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Edit input */}
+                  {isEditing && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number" step="0.01"
+                        placeholder="Corrected value"
+                        value={editValues[review.id] ?? lr?.value_numeric ?? ''}
+                        onChange={(e) => setEditValues((prev) => ({ ...prev, [review.id]: e.target.value }))}
+                        className="rounded-lg border border-[#0e393d]/12 bg-white px-3 py-1.5 text-sm w-36 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
+                      />
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      disabled={!!actionBusy}
+                      onClick={() => handleAction(review.id, 'approve')}
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 ring-1 ring-inset ring-emerald-600/20 transition disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {actionLoading === review.id + 'approve' ? <Spinner size={3} /> : null}
+                      Approve
+                    </button>
+                    <button
+                      disabled={!!actionBusy}
+                      onClick={() => {
+                        if (isEditing) handleAction(review.id, 'edit_approve');
+                        else setEditMode(review.id);
+                      }}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition disabled:opacity-50 ring-1 ring-inset ${
+                        isEditing ? 'bg-[#0e393d] text-white ring-[#0e393d]' : 'bg-[#0e393d]/5 text-[#0e393d] ring-[#0e393d]/15 hover:bg-[#0e393d]/10'
+                      }`}
+                    >
+                      {isEditing ? 'Save & Approve' : 'Edit & Approve'}
+                    </button>
+                    <button
+                      disabled={!!actionBusy}
+                      onClick={() => handleAction(review.id, 'reject')}
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 ring-1 ring-inset ring-red-600/20 transition disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {actionLoading === review.id + 'reject' ? <Spinner size={3} /> : null}
+                      Reject & Delete
+                    </button>
                   </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    disabled={!!actionBusy}
-                    onClick={() => handleAction(review.id, 'approve')}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition disabled:opacity-50 flex items-center gap-1.5"
-                  >
-                    {actionLoading === review.id + 'approve' ? <Spinner size={3} /> : null}
-                    Approve
-                  </button>
-                  <button
-                    disabled={!!actionBusy}
-                    onClick={() => setEditMode(isEditing ? null : review.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition disabled:opacity-50 ${isEditing ? 'bg-[#0e393d] text-white' : 'bg-[#0e393d]/8 text-[#0e393d] hover:bg-[#0e393d]/15'}`}
-                  >
-                    {isEditing ? (
-                      <span onClick={(e) => { e.stopPropagation(); handleAction(review.id, 'edit_approve'); }}>
-                        Save & Approve
-                      </span>
-                    ) : 'Edit & Approve'}
-                  </button>
-                  <button
-                    disabled={!!actionBusy}
-                    onClick={() => handleAction(review.id, 'reject')}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 transition disabled:opacity-50 flex items-center gap-1.5"
-                  >
-                    {actionLoading === review.id + 'reject' ? <Spinner size={3} /> : null}
-                    Reject & Delete
-                  </button>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+
+      {/* ── Footer ── */}
+      <div className="mt-3 text-xs text-[#1c2a2b]/40 px-1">
+        Showing {sortedFiltered.length} of {reviews.length} reviews
+      </div>
     </div>
   );
 }

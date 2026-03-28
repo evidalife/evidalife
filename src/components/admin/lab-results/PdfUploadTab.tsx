@@ -818,8 +818,16 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
-      <ToastContainer toasts={toasts} dismiss={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
+    <div className="p-8">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="font-serif text-2xl text-[#0e393d]">PDF Upload</h1>
+          <p className="text-sm text-[#1c2a2b]/40 mt-1">Extract biomarker results from lab PDFs using AI</p>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <ToastContainer toasts={toasts} dismiss={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
 
       {extracting && (
         <div className="space-y-2">
@@ -850,10 +858,10 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                     setSelectedUser(null);
                     setUserSearch('');
                   }}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
                     labSource === value
-                      ? 'bg-[#0e393d] text-white'
-                      : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
+                      ? 'bg-[#0e393d] text-white shadow-sm'
+                      : 'bg-[#0e393d]/5 text-[#0e393d]/60 hover:bg-[#0e393d]/10'
                   }`}
                 >
                   {label}
@@ -883,7 +891,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                     placeholder="Search by email or name…"
                     value={userSearch}
                     onChange={(e) => searchUsers(e.target.value)}
-                    className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                    className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
                   />
                   {searchingUsers && <div className="absolute right-3 top-2.5"><Spinner /></div>}
                   {userOptions.length > 0 && (
@@ -963,7 +971,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                     placeholder="Search by order number, voucher code, or email…"
                     value={orderSearch}
                     onChange={(e) => searchOrders(e.target.value)}
-                    className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                    className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
                   />
                   {searchingOrders && <div className="absolute right-3 top-2.5"><Spinner /></div>}
                   {orderResults.length > 0 && (
@@ -1001,10 +1009,10 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setReportType(null)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
                     reportType === null
-                      ? 'bg-[#0e393d] text-white'
-                      : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
+                      ? 'bg-[#0e393d] text-white shadow-sm'
+                      : 'bg-[#0e393d]/5 text-[#0e393d]/60 hover:bg-[#0e393d]/10'
                   }`}
                 >
                   All
@@ -1019,10 +1027,10 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                         setReportType(source);
                       }
                     }}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
                       reportType === source
-                        ? 'bg-[#0e393d] text-white'
-                        : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
+                        ? 'bg-[#0e393d] text-white shadow-sm'
+                        : 'bg-[#0e393d]/5 text-[#0e393d]/60 hover:bg-[#0e393d]/10'
                     }`}
                   >
                     {SOURCE_ICON[source] ?? '🔬'} {SOURCE_LABEL[source] ?? source}
@@ -1044,7 +1052,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
               <select
                 value={selectedLabId ?? ''}
                 onChange={(e) => setSelectedLabId(e.target.value || null)}
-                className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
+                className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
               >
                 <option value="">Choose a lab…</option>
                 {(() => {
@@ -1092,12 +1100,10 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                   onDragLeave={() => setDragging(false)}
                   onDrop={(e) => { e.preventDefault(); setDragging(false); if (!uploadReady) return; const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
                   onClick={() => { if (uploadReady) fileInputRef.current?.click(); }}
-                  className={`rounded-xl border-2 border-dashed p-12 text-center transition ${
+                  className={`rounded-xl border-2 border-dashed border-[#0e393d]/15 bg-[#0e393d]/[0.02] hover:border-[#0e393d]/30 transition p-8 text-center ${
                     !uploadReady
-                      ? 'border-[#0e393d]/10 bg-[#0e393d]/2 opacity-50 cursor-not-allowed'
-                      : dragging
-                      ? 'cursor-pointer border-[#0e393d] bg-[#0e393d]/5'
-                      : 'cursor-pointer border-[#0e393d]/20 hover:border-[#0e393d]/40 hover:bg-[#0e393d]/3'
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'cursor-pointer'
                   }`}
                 >
                   <input
@@ -1142,7 +1148,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                     {!uploading && (
                       <button
                         onClick={handleUploadAndExtract}
-                        className="w-full rounded-xl bg-[#0e393d] text-white py-3 font-medium text-sm hover:bg-[#0e393d]/85 transition"
+                        className="w-full px-4 py-2 rounded-lg text-sm font-medium bg-[#0e393d] text-white hover:bg-[#0e393d]/90 transition shadow-sm"
                       >
                         Upload & Extract with AI
                       </button>
@@ -1156,10 +1162,10 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
           {/* ── Upload history ──────────────────────────────────────────────── */}
           <div>
             <SectionHeading>Recent Uploads</SectionHeading>
-            <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-x-auto">
+            <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-x-auto shadow-sm">
               <table className="w-full text-sm min-w-[740px]">
                 <thead>
-                  <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
+                  <tr className="border-b border-[#0e393d]/5 bg-[#0e393d]/[0.03]">
                     {([
                       { key: 'file_name',         label: 'File' },
                       { key: null,                label: 'Assigned User' },
@@ -1172,20 +1178,20 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                       <th
                         key={label}
                         onClick={key ? () => handleUploadSort(key) : undefined}
-                        className={`px-4 py-3 text-left text-xs font-medium text-[#0e393d]/60 uppercase tracking-wider${key ? ' cursor-pointer select-none hover:text-[#0e393d]' : ''}`}
+                        className={`px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/50${key ? ' cursor-pointer select-none hover:text-[#0e393d]' : ''}`}
                       >
                         {label}{key ? <>{' '}{uploadSortCol === key && uploadSortDir === 'asc' ? '▲' : uploadSortCol === key && uploadSortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}</> : null}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#0e393d]/6">
+                <tbody className="divide-y divide-[#0e393d]/5">
                   {loadingUploads ? (
                     <tr><td colSpan={7} className="px-4 py-8 text-center"><div className="inline-flex justify-center"><Spinner /></div></td></tr>
                   ) : uploads.length === 0 ? (
                     <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-[#1c2a2b]/40">No uploads yet.</td></tr>
                   ) : sortedUploads.map((u) => (
-                    <tr key={u.id} className="hover:bg-[#fafaf8] transition-colors">
+                    <tr key={u.id} className="hover:bg-[#fafaf8]">
                       <td className="px-4 py-3 text-xs font-mono text-[#1c2a2b]">{u.file_name}</td>
                       <td className="px-4 py-3 text-xs text-[#1c2a2b]/70">
                         {u.patient
@@ -1278,7 +1284,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
             const lab = labs.find((l) => l.id === selectedLabId);
             if (!lab) return null;
             return (
-              <div className="rounded-lg border border-[#0e393d]/10 bg-[#fafaf8] px-4 py-3">
+              <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm px-4 py-3">
                 <div className="flex items-center gap-2 mb-1">
                   {lab.lab_code && (
                     <span className="font-mono text-[11px] text-[#1c2a2b]/50 bg-[#0e393d]/5 px-1.5 py-0.5 rounded">{lab.lab_code}</span>
@@ -1295,8 +1301,8 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
           })()}
 
           {/* Lab report metadata */}
-          <div className="rounded-xl border border-[#0e393d]/10 bg-white p-4">
-            <p className="text-xs font-medium text-[#0e393d]/70 uppercase tracking-wider mb-3">Lab Report Details</p>
+          <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/50 mb-2">Lab Report Details</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2 sm:col-span-1">
                 <label className="block text-xs text-[#1c2a2b]/50 mb-1">Report Title <span className="text-red-400">*</span></label>
@@ -1305,7 +1311,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                   value={labMetadata.title}
                   onChange={(e) => setLabMetadata((m) => ({ ...m, title: e.target.value }))}
                   placeholder="e.g. Blood Panel – Synlab Jan 2025"
-                  className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                  className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
                 />
               </div>
               <div>
@@ -1314,7 +1320,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                   type="date"
                   value={labMetadata.test_date}
                   onChange={(e) => setLabMetadata((m) => ({ ...m, test_date: e.target.value }))}
-                  className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                  className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
                 />
               </div>
               <div>
@@ -1324,7 +1330,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                   value={labMetadata.lab_address}
                   onChange={(e) => setLabMetadata((m) => ({ ...m, lab_address: e.target.value }))}
                   placeholder="Optional"
-                  className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                  className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
                 />
               </div>
               <div>
@@ -1334,7 +1340,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                   value={labMetadata.lab_email}
                   onChange={(e) => setLabMetadata((m) => ({ ...m, lab_email: e.target.value }))}
                   placeholder="Optional"
-                  className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                  className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
                 />
               </div>
               <div>
@@ -1344,7 +1350,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                   value={labMetadata.lab_phone}
                   onChange={(e) => setLabMetadata((m) => ({ ...m, lab_phone: e.target.value }))}
                   placeholder="Optional"
-                  className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                  className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
                 />
               </div>
             </div>
@@ -1373,25 +1379,25 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
               return name[reportLang] || name.en || name.de || Object.values(name)[0] || '—';
             };
             return (
-          <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-x-auto">
+          <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-x-auto shadow-sm">
               <div className="px-3 pt-2 pb-0 text-[11px] text-[#1c2a2b]/40">
                 Detected report language: <span className="font-medium text-[#0e393d]/60 uppercase">{reportLang}</span>
               </div>
               <table className="w-full text-xs min-w-[1060px]">
                 <thead>
-                  <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
-                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Include</th>
-                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Extracted Name</th>
-                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Matched Biomarker</th>
-                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Ref Range</th>
-                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Confidence</th>
-                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Value</th>
-                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Unit / Conversion</th>
-                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Type</th>
-                    <th className="px-3 py-2.5 text-left font-medium text-[#0e393d]/60 uppercase tracking-wider">Flag</th>
+                  <tr className="border-b border-[#0e393d]/5 bg-[#0e393d]/[0.03]">
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider">Include</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider">Extracted Name</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider">Matched Biomarker</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider">Ref Range</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider">Confidence</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider">Value</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider">Unit / Conversion</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider">Type</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-[#0e393d]/50 uppercase tracking-wider">Flag</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#0e393d]/6">
+                <tbody className="divide-y divide-[#0e393d]/5">
                   {extracted.map((row, idx) => {
                     const { low: refLow, high: refHigh, useDbOptimal } = effectiveRefRange(row);
                     const refUnit = row.was_converted
@@ -1412,7 +1418,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                     return (
                       <tr
                         key={idx}
-                        className={`${row.include ? '' : 'opacity-40'} ${implausible ? 'bg-red-50/60' : 'hover:bg-[#fafaf8]'} transition-colors`}
+                        className={`${row.include ? '' : 'opacity-40'} ${implausible ? 'bg-red-50/60' : 'hover:bg-[#fafaf8]'}`}
                       >
                         <td className="px-3 py-2.5 text-center">
                           <input type="checkbox" checked={row.include} onChange={() => toggleRow(idx)}
@@ -1533,8 +1539,8 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
 
           {/* ── Add marker manually (Feature 3) ──────────────────────── */}
           {addingManualRow ? (
-            <div className="rounded-xl border border-[#0e393d]/15 bg-[#fafaf8] p-4 space-y-3">
-              <p className="text-xs font-medium text-[#0e393d]/70 uppercase tracking-wider">Add Marker</p>
+            <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm p-4 space-y-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/50">Add Marker</p>
               <div className="flex gap-3 flex-wrap items-end">
                 {/* Biomarker search */}
                 <div className="flex-1 min-w-[200px] relative">
@@ -1546,7 +1552,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                     onChange={(e) => { setManualBm(null); setManualBmSearch(e.target.value); setManualBmDropdownOpen(true); }}
                     onFocus={() => setManualBmDropdownOpen(true)}
                     onBlur={() => setTimeout(() => setManualBmDropdownOpen(false), 150)}
-                    className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                    className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
                   />
                   {manualBmDropdownOpen && !manualBm && (
                     <div className="absolute top-full mt-0.5 left-0 w-72 bg-white border border-[#0e393d]/15 rounded-lg shadow-lg z-30 max-h-52 overflow-y-auto">
@@ -1575,7 +1581,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                     placeholder="0.00"
                     value={manualValue}
                     onChange={(e) => setManualValue(e.target.value)}
-                    className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                    className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
                   />
                 </div>
                 {/* Unit */}
@@ -1586,7 +1592,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                     placeholder="e.g. mg/dL"
                     value={manualUnit}
                     onChange={(e) => setManualUnit(e.target.value)}
-                    className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                    className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
                   />
                 </div>
                 {/* Actions */}
@@ -1594,13 +1600,13 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                   <button
                     onClick={handleAddManualRow}
                     disabled={!manualBm || !manualValue}
-                    className="rounded-lg bg-[#0e393d] text-white px-4 py-2 text-xs font-medium hover:bg-[#0e393d]/85 transition disabled:opacity-40"
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-[#0e393d] text-white hover:bg-[#0e393d]/90 transition shadow-sm disabled:opacity-40"
                   >
                     Add
                   </button>
                   <button
                     onClick={() => { setAddingManualRow(false); setManualBm(null); setManualValue(''); setManualUnit(''); setManualBmSearch(''); }}
-                    className="rounded-lg border border-[#0e393d]/15 text-[#1c2a2b]/60 px-4 py-2 text-xs font-medium hover:border-[#0e393d]/30 transition"
+                    className="px-4 py-2 rounded-lg text-sm font-medium border border-[#0e393d]/15 text-[#1c2a2b]/60 hover:border-[#0e393d]/30 transition"
                   >
                     Cancel
                   </button>
@@ -1620,20 +1626,21 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
             <button
               onClick={handleSaveExtracted}
               disabled={saving}
-              className="flex items-center gap-2 rounded-xl bg-[#0e393d] text-white px-6 py-2.5 font-medium text-sm hover:bg-[#0e393d]/85 transition disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[#0e393d] text-white hover:bg-[#0e393d]/90 transition shadow-sm disabled:opacity-50"
             >
               {saving && <Spinner size={3} />}
               {saving ? 'Saving…' : `Save ${extracted.filter((r) => r.include && r.matched_id).length} Selected Results`}
             </button>
             <button
               onClick={handleBackFromReview}
-              className="rounded-xl border border-[#0e393d]/15 text-[#1c2a2b]/60 px-6 py-2.5 font-medium text-sm hover:text-[#1c2a2b] hover:border-[#0e393d]/30 transition"
+              className="px-4 py-2 rounded-lg text-sm font-medium border border-[#0e393d]/15 text-[#1c2a2b]/60 hover:text-[#1c2a2b] hover:border-[#0e393d]/30 transition"
             >
               Cancel
             </button>
           </div>
         </div>
       ) : null}
+      </div>
     </div>
   );
 }

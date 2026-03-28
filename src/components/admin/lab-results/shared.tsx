@@ -103,7 +103,7 @@ export function FlagDot({ flag }: { flag: StatusFlag | string | null | undefined
 
 export function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84] mb-3">
+    <p className="text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/50 mb-2">
       {children}
     </p>
   );

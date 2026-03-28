@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Badge, FlagBadge, HE_DOMAIN_LABEL, Spinner, Toast, ToastContainer, fmtDate, locName, nextToastId } from './shared';
+import { FlagBadge, HE_DOMAIN_LABEL, Spinner, Toast, ToastContainer, fmtDate, locName, nextToastId } from './shared';
 import { displayReportId } from '@/lib/lab-results/report-number';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -41,7 +41,6 @@ type LabReport = {
   lab_phone: string | null;
   profiles: { id: string; first_name: string | null; last_name: string | null; email: string | null } | null;
   results_count: number;
-  // Loaded lazily when expanded
   lab_results?: LabResultSummary[];
 };
 
@@ -61,31 +60,35 @@ function sourceBadge(source: string, reportSource: string | null) {
     ? '🌿 Evida Life'
     : '📝 Self-Reported';
 
-  const cls = (source === 'admin_import' || reportSource === 'evida_life' || reportSource === 'partner_lab' || reportSource === 'external_upload')
-    ? 'bg-[#0C9C6C]/10 text-[#0C9C6C] ring-1 ring-[#0C9C6C]/20'
-    : 'bg-[#CEAB84]/15 text-[#7a5e20] ring-1 ring-[#CEAB84]/30';
+  const cls = reportSource === 'evida_life' || source === 'admin_import'
+    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20'
+    : reportSource === 'partner_lab'
+    ? 'bg-[#ceab84]/10 text-[#8a6a3e] ring-1 ring-[#ceab84]/25'
+    : reportSource === 'external_upload'
+    ? 'bg-sky-50 text-sky-700 ring-1 ring-sky-600/20'
+    : 'bg-gray-100 text-gray-600 ring-1 ring-gray-300/40';
 
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${cls}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${cls}`}>
       {label}
     </span>
   );
 }
 
 function reportStatusBadge(status: string | null) {
-  if (!status || status === 'confirmed') return null;
   const map: Record<string, { label: string; cls: string }> = {
-    awaiting_sample:  { label: '⏳ Awaiting sample',  cls: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20' },
-    sample_collected: { label: '🧪 Sample collected', cls: 'bg-sky-50 text-sky-700 ring-1 ring-sky-600/20' },
-    processing:       { label: '🔬 Processing',       cls: 'bg-sky-50 text-sky-700 ring-1 ring-sky-600/20' },
-    results_received: { label: '📨 Results received', cls: 'bg-violet-50 text-violet-700 ring-1 ring-violet-600/20' },
-    ai_extracted:     { label: '🤖 AI Extracted',     cls: 'bg-violet-50 text-violet-700 ring-1 ring-violet-600/20' },
-    review_pending:   { label: '⏳ Review Pending',   cls: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20' },
-    archived:         { label: '📦 Archived',          cls: 'bg-gray-100 text-gray-500 ring-1 ring-gray-300/50' },
+    awaiting_sample:  { label: '⏳ Awaiting',     cls: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20' },
+    sample_collected: { label: '🧪 Collected',    cls: 'bg-sky-50 text-sky-700 ring-1 ring-sky-600/20' },
+    processing:       { label: '🔬 Processing',   cls: 'bg-sky-50 text-sky-700 ring-1 ring-sky-600/20' },
+    results_received: { label: '📨 Received',     cls: 'bg-violet-50 text-violet-700 ring-1 ring-violet-600/20' },
+    ai_extracted:     { label: '🤖 AI Extracted', cls: 'bg-violet-50 text-violet-700 ring-1 ring-violet-600/20' },
+    review_pending:   { label: '⏳ Pending',      cls: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20' },
+    confirmed:        { label: '✅ Confirmed',    cls: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20' },
+    archived:         { label: '📦 Archived',     cls: 'bg-gray-100 text-gray-500 ring-1 ring-gray-300/50' },
   };
-  const { label, cls } = map[status] ?? { label: status, cls: 'bg-gray-100 text-gray-500 ring-1 ring-gray-300/50' };
+  const { label, cls } = map[status ?? ''] ?? { label: status ?? '—', cls: 'bg-gray-100 text-gray-500 ring-1 ring-gray-300/50' };
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${cls}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${cls}`}>
       {label}
     </span>
   );
@@ -112,8 +115,8 @@ function ReportResults({ results }: { results: LabResultSummary[] }) {
     <div className="divide-y divide-[#0e393d]/6">
       {presentDomains.map((domain) => (
         <div key={domain}>
-          <div className="px-5 py-1.5 bg-[#0e393d]/3">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#ceab84]/80">
+          <div className="px-5 py-1.5 bg-[#0e393d]/[0.03]">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#ceab84]">
               {HE_DOMAIN_LABEL[domain] ?? domain}
             </span>
           </div>
@@ -122,19 +125,19 @@ function ReportResults({ results }: { results: LabResultSummary[] }) {
               const def = r.biomarkers;
               const name = locName(def?.name) || '—';
               return (
-                <div key={r.id} className="px-5 py-2.5 flex items-center gap-3">
+                <div key={r.id} className="px-5 py-2 flex items-center gap-3 hover:bg-[#fafaf8] transition-colors">
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium text-[#1c2a2b]">{name}</span>
+                    <span className="text-[13px] font-medium text-[#1c2a2b]">{name}</span>
                     {(def?.ref_range_low != null || def?.ref_range_high != null) && (
-                      <span className="ml-2 text-[11px] text-[#1c2a2b]/35">
-                        Ref: {def?.ref_range_low ?? '—'}–{def?.ref_range_high ?? '—'} {def?.unit}
+                      <span className="ml-2 text-[10px] text-[#1c2a2b]/30 font-mono">
+                        {def?.ref_range_low ?? '—'}–{def?.ref_range_high ?? '—'} {def?.unit}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="tabular-nums text-sm font-semibold text-[#0e393d]">
+                    <span className="tabular-nums text-[13px] font-semibold text-[#0e393d]">
                       {r.value_numeric}{' '}
-                      <span className="font-normal text-[#1c2a2b]/50 text-xs">{r.unit || def?.unit || ''}</span>
+                      <span className="font-normal text-[#1c2a2b]/40 text-[11px]">{r.unit || def?.unit || ''}</span>
                     </span>
                     <FlagBadge flag={r.status_flag} />
                   </div>
@@ -190,23 +193,19 @@ export default function AllResultsTab() {
       `)
       .order('created_at', { ascending: false });
 
-    // Apply source filter
     if (sourceFilter === 'archived') {
       query = query.not('archived_at', 'is', null);
     } else {
       query = query.is('archived_at', null).is('deleted_at', null);
       if (sourceFilter === 'evida_life') {
-        // New reports: report_source = 'evida_life'; legacy: source = 'admin_import' with no report_source
         query = query.or("report_source.eq.evida_life,and(report_source.is.null,source.eq.admin_import)");
       } else if (sourceFilter === 'partner_lab') {
         query = query.eq('report_source', 'partner_lab');
       } else if (sourceFilter === 'external') {
-        // New external + legacy self-reported
         query = query.or("report_source.eq.external_upload,and(report_source.is.null,source.in.(pdf_upload,manual_entry))");
       }
     }
 
-    // Apply status filter
     if (sourceFilter !== 'archived') {
       if (statusFilter === 'pending') {
         query = query.in('status', ['ai_extracted', 'review_pending']);
@@ -224,7 +223,6 @@ export default function AllResultsTab() {
       results_count: Array.isArray(r.lab_results) ? (r.lab_results[0]?.count ?? 0) : 0,
     }));
 
-    // Client-side search
     if (search.trim()) {
       const q = search.toLowerCase();
       rows = rows.filter((r) => {
@@ -242,7 +240,6 @@ export default function AllResultsTab() {
 
     setReports(rows);
 
-    // Count orphan results
     const { count } = await supabase
       .from('lab_results')
       .select('id', { count: 'exact', head: true })
@@ -277,7 +274,7 @@ export default function AllResultsTab() {
   const toggleExpand = async (reportId: string) => {
     if (expandedId === reportId) { setExpandedId(null); return; }
     setExpandedId(reportId);
-    if (expandedResults[reportId]) return; // already loaded
+    if (expandedResults[reportId]) return;
 
     setLoadingResults(reportId);
     const { data } = await supabase
@@ -294,7 +291,7 @@ export default function AllResultsTab() {
     setLoadingResults(null);
   };
 
-  // ── Archive ───────────────────────────────────────────────────────────────────
+  // ── Actions ─────────────────────────────────────────────────────────────────
 
   const handleArchive = async (report: LabReport) => {
     setActionLoading(report.id);
@@ -308,8 +305,6 @@ export default function AllResultsTab() {
     loadReports();
   };
 
-  // ── Reactivate ────────────────────────────────────────────────────────────────
-
   const handleReactivate = async (report: LabReport) => {
     setActionLoading(report.id);
     const { error } = await supabase
@@ -322,18 +317,12 @@ export default function AllResultsTab() {
     loadReports();
   };
 
-  // ── Permanent delete (archived only) ─────────────────────────────────────────
-
   const handlePermanentDelete = async (report: LabReport) => {
     const msg = `Permanently delete "${report.title}"${report.report_number ? ` (${report.report_number})` : ''}?\n\nThis will delete:\n• The report record\n• All ${report.results_count} lab results\n\nThis cannot be undone.`;
     if (!confirm(msg)) return;
 
     setActionLoading(report.id);
-
-    // Hard-delete results
     await supabase.from('lab_results').delete().eq('lab_report_id', report.id);
-
-    // Hard-delete report
     const { error } = await supabase.from('lab_reports').delete().eq('id', report.id);
     setActionLoading(null);
 
@@ -342,79 +331,116 @@ export default function AllResultsTab() {
     loadReports();
   };
 
+  // ── Computed stats ──────────────────────────────────────────────────────────
+
+  const totalReports = reports.length;
+  const confirmedCount = reports.filter(r => r.status === 'confirmed').length;
+  const pendingCount = reports.filter(r => r.status && ['ai_extracted', 'review_pending', 'awaiting_sample', 'sample_collected', 'processing', 'results_received'].includes(r.status)).length;
+  const totalResults = reports.reduce((sum, r) => sum + (r.results_count ?? 0), 0);
+
   // ─────────────────────────────────────────────────────────────────────────────
 
   const FILTER_PILLS: { id: SourceFilter; label: string }[] = [
     { id: 'all',        label: 'All' },
-    { id: 'evida_life', label: '🌿 Evida Life' },
-    { id: 'partner_lab',label: '🤝 Partner Lab' },
+    { id: 'evida_life', label: '🌿 Evida' },
+    { id: 'partner_lab',label: '🤝 Partner' },
     { id: 'external',   label: '📁 External' },
     { id: 'archived',   label: '📦 Archived' },
   ];
 
   const STATUS_PILLS: { id: StatusFilter; label: string }[] = [
-    { id: 'all',       label: 'All statuses' },
-    { id: 'pending',   label: '⏳ Pending Review' },
+    { id: 'all',       label: 'All' },
+    { id: 'pending',   label: '⏳ Pending' },
     { id: 'confirmed', label: '✅ Confirmed' },
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="p-8">
       <ToastContainer toasts={toasts} dismiss={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
 
-      {/* Search + dates */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <input
-          type="text"
-          placeholder="Search user, report number, lab name…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 w-64 transition"
-        />
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-[#1c2a2b]/40">From</label>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-            className="rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition" />
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-[#1c2a2b]/40">To</label>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-            className="rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition" />
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="font-serif text-2xl text-[#0e393d]">All Lab Reports</h1>
+          <p className="text-sm text-[#1c2a2b]/40 mt-1">Browse, search, and manage all lab reports and results</p>
         </div>
       </div>
 
-      {/* Source + status filter pills */}
-      <div className="space-y-2">
-        <div className="flex flex-wrap gap-2">
+      {/* ── Stat cards ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="rounded-xl bg-gradient-to-br from-[#0e393d] to-[#154347] p-4 text-white">
+          <div className="text-2xl font-bold">{totalReports}</div>
+          <div className="text-xs text-white/60 mt-0.5">Total Reports</div>
+          <div className="text-[10px] text-white/40 mt-1">{totalResults} biomarker results</div>
+        </div>
+        <div className="rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 p-4 text-white">
+          <div className="text-2xl font-bold">{pendingCount}</div>
+          <div className="text-xs text-white/70 mt-0.5">In Pipeline</div>
+          <div className="text-[10px] text-white/50 mt-1">awaiting / processing / review</div>
+        </div>
+        <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 text-white">
+          <div className="text-2xl font-bold">{confirmedCount}</div>
+          <div className="text-xs text-white/70 mt-0.5">Confirmed</div>
+          <div className="text-[10px] text-white/50 mt-1">published to users</div>
+        </div>
+        <div className={`rounded-xl p-4 ${orphanCount > 0 ? 'bg-gradient-to-br from-red-500 to-red-600 text-white' : 'bg-gradient-to-br from-[#ceab84] to-[#b8976e] text-white'}`}>
+          <div className="text-2xl font-bold">{orphanCount}</div>
+          <div className="text-xs text-white/70 mt-0.5">{orphanCount > 0 ? 'Orphan Results' : 'Data Quality'}</div>
+          <div className="text-[10px] text-white/50 mt-1">{orphanCount > 0 ? 'results without report' : 'no orphan results'}</div>
+        </div>
+      </div>
+
+      {/* ── Filters bar ── */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        {/* Search */}
+        <div className="relative flex-shrink-0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1c2a2b]/25 pointer-events-none">
+            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search reports..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="rounded-lg border border-[#0e393d]/12 bg-white pl-9 pr-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 w-56 transition"
+          />
+        </div>
+
+        {/* Divider */}
+        <div className="w-px h-6 bg-[#0e393d]/10" />
+
+        {/* Source pills */}
+        <div className="flex gap-1.5">
           {FILTER_PILLS.map(({ id, label }) => (
             <button
               key={id}
               onClick={() => setSourceFilter(id)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                 sourceFilter === id
-                  ? 'bg-[#0e393d] text-white'
-                  : 'bg-white text-[#1c2a2b]/60 ring-1 ring-[#0e393d]/15 hover:ring-[#0e393d]/30'
+                  ? 'bg-[#0e393d] text-white shadow-sm'
+                  : 'bg-[#0e393d]/5 text-[#0e393d]/60 hover:bg-[#0e393d]/10'
               }`}
             >
               {label}
             </button>
           ))}
-          {orphanCount > 0 && (
-            <span className="rounded-full px-3 py-1 text-xs text-[#1c2a2b]/40 ring-1 ring-[#0e393d]/10">
-              {orphanCount} orphan results
-            </span>
-          )}
         </div>
+
+        {/* Divider */}
+        <div className="w-px h-6 bg-[#0e393d]/10" />
+
+        {/* Status pills */}
         {sourceFilter !== 'archived' && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-1.5">
             {STATUS_PILLS.map(({ id, label }) => (
               <button
                 key={id}
                 onClick={() => setStatusFilter(id)}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                   statusFilter === id
-                    ? 'bg-[#ceab84]/80 text-white'
-                    : 'bg-white text-[#1c2a2b]/50 ring-1 ring-[#0e393d]/10 hover:ring-[#0e393d]/20'
+                    ? 'bg-[#ceab84] text-white shadow-sm'
+                    : 'bg-[#ceab84]/10 text-[#ceab84]/70 hover:bg-[#ceab84]/20'
                 }`}
               >
                 {label}
@@ -422,135 +448,179 @@ export default function AllResultsTab() {
             ))}
           </div>
         )}
+
+        {/* Divider */}
+        <div className="w-px h-6 bg-[#0e393d]/10" />
+
+        {/* Date range */}
+        <div className="flex items-center gap-2">
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+            className="rounded-lg border border-[#0e393d]/12 bg-white px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0e393d]/8 transition" />
+          <span className="text-[#1c2a2b]/30 text-xs">–</span>
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+            className="rounded-lg border border-[#0e393d]/12 bg-white px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0e393d]/8 transition" />
+        </div>
       </div>
 
-      {/* Sort bar */}
-      {!loading && reports.length > 0 && (
-        <div className="flex items-center gap-1 text-xs text-[#1c2a2b]/50">
-          <span className="mr-1">Sort:</span>
-          {([
-            { key: 'test_date',     label: 'Date' },
-            { key: 'title',         label: 'Title' },
-            { key: 'user',          label: 'User' },
-            { key: 'results_count', label: 'Results' },
-          ] as { key: typeof sortCol; label: string }[]).map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => handleSort(key)}
-              className={`px-2 py-1 rounded transition ${sortCol === key ? 'font-medium text-[#0e393d]' : 'hover:text-[#0e393d]/70'}`}
-            >
-              {label}{sortCol === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Report cards */}
-      {loading ? (
-        <div className="flex justify-center py-12"><Spinner size={5} /></div>
-      ) : reports.length === 0 ? (
-        <div className="rounded-xl border border-[#0e393d]/10 bg-white px-6 py-10 text-center text-sm text-[#1c2a2b]/40">
-          No reports match the current filters.
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {sortedReports.map((report) => {
-            const isExpanded = expandedId === report.id;
-            const isArchived = !!report.archived_at;
-            const isLoading = actionLoading === report.id;
-            const userName = [report.profiles?.first_name, report.profiles?.last_name].filter(Boolean).join(' ')
-              || report.profiles?.email || '—';
-
-            return (
-              <div key={report.id} className={`rounded-xl border overflow-hidden transition ${
-                isArchived ? 'border-gray-200 bg-gray-50/50' : 'border-[#0e393d]/10 bg-white'
-              }`}>
-                {/* Card header */}
-                <div className="px-5 py-4">
-                  <div className="flex items-start justify-between gap-4">
-                    {/* Left: title + meta */}
+      {/* ── Table ── */}
+      <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/[0.03]">
+              {([
+                { key: 'title' as const,         label: 'Report' },
+                { key: 'user' as const,          label: 'User' },
+                { key: 'test_date' as const,     label: 'Date' },
+                { key: 'results_count' as const, label: 'Results' },
+              ]).map(({ key, label }) => {
+                const active = sortCol === key;
+                return (
+                  <th key={key} className="px-4 py-3 text-left">
                     <button
-                      onClick={() => toggleExpand(report.id)}
-                      className="flex-1 min-w-0 text-left"
+                      onClick={() => handleSort(key)}
+                      className={`flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider transition hover:text-[#0e393d] ${active ? 'text-[#0e393d]' : 'text-[#0e393d]/50'}`}
                     >
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        {isArchived
-                          ? <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-gray-100 text-gray-500 ring-1 ring-gray-300/50">📦 Archived</span>
-                          : sourceBadge(report.source, report.report_source)
-                        }
-                        {!isArchived && reportStatusBadge(report.status)}
-                        <span className="font-semibold text-[#0e393d] text-sm">{report.title}</span>
-                        <span className="font-mono text-[11px] text-[#1c2a2b]/40">{displayReportId(report)}</span>
-                      </div>
-                      <p className="text-xs text-[#1c2a2b]/50">
-                        {report.lab_address ? `${report.lab_address} · ` : ''}
-                        {fmtDate(report.test_date)} · {userName} · {report.results_count} biomarkers
-                      </p>
+                      {label}
+                      <span className="text-[10px] leading-none">
+                        {active && sortDir === 'asc' ? '▲' : active && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}
+                      </span>
                     </button>
+                  </th>
+                );
+              })}
+              <th className="px-4 py-3 text-left">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/50">Source</span>
+              </th>
+              <th className="px-4 py-3 text-left">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/50">Status</span>
+              </th>
+              <th className="px-4 py-3 w-10" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#0e393d]/5">
+            {loading ? (
+              <tr><td colSpan={7} className="px-4 py-16 text-center">
+                <Spinner size={5} />
+              </td></tr>
+            ) : sortedReports.length === 0 ? (
+              <tr><td colSpan={7} className="px-4 py-16 text-center">
+                <div className="text-[#1c2a2b]/30 text-sm">No reports found</div>
+                <p className="text-xs text-[#1c2a2b]/20 mt-1">Try adjusting your search or filters</p>
+              </td></tr>
+            ) : sortedReports.map((report) => {
+              const isExpanded = expandedId === report.id;
+              const isArchived = !!report.archived_at;
+              const isLoading = actionLoading === report.id;
+              const userName = [report.profiles?.first_name, report.profiles?.last_name].filter(Boolean).join(' ') || '—';
+              const userEmail = report.profiles?.email;
 
-                    {/* Right: actions + chevron */}
-                    <div className="flex items-center gap-2 shrink-0">
+              return (
+                <tr key={report.id} className={`group transition-colors ${isArchived ? 'bg-gray-50/50' : 'hover:bg-[#fafaf8]'}`}>
+                  {/* Report */}
+                  <td className="px-4 py-3">
+                    <button onClick={() => toggleExpand(report.id)} className="text-left">
+                      <div className="font-medium text-[#0e393d] text-[13px]">{report.title}</div>
+                      {report.report_number && (
+                        <div className="font-mono text-[9px] text-[#0e393d]/35 mt-px">{displayReportId(report)}</div>
+                      )}
+                      {report.lab_address && (
+                        <div className="text-[10px] text-[#1c2a2b]/30 mt-px">📍 {report.lab_address}</div>
+                      )}
+                    </button>
+                  </td>
+                  {/* User */}
+                  <td className="px-4 py-3">
+                    <div className="text-[13px] text-[#1c2a2b]/80">{userName}</div>
+                    {userEmail && <div className="text-[10px] text-[#1c2a2b]/35 font-mono">{userEmail}</div>}
+                  </td>
+                  {/* Date */}
+                  <td className="px-4 py-3">
+                    <span className="text-[12px] text-[#1c2a2b]/60 tabular-nums">{fmtDate(report.test_date)}</span>
+                  </td>
+                  {/* Results count */}
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#0e393d]/6 text-xs font-semibold text-[#0e393d]/70 tabular-nums">
+                      {report.results_count}
+                    </span>
+                  </td>
+                  {/* Source */}
+                  <td className="px-4 py-3">
+                    {isArchived
+                      ? <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-500 ring-1 ring-gray-300/50">📦 Archived</span>
+                      : sourceBadge(report.source, report.report_source)}
+                  </td>
+                  {/* Status */}
+                  <td className="px-4 py-3">
+                    {reportStatusBadge(report.status)}
+                  </td>
+                  {/* Actions */}
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center gap-1 justify-end">
                       {isLoading ? (
-                        <Spinner size={4} />
+                        <Spinner size={3} />
                       ) : isArchived ? (
                         <>
-                          <button
-                            onClick={() => handleReactivate(report)}
-                            className="text-xs text-emerald-600 hover:text-emerald-700 font-medium transition"
-                          >
-                            Reactivate
+                          <button onClick={() => handleReactivate(report)} className="opacity-0 group-hover:opacity-100 text-[10px] text-emerald-600 hover:text-emerald-700 font-medium transition px-1.5 py-0.5 rounded hover:bg-emerald-50">
+                            Restore
                           </button>
-                          <button
-                            onClick={() => handlePermanentDelete(report)}
-                            className="text-xs text-red-500 hover:text-red-700 font-medium transition"
-                          >
-                            Delete permanently
+                          <button onClick={() => handlePermanentDelete(report)} className="opacity-0 group-hover:opacity-100 text-[10px] text-red-500 hover:text-red-700 font-medium transition px-1.5 py-0.5 rounded hover:bg-red-50">
+                            Delete
                           </button>
                         </>
                       ) : (
-                        <button
-                          onClick={() => handleArchive(report)}
-                          className="text-xs text-[#1c2a2b]/40 hover:text-[#1c2a2b]/70 font-medium transition"
-                        >
+                        <button onClick={() => handleArchive(report)} className="opacity-0 group-hover:opacity-100 text-[10px] text-[#1c2a2b]/40 hover:text-[#1c2a2b]/70 font-medium transition px-1.5 py-0.5 rounded hover:bg-[#0e393d]/5">
                           Archive
                         </button>
                       )}
-                      <button onClick={() => toggleExpand(report.id)}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
+                      <button onClick={() => toggleExpand(report.id)} className="p-1 rounded-lg hover:bg-[#0e393d]/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                           className={`text-[#1c2a2b]/30 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
                           <polyline points="6 9 12 15 18 9" />
                         </svg>
                       </button>
                     </div>
-                  </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {/* Expanded results panel — rendered outside the table row for proper layout */}
+        {expandedId && (
+          <div className="border-t border-[#0e393d]/8">
+            {loadingResults === expandedId ? (
+              <div className="flex justify-center py-6"><Spinner size={4} /></div>
+            ) : (expandedResults[expandedId]?.length ?? 0) > 0 ? (
+              <ReportResults results={expandedResults[expandedId]!} />
+            ) : (
+              <p className="px-5 py-4 text-sm text-[#1c2a2b]/40 text-center">No results in this report.</p>
+            )}
+            {(() => {
+              const report = reports.find(r => r.id === expandedId);
+              if (!report || (!report.lab_address && !report.lab_email && !report.lab_phone)) return null;
+              return (
+                <div className="border-t border-[#0e393d]/6 px-5 py-3 flex flex-wrap gap-4 text-xs text-[#1c2a2b]/45">
+                  {report.lab_address && <span>📍 {report.lab_address}</span>}
+                  {report.lab_email   && <span>✉️ {report.lab_email}</span>}
+                  {report.lab_phone   && <span>📞 {report.lab_phone}</span>}
                 </div>
+              );
+            })()}
+          </div>
+        )}
+      </div>
 
-                {/* Expanded results */}
-                {isExpanded && (
-                  <div className="border-t border-[#0e393d]/8">
-                    {loadingResults === report.id ? (
-                      <div className="flex justify-center py-6"><Spinner size={4} /></div>
-                    ) : (expandedResults[report.id]?.length ?? 0) > 0 ? (
-                      <ReportResults results={expandedResults[report.id]!} />
-                    ) : (
-                      <p className="px-5 py-4 text-sm text-[#1c2a2b]/40 text-center">No results in this report.</p>
-                    )}
-
-                    {/* Lab contact info */}
-                    {(report.lab_address || report.lab_email || report.lab_phone) && (
-                      <div className="border-t border-[#0e393d]/6 px-5 py-3 flex flex-wrap gap-4 text-xs text-[#1c2a2b]/50">
-                        {report.lab_address && <span>📍 {report.lab_address}</span>}
-                        {report.lab_email   && <span>✉️ {report.lab_email}</span>}
-                        {report.lab_phone   && <span>📞 {report.lab_phone}</span>}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* ── Table footer ── */}
+      <div className="flex items-center justify-between mt-3 text-xs text-[#1c2a2b]/40 px-1">
+        <span>Showing {sortedReports.length} of {totalReports} reports</span>
+        {(search || sourceFilter !== 'all' || statusFilter !== 'all' || dateFrom || dateTo) && (
+          <button onClick={() => { setSearch(''); setSourceFilter('all'); setStatusFilter('all'); setDateFrom(''); setDateTo(''); }}
+            className="text-[#0e393d]/60 hover:text-[#0e393d] underline underline-offset-2 transition">
+            Clear all filters
+          </button>
+        )}
+      </div>
     </div>
   );
 }

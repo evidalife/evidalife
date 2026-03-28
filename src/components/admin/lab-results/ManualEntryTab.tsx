@@ -307,7 +307,7 @@ export default function ManualEntryTab() {
             }
           }
         }}
-        className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
+        className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
       >
         <option value="">Choose a lab…</option>
         {filtered.filter((l) => !l.parent_lab_id).flatMap((org) => {
@@ -448,12 +448,20 @@ export default function ManualEntryTab() {
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <ToastContainer toasts={toasts} dismiss={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
+    <div className="p-8">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="font-serif text-2xl text-[#0e393d]">Manual Entry</h1>
+          <p className="text-sm text-[#1c2a2b]/40 mt-1">Manually enter biomarker results for any user</p>
+        </div>
+      </div>
 
-      {/* ── Section 1: Source ────────────────────────────────────────────── */}
-      <div>
-        <SectionHeading>Source</SectionHeading>
+      <div className="space-y-6 max-w-4xl">
+        <ToastContainer toasts={toasts} dismiss={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
+
+        {/* ── Section 1: Source ────────────────────────────────────────────── */}
+        <div>
+          <SectionHeading>Source</SectionHeading>
         <div className="flex gap-2">
           {LAB_SOURCE_OPTIONS.map(({ value, label }) => (
             <button
@@ -466,8 +474,8 @@ export default function ManualEntryTab() {
               }}
               className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                 labSource === value
-                  ? 'bg-[#0e393d] text-white'
-                  : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
+                  ? 'bg-[#0e393d] text-white shadow-sm'
+                  : 'bg-[#0e393d]/5 text-[#0e393d]/60 hover:bg-[#0e393d]/10'
               }`}
             >
               {label}
@@ -507,7 +515,7 @@ export default function ManualEntryTab() {
                 placeholder="Search by order number or patient name / email…"
                 value={orderSearch}
                 onChange={(e) => searchOrders(e.target.value)}
-                className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
               />
               {searchingOrders && <div className="absolute right-3 top-2.5"><Spinner /></div>}
               {orderOptions.length > 0 && (
@@ -570,7 +578,7 @@ export default function ManualEntryTab() {
                 placeholder="Search by email or name…"
                 value={userSearch}
                 onChange={(e) => searchUsers(e.target.value)}
-                className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
+                className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
               />
               {searchingUsers && <div className="absolute right-3 top-2.5"><Spinner /></div>}
               {userOptions.length > 0 && (
@@ -604,8 +612,8 @@ export default function ManualEntryTab() {
             onClick={() => { setCategoryFilter(null); setRows([newRow()]); }}
             className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
               categoryFilter === null
-                ? 'bg-[#0e393d] text-white'
-                : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
+                ? 'bg-[#0e393d] text-white shadow-sm'
+                : 'bg-[#0e393d]/5 text-[#0e393d]/60 hover:bg-[#0e393d]/10'
             }`}
           >
             All
@@ -616,8 +624,8 @@ export default function ManualEntryTab() {
               onClick={() => { setCategoryFilter(categoryFilter === value ? null : value); setRows([newRow()]); }}
               className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                 categoryFilter === value
-                  ? 'bg-[#0e393d] text-white'
-                  : 'bg-white ring-1 ring-[#0e393d]/15 text-[#1c2a2b]/60 hover:ring-[#0e393d]/30'
+                  ? 'bg-[#0e393d] text-white shadow-sm'
+                  : 'bg-[#0e393d]/5 text-[#0e393d]/60 hover:bg-[#0e393d]/10'
               }`}
             >
               {icon} {label}
@@ -634,55 +642,59 @@ export default function ManualEntryTab() {
 
       {/* ── 1d. External: Lab contact fields ─────────────────────────────── */}
       {labSource === 'external_upload' && (
-        <div className="rounded-xl border border-[#0e393d]/10 bg-white p-4">
-          <p className="text-xs font-medium text-[#0e393d]/70 uppercase tracking-wider mb-3">Lab Details (Optional)</p>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs text-[#1c2a2b]/50 mb-1">Lab Address</label>
-              <input
-                type="text" value={extLabAddress} onChange={(e) => setExtLabAddress(e.target.value)}
-                placeholder="Optional"
-                className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-[#1c2a2b]/50 mb-1">Lab Email</label>
-              <input
-                type="email" value={extLabEmail} onChange={(e) => setExtLabEmail(e.target.value)}
-                placeholder="Optional"
-                className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-[#1c2a2b]/50 mb-1">Lab Phone</label>
-              <input
-                type="tel" value={extLabPhone} onChange={(e) => setExtLabPhone(e.target.value)}
-                placeholder="Optional"
-                className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
-              />
+        <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/50 mb-3">Lab Details (Optional)</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs text-[#1c2a2b]/50 mb-1">Lab Address</label>
+                <input
+                  type="text" value={extLabAddress} onChange={(e) => setExtLabAddress(e.target.value)}
+                  placeholder="Optional"
+                  className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-[#1c2a2b]/50 mb-1">Lab Email</label>
+                <input
+                  type="email" value={extLabEmail} onChange={(e) => setExtLabEmail(e.target.value)}
+                  placeholder="Optional"
+                  className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-[#1c2a2b]/50 mb-1">Lab Phone</label>
+                <input
+                  type="tel" value={extLabPhone} onChange={(e) => setExtLabPhone(e.target.value)}
+                  placeholder="Optional"
+                  className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
+                />
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {/* ── Section 2: Report Details ─────────────────────────────────────── */}
-      <div className="rounded-xl border border-[#0e393d]/10 bg-white p-4">
-        <p className="text-xs font-medium text-[#0e393d]/70 uppercase tracking-wider mb-3">Report Details</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2 sm:col-span-1">
-            <label className="block text-xs text-[#1c2a2b]/50 mb-1">Report Title <span className="text-red-400">*</span></label>
-            <input
-              type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Blood Panel — Synlab Jan 2025"
-              className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-[#1c2a2b]/50 mb-1">Test Date <span className="text-red-400">*</span></label>
-            <input
-              type="date" value={testDate} onChange={(e) => setTestDate(e.target.value)}
-              className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
-            />
+      <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm">
+        <div className="p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/50 mb-3">Report Details</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs text-[#1c2a2b]/50 mb-1">Report Title <span className="text-red-400">*</span></label>
+              <input
+                type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Blood Panel — Synlab Jan 2025"
+                className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-[#1c2a2b]/50 mb-1">Test Date <span className="text-red-400">*</span></label>
+              <input
+                type="date" value={testDate} onChange={(e) => setTestDate(e.target.value)}
+                className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -690,7 +702,7 @@ export default function ManualEntryTab() {
       {/* ── Section 4: Marker Rows Table ─────────────────────────────────── */}
       <div>
         <SectionHeading>Markers</SectionHeading>
-        <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-visible">
+        <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm">
           <table className="w-full text-xs min-w-[900px]">
             <thead>
               <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/3">
@@ -727,7 +739,7 @@ export default function ManualEntryTab() {
                         onChange={(e) => updateRow(row.id, { bm: null, search: e.target.value, dropdownOpen: true })}
                         onFocus={() => updateRow(row.id, { dropdownOpen: true })}
                         onBlur={() => setTimeout(() => updateRow(row.id, { dropdownOpen: false }), 150)}
-                        className="w-full rounded border border-[#0e393d]/15 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20 min-w-[200px]"
+                        className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-2 py-1.5 text-xs placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition min-w-[200px]"
                       />
                       {row.dropdownOpen && !row.bm && (
                         <div className="absolute top-full left-0 mt-0.5 w-80 bg-white border border-[#0e393d]/15 rounded-lg shadow-lg z-30 max-h-52 overflow-y-auto">
@@ -768,7 +780,7 @@ export default function ManualEntryTab() {
                         placeholder="0.00"
                         value={row.rawValue}
                         onChange={(e) => updateRow(row.id, { rawValue: e.target.value })}
-                        className="w-full rounded border border-[#0e393d]/15 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
+                        className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-2 py-1.5 text-xs placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
                       />
                     </td>
 
@@ -782,7 +794,7 @@ export default function ManualEntryTab() {
                           <select
                             value={row.unit}
                             onChange={(e) => updateRow(row.id, { unit: e.target.value })}
-                            className="w-full rounded border border-[#0e393d]/15 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#0e393d]/20"
+                            className="w-full rounded-lg border border-[#0e393d]/12 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition"
                           >
                             {options.map((u) => (
                               <option key={u} value={u}>{u}</option>
@@ -892,17 +904,18 @@ export default function ManualEntryTab() {
         <button
           onClick={handleSave}
           disabled={saving || !saveReady || (plausWarnings.length > 0 && !plausConfirmed)}
-          className="flex items-center gap-2 rounded-xl bg-[#0e393d] text-white px-6 py-2.5 font-medium text-sm hover:bg-[#0e393d]/85 transition disabled:opacity-40"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[#0e393d] text-white hover:bg-[#0e393d]/90 transition shadow-sm disabled:opacity-40"
         >
           {saving && <Spinner size={3} />}
           {saving ? 'Saving…' : `Save Report (${validRows.length} marker${validRows.length !== 1 ? 's' : ''})`}
         </button>
         <button
           onClick={clearForm}
-          className="rounded-xl border border-[#0e393d]/15 text-[#1c2a2b]/60 px-6 py-2.5 font-medium text-sm hover:text-[#1c2a2b] hover:border-[#0e393d]/30 transition"
+          className="px-4 py-2 rounded-lg text-sm font-medium border border-[#0e393d]/12 bg-white text-[#0e393d] hover:bg-[#0e393d]/5 transition"
         >
           Clear
         </button>
+      </div>
       </div>
     </div>
   );
