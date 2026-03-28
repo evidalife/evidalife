@@ -855,7 +855,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                     const td = d.sc[2] - d.sc[0];
                     const st: MStatus = d.sc[2] >= 80 ? 'opt' : d.sc[2] >= 60 ? 'norm' : 'warn';
                     const isOpen = openDomains.has(di);
-                    const topBorder = cl;
+                    const topBorder = st === 'opt' ? '#0C9C6C' : st === 'norm' ? '#c4a96a' : '#b45309';
                     return (
                       <div key={di}
                         className={`bg-white rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-md hover:-translate-y-px select-none border ${isOpen ? 'shadow-md border-[#0e393d]/40' : 'border-[#1c2a2b]/10'}`}
@@ -873,7 +873,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                             <span className="text-xs text-[#1c2a2b]/40">{d.m.length} {t.markersLabel} · {d.w}</span>
                           </div>
                           <div className="flex items-baseline gap-1 mb-1.5">
-                            <span className="font-serif text-[2rem] leading-none" style={{ color: cl }}>{s}</span>
+                            <span className="font-serif text-[2rem] leading-none" style={{ color: topBorder }}>{s}</span>
                             <span className="text-xs text-[#1c2a2b]/40">/100</span>
                             <span className={`ml-1 text-[10px] font-semibold px-[5px] py-[2px] rounded-full ${td > 0 ? 'bg-[rgba(12,156,108,.1)] text-[#0C9C6C]' : 'bg-[rgba(192,57,43,.08)] text-[#c0392b]'}`}>
                               {td > 0 ? '↑+' : '↓'}{Math.abs(td)}
@@ -887,7 +887,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                                   formatter={(v: unknown) => [`${v as number}/100`, d.nm[lang]]}
                                   contentStyle={{ fontSize: 11, border: '1px solid rgba(14,57,61,.1)', borderRadius: 8, padding: '4px 8px' }}
                                   labelStyle={{ color: 'rgba(28,42,43,.45)', fontSize: 10 }} />
-                                <Line type="monotone" dataKey="score" stroke={cl} strokeWidth={2} dot={{ r: 2.5, fill: cl, strokeWidth: 0 }} activeDot={{ r: 4, fill: cl }} />
+                                <Line type="monotone" dataKey="score" stroke={topBorder} strokeWidth={2} dot={{ r: 2.5, fill: topBorder, strokeWidth: 0 }} activeDot={{ r: 4, fill: topBorder }} />
                               </LineChart>
                             </ResponsiveContainer>
                           </div>
