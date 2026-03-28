@@ -438,12 +438,14 @@ function RangeBar({ v, r, o, dir }: { v: number; r: [number, number]; o: [number
   );
 }
 
-function StatusBadge({ s, t, color }: { s: MStatus; t: typeof T['en']; color?: string }) {
-  const badgeColor = color ?? (s === 'opt' ? '#0C9C6C' : s === 'norm' ? '#c4a96a' : '#b45309');
+function StatusBadge({ s, t }: { s: MStatus; t: typeof T['en'] }) {
+  const label = s === 'opt' ? t.optLabel : s === 'norm' ? t.normLabel : t.warnLabel;
+  const color = s === 'opt' ? '#0C9C6C' : s === 'norm' ? '#c4a96a' : '#b45309';
+  const bg = s === 'opt' ? 'rgba(12,156,108,.12)' : s === 'norm' ? 'rgba(196,169,106,.12)' : 'rgba(180,83,9,.12)';
   return (
-    <span className="text-[9px] font-semibold px-[7px] py-[2px] rounded-full"
-      style={{ color: badgeColor, background: `${badgeColor}18` }}>
-      {mLabel(s, t)}
+    <span className="text-[9px] font-semibold px-2 py-[2px] rounded-full whitespace-nowrap"
+      style={{ color, background: bg }}>
+      {label}
     </span>
   );
 }
@@ -864,7 +866,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
                         <div className="px-4 pt-4 pb-3">
                           <div className="flex items-center justify-between mb-0.5">
                             <span className="text-xs text-[#1c2a2b]/55 font-medium">{d.nm[lang]}</span>
-                            <StatusBadge s={st} t={t} color={cl} />
+                            <StatusBadge s={st} t={t} />
                           </div>
                           <div className="flex items-center gap-1.5 mb-2.5">
                             <span className="text-[14px] leading-none">{d.ic}</span>
