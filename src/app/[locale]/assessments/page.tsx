@@ -1,9 +1,14 @@
 import { getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
+import { createClient } from '@/lib/supabase/server';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 
-export const metadata = { title: 'Clinical Assessments – Evida Life' };
+export const dynamic = 'force-dynamic';
+
+export const metadata = {
+  title: 'Clinical Assessments – Evida Life',
+};
 
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 type Lang = (typeof VALID_LANGS)[number];
@@ -16,6 +21,7 @@ const T: Record<Lang, {
   learnMore: string;
   free: string;
   includedWith: string;
+  comingSoon: string;
   sections: {
     vitalcheck: {
       name: string;
@@ -54,6 +60,7 @@ const T: Record<Lang, {
     learnMore: 'Mehr erfahren →',
     free: 'Gratis',
     includedWith: 'Inklusive bei jedem Bluttest',
+    comingSoon: 'Demnächst verfügbar',
     sections: {
       vitalcheck: {
         name: 'Vitalcheck',
@@ -105,6 +112,7 @@ const T: Record<Lang, {
     learnMore: 'Learn more →',
     free: 'Free',
     includedWith: 'Included with every blood test',
+    comingSoon: 'Coming soon',
     sections: {
       vitalcheck: {
         name: 'Vitalcheck',
@@ -156,6 +164,7 @@ const T: Record<Lang, {
     learnMore: 'En savoir plus →',
     free: 'Gratuit',
     includedWith: 'Inclus avec tout bilan sanguin',
+    comingSoon: 'Bientôt disponible',
     sections: {
       vitalcheck: {
         name: 'Vitalcheck',
@@ -207,6 +216,7 @@ const T: Record<Lang, {
     learnMore: 'Saber más →',
     free: 'Gratis',
     includedWith: 'Incluido con cualquier análisis de sangre',
+    comingSoon: 'Próximamente',
     sections: {
       vitalcheck: {
         name: 'Vitalcheck',
@@ -258,6 +268,7 @@ const T: Record<Lang, {
     learnMore: 'Scopri di più →',
     free: 'Gratuito',
     includedWith: 'Incluso con ogni esame del sangue',
+    comingSoon: 'Prossimamente',
     sections: {
       vitalcheck: {
         name: 'Vitalcheck',
@@ -303,6 +314,22 @@ const T: Record<Lang, {
   },
 };
 
+interface Product {
+  id: string;
+  name: Record<string, string> | string;
+  price_chf: number | null;
+  is_active: boolean;
+  product_type: string;
+}
+
+interface ProductBiomarker {
+  biomarker_id: string;
+  biomarker: {
+    id: string;
+    name: Record<string, string> | string;
+  };
+}
+
 function SectionBadge({ text }: { text: string }) {
   return (
     <span className="inline-block text-[10px] font-semibold uppercase tracking-[0.14em] text-[#ceab84] bg-[#ceab84]/15 rounded-full px-3 py-1 mb-2">
@@ -311,11 +338,82 @@ function SectionBadge({ text }: { text: string }) {
   );
 }
 
+function ComingSoonBadge({ text }: { text: string }) {
+  return (
+    <span className="inline-block text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-600 bg-orange-100 rounded-full px-3 py-1">
+      {text}
+    </span>
+  );
+}
+
+function BiomarkerGrid({ biomarkers, lang }: { biomarkers: ProductBiomarker[], lang: Lang }) {
+  if (!biomarkers || biomarkers.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-xl bg-[#fafaf8] ring-1 ring-[#0e393d]/6 p-5">
+      <div className="space-y-2">
+        {biomarkers.map((pb) => {
+          const biomarker = pb.biomarker;
+          const nameObj = biomarker.name;
+          const displayName = (typeof nameObj === 'object' && nameObj !== null)
+            ? ((nameObj as Record<string, string>)[lang] || (nameObj as Record<string, string>)['en'] || (nameObj as Record<string, string>)['de'] || '')
+            : String(nameObj || '');
+
+          return (
+            <div key={biomarker.id} className="flex items-start gap-2">
+              <svg className="mt-0.5 shrink-0 text-emerald-500" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M2.5 7l3 3L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="text-sm text-[#1c2a2b]/70">{displayName}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default async function AssessmentsPage() {
   const locale = await getLocale();
   const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const t = T[lang];
   const s = t.sections;
+
+  const supabase = await createClient();
+
+  // Fetch clinical test products
+  const { data: products, error: productsError } = await supabase
+    .from('products')
+    .select('id, name, price_chf, is_active, product_type')
+    .eq('product_type', 'clinical_test')
+    .order('created_at', { ascending: true });
+
+  if (productsError) {
+    console.error('Error fetching products:', productsError);
+  }
+
+  // Fetch biomarkers for each product
+  const productBiomarkersMap: Record<string, ProductBiomarker[]> = {};
+
+  if (products && products.length > 0) {
+    for (const product of products) {
+      const { data: productBiomarkers, error: biomarkersError } = await supabase
+        .from('product_biomarkers')
+        .select(`
+          biomarker_id,
+          biomarker:biomarkers(id, name)
+        `)
+        .eq('product_id', product.id);
+
+      if (biomarkersError) {
+        console.error(`Error fetching biomarkers for product ${product.id}:`, biomarkersError);
+      } else if (productBiomarkers) {
+        productBiomarkersMap[product.id] = productBiomarkers as unknown as ProductBiomarker[];
+      }
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
@@ -330,7 +428,7 @@ export default async function AssessmentsPage() {
           <p className="mx-auto max-w-xl text-base text-[#1c2a2b]/60 leading-relaxed">{t.sub}</p>
         </div>
 
-        {/* ── 1. Vitalcheck ─────────────────────────────────────────────────── */}
+        {/* ── 1. Vitalcheck (Static) ─────────────────────────────────────────── */}
         <section className="mb-16 rounded-2xl bg-white ring-1 ring-[#0e393d]/8 overflow-hidden">
           <div className="bg-[#0e393d]/3 px-8 py-6 flex items-center justify-between gap-4">
             <div>
@@ -355,7 +453,60 @@ export default async function AssessmentsPage() {
           </div>
         </section>
 
-        {/* ── 2. VO₂max ─────────────────────────────────────────────────────── */}
+        {/* ── 2. Dynamic Products from Supabase ────────────────────────────── */}
+        {products && products.length > 0 ? (
+          products.map((product) => {
+            const biomarkers = productBiomarkersMap[product.id] || [];
+            const isActive = product.is_active;
+            const displayPrice = product.price_chf ? `CHF ${product.price_chf}` : t.free;
+
+            return (
+              <section key={product.id} className="mb-16 rounded-2xl bg-white ring-1 ring-[#0e393d]/8 overflow-hidden">
+                <div className={`px-8 py-6 flex items-center justify-between gap-4 ${isActive ? 'bg-[#0e393d]' : 'bg-gray-100'}`}>
+                  <div>
+                    <SectionBadge text={product.name} />
+                    <h2 className={`font-serif text-2xl ${isActive ? 'text-white' : 'text-[#0e393d]'}`}>
+                      {typeof product.name === 'object' && product.name !== null
+                        ? ((product.name as Record<string, string>)[lang] || (product.name as Record<string, string>)['en'] || '')
+                        : String(product.name || '')}
+                    </h2>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {!isActive && <ComingSoonBadge text={t.comingSoon} />}
+                    <p className={`font-serif text-2xl mt-2 ${isActive ? 'text-[#ceab84]' : 'text-[#0e393d]'}`}>
+                      {displayPrice}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="px-8 py-6 space-y-4">
+                  {isActive ? (
+                    <>
+                      <p className="text-sm text-[#1c2a2b]/60 leading-relaxed">
+                        Clinical assessment for detailed health insights.
+                      </p>
+                      {biomarkers.length > 0 && <BiomarkerGrid biomarkers={biomarkers} lang={lang} />}
+                      <div className="pt-2">
+                        <Link
+                          href="/shop"
+                          className="inline-block bg-[#0e393d] text-white text-sm font-medium px-6 py-3 rounded-full hover:bg-[#0e393d]/90 transition-colors"
+                        >
+                          {t.bookBtn}
+                        </Link>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-[#1c2a2b]/60 leading-relaxed italic">
+                      This assessment will be available soon.
+                    </p>
+                  )}
+                </div>
+              </section>
+            );
+          })
+        ) : null}
+
+        {/* ── 3. VO₂max (Static from T) ──────────────────────────────────────── */}
         <section className="mb-16 rounded-2xl bg-white ring-1 ring-[#0e393d]/8 overflow-hidden">
           <div className="bg-[#0e393d] px-8 py-6 flex items-center justify-between gap-4">
             <div>
@@ -396,7 +547,7 @@ export default async function AssessmentsPage() {
           </div>
         </section>
 
-        {/* ── 3. DEXA ───────────────────────────────────────────────────────── */}
+        {/* ── 4. DEXA (Static from T) ───────────────────────────────────────── */}
         <section className="mb-16 rounded-2xl bg-white ring-1 ring-[#0e393d]/8 overflow-hidden">
           <div className="bg-[#ceab84]/15 px-8 py-6 flex items-center justify-between gap-4">
             <div>

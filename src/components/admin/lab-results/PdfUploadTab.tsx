@@ -89,6 +89,21 @@ type UploadRecord = {
 
 type AllBiomarker = { id: string; name: any; unit: string | null; he_domain: string | null; item_type: string | null; ref_range_low: number | null; ref_range_high: number | null };
 
+// ─── Open PDF in new tab via signed URL ──────────────────────────────────────
+
+async function openPdfInNewTab(fileUrl: string, supabase: ReturnType<typeof createClient>) {
+  let storagePath = fileUrl;
+  if (storagePath.startsWith('http')) {
+    const match = storagePath.match(/lab-pdfs\/(.+?)(?:\?|$)/);
+    storagePath = match?.[1] ?? '';
+  }
+  if (!storagePath) return;
+  const { data } = await supabase.storage.from('lab-pdfs').createSignedUrl(storagePath, 3600);
+  if (data?.signedUrl) {
+    window.open(data.signedUrl, '_blank', 'noopener');
+  }
+}
+
 // ─── Lab source options ───────────────────────────────────────────────────────
 
 const LAB_SOURCE_OPTIONS: { value: LabSource; label: string }[] = [
@@ -1192,7 +1207,15 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                     <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-[#1c2a2b]/40">No uploads yet.</td></tr>
                   ) : sortedUploads.map((u) => (
                     <tr key={u.id} className="hover:bg-[#fafaf8]">
-                      <td className="px-4 py-3 text-xs font-mono text-[#1c2a2b]">{u.file_name}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => openPdfInNewTab(u.file_url, supabase)}
+                          className="text-xs font-mono text-[#0e393d] hover:text-[#ceab84] transition-colors underline decoration-[#0e393d]/20 hover:decoration-[#ceab84]/40 underline-offset-2 text-left"
+                          title="Open PDF in new tab"
+                        >
+                          📄 {u.file_name}
+                        </button>
+                      </td>
                       <td className="px-4 py-3 text-xs text-[#1c2a2b]/70">
                         {u.patient
                           ? [u.patient.first_name, u.patient.last_name].filter(Boolean).join(' ') || u.patient.email || '—'

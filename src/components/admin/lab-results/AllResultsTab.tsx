@@ -5,6 +5,21 @@ import { createClient } from '@/lib/supabase/client';
 import { FlagBadge, HE_DOMAIN_LABEL, Spinner, Toast, ToastContainer, fmtDate, locName, nextToastId } from './shared';
 import { displayReportId } from '@/lib/lab-results/report-number';
 
+// ─── Open PDF in new tab via signed URL ──────────────────────────────────────
+
+async function openPdfInNewTab(fileUrl: string, supabase: ReturnType<typeof createClient>) {
+  let storagePath = fileUrl;
+  if (storagePath.startsWith('http')) {
+    const match = storagePath.match(/lab-pdfs\/(.+?)(?:\?|$)/);
+    storagePath = match?.[1] ?? '';
+  }
+  if (!storagePath) return;
+  const { data } = await supabase.storage.from('lab-pdfs').createSignedUrl(storagePath, 3600);
+  if (data?.signedUrl) {
+    window.open(data.signedUrl, '_blank', 'noopener');
+  }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ReportSource = 'admin_import' | 'pdf_upload' | 'manual_entry';
@@ -42,6 +57,8 @@ type LabReport = {
   profiles: { id: string; first_name: string | null; last_name: string | null; email: string | null } | null;
   results_count: number;
   lab_results?: LabResultSummary[];
+  pdf_file_url: string | null;
+  pdf_file_name: string | null;
 };
 
 type SourceFilter = 'all' | 'evida_life' | 'partner_lab' | 'external' | 'archived';
@@ -189,7 +206,8 @@ export default function AllResultsTab() {
         id, title, test_date, source, status, report_source, report_number, archived_at, created_at,
         lab_address, lab_email, lab_phone,
         profiles:user_id (id, first_name, last_name, email),
-        lab_results(count)
+        lab_results(count),
+        lab_pdf_uploads(file_url, file_name)
       `)
       .order('created_at', { ascending: false });
 
@@ -217,11 +235,16 @@ export default function AllResultsTab() {
     const { data } = await query;
     const raw = (data ?? []) as any[];
 
-    let rows: LabReport[] = raw.map((r) => ({
-      ...r,
-      profiles: Array.isArray(r.profiles) ? r.profiles[0] ?? null : r.profiles,
-      results_count: Array.isArray(r.lab_results) ? (r.lab_results[0]?.count ?? 0) : 0,
-    }));
+    let rows: LabReport[] = raw.map((r) => {
+      const pdfUpload = Array.isArray(r.lab_pdf_uploads) ? r.lab_pdf_uploads[0] ?? null : r.lab_pdf_uploads;
+      return {
+        ...r,
+        profiles: Array.isArray(r.profiles) ? r.profiles[0] ?? null : r.profiles,
+        results_count: Array.isArray(r.lab_results) ? (r.lab_results[0]?.count ?? 0) : 0,
+        pdf_file_url: pdfUpload?.file_url ?? null,
+        pdf_file_name: pdfUpload?.file_name ?? null,
+      };
+    });
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -518,15 +541,31 @@ export default function AllResultsTab() {
                 <tr key={report.id} className={`group transition-colors ${isArchived ? 'bg-gray-50/50' : 'hover:bg-[#fafaf8]'}`}>
                   {/* Report */}
                   <td className="px-4 py-3">
-                    <button onClick={() => toggleExpand(report.id)} className="text-left">
-                      <div className="font-medium text-[#0e393d] text-[13px]">{report.title}</div>
-                      {report.report_number && (
-                        <div className="font-mono text-[9px] text-[#0e393d]/35 mt-px">{displayReportId(report)}</div>
+                    <div className="flex items-start gap-2">
+                      <button onClick={() => toggleExpand(report.id)} className="text-left flex-1 min-w-0">
+                        <div className="font-medium text-[#0e393d] text-[13px]">{report.title}</div>
+                        {report.report_number && (
+                          <div className="font-mono text-[9px] text-[#0e393d]/35 mt-px">{displayReportId(report)}</div>
+                        )}
+                        {report.lab_address && (
+                          <div className="text-[10px] text-[#1c2a2b]/30 mt-px">📍 {report.lab_address}</div>
+                        )}
+                      </button>
+                      {report.pdf_file_url && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openPdfInNewTab(report.pdf_file_url!, supabase); }}
+                          className="shrink-0 mt-0.5 p-1 rounded-md hover:bg-[#0e393d]/5 transition-colors group/pdf"
+                          title={report.pdf_file_name ? `Open ${report.pdf_file_name}` : 'Open PDF'}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[#0e393d]/30 group-hover/pdf:text-[#0e393d]/70 transition-colors">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="16" y1="13" x2="8" y2="13" />
+                            <line x1="16" y1="17" x2="8" y2="17" />
+                          </svg>
+                        </button>
                       )}
-                      {report.lab_address && (
-                        <div className="text-[10px] text-[#1c2a2b]/30 mt-px">📍 {report.lab_address}</div>
-                      )}
-                    </button>
+                    </div>
                   </td>
                   {/* User */}
                   <td className="px-4 py-3">

@@ -58,6 +58,7 @@ export function normalizeUnit(unit: string): string {
   return unit
     .toLowerCase()
     .replace(/μ/g, 'µ')         // Greek mu → micro sign
+    .replace(/\bmc(?=[a-z])/g, 'µ')  // "mc" prefix → micro (mcmol → µmol, mcg → µg)
     .replace(/\s+/g, '')         // remove spaces
     .replace(/per/g, '/')        // "per" → "/"
     .replace(/litre/g, 'l')      // British spelling
@@ -66,6 +67,9 @@ export function normalizeUnit(unit: string): string {
     .replace(/deciliter/g, 'dl')
     .replace(/millilitre/g, 'ml')
     .replace(/milliliter/g, 'ml')
+    .replace(/\/mm3/g, '/mm³')   // mm3 → mm³
+    .replace(/10e3\/µl/g, '10³/µl')  // 10e3 notation
+    .replace(/10e6\/µl/g, '10⁶/µl')  // 10e6 notation
     .trim();
 }
 

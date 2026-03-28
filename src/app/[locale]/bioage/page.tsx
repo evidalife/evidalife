@@ -3,10 +3,24 @@ import { Link } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import { createClient } from '@/lib/supabase/server';
+import { buildMeta, PAGE_META } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = { title: 'Biological Age Testing – Evida Life' };
+export async function generateMetadata() {
+  const locale = await getLocale();
+  const metaLang = locale === 'de' ? 'de' : 'en';
+  const meta = (PAGE_META as Record<string, Record<string, { title: string; description: string }>>)['bioage']?.[metaLang];
+
+  if (meta) {
+    return buildMeta({ ...meta, path: '/bioage', locale });
+  }
+
+  return {
+    title: 'Biological Age Testing – Evida Life',
+    description: 'Measure your biological age with epigenetic clocks like DunedinPACE and GrimAge.',
+  };
+}
 
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 type Lang = (typeof VALID_LANGS)[number];
@@ -25,10 +39,12 @@ const T: Record<Lang, {
   ctaHeading: string;
   ctaBody: string;
   ctaBtn: string;
-  price: string;
   badges: string[];
   dunedin: { name: string; tag: string; desc: string; details: string[]; badge: string };
   grimage: { name: string; tag: string; desc: string; details: string[]; badge: string };
+  phenoAgeSection: { title: string; desc: string; badge: string };
+  bloodTestsSection: { title: string; desc: string };
+  measurementUnit: string;
 }> = {
   de: {
     tag: 'EPIGENETISCHE TESTS',
@@ -36,7 +52,7 @@ const T: Record<Lang, {
     sub: 'Dein biologisches Alter ist nicht dasselbe wie dein Geburtsalter. Epigenetische Tests messen, wie schnell dein Körper wirklich altert – und ob deine Interventionen wirken.',
     whatIsTitle: 'Was ist biologisches Alter?',
     whatIs: 'Dein chronologisches Alter zählt Geburtstage. Dein biologisches Alter misst den Zustand deiner Zellen, DNA-Methylierungsmuster und Entzündungsmarker. Menschen mit gleichem Geburtsalter können biologisch 10–20 Jahre auseinanderliegen. Das ist veränderbar.',
-    testsHeading: 'Die zwei Tests',
+    testsHeading: 'Die Haupttests',
     howWorksHeading: 'Wie es funktioniert',
     steps: [
       { title: 'Blutentnahme beim Partnerlabor', body: 'Eine einfache Blutabnahme bei einem unserer zertifizierten Partnerlabore in der Schweiz und Deutschland.' },
@@ -46,9 +62,8 @@ const T: Record<Lang, {
     whyMattersHeading: 'Warum es für Longevity wichtig ist',
     whyMatters: 'Epigenetische Uhren sind heute die präzisesten Biomarker für Alterung und Mortalitätsrisiko. Studien zeigen, dass ein erhöhtes DunedinPACE mit höherem Risiko für Herzerkrankungen, Demenz und vorzeitigen Tod korreliert – unabhängig von anderen Risikofaktoren. Wer seine Interventionen (Ernährung, Bewegung, Schlaf, Stressreduktion) systematisch verfolgt, kann seinen Pace senken und sein biologisches Alter um Jahre reduzieren.',
     ctaHeading: 'Kenne dein biologisches Alter',
-    ctaBody: 'Einmalige Messung für CHF 349. Wiederholen nach 6–12 Monaten, um Interventionen zu messen.',
+    ctaBody: 'Einmalige Messung. Wiederholen nach 6–12 Monaten, um Interventionen zu messen.',
     ctaBtn: 'Jetzt testen',
-    price: 'CHF 349',
     badges: ['Bluttest', 'Laboranalyse', '2–3 Wochen'],
     dunedin: {
       name: 'DunedinPACE',
@@ -76,6 +91,16 @@ const T: Record<Lang, {
       ],
       badge: 'Höchste klinische Validierung',
     },
+    phenoAgeSection: {
+      title: 'Bereits in jedem Longevity-Paket enthalten',
+      desc: 'PhenoAge ist ein zusätzlicher epigenetischer Biomarker, der automatisch in allen Bluttest-Paketen enthalten ist. Er ergänzt DunedinPACE und GrimAge v2 mit weiteren Einblicken in dein biologisches Alter.',
+      badge: 'Bonus-Biomarker',
+    },
+    bloodTestsSection: {
+      title: 'Verfügbar in diesen Paketen',
+      desc: 'DunedinPACE und GrimAge v2 sind standardmäßig in allen Longevity-Bluttest-Paketen enthalten.',
+    },
+    measurementUnit: 'Einheit',
   },
   en: {
     tag: 'EPIGENETIC TESTING',
@@ -83,7 +108,7 @@ const T: Record<Lang, {
     sub: 'Your biological age is not the same as your chronological age. Epigenetic tests measure how fast your body is really aging – and whether your interventions are working.',
     whatIsTitle: 'What is biological age?',
     whatIs: 'Your chronological age counts birthdays. Your biological age measures the state of your cells, DNA methylation patterns, and inflammation markers. People with the same birth year can differ by 10–20 biological years. And it\'s changeable.',
-    testsHeading: 'The two tests',
+    testsHeading: 'The main tests',
     howWorksHeading: 'How it works',
     steps: [
       { title: 'Blood draw at partner lab', body: 'A simple blood draw at one of our certified partner labs in Switzerland and Germany.' },
@@ -93,9 +118,8 @@ const T: Record<Lang, {
     whyMattersHeading: 'Why it matters for longevity',
     whyMatters: 'Epigenetic clocks are today\'s most precise biomarkers for aging and mortality risk. Studies show that elevated DunedinPACE correlates with higher risk of heart disease, dementia, and premature death – independent of other risk factors. Those who systematically track their interventions (nutrition, exercise, sleep, stress reduction) can lower their pace and reduce their biological age by years.',
     ctaHeading: 'Know your biological age',
-    ctaBody: 'One-time measurement for CHF 349. Repeat after 6–12 months to measure interventions.',
+    ctaBody: 'One-time measurement. Repeat after 6–12 months to measure interventions.',
     ctaBtn: 'Get tested now',
-    price: 'CHF 349',
     badges: ['Blood test', 'Lab analysis', '2–3 weeks'],
     dunedin: {
       name: 'DunedinPACE',
@@ -123,6 +147,16 @@ const T: Record<Lang, {
       ],
       badge: 'Highest clinical validation',
     },
+    phenoAgeSection: {
+      title: 'Already included in every Longevity package',
+      desc: 'PhenoAge is an additional epigenetic biomarker automatically included in all blood test packages. It complements DunedinPACE and GrimAge v2 with further insights into your biological age.',
+      badge: 'Bonus biomarker',
+    },
+    bloodTestsSection: {
+      title: 'Available in these packages',
+      desc: 'DunedinPACE and GrimAge v2 are standard in all Longevity blood test packages.',
+    },
+    measurementUnit: 'Unit',
   },
   fr: {
     tag: 'TESTS ÉPIGÉNÉTIQUES',
@@ -130,7 +164,7 @@ const T: Record<Lang, {
     sub: 'Votre âge biologique n\'est pas le même que votre âge chronologique. Les tests épigénétiques mesurent à quelle vitesse votre corps vieillit réellement – et si vos interventions fonctionnent.',
     whatIsTitle: 'Qu\'est-ce que l\'âge biologique ?',
     whatIs: 'Votre âge chronologique compte les anniversaires. Votre âge biologique mesure l\'état de vos cellules, les profils de méthylation de l\'ADN et les marqueurs inflammatoires. Des personnes du même âge de naissance peuvent différer de 10 à 20 ans biologiquement. Et c\'est modifiable.',
-    testsHeading: 'Les deux tests',
+    testsHeading: 'Les tests principaux',
     howWorksHeading: 'Comment ça fonctionne',
     steps: [
       { title: 'Prise de sang au laboratoire partenaire', body: 'Une simple prise de sang dans l\'un de nos laboratoires partenaires certifiés en Suisse et en Allemagne.' },
@@ -140,9 +174,8 @@ const T: Record<Lang, {
     whyMattersHeading: 'Pourquoi c\'est important pour la longévité',
     whyMatters: 'Les horloges épigénétiques sont les biomarqueurs les plus précis aujourd\'hui pour le vieillissement et le risque de mortalité. Des études montrent qu\'un DunedinPACE élevé est corrélé à un risque plus élevé de maladies cardiaques, de démence et de mort prématurée. Ceux qui suivent systématiquement leurs interventions peuvent abaisser leur rythme et réduire leur âge biologique de plusieurs années.',
     ctaHeading: 'Connaissez votre âge biologique',
-    ctaBody: 'Mesure unique pour CHF 349. À répéter après 6–12 mois pour mesurer les interventions.',
+    ctaBody: 'Mesure unique. À répéter après 6–12 mois pour mesurer les interventions.',
     ctaBtn: 'Se faire tester maintenant',
-    price: 'CHF 349',
     badges: ['Prise de sang', 'Analyse en laboratoire', '2–3 semaines'],
     dunedin: {
       name: 'DunedinPACE',
@@ -170,6 +203,16 @@ const T: Record<Lang, {
       ],
       badge: 'Validation clinique la plus élevée',
     },
+    phenoAgeSection: {
+      title: 'Déjà inclus dans chaque paquet Longevity',
+      desc: 'PhenoAge est un biomarqueur épigénétique supplémentaire automatiquement inclus dans tous les packages de tests sanguins. Il complète DunedinPACE et GrimAge v2 avec des informations supplémentaires sur votre âge biologique.',
+      badge: 'Biomarqueur bonus',
+    },
+    bloodTestsSection: {
+      title: 'Disponible dans ces packages',
+      desc: 'DunedinPACE et GrimAge v2 sont standard dans tous les packages de tests sanguins Longevity.',
+    },
+    measurementUnit: 'Unité',
   },
   es: {
     tag: 'PRUEBAS EPIGENÉTICAS',
@@ -177,7 +220,7 @@ const T: Record<Lang, {
     sub: 'Tu edad biológica no es lo mismo que tu edad cronológica. Las pruebas epigenéticas miden a qué velocidad envejece realmente tu cuerpo y si tus intervenciones están funcionando.',
     whatIsTitle: '¿Qué es la edad biológica?',
     whatIs: 'Tu edad cronológica cuenta cumpleaños. Tu edad biológica mide el estado de tus células, los patrones de metilación del ADN y los marcadores inflamatorios. Personas de la misma fecha de nacimiento pueden diferir 10-20 años biológicamente. Y es modificable.',
-    testsHeading: 'Las dos pruebas',
+    testsHeading: 'Las pruebas principales',
     howWorksHeading: 'Cómo funciona',
     steps: [
       { title: 'Extracción de sangre en laboratorio asociado', body: 'Una simple extracción de sangre en uno de nuestros laboratorios asociados certificados en Suiza y Alemania.' },
@@ -187,9 +230,8 @@ const T: Record<Lang, {
     whyMattersHeading: 'Por qué importa para la longevidad',
     whyMatters: 'Los relojes epigenéticos son hoy los biomarcadores más precisos para el envejecimiento y el riesgo de mortalidad. Los estudios muestran que un DunedinPACE elevado se correlaciona con mayor riesgo de enfermedades cardíacas, demencia y muerte prematura. Quienes realizan un seguimiento sistemático de sus intervenciones pueden reducir su ritmo de envejecimiento y su edad biológica en años.',
     ctaHeading: 'Conoce tu edad biológica',
-    ctaBody: 'Medición única por CHF 349. Repetir después de 6–12 meses para medir intervenciones.',
+    ctaBody: 'Medición única. Repetir después de 6–12 meses para medir intervenciones.',
     ctaBtn: 'Hacerse la prueba ahora',
-    price: 'CHF 349',
     badges: ['Análisis de sangre', 'Análisis de laboratorio', '2–3 semanas'],
     dunedin: {
       name: 'DunedinPACE',
@@ -217,6 +259,16 @@ const T: Record<Lang, {
       ],
       badge: 'Mayor validación clínica',
     },
+    phenoAgeSection: {
+      title: 'Ya incluido en cada paquete Longevity',
+      desc: 'PhenoAge es un biomarcador epigenético adicional incluido automáticamente en todos los paquetes de pruebas de sangre. Complementa DunedinPACE y GrimAge v2 con información adicional sobre tu edad biológica.',
+      badge: 'Biomarcador bonus',
+    },
+    bloodTestsSection: {
+      title: 'Disponible en estos paquetes',
+      desc: 'DunedinPACE y GrimAge v2 son estándar en todos los paquetes de pruebas de sangre Longevity.',
+    },
+    measurementUnit: 'Unidad',
   },
   it: {
     tag: 'TEST EPIGENETICI',
@@ -224,7 +276,7 @@ const T: Record<Lang, {
     sub: 'La tua età biologica non è uguale alla tua età cronologica. I test epigenetici misurano quanto velocemente il tuo corpo sta davvero invecchiando e se i tuoi interventi stanno funzionando.',
     whatIsTitle: 'Cos\'è l\'età biologica?',
     whatIs: 'La tua età cronologica conta i compleanni. La tua età biologica misura lo stato delle tue cellule, i modelli di metilazione del DNA e i marcatori infiammatori. Persone della stessa età anagrafica possono differire di 10-20 anni biologicamente. Ed è modificabile.',
-    testsHeading: 'I due test',
+    testsHeading: 'I test principali',
     howWorksHeading: 'Come funziona',
     steps: [
       { title: 'Prelievo del sangue al laboratorio partner', body: 'Un semplice prelievo del sangue presso uno dei nostri laboratori partner certificati in Svizzera e Germania.' },
@@ -234,9 +286,8 @@ const T: Record<Lang, {
     whyMattersHeading: 'Perché è importante per la longevità',
     whyMatters: 'Gli orologi epigenetici sono oggi i biomarcatori più precisi per l\'invecchiamento e il rischio di mortalità. Gli studi mostrano che un DunedinPACE elevato si correla con un rischio più elevato di malattie cardiache, demenza e morte prematura. Chi monitora sistematicamente i propri interventi può abbassare il proprio ritmo e ridurre la propria età biologica di anni.',
     ctaHeading: 'Conosci la tua età biologica',
-    ctaBody: 'Misurazione unica per CHF 349. Da ripetere dopo 6-12 mesi per misurare gli interventi.',
+    ctaBody: 'Misurazione unica. Da ripetere dopo 6-12 mesi per misurare gli interventi.',
     ctaBtn: 'Fai il test ora',
-    price: 'CHF 349',
     badges: ['Esame del sangue', 'Analisi di laboratorio', '2-3 settimane'],
     dunedin: {
       name: 'DunedinPACE',
@@ -264,6 +315,16 @@ const T: Record<Lang, {
       ],
       badge: 'Massima validazione clinica',
     },
+    phenoAgeSection: {
+      title: 'Già incluso in ogni pacchetto Longevity',
+      desc: 'PhenoAge è un biomarcatore epigenetico aggiuntivo automaticamente incluso in tutti i pacchetti di test del sangue. Completa DunedinPACE e GrimAge v2 con ulteriori informazioni sulla tua età biologica.',
+      badge: 'Biomarcatore bonus',
+    },
+    bloodTestsSection: {
+      title: 'Disponibile in questi pacchetti',
+      desc: 'DunedinPACE e GrimAge v2 sono standard in tutti i pacchetti di test del sangue Longevity.',
+    },
+    measurementUnit: 'Unità',
   },
 };
 
@@ -278,21 +339,83 @@ function CheckItem({ text }: { text: string }) {
   );
 }
 
+interface Biomarker {
+  id: string;
+  slug: string;
+  name: Record<string, string> | string;
+  description: Record<string, string> | string | null;
+  unit: string | null;
+  he_domain: string | null;
+}
+
+interface ProductBiomarker {
+  biomarker_id: string;
+  biomarkers: Biomarker;
+}
+
+interface Product {
+  id: string;
+  name: Record<string, string> | string;
+  price_chf: number;
+  slug: string;
+}
+
+function getName(nameObj: Record<string, string> | string | null, lang: string): string {
+  if (!nameObj) return '';
+  if (typeof nameObj === 'string') return nameObj;
+  return nameObj[lang] ?? nameObj['en'] ?? nameObj['de'] ?? '';
+}
+
 export default async function BioAgePage() {
   const locale = await getLocale();
   const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const t = T[lang];
 
-  // Fetch the BioAge product for price/link
   const supabase = await createClient();
+
+  // Fetch the Biological Age product
   const { data: bioageProd } = await supabase
     .from('products')
-    .select('slug, price_chf')
-    .eq('slug', 'addon-biological-age')
+    .select('id, name, price_chf, slug')
+    .eq('sku', 'EV-BIO-001')
     .eq('is_active', true)
     .single();
 
-  const shopSlug = bioageProd?.slug ?? 'addon-biological-age';
+  // Fetch DunedinPACE and GrimAge v2 biomarkers via product_biomarkers
+  const { data: productBiomarkersData } = await supabase
+    .from('product_biomarkers')
+    .select(`
+      biomarker_id,
+      biomarkers (
+        id,
+        slug,
+        name,
+        description,
+        unit,
+        he_domain
+      )
+    `)
+    .eq('product_id', bioageProd?.id || '');
+
+  const productBiomarkers = (productBiomarkersData as ProductBiomarker[] | null) || [];
+
+  // Fetch PhenoAge separately
+  const { data: phenoAge } = await supabase
+    .from('biomarkers')
+    .select('id, name, description, unit, he_domain')
+    .eq('slug', 'pheno_age')
+    .single();
+
+  // Fetch blood test packages
+  const { data: bloodTestProducts } = await supabase
+    .from('products')
+    .select('id, name, price_chf, slug')
+    .eq('product_type', 'blood_test')
+    .eq('is_active', true)
+    .order('price_chf', { ascending: true });
+
+  const shopSlug = bioageProd?.slug || 'biological-age-test';
+  const price = bioageProd?.price_chf ? `CHF ${bioageProd.price_chf}` : 'Contact for pricing';
 
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
@@ -305,7 +428,7 @@ export default async function BioAgePage() {
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">{t.tag}</p>
           <h1 className="font-serif text-5xl text-[#0e393d] mb-4 leading-tight">{t.h1}</h1>
           <p className="text-base text-[#1c2a2b]/60 leading-relaxed">{t.sub}</p>
-          <div className="flex items-center justify-center gap-3 mt-6">
+          <div className="flex items-center justify-center gap-3 mt-6 flex-wrap">
             {t.badges.map((b) => (
               <span key={b} className="inline-flex items-center rounded-full bg-[#ceab84]/15 px-3 py-1 text-xs font-medium text-[#8a6a3e]">
                 {b}
@@ -314,13 +437,22 @@ export default async function BioAgePage() {
           </div>
         </div>
 
+        {/* ── Hero Image ────────────────────────────────────────────────────── */}
+        <div className="mb-16 rounded-2xl overflow-hidden h-64 sm:h-80 bg-[#0e393d]/5">
+          <img
+            src="https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=1200&q=80"
+            alt="DNA science imagery"
+            className="w-full h-full object-cover"
+          />
+        </div>
+
         {/* ── What is biological age ─────────────────────────────────────── */}
         <section className="mb-16 rounded-2xl bg-[#0e393d] text-white p-10 sm:p-12">
           <h2 className="font-serif text-2xl text-[#ceab84] mb-4">{t.whatIsTitle}</h2>
           <p className="text-white/75 leading-relaxed text-base max-w-3xl">{t.whatIs}</p>
         </section>
 
-        {/* ── Two test cards ─────────────────────────────────────────────── */}
+        {/* ── Main Biomarker Tests (DunedinPACE + GrimAge) ─────────────────── */}
         <section className="mb-16">
           <h2 className="font-serif text-2xl text-[#0e393d] mb-6">{t.testsHeading}</h2>
           <div className="grid gap-6 sm:grid-cols-2">
@@ -338,6 +470,11 @@ export default async function BioAgePage() {
                 </span>
               </div>
               <p className="text-sm text-[#1c2a2b]/65 leading-relaxed mb-5">{t.dunedin.desc}</p>
+              {productBiomarkers.find((pb) => pb.biomarkers.slug === 'dunedin_pace') && (
+                <div className="mb-4 text-xs text-[#1c2a2b]/50 italic">
+                  {getName(productBiomarkers.find((pb) => pb.biomarkers.slug === 'dunedin_pace')?.biomarkers.description ?? null, lang)}
+                </div>
+              )}
               <ul className="space-y-2 flex-1">
                 {t.dunedin.details.map((d) => <CheckItem key={d} text={d} />)}
               </ul>
@@ -357,12 +494,42 @@ export default async function BioAgePage() {
                 </span>
               </div>
               <p className="text-sm text-[#1c2a2b]/65 leading-relaxed mb-5">{t.grimage.desc}</p>
+              {productBiomarkers.find((pb) => pb.biomarkers.slug === 'grim_age_v2') && (
+                <div className="mb-4 text-xs text-[#1c2a2b]/50 italic">
+                  {getName(productBiomarkers.find((pb) => pb.biomarkers.slug === 'grim_age_v2')?.biomarkers.description ?? null, lang)}
+                </div>
+              )}
               <ul className="space-y-2 flex-1">
                 {t.grimage.details.map((d) => <CheckItem key={d} text={d} />)}
               </ul>
             </div>
           </div>
         </section>
+
+        {/* ── PhenoAge Bonus Section ─────────────────────────────────────── */}
+        {phenoAge && (
+          <section className="mb-16 rounded-2xl bg-[#ceab84]/10 p-8 sm:p-10">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <h2 className="font-serif text-xl text-[#0e393d] mb-2">{t.phenoAgeSection.title}</h2>
+                <p className="text-[#1c2a2b]/70 leading-relaxed text-sm max-w-3xl">{t.phenoAgeSection.desc}</p>
+              </div>
+              <span className="shrink-0 text-[10px] font-semibold rounded-full bg-white text-[#ceab84] ring-1 ring-[#ceab84]/30 px-2.5 py-1 whitespace-nowrap">
+                {t.phenoAgeSection.badge}
+              </span>
+            </div>
+            {phenoAge.description && (
+              <div className="mt-4 text-xs text-[#1c2a2b]/60 italic">
+                {getName(phenoAge.description as Record<string, string> | string, lang)}
+              </div>
+            )}
+            {phenoAge.unit && (
+              <div className="mt-3 text-xs text-[#1c2a2b]/60">
+                <strong>{t.measurementUnit}:</strong> {phenoAge.unit}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* ── How it works ───────────────────────────────────────────────── */}
         <section className="mb-16">
@@ -388,11 +555,32 @@ export default async function BioAgePage() {
           <p className="text-[#1c2a2b]/70 leading-relaxed text-sm max-w-3xl">{t.whyMatters}</p>
         </section>
 
+        {/* ── Blood Test Packages ────────────────────────────────────────── */}
+        {bloodTestProducts && bloodTestProducts.length > 0 && (
+          <section className="mb-16">
+            <h2 className="font-serif text-xl text-[#0e393d] mb-3">{t.bloodTestsSection.title}</h2>
+            <p className="text-[#1c2a2b]/60 text-sm mb-6">{t.bloodTestsSection.desc}</p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {bloodTestProducts.map((product) => (
+                <Link
+                  key={product.id}
+                  href={`/shop/${product.slug}`}
+                  className="rounded-xl bg-white ring-1 ring-[#0e393d]/10 p-6 hover:ring-[#ceab84]/50 transition-all group"
+                >
+                  <h3 className="font-medium text-sm text-[#0e393d] mb-2 group-hover:text-[#ceab84]">{getName(product.name, lang)}</h3>
+                  <p className="text-xs text-[#1c2a2b]/50 mb-4">Includes DunedinPACE, GrimAge v2 & PhenoAge</p>
+                  <p className="font-serif text-lg text-[#ceab84]">CHF {product.price_chf}</p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* ── CTA ────────────────────────────────────────────────────────── */}
         <section className="rounded-2xl bg-[#0e393d] p-10 sm:p-12 text-center">
           <h2 className="font-serif text-3xl text-white mb-3">{t.ctaHeading}</h2>
           <p className="text-white/60 text-sm mb-2">{t.ctaBody}</p>
-          <p className="font-serif text-2xl text-[#ceab84] mb-8">{t.price}</p>
+          <p className="font-serif text-2xl text-[#ceab84] mb-8">{price}</p>
           <Link
             href={`/shop/${shopSlug}`}
             className="inline-block bg-[#ceab84] text-[#0e393d] font-semibold px-8 py-3.5 rounded-full text-sm hover:bg-[#ceab84]/90 transition-colors"

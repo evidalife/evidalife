@@ -373,9 +373,9 @@ export default async function BiomarkersPage() {
     if (items.length > 0) linkedDomainGroups.push({ domain, items });
   }
 
-  // Count biomarkers per package (only blood biomarker types)
-  const bloodTypes = ['biomarker'];
-  const bloodDefs = allDefs.filter((d) => bloodTypes.includes(d.item_type ?? ''));
+  // All biomarker types relevant to blood test packages
+  const bloodTypes = ['biomarker', 'bio_age'];
+  const allLinkedDefs = allDefs.filter((d) => linkedDefIds.has(d.id));
 
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
@@ -425,7 +425,7 @@ export default async function BiomarkersPage() {
                             CHF {pkg.price_chf}
                           </div>
                           <div className={`text-[11px] mt-0.5 ${pkg.is_featured ? 'text-white/50' : 'text-[#1c2a2b]/40'}`}>
-                            {t.markerCount(bloodDefs.filter((d) => pkgItemMap.get(pkg.id)?.has(d.id)).length)}
+                            {t.markerCount(pkgItemMap.get(pkg.id)?.size ?? 0)}
                           </div>
                         </div>
                       </th>
@@ -436,9 +436,9 @@ export default async function BiomarkersPage() {
                 <tbody>
                   {/* Domain groups */}
                   {domainGroups
-                    .filter((g) => g.items.some((item) => bloodTypes.includes(item.item_type ?? '')))
+                    .filter((g) => g.items.some((item) => linkedDefIds.has(item.id)))
                     .map(({ domain, items }) => {
-                      const bloodItems = items.filter((d) => bloodTypes.includes(d.item_type ?? ''));
+                      const bloodItems = items.filter((d) => linkedDefIds.has(d.id));
                       if (bloodItems.length === 0) return null;
                       return (
                         <Fragment key={domain.key}>
@@ -496,7 +496,7 @@ export default async function BiomarkersPage() {
                     <td className="py-3 pr-4 text-sm font-semibold text-[#0e393d]">{t.total}</td>
                     {packages.map((pkg) => (
                       <td key={pkg.id} className="py-3 px-3 text-center text-sm font-semibold text-[#0e393d]">
-                        {bloodDefs.filter((d) => pkgItemMap.get(pkg.id)?.has(d.id)).length} {t.markers}
+                        {pkgItemMap.get(pkg.id)?.size ?? 0} {t.markers}
                       </td>
                     ))}
                   </tr>

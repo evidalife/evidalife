@@ -1,6 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import Link from 'next/link';
-import PageShell from '@/components/admin/PageShell';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -112,16 +111,18 @@ export default async function AdminDashboard() {
   const monthRevenue    = (monthOrders ?? []).reduce((sum, o) => sum + (o.total_amount ?? 0), 0);
   const monthOrderCount = (monthOrders ?? []).length;
   const totalErrors24h  = (failedEmailsDay ?? 0) + (failedPdfsDay ?? 0);
+  const totalErrorsWeek = (failedEmailsWeek ?? 0) + (failedPdfsWeek ?? 0);
 
   // Pipeline counts grouped by fulfilment_status
   const PIPELINE_KEYS = ['paid', 'voucher_sent', 'sample_collected', 'processing', 'completed'] as const;
   const pipeline: Record<string, number> = Object.fromEntries(PIPELINE_KEYS.map(k => [k, 0]));
+  let pipelineTotal = 0;
   for (const o of pipelineOrders ?? []) {
     const fs = o.fulfilment_status;
-    if (fs && fs in pipeline) pipeline[fs]++;
+    if (fs && fs in pipeline) { pipeline[fs]++; pipelineTotal++; }
   }
 
-  // Activity feed — merge, sort, slice to 8
+  // Activity feed — merge, sort, slice to 10
   const activity: ActivityItem[] = [
     ...(recentOrders ?? []).map(o => ({
       type:  'order' as const,
@@ -151,45 +152,53 @@ export default async function AdminDashboard() {
   ]
     .filter(a => !!a.ts)
     .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
-    .slice(0, 8);
+    .slice(0, 10);
 
   // ── Static config ────────────────────────────────────────────────────────
 
   const PIPELINE_CONFIG = [
-    { key: 'paid',             label: 'Paid',             bar: 'bg-amber-400'   },
-    { key: 'voucher_sent',     label: 'Voucher sent',     bar: 'bg-sky-400'     },
-    { key: 'sample_collected', label: 'Sample collected', bar: 'bg-violet-400'  },
-    { key: 'processing',       label: 'Processing',       bar: 'bg-indigo-400'  },
-    { key: 'completed',        label: 'Completed',        bar: 'bg-emerald-400' },
+    { key: 'paid',             label: 'Paid',             icon: '💳', color: 'bg-amber-400'   },
+    { key: 'voucher_sent',     label: 'Voucher Sent',     icon: '📧', color: 'bg-sky-400'     },
+    { key: 'sample_collected', label: 'Sample Collected', icon: '🧪', color: 'bg-violet-400'  },
+    { key: 'processing',       label: 'Processing',       icon: '🔬', color: 'bg-indigo-400'  },
+    { key: 'completed',        label: 'Completed',        icon: '✅', color: 'bg-emerald-400' },
   ] as const;
 
   const ATTENTION_ITEMS = [
-    { label: 'Lab reports awaiting review',     count: labReviewCount ?? 0,      href: '/admin/lab-results',      action: 'Review' },
-    { label: 'Orders paid — awaiting voucher',  count: paidOrderCount ?? 0,      href: '/admin/orders',           action: 'Manage' },
-    { label: 'Contact messages (last 7 days)',  count: contactWeekCount ?? 0,    href: '/admin/contact-messages', action: 'View'   },
-    { label: 'Overdue vouchers (>7 days)',      count: overdueVoucherCount ?? 0, href: '/admin/orders',           action: 'View'   },
+    { label: 'Lab reports awaiting review',     count: labReviewCount ?? 0,      href: '/admin/lab-results',      icon: '🔬', action: 'Review' },
+    { label: 'Orders paid — awaiting voucher',  count: paidOrderCount ?? 0,      href: '/admin/orders',           icon: '📦', action: 'Manage' },
+    { label: 'Contact messages (7 days)',        count: contactWeekCount ?? 0,    href: '/admin/contact-messages', icon: '💬', action: 'View'   },
+    { label: 'Overdue vouchers (>7 days)',       count: overdueVoucherCount ?? 0, href: '/admin/orders',           icon: '⏰', action: 'View'   },
   ];
 
   const ERROR_ITEMS = [
-    { label: 'Email delivery',  count: failedEmailsWeek ?? 0, href: '/admin/communications' },
-    { label: 'PDF extractions', count: failedPdfsWeek ?? 0,  href: '/admin/lab-results'    },
+    { label: 'Email delivery failures',  count: failedEmailsWeek ?? 0, href: '/admin/communications', icon: '📧' },
+    { label: 'PDF extraction failures',  count: failedPdfsWeek ?? 0,   href: '/admin/lab-results',    icon: '📄' },
   ];
 
-  const ACTIVITY_BADGE: Record<string, string> = {
-    order:   'bg-amber-50   text-amber-700',
-    signup:  'bg-emerald-50 text-emerald-700',
-    lab:     'bg-sky-50     text-sky-700',
-    email:   'bg-violet-50  text-violet-700',
-    contact: 'bg-[#0e393d]/8 text-[#0e393d]',
+  const ACTIVITY_ICON: Record<string, string> = {
+    order:   '💳',
+    signup:  '👤',
+    lab:     '🧪',
+    email:   '📧',
+    contact: '💬',
+  };
+
+  const ACTIVITY_BADGE_CLS: Record<string, string> = {
+    order:   'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20',
+    signup:  'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20',
+    lab:     'bg-sky-50 text-sky-700 ring-1 ring-sky-600/20',
+    email:   'bg-violet-50 text-violet-700 ring-1 ring-violet-600/20',
+    contact: 'bg-[#0e393d]/[0.06] text-[#0e393d] ring-1 ring-[#0e393d]/10',
   };
 
   const QUICK_ACTIONS = [
-    { title: 'Upload Lab PDF',      desc: 'AI extraction + review', href: '/admin/lab-results'     },
-    { title: 'Create Order',        desc: 'Manual order entry',     href: '/admin/orders'           },
-    { title: 'Send Test Email',     desc: 'Preview all templates',  href: '/admin/communications'   },
-    { title: 'Manage Users',        desc: 'Search + admin roles',   href: '/admin/users'            },
-    { title: 'Export Orders',       desc: 'CSV download',           href: '/admin/orders'           },
-    { title: 'Export Lab Results',  desc: 'CSV download',           href: '/admin/lab-results'      },
+    { title: 'Upload Lab PDF',      desc: 'AI extraction + review',  href: '/admin/lab-results',     icon: '📄' },
+    { title: 'Create Order',        desc: 'Manual order entry',      href: '/admin/orders',          icon: '📦' },
+    { title: 'Send Test Email',     desc: 'Preview all templates',   href: '/admin/communications',  icon: '📧' },
+    { title: 'Manage Users',        desc: 'Search + admin roles',    href: '/admin/users',           icon: '👥' },
+    { title: 'Export Orders',       desc: 'CSV download',            href: '/admin/orders',          icon: '📊' },
+    { title: 'Export Lab Results',  desc: 'CSV download',            href: '/admin/lab-results',     icon: '🧬' },
   ];
 
   const MONITORING_LINKS = [
@@ -203,85 +212,125 @@ export default async function AdminDashboard() {
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <PageShell title="Dashboard" description="Platform overview">
-      <div className="space-y-6">
+    <div>
+      {/* ── Header ────────────────────────────────────────────────────── */}
+      <div className="px-8 pt-8 pb-6">
+        <h1 className="font-serif text-3xl text-[#0e393d] tracking-tight">Dashboard</h1>
+        <p className="mt-1.5 text-sm text-[#1c2a2b]/45">Platform overview and operations at a glance</p>
+      </div>
 
-        {/* ── Section 1: KPI Strip ────────────────────────────────────── */}
+      <div className="px-8 space-y-6 pb-8">
+
+        {/* ── Section 1: KPI Stat Cards ─────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
           {/* Users */}
-          <div className="rounded-xl border border-[#0e393d]/10 bg-white px-6 py-5">
-            <p className="text-[10px] text-[#1c2a2b]/40 uppercase tracking-widest mb-2">Users</p>
-            <p className="font-serif text-3xl text-[#0e393d]">{totalUsers ?? '—'}</p>
-            <p className="mt-1 text-xs text-[#1c2a2b]/50">+{newUsersWeek ?? 0} this week</p>
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0e393d] to-[#165c62] p-5 text-white shadow-sm">
+            <div className="absolute top-0 right-0 w-24 h-24 rounded-full bg-white/[0.04] -translate-y-8 translate-x-8" />
+            <p className="text-[10px] uppercase tracking-[0.15em] text-white/50 mb-3">Users</p>
+            <p className="font-serif text-3xl tracking-tight">{totalUsers ?? '—'}</p>
+            <p className="mt-1.5 text-xs text-white/45">+{newUsersWeek ?? 0} this week</p>
           </div>
 
           {/* Revenue */}
-          <div className="rounded-xl border border-[#0e393d]/10 bg-white px-6 py-5">
-            <p className="text-[10px] text-[#1c2a2b]/40 uppercase tracking-widest mb-2">Revenue (this month)</p>
-            <p className="font-serif text-3xl text-[#0e393d]">{formatCHF(monthRevenue)}</p>
-            <p className="mt-1 text-xs text-[#1c2a2b]/50">{monthOrderCount} order{monthOrderCount !== 1 ? 's' : ''}</p>
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#ceab84] to-[#b8935e] p-5 text-white shadow-sm">
+            <div className="absolute top-0 right-0 w-24 h-24 rounded-full bg-white/[0.06] -translate-y-8 translate-x-8" />
+            <p className="text-[10px] uppercase tracking-[0.15em] text-white/55 mb-3">Revenue (month)</p>
+            <p className="font-serif text-3xl tracking-tight">{formatCHF(monthRevenue)}</p>
+            <p className="mt-1.5 text-xs text-white/45">{monthOrderCount} order{monthOrderCount !== 1 ? 's' : ''}</p>
           </div>
 
           {/* Lab Reports */}
-          <div className="rounded-xl border border-[#0e393d]/10 bg-white px-6 py-5">
-            <p className="text-[10px] text-[#1c2a2b]/40 uppercase tracking-widest mb-2">Lab Reports</p>
-            <p className="font-serif text-3xl text-[#0e393d]">{totalReports ?? '—'}</p>
-            <p className="mt-1 text-xs text-[#1c2a2b]/50">{pendingReports ?? 0} pending review</p>
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 p-5 text-white shadow-sm">
+            <div className="absolute top-0 right-0 w-24 h-24 rounded-full bg-white/[0.04] -translate-y-8 translate-x-8" />
+            <p className="text-[10px] uppercase tracking-[0.15em] text-white/50 mb-3">Lab Reports</p>
+            <p className="font-serif text-3xl tracking-tight">{totalReports ?? '—'}</p>
+            <p className="mt-1.5 text-xs text-white/45">{pendingReports ?? 0} pending review</p>
           </div>
 
           {/* System Health */}
-          <div className="rounded-xl border border-[#0e393d]/10 bg-white px-6 py-5">
-            <p className="text-[10px] text-[#1c2a2b]/40 uppercase tracking-widest mb-2">System Health</p>
+          <div className={`relative overflow-hidden rounded-2xl p-5 text-white shadow-sm ${
+            totalErrors24h === 0
+              ? 'bg-gradient-to-br from-emerald-500 to-emerald-600'
+              : 'bg-gradient-to-br from-red-500 to-red-600'
+          }`}>
+            <div className="absolute top-0 right-0 w-24 h-24 rounded-full bg-white/[0.04] -translate-y-8 translate-x-8" />
+            <p className="text-[10px] uppercase tracking-[0.15em] text-white/55 mb-3">System Health</p>
             {totalErrors24h === 0
-              ? <p className="font-serif text-3xl text-emerald-600">OK</p>
-              : <p className="font-serif text-3xl text-red-600">{totalErrors24h} issue{totalErrors24h !== 1 ? 's' : ''}</p>
+              ? <p className="font-serif text-3xl tracking-tight">All Clear</p>
+              : <p className="font-serif text-3xl tracking-tight">{totalErrors24h} Issue{totalErrors24h !== 1 ? 's' : ''}</p>
             }
-            <p className="mt-1 text-xs text-[#1c2a2b]/50">
-              {totalErrors24h === 0 ? '0 errors (24h)' : `${totalErrors24h} error${totalErrors24h !== 1 ? 's' : ''} (24h)`}
+            <p className="mt-1.5 text-xs text-white/45">
+              {totalErrorsWeek} error{totalErrorsWeek !== 1 ? 's' : ''} this week
             </p>
           </div>
 
         </div>
 
-        {/* ── Section 2: Order Pipeline ────────────────────────────────── */}
-        <div className="rounded-xl border border-[#0e393d]/10 bg-white p-6">
-          <h2 className="text-[10px] font-medium uppercase tracking-widest text-[#1c2a2b]/40 mb-5">Order Pipeline</h2>
-          <div className="grid grid-cols-5 gap-3">
-            {PIPELINE_CONFIG.map(({ key, label, bar }) => (
+        {/* ── Section 2: Order Pipeline ────────────────────────────── */}
+        <div className="rounded-2xl border border-[#0e393d]/8 bg-white shadow-sm overflow-hidden">
+          <div className="px-6 pt-5 pb-4 flex items-center justify-between">
+            <div>
+              <h2 className="font-serif text-lg text-[#0e393d]">Order Pipeline</h2>
+              <p className="text-xs text-[#1c2a2b]/35 mt-0.5">{pipelineTotal} total orders in pipeline</p>
+            </div>
+            <Link href="/admin/orders" className="text-xs text-[#0e393d]/50 hover:text-[#0e393d] transition-colors">
+              View all orders →
+            </Link>
+          </div>
+
+          {/* Pipeline progress bar */}
+          {pipelineTotal > 0 && (
+            <div className="px-6 pb-4">
+              <div className="flex h-2.5 rounded-full overflow-hidden bg-[#0e393d]/[0.04]">
+                {PIPELINE_CONFIG.map(({ key, color }) => {
+                  const pct = pipelineTotal > 0 ? (pipeline[key] / pipelineTotal) * 100 : 0;
+                  return pct > 0 ? (
+                    <div key={key} className={`${color} transition-all`} style={{ width: `${pct}%` }} />
+                  ) : null;
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-5 divide-x divide-[#0e393d]/5 border-t border-[#0e393d]/5">
+            {PIPELINE_CONFIG.map(({ key, label, icon, color }) => (
               <Link
                 key={key}
                 href="/admin/orders"
-                className="group flex flex-col items-center rounded-lg border border-[#0e393d]/8 hover:border-[#0e393d]/20 transition-colors overflow-hidden"
+                className="group flex flex-col items-center py-5 hover:bg-[#0e393d]/[0.02] transition-colors"
               >
-                <div className="w-full py-4 flex flex-col items-center gap-1">
-                  <span className="font-serif text-2xl text-[#0e393d]">{pipeline[key]}</span>
-                  <span className="text-[11px] text-[#1c2a2b]/50 text-center leading-tight px-1">{label}</span>
-                </div>
-                <div className={`h-1 w-full ${bar}`} />
+                <span className="text-base mb-1">{icon}</span>
+                <span className="font-serif text-2xl text-[#0e393d] tabular-nums">{pipeline[key]}</span>
+                <span className="text-[10px] text-[#1c2a2b]/40 mt-1 text-center leading-tight px-2">{label}</span>
+                <div className={`h-1 w-8 rounded-full ${color} mt-2.5 opacity-60`} />
               </Link>
             ))}
           </div>
         </div>
 
-        {/* ── Section 3: Needs Attention + Errors ─────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* ── Section 3: Attention + Errors ─────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-          {/* Needs Attention */}
-          <div className="rounded-xl border border-[#0e393d]/10 bg-white p-6">
-            <h2 className="text-[10px] font-medium uppercase tracking-widest text-[#1c2a2b]/40 mb-5">Needs Attention</h2>
-            <div className="space-y-3">
-              {ATTENTION_ITEMS.map(({ label, count, href, action }) => (
-                <div key={label} className="flex items-center gap-3">
-                  <span className="flex-1 text-sm text-[#1c2a2b]/80">{label}</span>
-                  <span className={`min-w-[28px] text-center text-xs font-semibold px-2 py-0.5 rounded-full ring-1 ${
+          {/* Needs Attention — 2/3 width */}
+          <div className="lg:col-span-2 rounded-2xl border border-[#0e393d]/8 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 pt-5 pb-4">
+              <h2 className="font-serif text-lg text-[#0e393d]">Needs Attention</h2>
+            </div>
+
+            <div className="divide-y divide-[#0e393d]/5">
+              {ATTENTION_ITEMS.map(({ label, count, href, icon, action }) => (
+                <div key={label} className="flex items-center gap-4 px-6 py-3.5 hover:bg-[#fafaf8] transition-colors">
+                  <span className="text-base shrink-0">{icon}</span>
+                  <span className="flex-1 text-sm text-[#1c2a2b]/75">{label}</span>
+                  <span className={`min-w-[28px] text-center text-xs font-semibold px-2.5 py-1 rounded-full ${
                     count > 0
-                      ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
-                      : 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+                      ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20'
+                      : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20'
                   }`}>
                     {count}
                   </span>
-                  <Link href={href} className="text-xs text-[#0e393d]/60 hover:text-[#0e393d] transition-colors whitespace-nowrap">
+                  <Link href={href} className="text-xs font-medium text-[#0e393d]/50 hover:text-[#0e393d] transition-colors whitespace-nowrap">
                     {action} →
                   </Link>
                 </div>
@@ -289,67 +338,94 @@ export default async function AdminDashboard() {
             </div>
           </div>
 
-          {/* Errors & Failures */}
-          <div className="rounded-xl border border-[#0e393d]/10 bg-white p-6">
-            <h2 className="text-[10px] font-medium uppercase tracking-widest text-[#1c2a2b]/40 mb-5">
-              Errors &amp; Failures <span className="normal-case text-[#1c2a2b]/30">(last 7 days)</span>
-            </h2>
-            <div className="space-y-3">
-              {ERROR_ITEMS.map(({ label, count, href }) => (
+          {/* Errors & Failures — 1/3 width */}
+          <div className="rounded-2xl border border-[#0e393d]/8 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 pt-5 pb-4">
+              <h2 className="font-serif text-lg text-[#0e393d]">Errors & Failures</h2>
+              <p className="text-xs text-[#1c2a2b]/35 mt-0.5">Last 7 days</p>
+            </div>
+
+            <div className="px-6 pb-5 space-y-4">
+              {ERROR_ITEMS.map(({ label, count, href, icon }) => (
                 <div key={label} className="flex items-center gap-3">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${count > 0 ? 'bg-red-500' : 'bg-emerald-500'}`} />
-                  <span className="flex-1 text-sm text-[#1c2a2b]/80">{label}</span>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ring-1 whitespace-nowrap ${
-                    count > 0
-                      ? 'bg-red-50 text-red-700 ring-red-600/20'
-                      : 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
-                  }`}>
-                    {count} failed
-                  </span>
-                  <Link href={href} className="text-xs text-[#0e393d]/60 hover:text-[#0e393d] transition-colors whitespace-nowrap">
+                  <span className="text-base shrink-0">{icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm text-[#1c2a2b]/75 block">{label}</span>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <div className="flex-1 h-1.5 rounded-full bg-[#0e393d]/[0.04] overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${count > 0 ? 'bg-red-400' : 'bg-emerald-400'}`}
+                          style={{ width: count > 0 ? `${Math.min(count * 10, 100)}%` : '100%' }}
+                        />
+                      </div>
+                      <span className={`text-xs font-semibold tabular-nums ${count > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                        {count}
+                      </span>
+                    </div>
+                  </div>
+                  <Link href={href} className="text-xs text-[#0e393d]/40 hover:text-[#0e393d] transition-colors shrink-0">
                     View →
                   </Link>
                 </div>
               ))}
+
+              {/* Overall status indicator */}
+              <div className={`mt-2 rounded-xl p-3 text-center text-xs font-medium ${
+                totalErrorsWeek === 0
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : 'bg-red-50 text-red-700'
+              }`}>
+                {totalErrorsWeek === 0 ? '✓ No failures this week' : `${totalErrorsWeek} total failure${totalErrorsWeek !== 1 ? 's' : ''} this week`}
+              </div>
             </div>
           </div>
 
         </div>
 
-        {/* ── Section 4: Quick Actions ─────────────────────────────────── */}
-        <div className="rounded-xl border border-[#0e393d]/10 bg-white p-6">
-          <h2 className="text-[10px] font-medium uppercase tracking-widest text-[#1c2a2b]/40 mb-5">Quick Actions</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {QUICK_ACTIONS.map(({ title, desc, href }) => (
+        {/* ── Section 4: Quick Actions ─────────────────────────────── */}
+        <div className="rounded-2xl border border-[#0e393d]/8 bg-white shadow-sm overflow-hidden">
+          <div className="px-6 pt-5 pb-4">
+            <h2 className="font-serif text-lg text-[#0e393d]">Quick Actions</h2>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-[#0e393d]/5 border-t border-[#0e393d]/5">
+            {QUICK_ACTIONS.map(({ title, desc, href, icon }) => (
               <Link
                 key={title}
                 href={href}
-                className="group rounded-lg border border-[#0e393d]/8 hover:border-[#0e393d]/20 hover:bg-[#0e393d]/[0.02] transition-colors p-4"
+                className="group bg-white hover:bg-[#0e393d]/[0.02] transition-colors p-5 flex items-start gap-3"
               >
-                <p className="text-sm font-medium text-[#0e393d] mb-0.5">{title}</p>
-                <p className="text-xs text-[#1c2a2b]/40">{desc}</p>
+                <span className="text-lg shrink-0 mt-0.5">{icon}</span>
+                <div>
+                  <p className="text-sm font-medium text-[#0e393d] group-hover:text-[#0e393d] mb-0.5">{title}</p>
+                  <p className="text-xs text-[#1c2a2b]/35">{desc}</p>
+                </div>
               </Link>
             ))}
           </div>
         </div>
 
-        {/* ── Section 5: Activity Feed + Platform Monitoring ───────────── */}
+        {/* ── Section 5: Activity Feed + Platform Monitoring ───────── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
           {/* Recent Activity */}
-          <div className="rounded-xl border border-[#0e393d]/10 bg-white p-6">
-            <h2 className="text-[10px] font-medium uppercase tracking-widest text-[#1c2a2b]/40 mb-5">Recent Activity</h2>
+          <div className="rounded-2xl border border-[#0e393d]/8 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 pt-5 pb-4">
+              <h2 className="font-serif text-lg text-[#0e393d]">Recent Activity</h2>
+            </div>
             {activity.length === 0 ? (
-              <p className="text-sm text-[#1c2a2b]/30">No recent activity.</p>
+              <div className="px-6 pb-6">
+                <p className="text-sm text-[#1c2a2b]/30">No recent activity.</p>
+              </div>
             ) : (
-              <div className="space-y-3">
+              <div className="divide-y divide-[#0e393d]/5">
                 {activity.map((item, i) => (
-                  <div key={i} className="flex items-start gap-2.5">
-                    <span className={`shrink-0 mt-px text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${ACTIVITY_BADGE[item.type]}`}>
+                  <div key={i} className="flex items-center gap-3 px-6 py-3 hover:bg-[#fafaf8] transition-colors">
+                    <span className="text-sm shrink-0">{ACTIVITY_ICON[item.type]}</span>
+                    <span className={`shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${ACTIVITY_BADGE_CLS[item.type]}`}>
                       {item.type}
                     </span>
-                    <span className="flex-1 text-sm text-[#1c2a2b]/80 leading-snug min-w-0 break-words">{item.label}</span>
-                    <span className="shrink-0 text-xs text-[#1c2a2b]/30 whitespace-nowrap">{relativeTime(item.ts)}</span>
+                    <span className="flex-1 text-[13px] text-[#1c2a2b]/70 leading-snug min-w-0 truncate">{item.label}</span>
+                    <span className="shrink-0 text-[11px] text-[#1c2a2b]/25 tabular-nums whitespace-nowrap">{relativeTime(item.ts)}</span>
                   </div>
                 ))}
               </div>
@@ -357,25 +433,27 @@ export default async function AdminDashboard() {
           </div>
 
           {/* Platform Monitoring */}
-          <div className="rounded-xl border border-[#0e393d]/10 bg-white p-6">
-            <h2 className="text-[10px] font-medium uppercase tracking-widest text-[#1c2a2b]/40 mb-5">Platform Monitoring</h2>
-            <div className="space-y-1">
+          <div className="rounded-2xl border border-[#0e393d]/8 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 pt-5 pb-4">
+              <h2 className="font-serif text-lg text-[#0e393d]">Platform Monitoring</h2>
+            </div>
+            <div className="px-3 pb-3 space-y-0.5">
               {MONITORING_LINKS.map(({ abbr, name, desc, href }) => (
                 <a
                   key={name}
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#0e393d]/[0.04] transition-colors group"
+                  className="flex items-center gap-3.5 px-3 py-3 rounded-xl hover:bg-[#0e393d]/[0.03] transition-colors group"
                 >
-                  <span className="shrink-0 w-7 h-7 rounded-md bg-[#0e393d]/8 flex items-center justify-center text-[9px] font-bold tracking-wide text-[#0e393d]">
+                  <span className="shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-[#0e393d]/10 to-[#0e393d]/[0.04] flex items-center justify-center text-[10px] font-bold tracking-wide text-[#0e393d]">
                     {abbr}
                   </span>
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-medium text-[#1c2a2b] group-hover:text-[#0e393d] transition-colors">{name}</span>
-                    <span className="block text-xs text-[#1c2a2b]/40 leading-tight">{desc}</span>
+                    <span className="block text-[11px] text-[#1c2a2b]/35 leading-tight">{desc}</span>
                   </span>
-                  <span className="shrink-0 text-[#1c2a2b]/25 group-hover:text-[#0e393d] transition-colors">↗</span>
+                  <span className="shrink-0 text-[#1c2a2b]/20 group-hover:text-[#0e393d] transition-colors text-sm">↗</span>
                 </a>
               ))}
             </div>
@@ -384,6 +462,6 @@ export default async function AdminDashboard() {
         </div>
 
       </div>
-    </PageShell>
+    </div>
   );
 }
