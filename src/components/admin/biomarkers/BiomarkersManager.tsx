@@ -30,6 +30,27 @@ export type ItemDefinition = {
   optimal_range_low: number | null;
   optimal_range_high: number | null;
   he_domain: string | null;
+  // Chart range
+  chart_range_low: number | null;
+  chart_range_high: number | null;
+  // Sex-specific ranges
+  has_sex_specific_ranges: boolean;
+  ref_range_low_f: number | null;
+  ref_range_high_f: number | null;
+  optimal_range_low_f: number | null;
+  optimal_range_high_f: number | null;
+  // Collection conditions
+  requires_fasting: boolean;
+  fasting_hours: number | null;
+  preferred_draw_time: string | null;
+  // Clinical metadata
+  critical_low: number | null;
+  critical_high: number | null;
+  age_stratified: boolean;
+  cvi_pct: number | null;
+  cva_pct: number | null;
+  assay_note: string | null;
+  loinc_code: string | null;
 };
 
 type FormState = {
@@ -49,6 +70,27 @@ type FormState = {
   optimal_range_low: string;
   optimal_range_high: string;
   he_domain: string;
+  // Chart range
+  chart_range_low: string;
+  chart_range_high: string;
+  // Sex-specific ranges
+  has_sex_specific_ranges: boolean;
+  ref_range_low_f: string;
+  ref_range_high_f: string;
+  optimal_range_low_f: string;
+  optimal_range_high_f: string;
+  // Collection conditions
+  requires_fasting: boolean;
+  fasting_hours: string;
+  preferred_draw_time: string;
+  // Clinical metadata
+  critical_low: string;
+  critical_high: string;
+  age_stratified: boolean;
+  cvi_pct: string;
+  cva_pct: string;
+  assay_note: string;
+  loinc_code: string;
 };
 
 type AiSuggestion = {
@@ -89,6 +131,27 @@ const EMPTY_FORM: FormState = {
   optimal_range_low: '',
   optimal_range_high: '',
   he_domain: '',
+  // Chart range
+  chart_range_low: '',
+  chart_range_high: '',
+  // Sex-specific ranges
+  has_sex_specific_ranges: false,
+  ref_range_low_f: '',
+  ref_range_high_f: '',
+  optimal_range_low_f: '',
+  optimal_range_high_f: '',
+  // Collection conditions
+  requires_fasting: false,
+  fasting_hours: '',
+  preferred_draw_time: '',
+  // Clinical metadata
+  critical_low: '',
+  critical_high: '',
+  age_stratified: false,
+  cvi_pct: '',
+  cva_pct: '',
+  assay_note: '',
+  loinc_code: '',
 };
 
 
@@ -450,7 +513,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   const [saving, setSaving]         = useState(false);
   const [error, setError]           = useState<string | null>(null);
   const [openSections, setOpenSections] = useState({
-    names: true, description: true, measurement: true, calculation: false, ranges: true, settings: false,
+    names: true, description: true, measurement: true, calculation: false, ranges: true, chartRange: false, sexRanges: false, collection: false, clinical: false, settings: false,
   });
 
   const toggleSection = (key: keyof typeof openSections) =>
@@ -461,7 +524,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   const refresh = useCallback(async () => {
     const { data } = await supabase
       .from('biomarkers')
-      .select('id, slug, name, name_short, description, item_type, is_active, is_calculated, formula, calculation_inputs, sort_order, unit, range_type, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, he_domain')
+      .select('id, slug, name, name_short, description, item_type, is_active, is_calculated, formula, calculation_inputs, sort_order, unit, range_type, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, he_domain, chart_range_low, chart_range_high, has_sex_specific_ranges, ref_range_low_f, ref_range_high_f, optimal_range_low_f, optimal_range_high_f, requires_fasting, fasting_hours, preferred_draw_time, critical_low, critical_high, age_stratified, cvi_pct, cva_pct, assay_note, loinc_code')
       .order('sort_order', { ascending: true });
     if (data) setItems(data as ItemDefinition[]);
   }, [supabase]);
@@ -471,7 +534,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   const openCreate = () => {
     setEditingId(null); setNameLang('en'); setDescLang('en');
     setForm(EMPTY_FORM); setError(null);
-    setOpenSections({ names: true, description: true, measurement: true, calculation: false, ranges: true, settings: false });
+    setOpenSections({ names: true, description: true, measurement: true, calculation: false, ranges: true, chartRange: false, sexRanges: false, collection: false, clinical: false, settings: false });
     setPanelOpen(true);
   };
 
@@ -495,9 +558,30 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
       optimal_range_low:  item.optimal_range_low  != null ? String(item.optimal_range_low)  : '',
       optimal_range_high: item.optimal_range_high != null ? String(item.optimal_range_high) : '',
       he_domain:   item.he_domain ?? '',
+      // Chart range
+      chart_range_low:  item.chart_range_low  != null ? String(item.chart_range_low)  : '',
+      chart_range_high: item.chart_range_high != null ? String(item.chart_range_high) : '',
+      // Sex-specific ranges
+      has_sex_specific_ranges: item.has_sex_specific_ranges ?? false,
+      ref_range_low_f:      item.ref_range_low_f      != null ? String(item.ref_range_low_f)      : '',
+      ref_range_high_f:     item.ref_range_high_f     != null ? String(item.ref_range_high_f)     : '',
+      optimal_range_low_f:  item.optimal_range_low_f  != null ? String(item.optimal_range_low_f)  : '',
+      optimal_range_high_f: item.optimal_range_high_f != null ? String(item.optimal_range_high_f) : '',
+      // Collection conditions
+      requires_fasting: item.requires_fasting ?? false,
+      fasting_hours:       item.fasting_hours       != null ? String(item.fasting_hours)       : '',
+      preferred_draw_time: item.preferred_draw_time ?? '',
+      // Clinical metadata
+      critical_low:  item.critical_low  != null ? String(item.critical_low)  : '',
+      critical_high: item.critical_high != null ? String(item.critical_high) : '',
+      age_stratified: item.age_stratified ?? false,
+      cvi_pct: item.cvi_pct != null ? String(item.cvi_pct) : '',
+      cva_pct: item.cva_pct != null ? String(item.cva_pct) : '',
+      assay_note: item.assay_note ?? '',
+      loinc_code: item.loinc_code ?? '',
     });
     setError(null);
-    setOpenSections({ names: true, description: true, measurement: true, calculation: isCalc, ranges: true, settings: false });
+    setOpenSections({ names: true, description: true, measurement: true, calculation: isCalc, ranges: true, chartRange: false, sexRanges: item.has_sex_specific_ranges ?? false, collection: false, clinical: false, settings: false });
     setPanelOpen(true);
   };
 
@@ -625,6 +709,27 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
       optimal_range_low: rt === 'lower_is_better'  ? null : parseNum(form.optimal_range_low),
       optimal_range_high:rt === 'higher_is_better' ? null : parseNum(form.optimal_range_high),
       he_domain:   form.he_domain || null,
+      // Chart range
+      chart_range_low:  parseNum(form.chart_range_low),
+      chart_range_high: parseNum(form.chart_range_high),
+      // Sex-specific ranges
+      has_sex_specific_ranges: form.has_sex_specific_ranges,
+      ref_range_low_f:      form.has_sex_specific_ranges ? parseNum(form.ref_range_low_f)      : null,
+      ref_range_high_f:     form.has_sex_specific_ranges ? parseNum(form.ref_range_high_f)     : null,
+      optimal_range_low_f:  form.has_sex_specific_ranges ? parseNum(form.optimal_range_low_f)  : null,
+      optimal_range_high_f: form.has_sex_specific_ranges ? parseNum(form.optimal_range_high_f) : null,
+      // Collection conditions
+      requires_fasting: form.requires_fasting,
+      fasting_hours:       form.requires_fasting ? (form.fasting_hours ? Number(form.fasting_hours) : null) : null,
+      preferred_draw_time: form.preferred_draw_time || null,
+      // Clinical metadata
+      critical_low:  parseNum(form.critical_low),
+      critical_high: parseNum(form.critical_high),
+      age_stratified: form.age_stratified,
+      cvi_pct: parseNum(form.cvi_pct),
+      cva_pct: parseNum(form.cva_pct),
+      assay_note: form.assay_note.trim() || null,
+      loinc_code: form.loinc_code.trim() || null,
     };
     try {
       if (editingId) {
@@ -975,6 +1080,135 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
                     </div>
                   </>
                 )}
+              </SectionBlock>
+
+              {/* Chart Range */}
+              <SectionBlock title="Chart Range" open={openSections.chartRange} onToggle={() => toggleSection('chartRange')}>
+                <p className="text-[11px] text-[#1c2a2b]/40 -mt-1 mb-2">Defines Y-axis bounds for trend graphs. Leave blank to auto-derive from reference range.</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Chart min">
+                    <input type="number" className={inputCls} value={form.chart_range_low}
+                      onChange={(e) => setForm((f) => ({ ...f, chart_range_low: e.target.value }))}
+                      placeholder="auto" step="any" />
+                  </Field>
+                  <Field label="Chart max">
+                    <input type="number" className={inputCls} value={form.chart_range_high}
+                      onChange={(e) => setForm((f) => ({ ...f, chart_range_high: e.target.value }))}
+                      placeholder="auto" step="any" />
+                  </Field>
+                </div>
+              </SectionBlock>
+
+              {/* Sex-Specific Ranges */}
+              <SectionBlock title="Sex-Specific Ranges" open={openSections.sexRanges} onToggle={() => toggleSection('sexRanges')}>
+                <div className="flex items-center justify-between rounded-lg border border-[#0e393d]/10 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-[#1c2a2b]">Different ranges for male vs female</p>
+                    <p className="text-xs text-[#1c2a2b]/40">When enabled, the existing reference/optimal ranges become male/universal values</p>
+                  </div>
+                  <Toggle checked={form.has_sex_specific_ranges} onChange={(v) => setForm((f) => ({ ...f, has_sex_specific_ranges: v }))} />
+                </div>
+                {form.has_sex_specific_ranges && (
+                  <div className="grid grid-cols-2 gap-6 mt-2">
+                    <div>
+                      <p className="text-xs font-semibold text-[#0e393d]/60 mb-3">♂ Male / Universal</p>
+                      <p className="text-[11px] text-[#1c2a2b]/40 mb-2">Use the Reference Ranges section above to set male/universal values.</p>
+                    </div>
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-[#0e393d]/60 mb-1">♀ Female override</p>
+                      <Field label="Ref Low (F)">
+                        <input type="number" className={inputCls} value={form.ref_range_low_f}
+                          onChange={(e) => setForm((f) => ({ ...f, ref_range_low_f: e.target.value }))}
+                          placeholder="same as male" step="any" />
+                      </Field>
+                      <Field label="Ref High (F)">
+                        <input type="number" className={inputCls} value={form.ref_range_high_f}
+                          onChange={(e) => setForm((f) => ({ ...f, ref_range_high_f: e.target.value }))}
+                          placeholder="same as male" step="any" />
+                      </Field>
+                      <Field label="Optimal Low (F)">
+                        <input type="number" className={inputCls} value={form.optimal_range_low_f}
+                          onChange={(e) => setForm((f) => ({ ...f, optimal_range_low_f: e.target.value }))}
+                          placeholder="same as male" step="any" />
+                      </Field>
+                      <Field label="Optimal High (F)">
+                        <input type="number" className={inputCls} value={form.optimal_range_high_f}
+                          onChange={(e) => setForm((f) => ({ ...f, optimal_range_high_f: e.target.value }))}
+                          placeholder="same as male" step="any" />
+                      </Field>
+                    </div>
+                  </div>
+                )}
+              </SectionBlock>
+
+              {/* Collection Conditions */}
+              <SectionBlock title="Collection Conditions" open={openSections.collection} onToggle={() => toggleSection('collection')}>
+                <div className="grid grid-cols-3 gap-4 items-start">
+                  <div className="flex items-center gap-3 rounded-lg border border-[#0e393d]/10 px-4 py-3">
+                    <label className="text-sm font-medium text-[#1c2a2b]">Requires fasting</label>
+                    <Toggle checked={form.requires_fasting} onChange={(v) => setForm((f) => ({ ...f, requires_fasting: v }))} />
+                  </div>
+                  {form.requires_fasting && (
+                    <Field label="Fasting hours">
+                      <input type="number" className={inputCls} value={form.fasting_hours}
+                        onChange={(e) => setForm((f) => ({ ...f, fasting_hours: e.target.value }))}
+                        placeholder="8" min={0} step={1} />
+                    </Field>
+                  )}
+                  <Field label="Preferred draw time">
+                    <select className={selectCls} value={form.preferred_draw_time} onChange={(e) => setForm((f) => ({ ...f, preferred_draw_time: e.target.value }))}>
+                      <option value="">Any time</option>
+                      <option value="morning">Morning (7–10am)</option>
+                      <option value="fasting_morning">Fasting + Morning</option>
+                    </select>
+                  </Field>
+                </div>
+              </SectionBlock>
+
+              {/* Clinical Metadata */}
+              <SectionBlock title="Clinical Metadata" open={openSections.clinical} onToggle={() => toggleSection('clinical')}>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Critical value — low (panic)">
+                    <input type="number" className={inputCls} value={form.critical_low}
+                      onChange={(e) => setForm((f) => ({ ...f, critical_low: e.target.value }))}
+                      placeholder="none" step="any" />
+                  </Field>
+                  <Field label="Critical value — high (panic)">
+                    <input type="number" className={inputCls} value={form.critical_high}
+                      onChange={(e) => setForm((f) => ({ ...f, critical_high: e.target.value }))}
+                      placeholder="none" step="any" />
+                  </Field>
+                </div>
+                <Field label="Assay / method note">
+                  <textarea className={`${inputCls} resize-none`} rows={2}
+                    value={form.assay_note}
+                    onChange={(e) => setForm((f) => ({ ...f, assay_note: e.target.value }))}
+                    placeholder="optional" />
+                </Field>
+                <Field label="LOINC code">
+                  <input type="text" className={inputCls} value={form.loinc_code}
+                    onChange={(e) => setForm((f) => ({ ...f, loinc_code: e.target.value }))}
+                    placeholder="e.g. 2345-7" />
+                </Field>
+                <div className="flex items-center justify-between rounded-lg border border-[#0e393d]/10 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-[#1c2a2b]">Ranges vary by age group</p>
+                    <p className="text-xs text-[#1c2a2b]/40">Flag that reference ranges are age-stratified</p>
+                  </div>
+                  <Toggle checked={form.age_stratified} onChange={(v) => setForm((f) => ({ ...f, age_stratified: v }))} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Biological variation CVi %">
+                    <input type="number" className={inputCls} value={form.cvi_pct}
+                      onChange={(e) => setForm((f) => ({ ...f, cvi_pct: e.target.value }))}
+                      placeholder="optional" step="any" />
+                  </Field>
+                  <Field label="Analytical variation CVa %">
+                    <input type="number" className={inputCls} value={form.cva_pct}
+                      onChange={(e) => setForm((f) => ({ ...f, cva_pct: e.target.value }))}
+                      placeholder="optional" step="any" />
+                  </Field>
+                </div>
               </SectionBlock>
 
               {/* Settings */}
