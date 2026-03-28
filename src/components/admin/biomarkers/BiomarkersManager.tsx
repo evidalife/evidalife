@@ -93,6 +93,19 @@ type FormState = {
   loinc_code: string;
 };
 
+type RangeOverride = {
+  id?: string;
+  tempId: string;
+  sex: string;
+  age_min: string;
+  age_max: string;
+  ref_range_low: string;
+  ref_range_high: string;
+  optimal_range_low: string;
+  optimal_range_high: string;
+  source_note: string;
+};
+
 type AiSuggestion = {
   unit?: string | null;
   range_logic?: string | null;
@@ -343,17 +356,19 @@ function RangeBar({ refLow, refHigh, optLow, optHigh }: {
 
 // ─── Range Fields (conditioned on range_type) ─────────────────────────────────
 
-function RangeFields({ form, setForm, rangeType }: {
+function RangeFields({ form, setForm, rangeType, sexSpecific }: {
   form: FormState;
   setForm: React.Dispatch<React.SetStateAction<FormState>>;
   rangeType: string;
+  sexSpecific?: boolean;
 }) {
   const showLow  = rangeType !== 'lower_is_better';
   const showHigh = rangeType !== 'higher_is_better';
-  const refLowLabel  = rangeType === 'higher_is_better' ? 'Min Normal' : 'Ref Low';
-  const refHighLabel = rangeType === 'lower_is_better'  ? 'Max Normal' : 'Ref High';
-  const optLowLabel  = rangeType === 'higher_is_better' ? 'Optimal Min' : 'Optimal Low';
-  const optHighLabel = rangeType === 'lower_is_better'  ? 'Optimal Max' : 'Optimal High';
+  const pfx = sexSpecific ? '♂ ' : '';
+  const refLowLabel  = pfx + (rangeType === 'higher_is_better' ? 'Min Normal' : 'Ref Low');
+  const refHighLabel = pfx + (rangeType === 'lower_is_better'  ? 'Max Normal' : 'Ref High');
+  const optLowLabel  = pfx + (rangeType === 'higher_is_better' ? 'Optimal Min' : 'Optimal Low');
+  const optHighLabel = pfx + (rangeType === 'lower_is_better'  ? 'Optimal Max' : 'Optimal High');
 
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -385,6 +400,84 @@ function RangeFields({ form, setForm, rangeType }: {
             placeholder="80" step="any" />
         </Field>
       )}
+    </div>
+  );
+}
+
+// ─── Override Row ─────────────────────────────────────────────────────────────
+
+function OverrideRow({ ov, rangeType, onChange, onDelete }: {
+  ov: RangeOverride;
+  rangeType: string;
+  onChange: (updated: RangeOverride) => void;
+  onDelete: () => void;
+}) {
+  const showLow  = rangeType !== 'lower_is_better';
+  const showHigh = rangeType !== 'higher_is_better';
+  const refLowLabel  = rangeType === 'higher_is_better' ? 'Min Normal' : 'Ref Low';
+  const refHighLabel = rangeType === 'lower_is_better'  ? 'Max Normal' : 'Ref High';
+  const optLowLabel  = rangeType === 'higher_is_better' ? 'Optimal Min' : 'Optimal Low';
+  const optHighLabel = rangeType === 'lower_is_better'  ? 'Optimal Max' : 'Optimal High';
+  return (
+    <div className="border border-[#0e393d]/10 rounded-xl p-4 bg-[#fafaf8] space-y-3">
+      <div className="flex items-start gap-3">
+        <div className="grid grid-cols-3 gap-3 flex-1">
+          <Field label="Sex">
+            <select className={selectCls} value={ov.sex} onChange={(e) => onChange({ ...ov, sex: e.target.value })}>
+              <option value="">Any</option>
+              <option value="M">Male (M)</option>
+              <option value="F">Female (F)</option>
+            </select>
+          </Field>
+          <Field label="Age min">
+            <input type="number" className={inputCls} value={ov.age_min}
+              onChange={(e) => onChange({ ...ov, age_min: e.target.value })}
+              placeholder="0" min={0} step={1} />
+          </Field>
+          <Field label="Age max">
+            <input type="number" className={inputCls} value={ov.age_max}
+              onChange={(e) => onChange({ ...ov, age_max: e.target.value })}
+              placeholder="120" min={0} step={1} />
+          </Field>
+        </div>
+        <button type="button" onClick={onDelete}
+          className="mt-6 text-[#1c2a2b]/30 hover:text-red-500 transition shrink-0 text-sm">✕</button>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {showLow && (
+          <Field label={refLowLabel}>
+            <input type="number" className={inputCls} value={ov.ref_range_low}
+              onChange={(e) => onChange({ ...ov, ref_range_low: e.target.value })}
+              placeholder="inherit" step="any" />
+          </Field>
+        )}
+        {showHigh && (
+          <Field label={refHighLabel}>
+            <input type="number" className={inputCls} value={ov.ref_range_high}
+              onChange={(e) => onChange({ ...ov, ref_range_high: e.target.value })}
+              placeholder="inherit" step="any" />
+          </Field>
+        )}
+        {showLow && (
+          <Field label={optLowLabel}>
+            <input type="number" className={inputCls} value={ov.optimal_range_low}
+              onChange={(e) => onChange({ ...ov, optimal_range_low: e.target.value })}
+              placeholder="inherit" step="any" />
+          </Field>
+        )}
+        {showHigh && (
+          <Field label={optHighLabel}>
+            <input type="number" className={inputCls} value={ov.optimal_range_high}
+              onChange={(e) => onChange({ ...ov, optimal_range_high: e.target.value })}
+              placeholder="inherit" step="any" />
+          </Field>
+        )}
+      </div>
+      <Field label="Source note">
+        <input type="text" className={inputCls} value={ov.source_note}
+          onChange={(e) => onChange({ ...ov, source_note: e.target.value })}
+          placeholder="e.g. NHS reference ranges 2023" />
+      </Field>
     </div>
   );
 }
@@ -513,8 +606,10 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   const [saving, setSaving]         = useState(false);
   const [error, setError]           = useState<string | null>(null);
   const [openSections, setOpenSections] = useState({
-    names: true, description: true, measurement: true, calculation: false, ranges: true, chartRange: false, sexRanges: false, collection: false, clinical: false, settings: false,
+    names: true, description: true, measurement: true, calculation: false, ranges: true, chartRange: false, ageRanges: true, collection: false, clinical: false, settings: false,
   });
+  const [overrides, setOverrides] = useState<RangeOverride[]>([]);
+  const [deletedOverrideIds, setDeletedOverrideIds] = useState<string[]>([]);
 
   const toggleSection = (key: keyof typeof openSections) =>
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -534,11 +629,12 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   const openCreate = () => {
     setEditingId(null); setNameLang('en'); setDescLang('en');
     setForm(EMPTY_FORM); setError(null);
-    setOpenSections({ names: true, description: true, measurement: true, calculation: false, ranges: true, chartRange: false, sexRanges: false, collection: false, clinical: false, settings: false });
+    setOverrides([]); setDeletedOverrideIds([]);
+    setOpenSections({ names: true, description: true, measurement: true, calculation: false, ranges: true, chartRange: false, ageRanges: true, collection: false, clinical: false, settings: false });
     setPanelOpen(true);
   };
 
-  const openEdit = (item: ItemDefinition) => {
+  const openEdit = async (item: ItemDefinition) => {
     setEditingId(item.id); setNameLang('en'); setDescLang('en');
     const isCalc = item.is_calculated ?? false;
     setForm({
@@ -581,7 +677,26 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
       loinc_code: item.loinc_code ?? '',
     });
     setError(null);
-    setOpenSections({ names: true, description: true, measurement: true, calculation: isCalc, ranges: true, chartRange: false, sexRanges: item.has_sex_specific_ranges ?? false, collection: false, clinical: false, settings: false });
+    setOpenSections({ names: true, description: true, measurement: true, calculation: isCalc, ranges: true, chartRange: false, ageRanges: true, collection: false, clinical: false, settings: false });
+    // Load range overrides
+    const { data: ovData } = await supabase
+      .from('biomarker_range_overrides')
+      .select('*')
+      .eq('biomarker_id', item.id)
+      .order('sort_order');
+    setOverrides((ovData ?? []).map((ov: Record<string, unknown>) => ({
+      id: ov.id as string,
+      tempId: ov.id as string,
+      sex: (ov.sex as string) ?? '',
+      age_min: ov.age_min != null ? String(ov.age_min) : '',
+      age_max: ov.age_max != null ? String(ov.age_max) : '',
+      ref_range_low:      ov.ref_range_low      != null ? String(ov.ref_range_low)      : '',
+      ref_range_high:     ov.ref_range_high     != null ? String(ov.ref_range_high)     : '',
+      optimal_range_low:  ov.optimal_range_low  != null ? String(ov.optimal_range_low)  : '',
+      optimal_range_high: ov.optimal_range_high != null ? String(ov.optimal_range_high) : '',
+      source_note: (ov.source_note as string) ?? '',
+    })));
+    setDeletedOverrideIds([]);
     setPanelOpen(true);
   };
 
@@ -732,12 +847,39 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
       loinc_code: form.loinc_code.trim() || null,
     };
     try {
+      let savedId: string;
       if (editingId) {
         const { error: err } = await supabase.from('biomarkers').update(payload).eq('id', editingId);
         if (err) throw err;
+        savedId = editingId;
       } else {
-        const { error: err } = await supabase.from('biomarkers').insert({ ...payload, slug: slugify(form.name_short_en || form.name.en || form.name.de) });
+        const { data: inserted, error: err } = await supabase.from('biomarkers')
+          .insert({ ...payload, slug: slugify(form.name_short_en || form.name.en || form.name.de) })
+          .select('id').single();
         if (err) throw err;
+        savedId = inserted.id as string;
+      }
+      // Persist range overrides
+      if (deletedOverrideIds.length > 0) {
+        await supabase.from('biomarker_range_overrides').delete().in('id', deletedOverrideIds);
+      }
+      for (const ov of overrides) {
+        const ovPayload = {
+          biomarker_id: savedId,
+          sex: ov.sex || null,
+          age_min: ov.age_min ? Number(ov.age_min) : null,
+          age_max: ov.age_max ? Number(ov.age_max) : null,
+          ref_range_low:      rt !== 'lower_is_better'  && ov.ref_range_low      ? Number(ov.ref_range_low)      : null,
+          ref_range_high:     rt !== 'higher_is_better' && ov.ref_range_high     ? Number(ov.ref_range_high)     : null,
+          optimal_range_low:  rt !== 'lower_is_better'  && ov.optimal_range_low  ? Number(ov.optimal_range_low)  : null,
+          optimal_range_high: rt !== 'higher_is_better' && ov.optimal_range_high ? Number(ov.optimal_range_high) : null,
+          source_note: ov.source_note.trim() || null,
+        };
+        if (ov.id) {
+          await supabase.from('biomarker_range_overrides').update(ovPayload).eq('id', ov.id);
+        } else {
+          await supabase.from('biomarker_range_overrides').insert(ovPayload);
+        }
       }
       await refresh();
       closePanel();
@@ -1024,13 +1166,16 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
                   <Field label="Unit" hint="Swiss/EU clinical unit">
                     <UnitField value={form.unit} onChange={(v) => setForm((f) => ({ ...f, unit: v }))} />
                   </Field>
-                  <div className="col-span-2">
-                    <Field label="Health Domain" hint="Which Health Engine scoring domain this marker belongs to">
-                      <select className={selectCls} value={form.he_domain} onChange={(e) => setForm((f) => ({ ...f, he_domain: e.target.value }))}>
-                        {HE_DOMAINS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
-                      </select>
-                    </Field>
-                  </div>
+                  <Field label="Health Domain" hint="Which Health Engine scoring domain this marker belongs to">
+                    <select className={selectCls} value={form.he_domain} onChange={(e) => setForm((f) => ({ ...f, he_domain: e.target.value }))}>
+                      {HE_DOMAINS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="LOINC code" hint="Standard lab identifier (e.g. 2345-7)">
+                    <input type="text" className={inputCls} value={form.loinc_code}
+                      onChange={(e) => setForm((f) => ({ ...f, loinc_code: e.target.value }))}
+                      placeholder="e.g. 2345-7" />
+                  </Field>
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-[#0e393d]/10 px-4 py-3">
                   <div>
@@ -1073,10 +1218,59 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
                 {form.range_type && (
                   <>
                     <RangeBar refLow={previewRanges.refLow} refHigh={previewRanges.refHigh} optLow={previewRanges.optLow} optHigh={previewRanges.optHigh} />
-                    <RangeFields form={form} setForm={setForm} rangeType={form.range_type} />
+                    <RangeFields form={form} setForm={setForm} rangeType={form.range_type} sexSpecific={form.has_sex_specific_ranges} />
                     <div className="flex gap-3 text-xs text-[#1c2a2b]/50 pt-1">
                       <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-200" />Normal range</span>
                       <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-emerald-400/70" />Optimal range</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border border-[#0e393d]/10 px-4 py-3 mt-1">
+                      <div>
+                        <p className="text-sm font-medium text-[#1c2a2b]">Different ranges for male vs female</p>
+                        <p className="text-xs text-[#1c2a2b]/40">Existing ranges become male/universal values</p>
+                      </div>
+                      <Toggle checked={form.has_sex_specific_ranges} onChange={(v) => setForm((f) => ({ ...f, has_sex_specific_ranges: v }))} />
+                    </div>
+                    {form.has_sex_specific_ranges && (
+                      <div>
+                        <p className="text-[11px] text-[#1c2a2b]/40 mb-3">Female overrides below — leave blank to inherit male values.</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          {form.range_type !== 'lower_is_better' && (
+                            <Field label={form.range_type === 'higher_is_better' ? '♀ Min Normal' : '♀ Ref Low'}>
+                              <input type="number" className={inputCls} value={form.ref_range_low_f}
+                                onChange={(e) => setForm((f) => ({ ...f, ref_range_low_f: e.target.value }))}
+                                placeholder="same as male" step="any" />
+                            </Field>
+                          )}
+                          {form.range_type !== 'higher_is_better' && (
+                            <Field label={form.range_type === 'lower_is_better' ? '♀ Max Normal' : '♀ Ref High'}>
+                              <input type="number" className={inputCls} value={form.ref_range_high_f}
+                                onChange={(e) => setForm((f) => ({ ...f, ref_range_high_f: e.target.value }))}
+                                placeholder="same as male" step="any" />
+                            </Field>
+                          )}
+                          {form.range_type !== 'lower_is_better' && (
+                            <Field label={form.range_type === 'higher_is_better' ? '♀ Optimal Min' : '♀ Optimal Low'}>
+                              <input type="number" className={inputCls} value={form.optimal_range_low_f}
+                                onChange={(e) => setForm((f) => ({ ...f, optimal_range_low_f: e.target.value }))}
+                                placeholder="same as male" step="any" />
+                            </Field>
+                          )}
+                          {form.range_type !== 'higher_is_better' && (
+                            <Field label={form.range_type === 'lower_is_better' ? '♀ Optimal Max' : '♀ Optimal High'}>
+                              <input type="number" className={inputCls} value={form.optimal_range_high_f}
+                                onChange={(e) => setForm((f) => ({ ...f, optimal_range_high_f: e.target.value }))}
+                                placeholder="same as male" step="any" />
+                            </Field>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between rounded-lg border border-[#0e393d]/10 px-4 py-3 mt-1">
+                      <div>
+                        <p className="text-sm font-medium text-[#1c2a2b]">Ranges vary by age group</p>
+                        <p className="text-xs text-[#1c2a2b]/40">Enable age-stratified range overrides below</p>
+                      </div>
+                      <Toggle checked={form.age_stratified} onChange={(v) => setForm((f) => ({ ...f, age_stratified: v }))} />
                     </div>
                   </>
                 )}
@@ -1099,43 +1293,41 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
                 </div>
               </SectionBlock>
 
-              {/* Sex-Specific Ranges */}
-              <SectionBlock title="Sex-Specific Ranges" open={openSections.sexRanges} onToggle={() => toggleSection('sexRanges')}>
-                <div className="flex items-center justify-between rounded-lg border border-[#0e393d]/10 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-[#1c2a2b]">Different ranges for male vs female</p>
-                    <p className="text-xs text-[#1c2a2b]/40">Existing ranges become male/universal values</p>
-                  </div>
-                  <Toggle checked={form.has_sex_specific_ranges} onChange={(v) => setForm((f) => ({ ...f, has_sex_specific_ranges: v }))} />
-                </div>
-                {form.has_sex_specific_ranges && (
-                  <div className="mt-2">
-                    <p className="text-[11px] text-[#1c2a2b]/40 mb-3">Male/universal values are set in Reference Ranges above. Female overrides below — leave blank to inherit.</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Ref Low (F)">
-                        <input type="number" className={inputCls} value={form.ref_range_low_f}
-                          onChange={(e) => setForm((f) => ({ ...f, ref_range_low_f: e.target.value }))}
-                          placeholder="same as male" step="any" />
-                      </Field>
-                      <Field label="Ref High (F)">
-                        <input type="number" className={inputCls} value={form.ref_range_high_f}
-                          onChange={(e) => setForm((f) => ({ ...f, ref_range_high_f: e.target.value }))}
-                          placeholder="same as male" step="any" />
-                      </Field>
-                      <Field label="Optimal Low (F)">
-                        <input type="number" className={inputCls} value={form.optimal_range_low_f}
-                          onChange={(e) => setForm((f) => ({ ...f, optimal_range_low_f: e.target.value }))}
-                          placeholder="same as male" step="any" />
-                      </Field>
-                      <Field label="Optimal High (F)">
-                        <input type="number" className={inputCls} value={form.optimal_range_high_f}
-                          onChange={(e) => setForm((f) => ({ ...f, optimal_range_high_f: e.target.value }))}
-                          placeholder="same as male" step="any" />
-                      </Field>
+              {/* Age-Stratified Ranges */}
+              {form.age_stratified && (
+                <SectionBlock title="Age-Stratified Ranges" open={openSections.ageRanges} onToggle={() => toggleSection('ageRanges')}>
+                  <p className="text-[11px] text-[#1c2a2b]/40 -mt-1 mb-3">Define reference/optimal ranges for specific age groups or sex. Leave range fields blank to inherit from main ranges above.</p>
+                  {overrides.length > 0 && (
+                    <div className="space-y-3">
+                      {overrides.map((ov, idx) => (
+                        <OverrideRow
+                          key={ov.tempId}
+                          ov={ov}
+                          rangeType={form.range_type}
+                          onChange={(updated) => setOverrides(prev => prev.map((o, i) => i === idx ? updated : o))}
+                          onDelete={() => {
+                            if (ov.id) setDeletedOverrideIds(prev => [...prev, ov.id!]);
+                            setOverrides(prev => prev.filter((_, i) => i !== idx));
+                          }}
+                        />
+                      ))}
                     </div>
-                  </div>
-                )}
-              </SectionBlock>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setOverrides(prev => [...prev, {
+                      tempId: crypto.randomUUID(),
+                      sex: '', age_min: '', age_max: '',
+                      ref_range_low: '', ref_range_high: '',
+                      optimal_range_low: '', optimal_range_high: '',
+                      source_note: '',
+                    }])}
+                    className="text-xs font-semibold text-[#0e393d] border border-[#0e393d]/20 rounded-lg px-3 py-2 hover:bg-[#0e393d]/5 transition"
+                  >
+                    + Add Override
+                  </button>
+                </SectionBlock>
+              )}
 
               {/* Collection Conditions */}
               <SectionBlock title="Collection Conditions" open={openSections.collection} onToggle={() => toggleSection('collection')}>
@@ -1183,18 +1375,6 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
                     onChange={(e) => setForm((f) => ({ ...f, assay_note: e.target.value }))}
                     placeholder="optional" />
                 </Field>
-                <Field label="LOINC code">
-                  <input type="text" className={inputCls} value={form.loinc_code}
-                    onChange={(e) => setForm((f) => ({ ...f, loinc_code: e.target.value }))}
-                    placeholder="e.g. 2345-7" />
-                </Field>
-                <div className="flex items-center justify-between rounded-lg border border-[#0e393d]/10 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-[#1c2a2b]">Ranges vary by age group</p>
-                    <p className="text-xs text-[#1c2a2b]/40">Flag that reference ranges are age-stratified</p>
-                  </div>
-                  <Toggle checked={form.age_stratified} onChange={(v) => setForm((f) => ({ ...f, age_stratified: v }))} />
-                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="Biological variation CVi %">
                     <input type="number" className={inputCls} value={form.cvi_pct}

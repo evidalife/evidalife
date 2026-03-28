@@ -39,7 +39,7 @@ export function locName(field: LocalizedString | null | undefined): string {
 export const TEST_CATEGORIES = [
   { value: 'biomarker',           label: 'Blood Marker',         icon: '🩸' },
   { value: 'clinical_assessment', label: 'Clinical Assessment',  icon: '🏥' },
-  { value: 'bio_age',             label: 'Epigenetic Clock',     icon: '🧬' },
+  { value: 'bio_age',             label: 'Biological Age',       icon: '🧬' },
   { value: 'genetic',             label: 'Genetic',              icon: '🔬' },
   { value: 'microbiome',          label: 'Microbiome',           icon: '🦠' },
   { value: 'wearable',            label: 'Wearable',             icon: '⌚' },

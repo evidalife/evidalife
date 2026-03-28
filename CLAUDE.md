@@ -19,23 +19,27 @@ No test framework is configured.
 
 ## Architecture
 
-Single-page landing site for Evida Life (health/nutrition platform). Built with Next.js App Router, TypeScript, Tailwind CSS 4, and Supabase.
+Full-stack longevity health platform for the DACH market. 35+ public routes, 12 admin pages, e-commerce with Stripe, biomarker tracking, Health Engine score dashboard. Built with Next.js 16 App Router, TypeScript, Tailwind CSS 4, and Supabase (Zurich).
 
 **Key files:**
-- `src/app/page.tsx` — The entire landing page. Contains all sections (nav, hero, features, waitlist, footer) and the full bilingual translation object `T`.
-- `src/app/layout.tsx` — Root layout with Google Fonts (Playfair Display, Inter) and metadata.
-- `src/app/globals.css` — Tailwind import + CSS variables for theme colors and fonts.
-- `src/lib/supabase.ts` — Supabase client initialization using `NEXT_PUBLIC_SUPABASE_*` env vars.
+- `src/app/[locale]/page.tsx` — Landing page
+- `src/app/[locale]/layout.tsx` — Root layout with Google Fonts (Playfair Display, Inter) and metadata
+- `src/app/globals.css` — Tailwind import + CSS variables for theme colors and fonts
+- `src/lib/supabase.ts` — Supabase client initialization using `NEXT_PUBLIC_SUPABASE_*` env vars
+- `src/components/admin/biomarkers/BiomarkersManager.tsx` — Biomarker admin panel (~1400 lines)
+- `src/components/health/HealthEnginePublic.tsx` — Health Engine dashboard UI
+- `src/components/admin/lab-results/shared.tsx` — Shared enums (TEST_CATEGORIES, HE_DOMAINS, RANGE_TYPES)
 
-**Bilingual support (DE/EN):**
-- Language preference stored in `localStorage` under key `evida-lang`.
-- Browser language auto-detects on first visit, defaulting to German.
-- All copy lives in the `T` translation object inside `page.tsx`.
+**i18n (next-intl):**
+- URL-based locale routing: `/de/`, `/en/`
+- Translation files in `src/i18n/`
+- DB content uses JSONB `{de, en, fr, es, it}` inline
+- 6 languages planned: DE, EN, FR, ES, IT + future
 
-**Waitlist / Supabase:**
-- Email submissions go directly to the `waitlist` table via the Supabase anon key.
-- Duplicate emails are handled gracefully by catching Postgres error code `23505`.
-- Env vars required: `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+**Supabase:**
+- 56 tables, RLS on all, project `rwbmdxgcjgidalcoeppp` (eu-central-2, Zurich)
+- Env vars required: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `DATABASE_URL` in `.env.local` for psql access via session pooler
 
 **Path alias:** `@/*` resolves to `./src/*`.
 
