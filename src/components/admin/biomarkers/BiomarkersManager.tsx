@@ -599,7 +599,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   const [typeFilter, setTypeFilter] = useState('');
   const [domainFilter, setDomainFilter] = useState('');
   const [calcFilter, setCalcFilter] = useState<'calculated' | 'measured' | null>(null);
-  type SortCol = 'name' | 'type' | 'domain' | 'unit' | 'rangeType' | 'ranges' | 'description' | 'sort' | 'quality' | 'status' | null;
+  type SortCol = 'name' | 'type' | 'domain' | 'unit' | 'rangeType' | 'ranges' | 'sort' | 'quality' | 'status' | null;
   const [sortCol, setSortCol] = useState<SortCol>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [panelOpen, setPanelOpen]   = useState(false);
@@ -938,7 +938,6 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
     if (sortCol === 'unit')        cmp = (a.unit || '').localeCompare(b.unit || '');
     if (sortCol === 'rangeType')   cmp = (a.range_type || '').localeCompare(b.range_type || '');
     if (sortCol === 'ranges')      cmp = (a.ref_range_low ?? -Infinity) - (b.ref_range_low ?? -Infinity);
-    if (sortCol === 'description') cmp = (a.description?.en || '').localeCompare(b.description?.en || '');
     if (sortCol === 'sort')        cmp = (a.sort_order ?? 9999) - (b.sort_order ?? 9999);
     if (sortCol === 'quality')     cmp = qualityScore(a) - qualityScore(b);
     if (sortCol === 'status')      cmp = (a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1);
@@ -1066,22 +1065,28 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#0e393d]/8 bg-[#0e393d]/[0.03]">
-              {(['name', 'description', 'type', 'domain', 'unit', 'rangeType', 'ranges', 'sort', 'quality', 'status'] as const).map((col) => {
-                const labels: Record<string, string> = { name: 'Name', description: 'Description', type: 'Type', domain: 'Domain', unit: 'Unit', rangeType: 'R.Type', ranges: 'Ranges', sort: '#', quality: 'Data', status: 'Status' };
-                const widths: Record<string, string> = { name: 'w-[180px]', description: '', type: '', domain: '', unit: 'w-16', rangeType: 'w-14', ranges: 'w-[180px]', sort: 'w-10', quality: 'w-14', status: 'w-20' };
-                const paddings: Record<string, string> = { description: 'pl-1 pr-1' };
-                const active = sortCol === col;
+              {(['name', 'icons', 'fullName', 'type', 'domain', 'unit', 'rangeType', 'ranges', 'sort', 'quality', 'status'] as const).map((col) => {
+                const labels: Record<string, string> = { name: 'Abbrev', icons: '', fullName: 'Full Name', type: 'Type', domain: 'Domain', unit: 'Unit', rangeType: 'R.Type', ranges: 'Ranges', sort: '#', quality: 'Data', status: 'Status' };
+                const widths: Record<string, string> = { name: '', icons: 'w-14', fullName: '', type: '', domain: '', unit: 'w-16', rangeType: 'w-14', ranges: 'w-[180px]', sort: 'w-10', quality: 'w-14', status: 'w-20' };
+                const paddings: Record<string, string> = { icons: 'px-1' };
+                const sortable = col !== 'icons';
+                const sortKey = col === 'fullName' ? 'name' as SortCol : col as SortCol;
+                const active = sortCol === sortKey && sortable;
                 return (
                   <th key={col} className={`${paddings[col] || 'px-2'} py-3 text-left ${widths[col] ?? ''}`}>
-                    <button
-                      onClick={() => handleSort(col as SortCol)}
-                      className={`flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider transition hover:text-[#0e393d] ${active ? 'text-[#0e393d]' : 'text-[#0e393d]/50'}`}
-                    >
-                      {labels[col]}
-                      <span className="text-[10px] leading-none">
-                        {active && sortDir === 'asc' ? '▲' : active && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}
-                      </span>
-                    </button>
+                    {sortable ? (
+                      <button
+                        onClick={() => handleSort(sortKey)}
+                        className={`flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider transition hover:text-[#0e393d] ${active ? 'text-[#0e393d]' : 'text-[#0e393d]/50'}`}
+                      >
+                        {labels[col]}
+                        <span className="text-[10px] leading-none">
+                          {active && sortDir === 'asc' ? '▲' : active && sortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}
+                        </span>
+                      </button>
+                    ) : (
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/50">{labels[col]}</span>
+                    )}
                   </th>
                 );
               })}
@@ -1090,7 +1095,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
           </thead>
           <tbody className="divide-y divide-[#0e393d]/5">
             {sorted.length === 0 && (
-              <tr><td colSpan={11} className="px-4 py-16 text-center">
+              <tr><td colSpan={12} className="px-4 py-16 text-center">
                 <div className="text-[#1c2a2b]/30 text-sm">No biomarkers found</div>
                 <p className="text-xs text-[#1c2a2b]/20 mt-1">Try adjusting your search or filters</p>
               </td></tr>
@@ -1100,38 +1105,30 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
               const hasRange = item.ref_range_low != null || item.ref_range_high != null;
               const rangeTypeIcon = item.range_type === 'lower_is_better' ? '↓' : item.range_type === 'higher_is_better' ? '↑' : item.range_type === 'range' ? '↔' : null;
               const rangeTypeColor = item.range_type === 'lower_is_better' ? 'text-blue-500 bg-blue-50' : item.range_type === 'higher_is_better' ? 'text-orange-500 bg-orange-50' : 'text-emerald-600 bg-emerald-50';
-              const descSnippet = item.description?.en ? (item.description.en.length > 60 ? item.description.en.slice(0, 60) + '…' : item.description.en) : null;
               return (
                 <tr key={item.id} className="hover:bg-[#fafaf8] transition-colors cursor-pointer group" onClick={() => openEdit(item)}>
-                  {/* Name: badges → abbreviation → full name, LOINC below */}
-                  <td className="px-2 py-2 w-[180px]">
-                    <div className="flex items-start gap-1.5 min-w-0">
-                      {/* Indicator badges */}
-                      <div className="flex gap-0.5 shrink-0 mt-0.5">
-                        {item.requires_fasting && <span className="inline-flex items-center justify-center rounded bg-amber-50 w-4 h-3.5 text-[7px] font-bold text-amber-600 ring-1 ring-inset ring-amber-200/60" title={`Fasting ${item.fasting_hours ? item.fasting_hours + 'h' : ''}`}>F</span>}
-                        {item.has_sex_specific_ranges && <span className="inline-flex items-center justify-center rounded bg-pink-50 w-4 h-3.5 text-[7px] font-bold text-pink-600 ring-1 ring-inset ring-pink-200/60" title="Sex-specific">♀♂</span>}
-                        {item.age_stratified && <span className="inline-flex items-center justify-center rounded bg-blue-50 w-4 h-3.5 text-[7px] font-bold text-blue-600 ring-1 ring-inset ring-blue-200/60" title="Age-stratified">A</span>}
-                        {item.is_calculated && <span className="inline-flex items-center justify-center rounded bg-purple-50 w-4 h-3.5 text-[7px] font-bold text-purple-600 ring-1 ring-inset ring-purple-200/60" title="Calculated">⚡</span>}
+                  {/* Abbreviation */}
+                  <td className="px-2 py-2">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-[#0e393d] text-[13px] truncate">
+                        {item.name_short?.en || item.name?.en || item.name?.de || <span className="text-[#1c2a2b]/30 italic">Unnamed</span>}
                       </div>
-                      <div className="min-w-0 flex-1">
-                        {/* Row 1: abbreviation + full name */}
-                        <div className="flex items-baseline gap-1.5 truncate">
-                          <span className="font-semibold text-[#0e393d] text-[13px] shrink-0">
-                            {item.name_short?.en || item.name?.en || item.name?.de || <span className="text-[#1c2a2b]/30 italic">?</span>}
-                          </span>
-                          {item.name_short?.en && (item.name?.en || item.name?.de) && (
-                            <span className="text-[11px] text-[#1c2a2b]/40 truncate">{item.name?.en || item.name?.de}</span>
-                          )}
-                        </div>
-                        {/* Row 2: LOINC code */}
-                        {item.loinc_code && <div className="font-mono text-[9px] text-[#0e393d]/35 mt-px">{item.loinc_code}</div>}
-                      </div>
+                      {item.loinc_code && <div className="font-mono text-[9px] text-[#0e393d]/35 mt-px">{item.loinc_code}</div>}
                     </div>
                   </td>
-                  {/* Description — tighter padding to sit close to Type */}
-                  <td className="pl-1 pr-1 py-2">
-                    {descSnippet
-                      ? <span className="text-[11px] text-[#1c2a2b]/45 leading-tight line-clamp-2">{descSnippet}</span>
+                  {/* Icons */}
+                  <td className="px-1 py-2 w-14">
+                    <div className="flex flex-wrap gap-0.5">
+                      {item.requires_fasting && <span className="inline-flex items-center justify-center rounded bg-amber-50 w-4 h-3.5 text-[7px] font-bold text-amber-600 ring-1 ring-inset ring-amber-200/60" title={`Fasting ${item.fasting_hours ? item.fasting_hours + 'h' : ''}`}>F</span>}
+                      {item.has_sex_specific_ranges && <span className="inline-flex items-center justify-center rounded bg-pink-50 w-4 h-3.5 text-[7px] font-bold text-pink-600 ring-1 ring-inset ring-pink-200/60" title="Sex-specific">♀♂</span>}
+                      {item.age_stratified && <span className="inline-flex items-center justify-center rounded bg-blue-50 w-4 h-3.5 text-[7px] font-bold text-blue-600 ring-1 ring-inset ring-blue-200/60" title="Age-stratified">A</span>}
+                      {item.is_calculated && <span className="inline-flex items-center justify-center rounded bg-purple-50 w-4 h-3.5 text-[7px] font-bold text-purple-600 ring-1 ring-inset ring-purple-200/60" title="Calculated">⚡</span>}
+                    </div>
+                  </td>
+                  {/* Full Name */}
+                  <td className="px-2 py-2">
+                    {item.name_short?.en && (item.name?.en || item.name?.de)
+                      ? <span className="text-[12px] text-[#1c2a2b]/55 truncate block">{item.name?.en || item.name?.de}</span>
                       : <span className="text-[#1c2a2b]/20 text-[11px]">—</span>}
                   </td>
                   {/* Type */}
