@@ -312,6 +312,55 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
     return uploadSortDir === 'asc' ? cmp : -cmp;
   }), [uploads, uploadSortCol, uploadSortDir]);
 
+  // Group uploads by user for the overview
+  const [expandedUserIds, setExpandedUserIds] = useState<Set<string>>(new Set());
+  const toggleUserGroup = (uid: string) => setExpandedUserIds((prev) => {
+    const next = new Set(prev);
+    if (next.has(uid)) next.delete(uid); else next.add(uid);
+    return next;
+  });
+
+  type UserGroup = {
+    userId: string;
+    userName: string;
+    userEmail: string;
+    uploads: UploadRecord[];
+    totalResults: number;
+    latestDate: string;
+    completedCount: number;
+    pendingCount: number;
+  };
+
+  const groupedUploads = useMemo((): UserGroup[] => {
+    const map = new Map<string, UploadRecord[]>();
+    for (const u of sortedUploads) {
+      const key = u.user_id || '__unassigned__';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(u);
+    }
+    const groups: UserGroup[] = [];
+    for (const [uid, items] of map) {
+      const first = items[0];
+      const userName = first.patient
+        ? [first.patient.first_name, first.patient.last_name].filter(Boolean).join(' ') || 'Unknown'
+        : 'Unassigned';
+      const userEmail = first.patient?.email ?? '';
+      groups.push({
+        userId: uid,
+        userName,
+        userEmail,
+        uploads: items,
+        totalResults: items.reduce((s, u) => s + (u.results_created ?? 0), 0),
+        latestDate: items[0]?.created_at ?? '',
+        completedCount: items.filter((u) => u.extraction_status === 'completed').length,
+        pendingCount: items.filter((u) => ['extracted', 'processing'].includes(u.extraction_status)).length,
+      });
+    }
+    // Sort groups by latest upload date descending
+    groups.sort((a, b) => b.latestDate.localeCompare(a.latestDate));
+    return groups;
+  }, [sortedUploads]);
+
   const addToast = useCallback((msg: string, type: Toast['type'] = 'success') => {
     const id = nextToastId();
     setToasts((p) => [...p, { id, message: msg, type }]);
@@ -325,7 +374,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
       .from('lab_pdf_uploads')
       .select('id, user_id, file_name, file_url, extraction_status, results_created, created_at, extracted_data, draft_values, draft_metadata, lab_report_id, uploader:profiles!uploaded_by(first_name, last_name), patient:profiles!user_id(first_name, last_name, email)')
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(200);
     setUploads((data as unknown as UploadRecord[]) ?? []);
     setLoadingUploads(false);
   }, [supabase]);
@@ -1133,96 +1182,129 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
             );
           })()}
 
-          {/* ── Upload history ──────────────────────────────────────────────── */}
+          {/* ── Upload history — grouped by user ────────────────────────── */}
           <div>
             <SectionHeading>Recent Uploads</SectionHeading>
-            <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-x-auto shadow-sm">
-              <table className="w-full text-sm min-w-[740px]">
-                <thead>
-                  <tr className="border-b border-[#0e393d]/5 bg-[#0e393d]/[0.03]">
-                    {([
-                      { key: 'file_name',         label: 'File' },
-                      { key: null,                label: 'Assigned User' },
-                      { key: null,                label: 'Admin' },
-                      { key: 'created_at',        label: 'Date' },
-                      { key: 'extraction_status', label: 'Status' },
-                      { key: 'results_created',   label: 'Results' },
-                      { key: null,                label: 'Actions' },
-                    ] as { key: typeof uploadSortCol | null; label: string }[]).map(({ key, label }) => (
-                      <th
-                        key={label}
-                        onClick={key ? () => handleUploadSort(key) : undefined}
-                        className={`px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/50${key ? ' cursor-pointer select-none hover:text-[#0e393d]' : ''}`}
+            {loadingUploads ? (
+              <div className="py-8 flex justify-center"><Spinner /></div>
+            ) : uploads.length === 0 ? (
+              <p className="text-sm text-[#1c2a2b]/40 py-6 text-center">No uploads yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {groupedUploads.map((group) => {
+                  const isOpen = expandedUserIds.has(group.userId);
+                  return (
+                    <div key={group.userId} className="rounded-xl border border-[#0e393d]/10 bg-white shadow-sm overflow-hidden">
+                      {/* ── User group header ── */}
+                      <button
+                        onClick={() => toggleUserGroup(group.userId)}
+                        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-[#fafaf8] transition text-left"
                       >
-                        {label}{key ? <>{' '}{uploadSortCol === key && uploadSortDir === 'asc' ? '▲' : uploadSortCol === key && uploadSortDir === 'desc' ? '▼' : <span className="opacity-0">▲</span>}</> : null}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#0e393d]/5">
-                  {loadingUploads ? (
-                    <tr><td colSpan={7} className="px-4 py-8 text-center"><div className="inline-flex justify-center"><Spinner /></div></td></tr>
-                  ) : uploads.length === 0 ? (
-                    <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-[#1c2a2b]/40">No uploads yet.</td></tr>
-                  ) : sortedUploads.map((u) => (
-                    <tr key={u.id} className="hover:bg-[#fafaf8]">
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => openPdfInNewTab(u.file_url, supabase)}
-                          className="text-xs font-mono text-[#0e393d] hover:text-[#ceab84] transition-colors underline decoration-[#0e393d]/20 hover:decoration-[#ceab84]/40 underline-offset-2 text-left"
-                          title="Open PDF in new tab"
-                        >
-                          📄 {u.file_name}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-[#1c2a2b]/70">
-                        {u.patient
-                          ? [u.patient.first_name, u.patient.last_name].filter(Boolean).join(' ') || u.patient.email || '—'
-                          : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-[#1c2a2b]/40">
-                        {[u.uploader?.first_name, u.uploader?.last_name].filter(Boolean).join(' ') || '—'}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-[#1c2a2b]/50 whitespace-nowrap">{fmtDate(u.created_at)}</td>
-                      <td className="px-4 py-3">
-                        <Badge className={
-                          u.extraction_status === 'completed'   ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
-                          : u.extraction_status === 'extracted'  ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
-                          : u.extraction_status === 'failed' || u.extraction_status === 'error' ? 'bg-red-50 text-red-700 ring-red-600/20'
-                          : u.extraction_status === 'processing' ? 'bg-sky-50 text-sky-700 ring-sky-600/20'
-                          : 'bg-gray-50 text-gray-600 ring-gray-500/20'
-                        }>{u.extraction_status}</Badge>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-[#0e393d] font-medium">{u.results_created ?? 0}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-3">
-                          {u.draft_values && u.draft_values.length > 0 && u.extraction_status === 'extracted' && (
-                            <button
-                              onClick={() => handleOpenReview(u)}
-                              className="text-xs text-[#0e393d] hover:text-[#0e393d]/70 font-medium transition"
-                            >
-                              Review
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleReanalyze(u)}
-                            className="text-xs text-[#ceab84] hover:text-[#b8965e] font-medium transition"
-                          >
-                            Re-analyze
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUpload(u)}
-                            className="text-xs text-red-400 hover:text-red-600 font-medium transition"
-                          >
-                            Delete
-                          </button>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#0e393d]/8 flex items-center justify-center text-sm font-semibold text-[#0e393d]">
+                            {group.userName.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-[#0e393d] truncate">{group.userName}</p>
+                            {group.userEmail && <p className="text-[11px] text-[#1c2a2b]/40 truncate">{group.userEmail}</p>}
+                          </div>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        <div className="flex items-center gap-4 flex-shrink-0">
+                          <div className="flex gap-2">
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-[#0e393d]/6 text-[#0e393d]">
+                              {group.uploads.length} file{group.uploads.length !== 1 ? 's' : ''}
+                            </span>
+                            {group.completedCount > 0 && (
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20">
+                                {group.completedCount} completed
+                              </span>
+                            )}
+                            {group.pendingCount > 0 && (
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-amber-50 text-amber-700 ring-1 ring-amber-600/20">
+                                {group.pendingCount} pending
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-[#1c2a2b]/30 whitespace-nowrap">{fmtDate(group.latestDate)}</span>
+                          <span className={`text-[#0e393d]/40 transition-transform ${isOpen ? 'rotate-180' : ''}`}>▾</span>
+                        </div>
+                      </button>
+
+                      {/* ── Expanded file list ── */}
+                      {isOpen && (
+                        <div className="border-t border-[#0e393d]/5">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-[#0e393d]/[0.02]">
+                                <th className="px-5 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#0e393d]/40">File</th>
+                                <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#0e393d]/40">Uploaded by</th>
+                                <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#0e393d]/40">Date</th>
+                                <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#0e393d]/40">Status</th>
+                                <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#0e393d]/40">Results</th>
+                                <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[#0e393d]/40">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#0e393d]/5">
+                              {group.uploads.map((u) => (
+                                <tr key={u.id} className="hover:bg-[#fafaf8]">
+                                  <td className="px-5 py-2.5">
+                                    <button
+                                      onClick={() => openPdfInNewTab(u.file_url, supabase)}
+                                      className="text-xs font-mono text-[#0e393d] hover:text-[#ceab84] transition-colors underline decoration-[#0e393d]/20 hover:decoration-[#ceab84]/40 underline-offset-2 text-left"
+                                      title="Open PDF in new tab"
+                                    >
+                                      📄 {u.file_name}
+                                    </button>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-xs text-[#1c2a2b]/40">
+                                    {[u.uploader?.first_name, u.uploader?.last_name].filter(Boolean).join(' ') || '—'}
+                                  </td>
+                                  <td className="px-3 py-2.5 text-xs text-[#1c2a2b]/50 whitespace-nowrap">{fmtDate(u.created_at)}</td>
+                                  <td className="px-3 py-2.5">
+                                    <Badge className={
+                                      u.extraction_status === 'completed'   ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+                                      : u.extraction_status === 'extracted'  ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
+                                      : u.extraction_status === 'failed' || u.extraction_status === 'error' ? 'bg-red-50 text-red-700 ring-red-600/20'
+                                      : u.extraction_status === 'processing' ? 'bg-sky-50 text-sky-700 ring-sky-600/20'
+                                      : 'bg-gray-50 text-gray-600 ring-gray-500/20'
+                                    }>{u.extraction_status}</Badge>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-xs text-[#0e393d] font-medium">{u.results_created ?? 0}</td>
+                                  <td className="px-3 py-2.5">
+                                    <div className="flex gap-3 justify-end">
+                                      {u.draft_values && u.draft_values.length > 0 && u.extraction_status === 'extracted' && (
+                                        <button
+                                          onClick={() => handleOpenReview(u)}
+                                          className="text-xs text-[#0e393d] hover:text-[#0e393d]/70 font-medium transition"
+                                        >
+                                          Review
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => handleReanalyze(u)}
+                                        className="text-xs text-[#ceab84] hover:text-[#b8965e] font-medium transition"
+                                      >
+                                        Re-analyze
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteUpload(u)}
+                                        className="text-xs text-red-400 hover:text-red-600 font-medium transition"
+                                      >
+                                        Delete
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </>
       ) : extracted.length > 0 ? (

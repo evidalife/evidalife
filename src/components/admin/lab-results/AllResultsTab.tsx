@@ -341,16 +341,45 @@ export default function AllResultsTab() {
   };
 
   const handlePermanentDelete = async (report: LabReport) => {
-    const msg = `Permanently delete "${report.title}"${report.report_number ? ` (${report.report_number})` : ''}?\n\nThis will delete:\n• The report record\n• All ${report.results_count} lab results\n\nThis cannot be undone.`;
+    const hasPdf = !!report.pdf_file_url;
+    const pdfName = report.pdf_file_name || 'linked PDF';
+    const msg = [
+      `Permanently delete "${report.title}"${report.report_number ? ` (${report.report_number})` : ''}?`,
+      '',
+      'This will delete:',
+      `• The report record`,
+      `• All ${report.results_count} lab results`,
+      ...(hasPdf ? [`• The stored PDF file (${pdfName})`] : []),
+      '',
+      'This cannot be undone.',
+    ].join('\n');
     if (!confirm(msg)) return;
 
     setActionLoading(report.id);
+
+    // Delete all linked lab_results
     await supabase.from('lab_results').delete().eq('lab_report_id', report.id);
+
+    // If a PDF is linked, delete the file from storage and the upload record
+    if (hasPdf && report.pdf_file_url) {
+      let storagePath = report.pdf_file_url;
+      if (storagePath.startsWith('http')) {
+        const match = storagePath.match(/lab-pdfs\/(.+?)(?:\?|$)/);
+        storagePath = match?.[1] ?? '';
+      }
+      if (storagePath) {
+        await supabase.storage.from('lab-pdfs').remove([storagePath]);
+      }
+      // Also clean up the lab_pdf_uploads record
+      await supabase.from('lab_pdf_uploads').delete().eq('file_url', report.pdf_file_url);
+    }
+
+    // Delete the report record
     const { error } = await supabase.from('lab_reports').delete().eq('id', report.id);
     setActionLoading(null);
 
     if (error) { addToast('Delete failed: ' + error.message, 'error'); return; }
-    addToast(`"${report.title}" permanently deleted`, 'success');
+    addToast(`"${report.title}" permanently deleted${hasPdf ? ' (PDF removed)' : ''}`, 'success');
     loadReports();
   };
 
