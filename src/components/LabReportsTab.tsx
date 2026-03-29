@@ -1085,6 +1085,19 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
                       <span className="font-mono text-[11px] text-[#1c2a2b]/40">{report.report_number}</span>
                     )}
                     <SourceBadge source={report.source} />
+                    {report.status && (() => {
+                      const statusMap: Record<string, { label: string; cls: string }> = {
+                        ai_extracted:     { label: '🤖 AI Extracted',  cls: 'bg-violet-50 text-violet-700 ring-1 ring-violet-600/20' },
+                        review_pending:   { label: '⏳ Pending Review', cls: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20' },
+                        confirmed:        { label: '✅ Confirmed',     cls: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20' },
+                      };
+                      const info = statusMap[report.status!];
+                      return info ? (
+                        <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${info.cls}`}>
+                          {info.label}
+                        </span>
+                      ) : null;
+                    })()}
                     {!isEditable && (
                       <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-400">
                         Read-only

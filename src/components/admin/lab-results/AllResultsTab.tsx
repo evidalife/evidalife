@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { FlagBadge, HE_DOMAIN_LABEL, Spinner, Toast, ToastContainer, fmtDate, locName, nextToastId } from './shared';
 import { displayReportId } from '@/lib/lab-results/report-number';
@@ -567,7 +567,8 @@ export default function AllResultsTab() {
               const userEmail = report.profiles?.email;
 
               return (
-                <tr key={report.id} className={`group transition-colors ${isArchived ? 'bg-gray-50/50' : 'hover:bg-[#fafaf8]'}`}>
+                <React.Fragment key={report.id}>
+                <tr className={`group transition-colors ${isArchived ? 'bg-gray-50/50' : 'hover:bg-[#fafaf8]'}`}>
                   {/* Report */}
                   <td className="px-4 py-3">
                     <div className="flex items-start gap-2">
@@ -575,9 +576,6 @@ export default function AllResultsTab() {
                         <div className="font-medium text-[#0e393d] text-[13px]">{report.title}</div>
                         {report.report_number && (
                           <div className="font-mono text-[9px] text-[#0e393d]/35 mt-px">{displayReportId(report)}</div>
-                        )}
-                        {report.lab_address && (
-                          <div className="text-[10px] text-[#1c2a2b]/30 mt-px">📍 {report.lab_address}</div>
                         )}
                       </button>
                       {report.pdf_file_url && (
@@ -649,34 +647,83 @@ export default function AllResultsTab() {
                     </div>
                   </td>
                 </tr>
+                {/* Inline expanded detail row */}
+                {isExpanded && (
+                  <tr>
+                    <td colSpan={7} className="p-0">
+                      <div className="bg-[#fafaf8] border-y border-[#0e393d]/8">
+                        {/* ── Report Detail Header ── */}
+                        <div className="px-5 py-4 border-b border-[#0e393d]/6">
+                          <div className="flex items-start justify-between gap-4 mb-3">
+                            <div>
+                              <h3 className="font-serif text-lg text-[#0e393d]">{report.title}</h3>
+                              {report.report_number && (
+                                <div className="font-mono text-[11px] text-[#0e393d]/40 mt-0.5">{displayReportId(report)}</div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {reportStatusBadge(report.status)}
+                              {sourceBadge(report.source, report.report_source)}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-[#1c2a2b]/55">
+                            <div>
+                              <span className="text-[9px] font-semibold uppercase tracking-wider text-[#1c2a2b]/30 mr-1.5">Patient</span>
+                              {userName}{userEmail ? ` (${userEmail})` : ''}
+                            </div>
+                            {report.test_date && (
+                              <div>
+                                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#1c2a2b]/30 mr-1.5">Test Date</span>
+                                {fmtDate(report.test_date)}
+                              </div>
+                            )}
+                            <div>
+                              <span className="text-[9px] font-semibold uppercase tracking-wider text-[#1c2a2b]/30 mr-1.5">Created</span>
+                              {fmtDate(report.created_at)}
+                            </div>
+                            <div>
+                              <span className="text-[9px] font-semibold uppercase tracking-wider text-[#1c2a2b]/30 mr-1.5">Results</span>
+                              {report.results_count} biomarkers
+                            </div>
+                          </div>
+                          {(report.lab_address || report.lab_email || report.lab_phone) && (
+                            <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-xs text-[#1c2a2b]/45">
+                              {report.lab_address && <span>📍 {report.lab_address}</span>}
+                              {report.lab_email   && <span>✉️ {report.lab_email}</span>}
+                              {report.lab_phone   && <span>📞 {report.lab_phone}</span>}
+                            </div>
+                          )}
+                          {report.pdf_file_url && (
+                            <button
+                              onClick={() => openPdfInNewTab(report.pdf_file_url!, supabase)}
+                              className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-[#0e393d]/60 hover:text-[#0e393d] px-2.5 py-1 rounded-lg border border-[#0e393d]/10 hover:border-[#0e393d]/20 hover:bg-white transition"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                              </svg>
+                              Open PDF{report.pdf_file_name ? ` — ${report.pdf_file_name}` : ''}
+                            </button>
+                          )}
+                        </div>
+
+                        {/* ── Biomarker Results ── */}
+                        {loadingResults === report.id ? (
+                          <div className="flex justify-center py-6"><Spinner size={4} /></div>
+                        ) : (expandedResults[report.id]?.length ?? 0) > 0 ? (
+                          <ReportResults results={expandedResults[report.id]!} />
+                        ) : (
+                          <p className="px-5 py-4 text-sm text-[#1c2a2b]/40 text-center">No results in this report.</p>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               );
             })}
           </tbody>
         </table>
-
-        {/* Expanded results panel — rendered outside the table row for proper layout */}
-        {expandedId && (
-          <div className="border-t border-[#0e393d]/8">
-            {loadingResults === expandedId ? (
-              <div className="flex justify-center py-6"><Spinner size={4} /></div>
-            ) : (expandedResults[expandedId]?.length ?? 0) > 0 ? (
-              <ReportResults results={expandedResults[expandedId]!} />
-            ) : (
-              <p className="px-5 py-4 text-sm text-[#1c2a2b]/40 text-center">No results in this report.</p>
-            )}
-            {(() => {
-              const report = reports.find(r => r.id === expandedId);
-              if (!report || (!report.lab_address && !report.lab_email && !report.lab_phone)) return null;
-              return (
-                <div className="border-t border-[#0e393d]/6 px-5 py-3 flex flex-wrap gap-4 text-xs text-[#1c2a2b]/45">
-                  {report.lab_address && <span>📍 {report.lab_address}</span>}
-                  {report.lab_email   && <span>✉️ {report.lab_email}</span>}
-                  {report.lab_phone   && <span>📞 {report.lab_phone}</span>}
-                </div>
-              );
-            })()}
-          </div>
-        )}
       </div>
 
       {/* ── Table footer ── */}
