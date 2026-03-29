@@ -878,7 +878,7 @@ export default function ProfileTabs({ profile, lang, initialTab }: { profile: Pr
 
       {tab === 'profile'  && <ProfileEditor profile={profile} lang={lang} />}
       {tab === 'orders'   && <MyOrdersTab t={t} lang={lang} />}
-      {tab === 'results'  && <LabReportsTab lang={lang} />}
+      {tab === 'results'  && <LabReportsTab lang={lang} userId={profile.id} />}
       {tab === 'invoices' && <MyInvoicesTab t={t} />}
     </div>
   );

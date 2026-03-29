@@ -308,7 +308,7 @@ function MetaFields({ meta, onChange }: {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function LabReportsTab({ lang }: { lang: Lang }) {
+export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: string }) {
   const supabase = createClient();
 
   const [mode, setMode] = useState<Mode>('list');
@@ -344,6 +344,12 @@ export default function LabReportsTab({ lang }: { lang: Lang }) {
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    // If no userId provided, get the current user's id
+    let uid = userId;
+    if (!uid) {
+      const { data: { user } } = await supabase.auth.getUser();
+      uid = user?.id;
+    }
     const [reportsRes, orphanRes] = await Promise.all([
       supabase
         .from('lab_reports')
@@ -354,6 +360,7 @@ export default function LabReportsTab({ lang }: { lang: Lang }) {
             biomarkers:biomarker_definition_id(name, unit, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high)
           )
         `)
+        .eq('user_id', uid!)
         .is('deleted_at', null)
         .neq('status', 'archived')
         .order('created_at', { ascending: false }),
@@ -363,6 +370,7 @@ export default function LabReportsTab({ lang }: { lang: Lang }) {
           id, value_numeric, unit, status_flag, test_date, source, deleted_at, biomarker_definition_id,
           biomarkers:biomarker_definition_id(name, unit, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high)
         `)
+        .eq('user_id', uid!)
         .is('lab_report_id', null)
         .is('deleted_at', null)
         .order('test_date', { ascending: false }),
@@ -402,7 +410,7 @@ export default function LabReportsTab({ lang }: { lang: Lang }) {
     setReports(cleanReports);
     setOrphanResults((orphanRes.data as unknown as LabResultRow[]) ?? []);
     setLoading(false);
-  }, [supabase]);
+  }, [supabase, userId]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
