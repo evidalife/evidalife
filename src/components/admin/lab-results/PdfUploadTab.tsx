@@ -1017,48 +1017,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
             </div>
           )}
 
-          {/* ── 3. Report Type ───────────────────────────────────────────── */}
-          {availableSources.length > 0 && (
-            <div>
-              <SectionHeading>Report Type</SectionHeading>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setReportType(null)}
-                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                    reportType === null
-                      ? 'bg-[#0e393d] text-white shadow-sm'
-                      : 'bg-[#0e393d]/5 text-[#0e393d]/60 hover:bg-[#0e393d]/10'
-                  }`}
-                >
-                  All
-                </button>
-                {availableSources.map((source) => (
-                  <button
-                    key={source}
-                    onClick={() => {
-                      if (source === 'clinical_assessment' && onSwitchToManual) {
-                        onSwitchToManual();
-                      } else {
-                        setReportType(source);
-                      }
-                    }}
-                    className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                      reportType === source
-                        ? 'bg-[#0e393d] text-white shadow-sm'
-                        : 'bg-[#0e393d]/5 text-[#0e393d]/60 hover:bg-[#0e393d]/10'
-                    }`}
-                  >
-                    {SOURCE_ICON[source] ?? '🔬'} {SOURCE_LABEL[source] ?? source}
-                  </button>
-                ))}
-              </div>
-              {reportType && reportType !== 'biomarker' && (
-                <p className="mt-1.5 text-xs text-[#1c2a2b]/50">
-                  Showing only {SOURCE_LABEL[reportType] ?? reportType} markers
-                </p>
-              )}
-            </div>
-          )}
+          {/* Report Type filter removed — AI extraction checks all biomarker types automatically */}
 
           {/* ── 4. Lab selector (Evida/Partner, shown after order selected) ── */}
           {(labSource === 'evida_life' || labSource === 'partner_lab') && selectedOrder && (

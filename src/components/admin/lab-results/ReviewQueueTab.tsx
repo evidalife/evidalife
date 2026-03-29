@@ -71,7 +71,7 @@ const SEVERITY_COLOR: Record<string, string> = {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function ReviewQueueTab({ onCountChange }: { onCountChange?: (n: number) => void }) {
+export default function ReviewQueueTab({ onCountChange, onSwitchToPdf }: { onCountChange?: (n: number) => void; onSwitchToPdf?: () => void }) {
   const supabase = createClient();
 
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -236,7 +236,12 @@ export default function ReviewQueueTab({ onCountChange }: { onCountChange?: (n: 
                     <span className="text-[13px] font-medium text-[#0e393d]">{r.title}</span>
                     <span className="text-[11px] text-[#1c2a2b]/40 ml-2">{userName} · {fmtDate(r.test_date ?? r.created_at)}</span>
                   </div>
-                  <span className="text-[10px] text-[#1c2a2b]/30 shrink-0">Open PDF Upload to review</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onSwitchToPdf?.(); }}
+                    className="text-[10px] text-[#0e393d]/50 hover:text-[#0e393d] font-medium shrink-0 px-2.5 py-1 rounded-lg border border-[#0e393d]/10 hover:border-[#0e393d]/20 hover:bg-[#0e393d]/[.03] transition"
+                  >
+                    Open PDF Upload to review
+                  </button>
                 </div>
               );
             })}

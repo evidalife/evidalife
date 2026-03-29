@@ -25,6 +25,50 @@ type DomainDef = {
   label: Record<Lang, string>;
 };
 
+type DomainDesc = {
+  en: string;
+  de: string;
+};
+
+const DOMAIN_DESCRIPTIONS: Record<string, DomainDesc> = {
+  heart_vessels: {
+    en: 'Cardiovascular markers predict heart attack and stroke risk. Optimizing these biomarkers is the single most impactful step for extending healthspan.',
+    de: 'Herz-Kreislauf-Marker sagen das Risiko für Herzinfarkt und Schlaganfall voraus. Die Optimierung dieser Biomarker ist der wirkungsvollste Schritt zur Verlängerung der Healthspan.',
+  },
+  metabolism: {
+    en: 'Blood sugar regulation and insulin sensitivity are central drivers of aging. Metabolic dysfunction accelerates every chronic disease.',
+    de: 'Blutzuckerregulation und Insulinempfindlichkeit sind zentrale Treiber des Alterns. Metabolische Dysfunktion beschleunigt jede chronische Krankheit.',
+  },
+  inflammation: {
+    en: 'Chronic inflammation is the root cause of age-related diseases. Anti-inflammatory lifestyle choices are fundamental to longevity.',
+    de: 'Chronische Entzündung ist die Grundursache altersbedingter Krankheiten. Entzündungshemmende Lebensstiländerungen sind grundlegend für Langlebigkeit.',
+  },
+  organ_function: {
+    en: 'Kidney, liver, and thyroid function decline with age. Maintaining organ health is essential for metabolic resilience and longevity.',
+    de: 'Nieren-, Leber- und Schilddrüsenfunktion nehmen mit dem Alter ab. Der Erhalt der Organfunktion ist entscheidend für metabolische Widerstandskraft und Langlebigkeit.',
+  },
+  nutrients: {
+    en: 'Vitamin and mineral deficiencies impair mitochondrial function and immune defense. Optimal micronutrient status protects against disease.',
+    de: 'Vitamin- und Mineralstoffmängel beeinträchtigen die Mitochondrienfunktion und die Immunabwehr. Ein optimaler Mikronährstoffstatus schützt vor Krankheiten.',
+  },
+  hormones: {
+    en: 'Hormone balance regulates energy, mood, immunity, and cellular repair. Hormonal dysregulation accelerates aging across all systems.',
+    de: 'Hormonelles Gleichgewicht reguliert Energie, Stimmung, Immunität und Zellreparatur. Hormonelle Dysregulation beschleunigt das Altern in allen Systemen.',
+  },
+  body_composition: {
+    en: 'Excess body fat drives inflammation and insulin resistance. Lean muscle mass predicts strength, independence, and longevity.',
+    de: 'Überschüssiges Körperfett fördert Entzündungen und Insulinresistenz. Magermasse sagt Kraft, Unabhängigkeit und Langlebigkeit voraus.',
+  },
+  fitness: {
+    en: 'Cardiorespiratory fitness and recovery capacity are the strongest predictors of mortality risk. Fitness is modifiable at any age.',
+    de: 'Kardiorespiratorische Fitness und Erholungskapazität sind die stärksten Prädiktoren für Sterblichkeitsrisiko. Fitness ist in jedem Alter veränderbar.',
+  },
+  epigenetics: {
+    en: 'Epigenetic clocks measure biological aging independent of chronological age. They reveal how lifestyle choices accelerate or reverse aging.',
+    de: 'Epigenetische Uhren messen das biologische Altern unabhängig vom chronologischen Alter. Sie zeigen, wie Lebensstiländerungen das Altern beschleunigen oder umkehren.',
+  },
+};
+
 const DOMAINS: DomainDef[] = [
   { key: 'heart_vessels',    emoji: '❤️',  label: { de: 'Herz & Gefässe',          en: 'Heart & Vessels',       fr: 'Cœur & Vaisseaux',      es: 'Corazón & Vasos',        it: 'Cuore & Vasi' } },
   { key: 'metabolism',       emoji: '⚡',  label: { de: 'Stoffwechsel',              en: 'Metabolism',            fr: 'Métabolisme',            es: 'Metabolismo',             it: 'Metabolismo' } },
@@ -343,12 +387,11 @@ export default async function BiomarkersPage() {
     pkgItemMap.get(pi.product_id)?.add(pi.biomarker_id);
   }
 
-  // Fetch active biomarkers (biomarker-relevant item types)
+  // Fetch active biomarkers (all types — item_type is an enum so .in() may not work)
   const { data: defs } = await supabase
     .from('biomarkers')
     .select('id, slug, name, description, unit, range_type, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, sort_order, he_domain, item_type')
     .eq('is_active', true)
-    .in('item_type', ['biomarker', 'clinical_assessment', 'bio_age', 'genetic', 'genetic_test', 'microbiome', 'wearable'])
     .order('sort_order', { ascending: true });
 
   const allDefs = defs ?? [];
@@ -366,10 +409,10 @@ export default async function BiomarkersPage() {
     if (items.length > 0) domainGroups.push({ domain, items });
   }
 
-  // Detail cards: only defs linked to at least one package
+  // Detail cards: show ALL biomarkers (not just linked to packages) for comprehensive reference
   const linkedDomainGroups: { domain: DomainDef; items: typeof allDefs }[] = [];
   for (const domain of DOMAINS) {
-    const items = allDefs.filter((d) => d.he_domain === domain.key && linkedDefIds.has(d.id));
+    const items = allDefs.filter((d) => d.he_domain === domain.key);
     if (items.length > 0) linkedDomainGroups.push({ domain, items });
   }
 
@@ -532,72 +575,90 @@ export default async function BiomarkersPage() {
             <div className="flex-1 h-px bg-[#0e393d]/10" />
           </div>
 
-          {linkedDomainGroups.map(({ domain, items }) => (
-            <div key={domain.key} className="mb-10">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#ceab84] mb-4">
-                {domain.emoji} {domain.label[lang]}
-              </h3>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {items.map((def) => {
-                  const name = getName(def.name as Record<string, string>, lang);
-                  const desc = getName(def.description as Record<string, string> | null ?? {}, lang);
-                  const rt = def.range_type;
+          {linkedDomainGroups.map(({ domain, items }) => {
+            const domainDesc = DOMAIN_DESCRIPTIONS[domain.key];
+            const descToShow = lang === 'de' && domainDesc?.de ? domainDesc.de : domainDesc?.en ?? '';
 
-                  return (
-                    <div
-                      key={def.id}
-                      className="rounded-xl bg-white ring-1 ring-[#0e393d]/8 p-5 flex flex-col gap-3 hover:shadow-sm transition-shadow"
-                    >
-                      {/* Name + unit + range type badge */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="font-medium text-sm text-[#0e393d]">{name}</p>
-                          {def.unit && (
-                            <p className="text-xs text-[#1c2a2b]/40 mt-0.5">{def.unit}</p>
-                          )}
-                        </div>
-                        {rt && (
-                          <span className="shrink-0 text-[10px] font-medium rounded-full px-2 py-0.5 bg-[#ceab84]/15 text-[#8a6a3e] whitespace-nowrap">
-                            {t.rangeTypes[rt] ?? rt}
-                          </span>
-                        )}
-                      </div>
+            return (
+              <div key={domain.key} className="mb-14">
+                {/* Domain header with emoji and description */}
+                <div className="mb-6">
+                  <div className="flex items-baseline gap-3 mb-3">
+                    <h3 className="text-2xl">{domain.emoji}</h3>
+                    <h3 className="font-serif text-xl text-[#0e393d]">
+                      {domain.label[lang]}
+                    </h3>
+                  </div>
+                  {descToShow && (
+                    <p className="text-sm text-[#1c2a2b]/65 leading-relaxed max-w-2xl">
+                      {descToShow}
+                    </p>
+                  )}
+                </div>
 
-                      {/* Range bar */}
-                      <RangeBar
-                        refLow={def.ref_range_low}
-                        refHigh={def.ref_range_high}
-                        optLow={def.optimal_range_low}
-                        optHigh={def.optimal_range_high}
-                        rangeType={def.range_type}
-                      />
+                {/* Biomarker cards grid */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {items.map((def) => {
+                    const name = getName(def.name as Record<string, string>, lang);
+                    const desc = getName(def.description as Record<string, string> | null ?? {}, lang);
+                    const rt = def.range_type;
 
-                      {/* Range labels */}
-                      {(def.ref_range_low != null || def.ref_range_high != null) && (
-                        <div className="flex items-center gap-3 text-[10px] text-[#1c2a2b]/50">
-                          <span className="flex items-center gap-1">
-                            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-100" />
-                            {t.refRange}: {def.ref_range_low != null ? `≥${def.ref_range_low}` : ''}{def.ref_range_low != null && def.ref_range_high != null ? ' – ' : ''}{def.ref_range_high != null ? `≤${def.ref_range_high}` : ''} {def.unit}
-                          </span>
-                          {(def.optimal_range_low != null || def.optimal_range_high != null) && (
-                            <span className="flex items-center gap-1">
-                              <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-400/70" />
-                              {t.optRange}
+                    return (
+                      <div
+                        key={def.id}
+                        className="rounded-xl bg-white ring-1 ring-[#0e393d]/8 p-5 flex flex-col gap-3 hover:shadow-sm transition-shadow"
+                      >
+                        {/* Name + unit + range type badge */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-medium text-sm text-[#0e393d]">{name}</p>
+                            {def.unit && (
+                              <p className="text-xs text-[#1c2a2b]/40 mt-0.5">{def.unit}</p>
+                            )}
+                          </div>
+                          {rt && (
+                            <span className="shrink-0 text-[10px] font-medium rounded-full px-2 py-0.5 bg-[#ceab84]/15 text-[#8a6a3e] whitespace-nowrap">
+                              {t.rangeTypes[rt] ?? rt}
                             </span>
                           )}
                         </div>
-                      )}
 
-                      {/* Description */}
-                      {desc && (
-                        <p className="text-xs text-[#1c2a2b]/55 leading-relaxed">{desc}</p>
-                      )}
-                    </div>
-                  );
-                })}
+                        {/* Range bar */}
+                        <RangeBar
+                          refLow={def.ref_range_low}
+                          refHigh={def.ref_range_high}
+                          optLow={def.optimal_range_low}
+                          optHigh={def.optimal_range_high}
+                          rangeType={def.range_type}
+                        />
+
+                        {/* Range labels */}
+                        {(def.ref_range_low != null || def.ref_range_high != null) && (
+                          <div className="flex items-center gap-3 text-[10px] text-[#1c2a2b]/50">
+                            <span className="flex items-center gap-1">
+                              <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-100" />
+                              {t.refRange}: {def.ref_range_low != null ? `≥${def.ref_range_low}` : ''}{def.ref_range_low != null && def.ref_range_high != null ? ' – ' : ''}{def.ref_range_high != null ? `≤${def.ref_range_high}` : ''} {def.unit}
+                            </span>
+                            {(def.optimal_range_low != null || def.optimal_range_high != null) && (
+                              <span className="flex items-center gap-1">
+                                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-400/70" />
+                                {t.optRange}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Description */}
+                        {desc && (
+                          <p className="text-xs text-[#1c2a2b]/55 leading-relaxed">{desc}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </section>
 
         {/* ── Add-on tests ────────────────────────────────────────────────────── */}

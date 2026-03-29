@@ -54,7 +54,7 @@ export default function LabResultsManager() {
       {tab === 'order_entry'  && <OrderEntryTab />}
       {tab === 'pdf_upload'   && <PdfUploadTab onSwitchToManual={() => setTab('manual_entry')} />}
       {tab === 'manual_entry' && <ManualEntryTab />}
-      {tab === 'review_queue' && <ReviewQueueTab onCountChange={setReviewCount} />}
+      {tab === 'review_queue' && <ReviewQueueTab onCountChange={setReviewCount} onSwitchToPdf={() => setTab('pdf_upload')} />}
       {tab === 'all_results'  && <AllResultsTab />}
     </div>
   );
