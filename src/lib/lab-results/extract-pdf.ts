@@ -113,6 +113,15 @@ export async function callClaudeForPdf(
   const claudeData = await claudeRes.json();
   const rawText: string = claudeData.content?.[0]?.text ?? '';
 
+  console.log('[extract-pdf] Claude response length:', rawText.length);
+  console.log('[extract-pdf] Claude response preview:', rawText.slice(0, 500));
+  if (claudeData.content?.[0]?.type !== 'text') {
+    console.log('[extract-pdf] Unexpected content type:', claudeData.content?.[0]?.type);
+  }
+  if (claudeData.stop_reason) {
+    console.log('[extract-pdf] Stop reason:', claudeData.stop_reason);
+  }
+
   // Try new object format first, fall back to plain array
   let metadata: LabMetadata = { lab_name: null, test_date: null, lab_address: null, lab_email: null, lab_phone: null };
   let rawResults: any[] = [];
@@ -124,18 +133,29 @@ export async function callClaudeForPdf(
       if (Array.isArray(parsed.results)) {
         metadata = { ...metadata, ...parsed.metadata };
         rawResults = parsed.results;
+        console.log('[extract-pdf] Parsed', rawResults.length, 'results from object format');
         return { metadata, rawResults };
+      } else {
+        console.log('[extract-pdf] Parsed object but no results array. Keys:', Object.keys(parsed));
       }
+    } else {
+      console.log('[extract-pdf] No JSON object found in response');
     }
-  } catch { /* fall through */ }
+  } catch (e: any) {
+    console.log('[extract-pdf] Object parse failed:', e.message);
+  }
 
   // Fallback: try plain array (backward compat)
   try {
     const arrMatch = rawText.match(/\[[\s\S]*\]/);
     if (arrMatch) {
       rawResults = JSON.parse(arrMatch[0]);
+      console.log('[extract-pdf] Parsed', rawResults.length, 'results from array fallback');
+    } else {
+      console.log('[extract-pdf] No JSON array found either. Raw text:', rawText.slice(0, 300));
     }
-  } catch {
+  } catch (e: any) {
+    console.log('[extract-pdf] Array parse also failed:', e.message);
     throw new Error('Could not parse Claude response as JSON');
   }
 

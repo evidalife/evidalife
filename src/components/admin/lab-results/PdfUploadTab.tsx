@@ -594,15 +594,18 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
     const { data: signedData } = await supabase.storage.from('lab-pdfs').createSignedUrl(storagePath, 3600);
     setPdfSignedUrl(signedData?.signedUrl ?? null);
 
+    if ((data.extracted ?? []).length === 0) {
+      addToast('AI extraction returned 0 results. The PDF is saved — try Re-analyze or check your ANTHROPIC_API_KEY.', 'error');
+    }
+
     loadUploads();
   };
 
   // ── Open review from saved draft ─────────────────────────────────────────────
 
   const handleOpenReview = async (upload: UploadRecord) => {
-    if (!upload.draft_values?.length) return;
     const dm = upload.draft_metadata;
-    setExtracted(autoDeselectDuplicates(upload.draft_values));
+    setExtracted(autoDeselectDuplicates(upload.draft_values ?? []));
     setLabMetadata({
       title:       dm?.lab_name || upload.file_name.replace(/\.[^.]+$/, '') || '',
       test_date:   dm?.test_date || '',
@@ -631,6 +634,8 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
       const { data } = await supabase.storage.from('lab-pdfs').createSignedUrl(sp, 3600);
       setPdfSignedUrl(data?.signedUrl ?? null);
     }
+
+
   };
 
   // ── Re-analyze existing upload ───────────────────────────────────────────────
@@ -690,6 +695,10 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
 
     const { data: signedData } = await supabase.storage.from('lab-pdfs').createSignedUrl(storagePath, 3600);
     setPdfSignedUrl(signedData?.signedUrl ?? null);
+
+    if ((data.extracted ?? []).length === 0) {
+      addToast('Re-analysis returned 0 results. Check your ANTHROPIC_API_KEY or server logs.', 'error');
+    }
 
     loadUploads();
   };
@@ -840,6 +849,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
     setManualValue('');
     setManualUnit('');
     setManualBmSearch('');
+
   };
 
   // ── Filtered biomarkers for epigenetic report type ────────────────────────────
@@ -1263,11 +1273,12 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                                   <td className="px-3 py-2.5">
                                     <Badge className={
                                       u.extraction_status === 'completed'   ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+                                      : u.extraction_status === 'extracted' && (u.draft_values?.length ?? 0) === 0 ? 'bg-red-50 text-red-700 ring-red-600/20'
                                       : u.extraction_status === 'extracted'  ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
                                       : u.extraction_status === 'failed' || u.extraction_status === 'error' ? 'bg-red-50 text-red-700 ring-red-600/20'
                                       : u.extraction_status === 'processing' ? 'bg-sky-50 text-sky-700 ring-sky-600/20'
                                       : 'bg-gray-50 text-gray-600 ring-gray-500/20'
-                                    }>{u.extraction_status}</Badge>
+                                    }>{u.extraction_status === 'extracted' && (u.draft_values?.length ?? 0) === 0 ? 'no results' : u.extraction_status}</Badge>
                                   </td>
                                   <td className="px-3 py-2.5 text-xs text-[#0e393d] font-medium">{u.results_created ?? 0}</td>
                                   <td className="px-3 py-2.5">
