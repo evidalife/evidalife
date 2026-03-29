@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import ProfileEditor, { type ProfileData } from './ProfileEditor';
 import LabReportsTab from './LabReportsTab';
 
@@ -401,6 +402,7 @@ function SourceBadge({ source }: { source: string | null }) {
 
 function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
   const supabase = createClient();
+  const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
   const [results, setResults] = useState<LabResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -479,7 +481,7 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm(t.results.delete + '?')) return;
+    if (!(await confirm({ title: t.results.delete, message: t.results.delete + '?', variant: 'danger' }))) return;
     await supabase.from('lab_results').update({ deleted_at: new Date().toISOString() }).eq('id', id);
     setResults((prev) => prev.filter((r) => r.id !== id));
   };
@@ -488,6 +490,7 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
 
   return (
     <div className="space-y-6">
+      {confirmDialog}
       {/* Header with + Add Result */}
       <div className="flex items-center justify-between">
         <span />

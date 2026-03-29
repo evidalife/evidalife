@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import CoverImageUploader from '@/components/shared/CoverImageUploader';
 import GalleryUploader from '@/components/shared/GalleryUploader';
 import type { ParsedRecipe, ParsedIngredient } from '@/app/api/admin/parse-recipe/route';
@@ -1002,6 +1003,7 @@ interface Props {
 
 export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted }: Props) {
   const supabase = createClient();
+  const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
   const instructionRef = useRef<HTMLTextAreaElement>(null);
 
   const [lang, setLang] = useState<Lang>('en');
@@ -1444,7 +1446,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
   const handleDelete = async () => {
     if (!recipeId) return;
     const title = form.title.en || form.title.de || 'this recipe';
-    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    if (!(await confirm({ title: 'Delete Recipe', message: `Delete "${title}"? This cannot be undone.`, variant: 'danger' }))) return;
     setDeleting(true);
     // Delete all storage files: cover, thumbnail, and all gallery URLs
     const storageUrlsToDelete = new Set<string>();
@@ -1720,6 +1722,7 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
 
   return (
     <>
+      {confirmDialog}
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/20 z-40 backdrop-blur-[1px]" onClick={onClose} />
 

@@ -921,11 +921,18 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   });
 
   const qualityScore = (item: ItemDefinition) => {
+    const isBioAge = item.item_type === 'bio_age';
     const checks = [
       !!item.name?.en, !!item.name?.de, !!item.description?.en,
       !!item.unit, !!item.he_domain, !!item.range_type,
-      item.ref_range_low != null || item.ref_range_high != null,
-      item.optimal_range_low != null || item.optimal_range_high != null,
+      // Bio-age markers (GrimAge, PhenoAge) are relative to chronological age,
+      // so fixed ref/optimal ranges are not always applicable — treat chart range as sufficient
+      isBioAge
+        ? (item.chart_range_low != null || item.chart_range_high != null)
+        : (item.ref_range_low != null || item.ref_range_high != null),
+      isBioAge
+        ? true  // bio-age optimal is always relative to chrono age
+        : (item.optimal_range_low != null || item.optimal_range_high != null),
     ];
     return checks.filter(Boolean).length;
   };

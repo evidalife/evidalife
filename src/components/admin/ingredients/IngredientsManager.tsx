@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import ReviewModal, { type ReviewSuggestion } from './ReviewModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -140,6 +141,7 @@ interface Props {
 
 export default function IngredientsManager({ initialIngredients, initialUnits, initialCategories }: Props) {
   const supabase = createClient();
+  const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
   const [ingredients, setIngredients] = useState<Ingredient[]>(initialIngredients);
   const [units] = useState<MeasurementUnit[]>(initialUnits);
   const [categories] = useState<DailyDozenCategory[]>(initialCategories);
@@ -307,7 +309,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
   const handleDelete = async () => {
     if (!editingId) return;
     const name = form.name_en || form.name_de || 'this ingredient';
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    if (!(await confirm({ title: 'Delete Ingredient', message: `Delete "${name}"? This cannot be undone.`, variant: 'danger' }))) return;
     const { error } = await supabase.from('ingredients').delete().eq('id', editingId);
     if (error) { setError(error.message); return; }
     await refresh();
@@ -565,6 +567,7 @@ export default function IngredientsManager({ initialIngredients, initialUnits, i
 
   return (
     <div className="p-8">
+      {confirmDialog}
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">

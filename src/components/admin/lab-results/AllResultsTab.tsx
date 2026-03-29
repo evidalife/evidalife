@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { FlagBadge, HE_DOMAIN_LABEL, Spinner, Toast, ToastContainer, fmtDate, locName, nextToastId } from './shared';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { displayReportId } from '@/lib/lab-results/report-number';
 
 // ─── Open PDF in new tab via signed URL ──────────────────────────────────────
@@ -118,7 +119,45 @@ const HE_DOMAIN_ORDER = [
   'nutrients', 'organ_function', 'longevity', 'fitness',
 ];
 
-function ReportResults({ results }: { results: LabResultSummary[] }) {
+function ReportResults({
+  results,
+  supabase,
+  addToast,
+  onResultUpdated,
+}: {
+  results: LabResultSummary[];
+  supabase: ReturnType<typeof createClient>;
+  addToast: (msg: string, type?: Toast['type']) => void;
+  onResultUpdated?: (id: string, value: number, unit: string) => void;
+}) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [editUnit, setEditUnit] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const startEdit = (r: LabResultSummary) => {
+    setEditingId(r.id);
+    setEditValue(r.value_numeric != null ? String(r.value_numeric) : '');
+    setEditUnit(r.unit || r.biomarkers?.unit || '');
+  };
+
+  const cancelEdit = () => { setEditingId(null); setEditValue(''); setEditUnit(''); };
+
+  const saveEdit = async (id: string) => {
+    const numeric = parseFloat(editValue);
+    if (isNaN(numeric)) { addToast('Invalid number', 'error'); return; }
+    setSaving(true);
+    const { error } = await supabase
+      .from('lab_results')
+      .update({ value_numeric: numeric, unit: editUnit || null })
+      .eq('id', id);
+    setSaving(false);
+    if (error) { addToast(`Save failed: ${error.message}`, 'error'); return; }
+    onResultUpdated?.(id, numeric, editUnit);
+    addToast('Value updated');
+    setEditingId(null);
+  };
+
   const byDomain: Record<string, LabResultSummary[]> = {};
   for (const r of results) {
     const domain = r.biomarkers?.he_domain ?? 'other';
@@ -141,8 +180,9 @@ function ReportResults({ results }: { results: LabResultSummary[] }) {
             {byDomain[domain].map((r) => {
               const def = r.biomarkers;
               const name = locName(def?.name) || '—';
+              const isEditing = editingId === r.id;
               return (
-                <div key={r.id} className="px-5 py-2 flex items-center gap-3 hover:bg-[#fafaf8] transition-colors">
+                <div key={r.id} className="px-5 py-2 flex items-center gap-3 hover:bg-[#fafaf8] transition-colors group">
                   <div className="flex-1 min-w-0">
                     <span className="text-[13px] font-medium text-[#1c2a2b]">{name}</span>
                     {(def?.ref_range_low != null || def?.ref_range_high != null) && (
@@ -151,13 +191,60 @@ function ReportResults({ results }: { results: LabResultSummary[] }) {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="tabular-nums text-[13px] font-semibold text-[#0e393d]">
-                      {r.value_numeric}{' '}
-                      <span className="font-normal text-[#1c2a2b]/40 text-[11px]">{r.unit || def?.unit || ''}</span>
-                    </span>
-                    <FlagBadge flag={r.status_flag} />
-                  </div>
+                  {isEditing ? (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <input
+                        type="number"
+                        step="any"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        className="w-20 px-2 py-0.5 text-[13px] font-semibold text-[#0e393d] bg-white border border-[#ceab84]/40 rounded focus:outline-none focus:ring-1 focus:ring-[#ceab84]/60 tabular-nums"
+                        autoFocus
+                        onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(r.id); if (e.key === 'Escape') cancelEdit(); }}
+                      />
+                      <input
+                        type="text"
+                        value={editUnit}
+                        onChange={(e) => setEditUnit(e.target.value)}
+                        className="w-16 px-1.5 py-0.5 text-[11px] text-[#1c2a2b]/60 bg-white border border-[#0e393d]/15 rounded focus:outline-none focus:ring-1 focus:ring-[#ceab84]/40"
+                        placeholder="unit"
+                        onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(r.id); if (e.key === 'Escape') cancelEdit(); }}
+                      />
+                      <button
+                        onClick={() => saveEdit(r.id)}
+                        disabled={saving}
+                        className="p-1 rounded hover:bg-emerald-50 text-emerald-600 transition disabled:opacity-40"
+                        title="Save"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        className="p-1 rounded hover:bg-red-50 text-red-400 transition"
+                        title="Cancel"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="tabular-nums text-[13px] font-semibold text-[#0e393d]">
+                        {r.value_numeric}{' '}
+                        <span className="font-normal text-[#1c2a2b]/40 text-[11px]">{r.unit || def?.unit || ''}</span>
+                      </span>
+                      <FlagBadge flag={r.status_flag} />
+                      <button
+                        onClick={() => startEdit(r)}
+                        className="p-1 rounded hover:bg-[#0e393d]/5 text-[#1c2a2b]/25 hover:text-[#0e393d] opacity-0 group-hover:opacity-100 transition"
+                        title="Edit value"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -190,6 +277,7 @@ export default function AllResultsTab() {
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
 
   const addToast = useCallback((msg: string, type: Toast['type'] = 'success') => {
     const id = nextToastId();
@@ -353,7 +441,7 @@ export default function AllResultsTab() {
       '',
       'This cannot be undone.',
     ].join('\n');
-    if (!confirm(msg)) return;
+    if (!(await confirm({ title: 'Delete Report', message: msg, variant: 'danger' }))) return;
 
     setActionLoading(report.id);
 
@@ -408,6 +496,7 @@ export default function AllResultsTab() {
 
   return (
     <div className="p-8">
+      {confirmDialog}
       <ToastContainer toasts={toasts} dismiss={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
 
       {/* ── Header ── */}
@@ -711,7 +800,19 @@ export default function AllResultsTab() {
                         {loadingResults === report.id ? (
                           <div className="flex justify-center py-6"><Spinner size={4} /></div>
                         ) : (expandedResults[report.id]?.length ?? 0) > 0 ? (
-                          <ReportResults results={expandedResults[report.id]!} />
+                          <ReportResults
+                            results={expandedResults[report.id]!}
+                            supabase={supabase}
+                            addToast={addToast}
+                            onResultUpdated={(id, value, unit) => {
+                              setExpandedResults((prev) => ({
+                                ...prev,
+                                [report.id]: prev[report.id]?.map((r) =>
+                                  r.id === id ? { ...r, value_numeric: value, unit } : r
+                                ) ?? [],
+                              }));
+                            }}
+                          />
                         ) : (
                           <p className="px-5 py-4 text-sm text-[#1c2a2b]/40 text-center">No results in this report.</p>
                         )}

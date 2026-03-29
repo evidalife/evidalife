@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -79,6 +80,7 @@ function Field({ label, children, hint }: { label: string; children: React.React
 
 export default function UnitConversionsManager() {
   const supabase = createClient();
+  const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
 
   const [conversions, setConversions] = useState<ConversionRow[]>([]);
   const [biomarkers, setBiomarkers]   = useState<BiomarkerOption[]>([]);
@@ -240,7 +242,7 @@ export default function UnitConversionsManager() {
   // ── Delete ────────────────────────────────────────────────────────────────
 
   const handleDelete = async (id: string, label: string) => {
-    if (!confirm(`Delete conversion for "${label}"?`)) return;
+    if (!(await confirm({ title: 'Delete Conversion', message: `Delete conversion for "${label}"?`, variant: 'danger' }))) return;
     await supabase.from('biomarker_unit_conversions').delete().eq('id', id);
     await refresh();
   };
@@ -258,6 +260,7 @@ export default function UnitConversionsManager() {
 
   return (
     <div className="p-8 pt-4">
+      {confirmDialog}
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import UnitsReviewModal, { type UnitReviewSuggestion } from './UnitsReviewModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -293,6 +294,7 @@ function FormRow({
 
 export default function UnitsManager({ initialUnits }: { initialUnits: MeasurementUnit[] }) {
   const supabase = createClient();
+  const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
   const [units, setUnits] = useState<MeasurementUnit[]>(initialUnits);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<FormData>(EMPTY_FORM);
@@ -434,7 +436,7 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
   };
 
   const deleteUnit = async (id: string) => {
-    if (!confirm('Delete this unit? This cannot be undone.')) return;
+    if (!(await confirm({ title: 'Delete Unit', message: 'Delete this unit? This cannot be undone.', variant: 'danger' }))) return;
     await supabase.from('measurement_units').delete().eq('id', id);
     setUnits((prev) => prev.filter((u) => u.id !== id));
   };
@@ -574,6 +576,7 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
 
   return (
     <div className="p-8">
+      {confirmDialog}
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>

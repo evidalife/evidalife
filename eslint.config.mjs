@@ -13,6 +13,26 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    // Ban native browser confirm/alert/prompt — use useConfirmDialog() from @/components/ui/ConfirmDialog instead.
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        {
+          name: "confirm",
+          message: "Use useConfirmDialog() from @/components/ui/ConfirmDialog instead of native confirm().",
+        },
+        {
+          name: "alert",
+          message: "Use toast notifications instead of native alert().",
+        },
+        {
+          name: "prompt",
+          message: "Use a custom input modal instead of native prompt().",
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

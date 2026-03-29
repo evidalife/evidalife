@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import CoverImageUploader from '@/components/shared/CoverImageUploader';
 import GalleryUploader from '@/components/shared/GalleryUploader';
 
@@ -106,6 +107,7 @@ const inputCls = 'w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-
 
 export default function CoursesManager({ initialCourses }: { initialCourses: Course[] }) {
   const supabase = createClient();
+  const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
 
   const [courses, setCourses] = useState<Course[]>(initialCourses);
   const [search, setSearch] = useState('');
@@ -310,7 +312,7 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
   const handleDelete = async () => {
     if (!editingId) return;
     const title = form.title.de || form.title.en || 'this course';
-    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    if (!(await confirm({ title: 'Delete Course', message: `Delete "${title}"? This cannot be undone.`, variant: 'danger' }))) return;
     setDeleting(true);
     const { error: err } = await supabase.from('courses').delete().eq('id', editingId);
     setDeleting(false);
@@ -355,6 +357,7 @@ export default function CoursesManager({ initialCourses }: { initialCourses: Cou
 
   return (
     <div className="p-8">
+      {confirmDialog}
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">

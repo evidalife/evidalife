@@ -233,6 +233,7 @@ export const CATEGORY_DISPLAY: Record<string, Record<string, string>> = {
   hormones:         { de: 'Hormone',                 en: 'Hormones',              fr: 'Hormones',                es: 'Hormonas',                 it: 'Ormoni' },
   body_composition: { de: 'Körperzusammensetzung',   en: 'Body Composition',      fr: 'Composition Corporelle',  es: 'Composición Corporal',     it: 'Composizione Corporea' },
   fitness:          { de: 'Fitness & Erholung',      en: 'Fitness & Recovery',    fr: 'Forme & Récupération',    es: 'Forma & Recuperación',     it: 'Forma & Recupero' },
+  epigenetics:      { de: 'Epigenetik & Bio-Alter',  en: 'Epigenetics & Bio Age', fr: 'Épigénétique & Bio Âge',  es: 'Epigenética & Bio Edad',   it: 'Epigenetica & Bio Età' },
 };
 
 // ── Calculated Markers ────────────────────────────────────────────────────────

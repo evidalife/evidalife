@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { displayReportId } from '@/lib/lab-results/report-number';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -310,6 +311,7 @@ function MetaFields({ meta, onChange }: {
 
 export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: string }) {
   const supabase = createClient();
+  const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
 
   const [mode, setMode] = useState<Mode>('list');
   const [loading, setLoading] = useState(true);
@@ -482,7 +484,7 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
   };
 
   const handleDelete = async (report: LabReport) => {
-    if (!confirm(DELETE_CONFIRM[lang] ?? DELETE_CONFIRM.en)) return;
+    if (!(await confirm({ title: 'Delete Report', message: DELETE_CONFIRM[lang] ?? DELETE_CONFIRM.en, variant: 'danger' }))) return;
     const res = await fetch('/api/lab-results/delete-report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -964,6 +966,7 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
 
   return (
     <div className="space-y-4">
+      {confirmDialog}
       {successToast && (
         <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
           {successToast}

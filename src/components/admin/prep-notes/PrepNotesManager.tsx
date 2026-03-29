@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import PrepNotesReviewModal, { type PrepNoteReviewSuggestion } from './PrepNotesReviewModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -224,6 +225,7 @@ function FormRow({
 
 export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepNote[] }) {
   const supabase = createClient();
+  const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
   const [notes, setNotes] = useState<PrepNote[]>(initialNotes);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<FormData>(EMPTY_FORM);
@@ -328,7 +330,7 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
   };
 
   const deleteNote = async (id: string) => {
-    if (!confirm('Delete this prep note? This cannot be undone.')) return;
+    if (!(await confirm({ title: 'Delete Prep Note', message: 'Delete this prep note? This cannot be undone.', variant: 'danger' }))) return;
     await supabase.from('preparation_notes').delete().eq('id', id);
     setNotes((prev) => prev.filter((n) => n.id !== id));
   };
@@ -450,6 +452,7 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
 
   return (
     <div className="p-8">
+      {confirmDialog}
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>

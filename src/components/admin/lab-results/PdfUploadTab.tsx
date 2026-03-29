@@ -8,6 +8,7 @@ import {
   fmtDate, locName, nextToastId,
 } from './shared';
 import { computeStatusFlag } from '@/lib/lab-results/flagging';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -238,6 +239,7 @@ type UserOption = { id: string; email: string | null; first_name: string | null;
 
 export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: () => void }) {
   const supabase = createClient();
+  const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
 
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -643,6 +645,38 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
   const handleReanalyze = async (upload: UploadRecord) => {
     if (!upload.file_url) { addToast('No file path for this upload', 'error'); return; }
 
+    // Warn if results were already stored for this upload
+    if ((upload.results_created ?? 0) > 0) {
+      const ok = await confirm({
+        title: 'Re-analyze PDF',
+        message: `This PDF already has ${upload.results_created} stored result(s).\n\nRe-analyzing will delete the existing results and report so you can review the new extraction from scratch.`,
+        confirmLabel: 'Re-analyze',
+        variant: 'warning',
+      });
+      if (!ok) return;
+
+      // Delete existing lab_results, their reviews, and the report linked to this upload
+      if (upload.lab_report_id) {
+        // First get result IDs so we can clean up their reviews
+        const { data: oldResults } = await supabase
+          .from('lab_results')
+          .select('id')
+          .eq('lab_report_id', upload.lab_report_id);
+        if (oldResults?.length) {
+          const oldIds = oldResults.map((r: { id: string }) => r.id);
+          await supabase.from('lab_result_reviews').delete().in('lab_result_id', oldIds);
+        }
+        await supabase.from('lab_results').delete().eq('lab_report_id', upload.lab_report_id);
+        await supabase.from('lab_reports').delete().eq('id', upload.lab_report_id);
+      }
+      // Reset upload record
+      await supabase.from('lab_pdf_uploads').update({
+        results_created: 0,
+        extraction_status: 'processing',
+        lab_report_id: null,
+      }).eq('id', upload.id);
+    }
+
     // Old records stored a signed URL instead of a storage path — extract the path
     let storagePath = upload.file_url;
     if (storagePath.startsWith('http')) {
@@ -706,7 +740,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
   // ── Delete upload ────────────────────────────────────────────────────────────
 
   const handleDeleteUpload = async (upload: UploadRecord) => {
-    if (!confirm(`Delete "${upload.file_name}" and all its extracted data?`)) return;
+    if (!(await confirm({ title: 'Delete Upload', message: `Delete "${upload.file_name}" and all its extracted data?`, variant: 'danger' }))) return;
 
     // Delete linked lab_results (by pdf_url matching file_url)
     await supabase.from('lab_results').delete().eq('pdf_url', upload.file_url);
@@ -900,6 +934,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
         </div>
       </div>
 
+      {confirmDialog}
       <div className="space-y-6">
         <ToastContainer toasts={toasts} dismiss={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
 
@@ -1293,7 +1328,12 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                                       )}
                                       <button
                                         onClick={() => handleReanalyze(u)}
-                                        className="text-xs text-[#ceab84] hover:text-[#b8965e] font-medium transition"
+                                        className={`text-xs font-medium transition ${
+                                          (u.results_created ?? 0) > 0
+                                            ? 'text-amber-500 hover:text-amber-700'
+                                            : 'text-[#ceab84] hover:text-[#b8965e]'
+                                        }`}
+                                        title={(u.results_created ?? 0) > 0 ? 'Will delete existing results and re-extract' : 'Re-run AI extraction on this PDF'}
                                       >
                                         Re-analyze
                                       </button>
@@ -1454,7 +1494,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
               return name[reportLang] || name.en || name.de || Object.values(name)[0] || '—';
             };
             return (
-          <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-x-auto shadow-sm">
+          <div className="rounded-xl border border-[#0e393d]/10 bg-white shadow-sm" style={{ overflowX: 'clip', overflowY: 'visible' }}>
               <div className="px-3 pt-2 pb-0 text-[11px] text-[#1c2a2b]/40">
                 Detected report language: <span className="font-medium text-[#0e393d]/60 uppercase">{reportLang}</span>
               </div>
@@ -1614,7 +1654,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
 
           {/* ── Add marker manually (Feature 3) ──────────────────────── */}
           {addingManualRow ? (
-            <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm p-4 space-y-3">
+            <div className="rounded-xl border border-[#0e393d]/10 bg-white shadow-sm p-4 space-y-3" style={{ overflowX: 'clip', overflowY: 'visible' }}>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/50">Add Marker</p>
               <div className="flex gap-3 flex-wrap items-end">
                 {/* Biomarker search */}

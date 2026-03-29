@@ -72,7 +72,7 @@ export default async function HealthEnginePage({
     supabase
       .from('biomarkers')
       .select(
-        'id, slug, name, unit, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, item_type, sort_order',
+        'id, slug, name, unit, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, item_type, sort_order, is_calculated',
       )
       .eq('is_active', true),
   ]);

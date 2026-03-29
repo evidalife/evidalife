@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import CoverImageUploader from '@/components/shared/CoverImageUploader';
 import GalleryUploader from '@/components/shared/GalleryUploader';
 import type { ParsedProduct } from '@/app/api/admin/parse-product/route';
@@ -306,6 +307,7 @@ function AiBtn({
 
 export default function ProductsManager({ initialProducts }: { initialProducts: Product[] }) {
   const supabase = createClient();
+  const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [search, setSearch] = useState('');
   const [panelOpen, setPanelOpen] = useState(false);
@@ -676,7 +678,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   // ── Delete / restore ──────────────────────────────────────────────────────────
 
   const handleDelete = async (p: Product) => {
-    if (!confirm(`Delete "${p.name?.de || p.name?.en || p.sku || 'this product'}"? This is a soft-delete.`)) return;
+    if (!(await confirm({ title: 'Delete Product', message: `Delete "${p.name?.de || p.name?.en || p.sku || 'this product'}"? This is a soft-delete.`, variant: 'danger' }))) return;
     if (p.image_url) await deleteImage(p.image_url);
     await supabase.from('products').update({ deleted_at: new Date().toISOString(), image_url: null }).eq('id', p.id);
     await refresh();
@@ -723,6 +725,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
   return (
     <div className="p-8">
+      {confirmDialog}
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">

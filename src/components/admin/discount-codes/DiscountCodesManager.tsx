@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -185,6 +186,7 @@ export default function DiscountCodesManager({
   initialDiscountCodes: DiscountCode[];
 }) {
   const supabase = createClient();
+  const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
   const [codes, setCodes] = useState<DiscountCode[]>(initialDiscountCodes);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>('all');
@@ -263,7 +265,7 @@ export default function DiscountCodesManager({
   // ── Delete ────────────────────────────────────────────────────────────────────
 
   const handleDelete = async (dc: DiscountCode) => {
-    if (!confirm(`Delete code "${dc.code}"? This cannot be undone.`)) return;
+    if (!(await confirm({ title: 'Delete Discount Code', message: `Delete code "${dc.code}"? This cannot be undone.`, variant: 'danger' }))) return;
     await supabase.from('discount_codes').delete().eq('id', dc.id);
     await refresh();
   };
@@ -354,6 +356,7 @@ export default function DiscountCodesManager({
 
   return (
     <div className="p-8">
+      {confirmDialog}
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">

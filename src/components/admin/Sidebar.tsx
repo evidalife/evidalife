@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -236,20 +237,31 @@ export default function AdminSidebar() {
   };
 
   return (
-    <aside className="flex flex-col w-60 min-h-screen shrink-0 bg-[#0e393d] text-white">
+    <aside className="flex flex-col w-60 min-h-screen shrink-0 bg-gradient-to-b from-[#0e393d] to-[#0a2e31] text-white shadow-xl">
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-white/10">
-        <span className="font-serif text-xl text-[#ceab84] tracking-wide">Evida Life</span>
-        <span className="block text-[10px] text-white/40 uppercase tracking-widest mt-0.5">Admin Panel</span>
+      <div className="px-6 py-5 border-b border-white/[0.08]">
+        <div className="flex items-center gap-2.5">
+          <Image
+            src="/evida-icon-square.png"
+            alt="Evida Life"
+            width={34}
+            height={34}
+            className="rounded-lg shadow-lg shadow-black/30 ring-1 ring-white/10"
+          />
+          <div>
+            <span className="font-serif text-lg text-[#ceab84] tracking-wide leading-tight block">Evida Life</span>
+            <span className="text-[9px] text-white/30 uppercase tracking-[0.2em]">Admin</span>
+          </div>
+        </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 py-4 overflow-y-auto">
+      <nav className="flex-1 py-3 overflow-y-auto">
         {NAV_GROUPS.map((group, gi) => (
           <div key={gi}>
-            {gi > 0 && <div className="border-t border-white/10 my-2" />}
+            {gi > 0 && <div className="mx-5 border-t border-white/[0.06] my-2" />}
             {group.header && (
-              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#ceab84]/60 px-6 pt-2 pb-1">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/25 px-6 pt-3 pb-1.5">
                 {group.header}
               </p>
             )}
@@ -260,16 +272,19 @@ export default function AdminSidebar() {
                 <Link
                   key={href}
                   href={href}
-                  className={`flex items-center gap-3 px-6 py-2.5 text-sm transition-colors ${
+                  className={`relative flex items-center gap-3 mx-2 px-4 py-2 text-[13px] rounded-lg transition-all duration-150 ${
                     isActive
-                      ? 'bg-white/10 text-[#ceab84] font-medium'
-                      : 'text-white/70 hover:text-white hover:bg-white/5'
+                      ? 'bg-white/[0.08] text-[#ceab84] font-medium shadow-sm'
+                      : 'text-white/60 hover:text-white/90 hover:bg-white/[0.04]'
                   }`}
                 >
-                  <span className={isActive ? 'text-[#ceab84]' : 'text-white/50'}>{icon}</span>
+                  {isActive && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-[#ceab84]" />
+                  )}
+                  <span className={`shrink-0 transition-colors ${isActive ? 'text-[#ceab84]' : 'text-white/35'}`}>{icon}</span>
                   {label}
                   {isLabResults && reviewCount > 0 && (
-                    <span className="ml-auto inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold">
+                    <span className="ml-auto inline-flex items-center justify-center h-[18px] min-w-[18px] px-1 rounded-full bg-red-500/90 text-white text-[9px] font-bold shadow-sm">
                       {reviewCount > 9 ? '9+' : reviewCount}
                     </span>
                   )}
@@ -281,12 +296,12 @@ export default function AdminSidebar() {
       </nav>
 
       {/* Sign out */}
-      <div className="px-6 py-4 border-t border-white/10">
+      <div className="px-4 py-4 border-t border-white/[0.06]">
         <button
           onClick={handleSignOut}
-          className="flex items-center gap-2 text-sm text-white/50 hover:text-white/80 transition-colors w-full"
+          className="flex items-center gap-2.5 text-[13px] text-white/40 hover:text-white/70 transition-colors w-full px-2 py-1.5 rounded-lg hover:bg-white/[0.04]"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
             <polyline points="16 17 21 12 16 7" />
             <line x1="21" y1="12" x2="9" y2="12" />

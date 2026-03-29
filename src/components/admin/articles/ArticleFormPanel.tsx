@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import CoverImageUploader from '@/components/shared/CoverImageUploader';
 import GalleryUploader from '@/components/shared/GalleryUploader';
 
@@ -100,6 +101,7 @@ interface Props {
 
 export default function ArticleFormPanel({ articleId, onClose, onSaved, onDeleted }: Props) {
   const supabase = createClient();
+  const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
   const [deleting, setDeleting] = useState(false);
 
   const [lang, setLang]                 = useState<Lang>('de');
@@ -273,7 +275,7 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
   const handleDelete = async () => {
     if (!articleId) return;
     const title = form.title.de || form.title.en || 'this article';
-    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    if (!(await confirm({ title: 'Delete Article', message: `Delete "${title}"? This cannot be undone.`, variant: 'danger' }))) return;
     setDeleting(true);
     // Clean up storage image before deleting the DB row
     if (coverImageUrl) {
@@ -296,6 +298,7 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
 
   return (
     <>
+      {confirmDialog}
       <div className="fixed inset-0 bg-black/20 z-40 backdrop-blur-[1px]" onClick={onClose} />
 
       <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col bg-white shadow-2xl">

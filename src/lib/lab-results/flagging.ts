@@ -381,6 +381,145 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
     'Homocisteína',
   ],
 
+  // === BODY COMPOSITION / DEXA ===
+  body_fat_pct: [
+    'Body Fat Percentage', 'Body Fat %', 'Body Fat', 'Körperfettanteil',
+    'Körperfett %', 'Fettanteil', 'Taux de graisse corporelle',
+    'Percentuale di grasso corporeo', 'Porcentaje de grasa corporal',
+    'BF%', 'Fat Percentage', 'Total Body Fat %',
+  ],
+  muscle_mass_pct: [
+    'Muscle Mass Percentage', 'Muscle Mass %', 'Muscle Mass',
+    'Muskelmasse %', 'Muskelmasse', 'Muskelmasseanteil',
+    'Masse musculaire', 'Massa muscolare', 'Masa muscular',
+    'Lean Body Mass %', 'Skeletal Muscle Mass %',
+  ],
+  visceral_fat: [
+    'Visceral Fat', 'Visceral Fat Index', 'Viszerales Fett',
+    'Viszeralfett', 'VAT', 'Visceral Adipose Tissue',
+    'Graisse viscérale', 'Grasso viscerale', 'Grasa visceral',
+  ],
+  bone_density_t_score: [
+    'Bone Density T-Score', 'Bone Density', 'T-Score', 'DEXA T-Score',
+    'Knochendichte', 'Knochendichte T-Score', 'BMD T-Score',
+    'Densité osseuse', 'Densità ossea', 'Densidad ósea',
+  ],
+  bmi: [
+    'BMI', 'Body Mass Index', 'Körpermasseindex', 'KMI',
+    'Indice de masse corporelle', 'IMC', 'Indice di massa corporea',
+    'Índice de masa corporal',
+  ],
+  lean_mass: [
+    'Lean Mass', 'Lean Body Mass', 'LBM', 'Fettfreie Masse',
+    'Masse maigre', 'Massa magra', 'Masa magra',
+    'Total Lean Mass', 'Lean Tissue Mass',
+  ],
+  fat_mass: [
+    'Fat Mass', 'Total Fat Mass', 'Fettmasse', 'Gesamtfettmasse',
+    'Masse grasse', 'Massa grassa', 'Masa grasa',
+  ],
+  bone_mineral_content: [
+    'Bone Mineral Content', 'BMC', 'Knochenmineralgehalt',
+    'Contenu minéral osseux', 'Contenuto minerale osseo',
+    'Contenido mineral óseo', 'Total BMC',
+  ],
+  trunk_fat_pct: [
+    'Trunk Fat', 'Trunk Fat %', 'Trunk Fat Percentage',
+    'Rumpffett', 'Rumpffett %', 'Graisse du tronc',
+    'Grasso del tronco', 'Grasa del tronco',
+  ],
+  arms_fat_pct: [
+    'Arms Fat', 'Arms Fat %', 'Arms Fat Percentage', 'Arm Fat',
+    'Armfett', 'Armfett %', 'Graisse des bras',
+    'Grasso delle braccia', 'Grasa de brazos',
+  ],
+  legs_fat_pct: [
+    'Legs Fat', 'Legs Fat %', 'Legs Fat Percentage', 'Leg Fat',
+    'Beinfett', 'Beinfett %', 'Graisse des jambes',
+    'Grasso delle gambe', 'Grasa de piernas',
+  ],
+  android_gynoid_ratio: [
+    'Android/Gynoid Ratio', 'A/G Ratio', 'Android Gynoid Ratio',
+    'Android-Gynoid-Verhältnis', 'Rapport androïde/gynoïde',
+    'Rapporto androide/ginoide', 'Relación androide/ginoide',
+  ],
+
+  // === FITNESS / CARDIO ===
+  vo2max: [
+    'VO2max', 'VO2max (relative)', 'VO2 max', 'VO₂max', 'VO₂max (relativ)',
+    'Maximale Sauerstoffaufnahme', 'VO2 Max relativ',
+    'Consommation maximale d\'oxygène', 'Consumo massimo di ossigeno',
+  ],
+  vo2max_absolute: [
+    'VO2max (absolute)', 'VO2max absolute', 'VO2max abs', 'VO₂max (absolut)',
+    'VO2 Max absolut', 'Absolute VO2max',
+  ],
+  vt1: [
+    'VT1', 'VT1 (Aerobic Threshold)', 'VT1 (Aerobe Schwelle)',
+    'Aerobic Threshold', 'Aerobe Schwelle', 'First Ventilatory Threshold',
+    'Erste ventilatorische Schwelle', 'Seuil aérobie',
+  ],
+  vt1_heart_rate: [
+    'VT1 Heart Rate', 'VT1 HR', 'VT1 Herzfrequenz',
+    'Heart Rate at VT1', 'Herzfrequenz bei VT1',
+    'Fréquence cardiaque VT1', 'FC VT1',
+  ],
+  vt2: [
+    'VT2', 'VT2 (Anaerobic Threshold)', 'VT2 (Anaerobe Schwelle)',
+    'Anaerobic Threshold', 'Anaerobe Schwelle', 'Second Ventilatory Threshold',
+    'Zweite ventilatorische Schwelle', 'Seuil anaérobie',
+  ],
+  vt2_heart_rate: [
+    'VT2 Heart Rate', 'VT2 HR', 'VT2 Herzfrequenz',
+    'Heart Rate at VT2', 'Herzfrequenz bei VT2',
+    'Fréquence cardiaque VT2', 'FC VT2',
+  ],
+  resting_heart_rate: [
+    'Resting Heart Rate', 'Ruheherzfrequenz', 'Ruhe-HF', 'Ruhe HR',
+    'RHR', 'Rest HR', 'Fréquence cardiaque au repos',
+    'Frequenza cardiaca a riposo', 'Frecuencia cardíaca en reposo',
+  ],
+  max_heart_rate: [
+    'Maximum Heart Rate', 'Max Heart Rate', 'HRmax', 'HR max',
+    'Maximale Herzfrequenz', 'Max. HF', 'Maximal HR',
+    'Fréquence cardiaque maximale', 'FC max',
+    'Frequenza cardiaca massima', 'Frecuencia cardíaca máxima',
+  ],
+  hrv: [
+    'Heart Rate Variability', 'HRV', 'Herzfrequenzvariabilität',
+    'Variabilité de la fréquence cardiaque', 'Variabilità della frequenza cardiaca',
+    'Variabilidad de la frecuencia cardíaca', 'RMSSD', 'SDNN',
+  ],
+  max_power_output: [
+    'Max Power Output', 'Maximum Power Output', 'Peak Power', 'Pmax',
+    'Maximale Leistung', 'Max. Leistung', 'Spitzenleistung',
+    'Puissance maximale', 'Potenza massima', 'Potencia máxima',
+  ],
+  rer_peak: [
+    'RER at Peak', 'RER', 'RER peak', 'Peak RER',
+    'Respiratory Exchange Ratio', 'Respiratorischer Quotient',
+    'Quotient respiratoire', 'Quoziente respiratorio', 'Cociente respiratorio',
+  ],
+  spo2: [
+    'SpO2', 'SpO₂', 'SpO2 at Rest', 'SpO₂ at Rest', 'Oxygen Saturation',
+    'Sauerstoffsättigung', 'Saturation en oxygène', 'O2 Sat', 'O2-Sättigung',
+    'Saturazione di ossigeno', 'Saturación de oxígeno',
+  ],
+  spo2_peak: [
+    'SpO2 at Peak', 'SpO₂ at Peak', 'SpO2 peak', 'SpO₂ peak',
+    'SpO2 bei Spitzenbelastung', 'Oxygen Saturation at Peak',
+    'Sauerstoffsättigung bei Belastung',
+  ],
+
+  // === EPIGENETICS / AGING ===
+  grim_age_v2: [
+    'GrimAge', 'GrimAge v2', 'GrimAge2', 'Grim Age', 'Grim Age v2',
+    'GrimAge Version 2', 'Biological Age (GrimAge)',
+  ],
+  dunedin_pace: [
+    'DunedinPACE', 'Dunedin PACE', 'DunedinPace', 'PACE',
+    'Pace of Aging', 'DunedinPoAm',
+  ],
   // === OTHER ===
   omega_3_index: [
     'Omega-3 Index', 'Omega-3-Index', 'Omega 3 Index', 'Omega-3', 'EPA+DHA', 'EPA+DHA%',
@@ -421,7 +560,8 @@ export const CALCULATED_SKIP_IMPORT = new Set([
   'wht_ratio',
   'homa_beta',
   'pheno_age',
-  'bmi',
+  'chronological_age',
+  'age_difference',
 ]);
 
 // ─── Biomarker name matching ──────────────────────────────────────────────────
