@@ -374,7 +374,7 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
     setLoadingUploads(true);
     const { data } = await supabase
       .from('lab_pdf_uploads')
-      .select('id, user_id, file_name, file_url, extraction_status, results_created, created_at, extracted_data, draft_values, draft_metadata, lab_report_id, uploader:profiles!uploaded_by(first_name, last_name), patient:profiles!user_id(first_name, last_name, email)')
+      .select('id, user_id, file_name, file_url, extraction_status, results_created, created_at, extracted_data, draft_values, draft_metadata, lab_report_id, upload_source, delete_after, file_size_bytes, uploader:profiles!uploaded_by(first_name, last_name), patient:profiles!user_id(first_name, last_name, email)')
       .order('created_at', { ascending: false })
       .limit(200);
     setUploads((data as unknown as UploadRecord[]) ?? []);
@@ -1300,6 +1300,21 @@ export default function PdfUploadTab({ onSwitchToManual }: { onSwitchToManual?: 
                                     >
                                       📄 {u.file_name}
                                     </button>
+                                    {(u as any).upload_source === 'user' && (
+                                      <span className="ml-1.5 inline-flex items-center rounded-full bg-violet-50 px-1.5 py-0.5 text-[9px] font-medium text-violet-600 ring-1 ring-violet-500/20">
+                                        User upload
+                                        {(u as any).delete_after && (
+                                          <span className="ml-1 text-violet-400">
+                                            · expires {new Date((u as any).delete_after).toLocaleDateString()}
+                                          </span>
+                                        )}
+                                      </span>
+                                    )}
+                                    {(u as any).extraction_status === 'file_deleted' && (
+                                      <span className="ml-1.5 inline-flex items-center rounded-full bg-gray-50 px-1.5 py-0.5 text-[9px] font-medium text-gray-400 ring-1 ring-gray-300/30">
+                                        File deleted
+                                      </span>
+                                    )}
                                   </td>
                                   <td className="px-3 py-2.5 text-xs text-[#1c2a2b]/40">
                                     {[u.uploader?.first_name, u.uploader?.last_name].filter(Boolean).join(' ') || '—'}

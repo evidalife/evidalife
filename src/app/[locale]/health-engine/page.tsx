@@ -52,7 +52,7 @@ export default async function HealthEnginePage({
   const [profileRes, reportsRes, resultsRes, defsRes] = await Promise.all([
     supabase
       .from('profiles')
-      .select('first_name, last_name, birthday, sex, height_cm')
+      .select('first_name, last_name, date_of_birth, sex, height_cm')
       .eq('id', user.id)
       .single(),
     supabase

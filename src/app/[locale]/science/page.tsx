@@ -8,60 +8,88 @@ import { buildMeta, PAGE_META } from '@/lib/seo';
 type CellVal = -4 | -3 | -2 | -1 | 0 | 1 | 2 | 3 | 4;
 interface HRow { food: string; cells: [CellVal, CellVal, CellVal, CellVal, CellVal, CellVal]; }
 
-const HP: HRow[] = [
-  { food: 'Fruit',                  cells: [ 4,  3,  3,  3,  4,  4] },
-  { food: 'MUFA:SFA ratio',         cells: [ 3,  2,  2,  2,  3,  3] },
-  { food: 'Whole grains',           cells: [ 3,  2,  3,  2,  3,  3] },
-  { food: 'Vegetables',             cells: [ 3,  2,  3,  2,  3,  3] },
-  { food: 'Added unsaturated fat',  cells: [ 2,  1,  2,  1,  2,  2] },
-  { food: 'Leafy greens',           cells: [ 2,  3,  2,  2,  2,  2] },
-  { food: 'Nuts',                   cells: [ 2,  2,  2,  1,  2,  2] },
-  { food: 'Nuts & legumes',         cells: [ 2,  2,  2,  1,  2,  2] },
-  { food: 'Dark-yellow vegetables', cells: [ 2,  2,  2,  1,  2,  2] },
-  { food: 'Vegetable oils',         cells: [ 2,  1,  2,  1,  2,  2] },
-  { food: 'Berries',                cells: [ 1,  2,  1,  2,  1,  1] },
-  { food: 'Yogurt',                 cells: [ 1,  1,  1,  1,  1,  1] },
-  { food: 'Low-fat dairy',          cells: [ 1,  1,  1,  0,  1,  1] },
-  { food: 'Olive oil',              cells: [ 1,  1,  1,  1,  1,  1] },
-  { food: 'Omega-3 fatty acids',    cells: [ 1,  2,  1,  1,  1,  1] },
-  { food: 'Beans',                  cells: [ 1,  1,  1,  1,  2,  1] },
-  { food: 'Soy',                    cells: [ 1,  1,  1,  1,  1,  1] },
-  { food: 'Legumes',                cells: [ 1,  1,  1,  1,  1,  1] },
-  { food: 'Coffee & tea',           cells: [ 1,  1,  0,  1,  1,  0] },
-];
-const HM: HRow[] = [
-  { food: 'Wine',           cells: [ 0,  0,  0, -1,  0,  0] },
-  { food: 'Fish & seafood', cells: [ 1,  1,  1,  0,  1,  0] },
-  { food: 'Total dairy',    cells: [ 0,  0,  0,  0,  0,  0] },
-  { food: 'Eggs',           cells: [ 0,  0,  0,  0, -1,  0] },
-  { food: 'Poultry',        cells: [-1,  0,  0,  0, -1,  0] },
-];
-const HA: HRow[] = [
-  { food: 'Trans fats',                 cells: [-4, -3, -3, -2, -4, -4] },
-  { food: 'Total meats',                cells: [-3, -2, -2, -2, -3, -3] },
-  { food: 'Red & processed meats',      cells: [-3, -2, -2, -2, -3, -3] },
-  { food: 'Processed meat',             cells: [-3, -2, -2, -2, -3, -2] },
-  { food: 'Sodium',                     cells: [-2, -1, -1, -1, -2, -2] },
-  { food: 'Unprocessed red meat',       cells: [-2, -1, -1, -1, -2, -2] },
-  { food: 'Added sat. fat & trans fat', cells: [-3, -2, -2, -1, -3, -3] },
-  { food: 'French fries',               cells: [-2, -1, -1, -1, -2, -2] },
-  { food: 'Butter',                     cells: [-2, -1, -1, -1, -2, -1] },
-  { food: 'Sugar-sweetened beverages',  cells: [-2, -1, -1, -1, -2, -2] },
-  { food: 'High-fat dairy',             cells: [-1, -1, -1, -1, -1, -1] },
-  { food: 'Refined grains',             cells: [-1, -1, -1, -1, -1, -1] },
-  { food: 'Fast & fried foods',         cells: [-2, -1, -1, -1, -2, -1] },
+// Single continuous list matching Tessiere et al. 2025 Figure 4 exactly (top = most protective → bottom = most harmful)
+const HEATMAP_ROWS: HRow[] = [
+  { food: 'Fruit',                                                    cells: [ 4,  3,  3,  3,  4,  3] },
+  { food: 'Mono-unsaturated fatty acid:saturated fatty acid ratio',   cells: [ 3,  3,  3,  2,  3,  3] },
+  { food: 'Whole grains',                                             cells: [ 3,  3,  3,  2,  3,  3] },
+  { food: 'Vegetables',                                               cells: [ 3,  2,  3,  2,  3,  3] },
+  { food: 'Added unsaturated fat',                                    cells: [ 2,  2,  2,  2,  2,  3] },
+  { food: 'Leafy-green vegetables',                                   cells: [ 2,  3,  2,  2,  2,  2] },
+  { food: 'Nuts',                                                     cells: [ 2,  2,  2,  1,  2,  2] },
+  { food: 'Nuts and legumes',                                         cells: [ 2,  2,  2,  1,  2,  2] },
+  { food: 'Dark-yellow vegetables',                                   cells: [ 2,  2,  2,  1,  2,  2] },
+  { food: 'Vegetable oils',                                           cells: [ 2,  1,  2,  1,  2,  2] },
+  { food: 'Berries',                                                  cells: [ 1,  2,  1,  2,  1,  1] },
+  { food: 'Yogurt',                                                   cells: [ 1,  1,  1,  1,  1,  1] },
+  { food: 'Low-fat dairy',                                            cells: [ 1,  1,  1,  0,  1,  1] },
+  { food: 'Olive oil',                                                cells: [ 1,  1,  1,  1,  1,  1] },
+  { food: 'Other vegetables',                                         cells: [ 1,  1,  1,  1,  1,  1] },
+  { food: 'Long-chain n-3 (omega-3) polyunsaturated fatty acids',     cells: [ 1,  2,  1,  1,  1,  1] },
+  { food: 'Polyunsaturated fatty acids',                              cells: [ 1,  1,  1,  1,  1,  1] },
+  { food: 'Beans',                                                    cells: [ 1,  1,  1,  1,  2,  1] },
+  { food: 'Tomatoes',                                                 cells: [ 1,  1,  1,  1,  0,  0] },
+  { food: 'Coffee and tea',                                           cells: [ 1,  1,  0,  0,  1,  0] },
+  { food: 'Wine',                                                     cells: [ 0,  1,  0,  1,  0,  1] },
+  { food: 'Fruit juices',                                             cells: [ 0,  1,  0,  0,  1,  0] },
+  { food: 'Total dairy',                                              cells: [ 0,  0,  0,  0,  0,  1] },
+  { food: 'Coffee',                                                   cells: [ 0,  1,  0,  0,  0,  1] },
+  { food: 'Legumes',                                                  cells: [ 0,  1,  1,  1,  1,  1] },
+  { food: 'Tea',                                                      cells: [ 0,  0,  0,  1,  1,  1] },
+  { food: 'Soy',                                                      cells: [ 1,  0,  1,  1,  1,  1] },
+  { food: 'Fish and seafood',                                         cells: [ 0,  1,  0,  0,  0,  1] },
+  { food: 'Fast and fried foods',                                     cells: [ 0, -1, -1, -1, -1, -1] },
+  { food: 'Beer',                                                     cells: [ 0, -1, -1,  0,  0, -1] },
+  { food: 'Eggs',                                                     cells: [ 0,  0, -1, -1,  0,  0] },
+  { food: 'Animal fat',                                               cells: [ 0,  0, -1, -1,  0,  0] },
+  { food: 'Cheese',                                                   cells: [ 0,  0,  0,  0,  0, -1] },
+  { food: 'Pizza',                                                    cells: [ 0, -1,  0, -1,  0,  0] },
+  { food: 'Butter',                                                   cells: [ 0, -1, -1, -1, -1, -1] },
+  { food: 'Total alcohol',                                            cells: [ 0, -1, -1, -1,  0, -1] },
+  { food: 'Potatoes',                                                 cells: [ 0, -1,  0,  0,  0,  0] },
+  { food: 'Sugar-sweetened beverages and fruit juices',                cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'High-fat and regular-fat dairy',                           cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'Snacks',                                                   cells: [-1,  0,  0,  0,  0, -1] },
+  { food: 'Poultry',                                                  cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'Sweets and desserts',                                      cells: [-1,  0,  0,  0, -1,  0] },
+  { food: 'Refined grains',                                           cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'Starchy vegetables',                                       cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'Sugar-sweetened beverages',                                 cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'Liquor',                                                   cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'Low-energy beverages',                                     cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'Added sugar and fruit juices',                              cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'French fries',                                             cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'Organ meats',                                              cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'Miscellaneous animal-based foods',                         cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'Creamy soup',                                              cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'Added saturated fatty acids and trans fats',               cells: [-2, -1, -1, -1, -2, -2] },
+  { food: 'Unprocessed red meat',                                     cells: [-2, -1, -1, -1, -2, -2] },
+  { food: 'Margarine',                                                cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'Butter and margarine',                                     cells: [-1, -1, -1, -1, -1, -1] },
+  { food: 'Processed meat',                                           cells: [-2, -2, -2, -2, -2, -2] },
+  { food: 'Red and processed meats',                                  cells: [-2, -2, -2, -2, -2, -2] },
+  { food: 'Sodium',                                                   cells: [-1, -2, -2, -1, -2, -2] },
+  { food: 'Total meats',                                              cells: [-2, -2, -2, -2, -2, -2] },
+  { food: 'Trans fats',                                               cells: [-3, -3, -3, -2, -3, -3] },
 ];
 
 function cellCls(v: CellVal): string {
-  if (v === 4)  return 'bg-emerald-700';
-  if (v === 3)  return 'bg-emerald-500';
-  if (v === 2)  return 'bg-emerald-300';
+  if (v === 4)  return 'bg-emerald-600';
+  if (v === 3)  return 'bg-emerald-400';
+  if (v === 2)  return 'bg-emerald-200';
   if (v === 1)  return 'bg-emerald-100';
-  if (v === 0)  return 'bg-gray-100';
+  if (v === 0)  return 'bg-transparent';
   if (v === -1) return 'bg-red-100';
   if (v === -2) return 'bg-red-200';
   if (v === -3) return 'bg-red-400';
   return 'bg-red-600';
+}
+function cellTextCls(v: CellVal): string {
+  if (v >= 3) return 'text-white';
+  if (v <= -3) return 'text-white';
+  if (v >= 1) return 'text-emerald-800';
+  if (v <= -1) return 'text-red-800';
+  return 'text-gray-400';
 }
 
 // ── Disease data (static, not translated — numbers are universal) ─────────────
@@ -75,42 +103,66 @@ const DISEASES = [
 // ── Food name translations for heatmap ──────────────────────────────────────
 const FOOD_TRANS: Record<string, Record<string, string>> = {
   'Fruit':                      { de: 'Obst',                           fr: 'Fruits',                        es: 'Frutas',                        it: 'Frutta' },
-  'MUFA:SFA ratio':             { de: 'MUFA:SFA-Verhältnis',            fr: 'Ratio AGMI:AGS',                es: 'Ratio AGM:AGS',                 it: 'Rapporto AGMI:AGS' },
+  'Mono-unsaturated fatty acid:saturated fatty acid ratio': { de: 'Einfach unges.:gesättigte Fettsäuren', fr: 'Ratio acides gras mono-insat.:saturés', es: 'Ratio ác. graso monoinsaturado:saturado', it: 'Rapporto ac. grassi mono-insat.:saturi' },
   'Whole grains':               { de: 'Vollkornprodukte',               fr: 'Céréales complètes',            es: 'Cereales integrales',           it: 'Cereali integrali' },
   'Vegetables':                 { de: 'Gemüse',                         fr: 'Légumes',                       es: 'Verduras',                      it: 'Verdure' },
   'Added unsaturated fat':      { de: 'Ungesättigte Fette',             fr: 'Graisses insaturées',           es: 'Grasas insaturadas',            it: 'Grassi insaturi' },
-  'Leafy greens':               { de: 'Blattgemüse',                    fr: 'Légumes à feuilles',            es: 'Verduras de hoja',              it: 'Verdure a foglia' },
+  'Leafy-green vegetables':     { de: 'Blattgemüse',                    fr: 'Légumes à feuilles vertes',     es: 'Verduras de hoja verde',        it: 'Verdure a foglia verde' },
   'Nuts':                       { de: 'Nüsse',                          fr: 'Noix',                          es: 'Frutos secos',                  it: 'Noci' },
-  'Nuts & legumes':             { de: 'Nüsse & Hülsenfrüchte',          fr: 'Noix & légumineuses',           es: 'Frutos secos & legumbres',      it: 'Noci & legumi' },
+  'Nuts and legumes':           { de: 'Nüsse & Hülsenfrüchte',          fr: 'Noix & légumineuses',           es: 'Frutos secos & legumbres',      it: 'Noci & legumi' },
   'Dark-yellow vegetables':     { de: 'Dunkelgelbes Gemüse',            fr: 'Légumes jaune foncé',           es: 'Verduras amarillo oscuro',      it: 'Verdure giallo scure' },
   'Vegetable oils':             { de: 'Pflanzenöle',                    fr: 'Huiles végétales',              es: 'Aceites vegetales',             it: 'Oli vegetali' },
   'Berries':                    { de: 'Beeren',                         fr: 'Baies',                         es: 'Bayas',                         it: 'Frutti di bosco' },
   'Yogurt':                     { de: 'Joghurt',                        fr: 'Yaourt',                        es: 'Yogur',                         it: 'Yogurt' },
   'Low-fat dairy':              { de: 'Fettarme Milchprodukte',         fr: 'Produits laitiers allégés',     es: 'Lácteos bajos en grasa',        it: 'Latticini magri' },
   'Olive oil':                  { de: 'Olivenöl',                       fr: "Huile d'olive",                 es: 'Aceite de oliva',               it: "Olio d'oliva" },
-  'Omega-3 fatty acids':        { de: 'Omega-3-Fettsäuren',             fr: 'Acides gras oméga-3',           es: 'Ácidos grasos omega-3',         it: 'Acidi grassi omega-3' },
+  'Long-chain n-3 (omega-3) polyunsaturated fatty acids': { de: 'Langkettige Omega-3-Fettsäuren', fr: 'Acides gras polyinsaturés oméga-3 à longue chaîne', es: 'Ácidos grasos poliinsaturados omega-3 de cadena larga', it: 'Acidi grassi polinsaturi omega-3 a catena lunga' },
+  'Polyunsaturated fatty acids':{ de: 'Mehrfach unges. Fettsäuren',     fr: 'Acides gras polyinsaturés',     es: 'Ácidos grasos poliinsaturados', it: 'Acidi grassi polinsaturi' },
   'Beans':                      { de: 'Bohnen',                         fr: 'Haricots',                      es: 'Judías',                        it: 'Fagioli' },
-  'Soy':                        { de: 'Soja',                           fr: 'Soja',                          es: 'Soja',                          it: 'Soia' },
-  'Legumes':                    { de: 'Hülsenfrüchte',                  fr: 'Légumineuses',                  es: 'Legumbres',                     it: 'Legumi' },
-  'Coffee & tea':               { de: 'Kaffee & Tee',                   fr: 'Café & thé',                    es: 'Café & té',                     it: 'Caffè & tè' },
+  'Tomatoes':                   { de: 'Tomaten',                        fr: 'Tomates',                       es: 'Tomates',                       it: 'Pomodori' },
+  'Coffee and tea':             { de: 'Kaffee & Tee',                   fr: 'Café & thé',                    es: 'Café & té',                     it: 'Caffè & tè' },
   'Wine':                       { de: 'Wein',                           fr: 'Vin',                           es: 'Vino',                          it: 'Vino' },
-  'Fish & seafood':             { de: 'Fisch & Meeresfrüchte',          fr: 'Poisson & fruits de mer',       es: 'Pescado & mariscos',            it: 'Pesce & frutti di mare' },
-  'Total dairy':                { de: 'Milchprodukte',                  fr: 'Produits laitiers',             es: 'Lácteos totales',               it: 'Latticini totali' },
+  'Fruit juices':               { de: 'Fruchtsäfte',                    fr: 'Jus de fruits',                 es: 'Zumos de frutas',               it: 'Succhi di frutta' },
+  'Total dairy':                { de: 'Milchprodukte gesamt',            fr: 'Produits laitiers totaux',      es: 'Lácteos totales',               it: 'Latticini totali' },
+  'Coffee':                     { de: 'Kaffee',                         fr: 'Café',                          es: 'Café',                          it: 'Caffè' },
+  'Legumes':                    { de: 'Hülsenfrüchte',                  fr: 'Légumineuses',                  es: 'Legumbres',                     it: 'Legumi' },
+  'Tea':                        { de: 'Tee',                            fr: 'Thé',                           es: 'Té',                            it: 'Tè' },
+  'Soy':                        { de: 'Soja',                           fr: 'Soja',                          es: 'Soja',                          it: 'Soia' },
+  'Fish and seafood':           { de: 'Fisch & Meeresfrüchte',          fr: 'Poisson & fruits de mer',       es: 'Pescado & mariscos',            it: 'Pesce & frutti di mare' },
+  'Fast and fried foods':       { de: 'Fast Food & Frittiertes',        fr: 'Fast-food & friture',           es: 'Comida rápida & frita',         it: 'Fast food & fritti' },
+  'Beer':                       { de: 'Bier',                           fr: 'Bière',                         es: 'Cerveza',                       it: 'Birra' },
   'Eggs':                       { de: 'Eier',                           fr: 'Œufs',                          es: 'Huevos',                        it: 'Uova' },
-  'Poultry':                    { de: 'Geflügel',                       fr: 'Volaille',                      es: 'Aves de corral',                it: 'Pollame' },
-  'Trans fats':                 { de: 'Transfette',                     fr: 'Graisses trans',                es: 'Grasas trans',                  it: 'Grassi trans' },
-  'Total meats':                { de: 'Fleisch gesamt',                 fr: 'Viandes totales',               es: 'Carnes totales',                it: 'Carni totali' },
-  'Red & processed meats':      { de: 'Rotes & verarbeitetes Fleisch',  fr: 'Viandes rouges & transformées', es: 'Carnes rojas & procesadas',    it: 'Carni rosse & lavorate' },
-  'Processed meat':             { de: 'Verarbeitetes Fleisch',          fr: 'Viande transformée',            es: 'Carne procesada',               it: 'Carne lavorata' },
-  'Sodium':                     { de: 'Natrium',                        fr: 'Sodium',                        es: 'Sodio',                         it: 'Sodio' },
-  'Unprocessed red meat':       { de: 'Unverarbeitetes rotes Fleisch',  fr: 'Viande rouge non transformée', es: 'Carne roja no procesada',        it: 'Carne rossa non lavorata' },
-  'Added sat. fat & trans fat': { de: 'Gesättigte Fette & Transfette',  fr: 'Graisses saturées & trans',     es: 'Grasas saturadas & trans',      it: 'Grassi saturi & trans' },
-  'French fries':               { de: 'Pommes frites',                  fr: 'Frites',                        es: 'Patatas fritas',                it: 'Patatine fritte' },
+  'Animal fat':                 { de: 'Tierisches Fett',                fr: 'Graisse animale',               es: 'Grasa animal',                  it: 'Grasso animale' },
+  'Cheese':                     { de: 'Käse',                           fr: 'Fromage',                       es: 'Queso',                         it: 'Formaggio' },
+  'Pizza':                      { de: 'Pizza',                          fr: 'Pizza',                         es: 'Pizza',                         it: 'Pizza' },
   'Butter':                     { de: 'Butter',                         fr: 'Beurre',                        es: 'Mantequilla',                   it: 'Burro' },
-  'Sugar-sweetened beverages':  { de: 'Zuckerhaltige Getränke',         fr: 'Boissons sucrées',              es: 'Bebidas azucaradas',            it: 'Bevande zuccherate' },
-  'High-fat dairy':             { de: 'Fettreiche Milchprodukte',       fr: 'Produits laitiers entiers',     es: 'Lácteos altos en grasa',        it: 'Latticini grassi' },
+  'Total alcohol':              { de: 'Alkohol gesamt',                 fr: 'Alcool total',                  es: 'Alcohol total',                 it: 'Alcol totale' },
+  'Potatoes':                   { de: 'Kartoffeln',                     fr: 'Pommes de terre',               es: 'Patatas',                       it: 'Patate' },
+  'Sugar-sweetened beverages and fruit juices': { de: 'Zuckergetränke & Fruchtsäfte', fr: 'Boissons sucrées & jus de fruits', es: 'Bebidas azucaradas & zumos', it: 'Bevande zuccherate & succhi di frutta' },
+  'High-fat and regular-fat dairy': { de: 'Fettreiche Milchprodukte',   fr: 'Produits laitiers entiers',     es: 'Lácteos altos en grasa',        it: 'Latticini grassi' },
+  'Snacks':                     { de: 'Snacks',                         fr: 'Snacks',                        es: 'Snacks',                        it: 'Snack' },
+  'Poultry':                    { de: 'Geflügel',                       fr: 'Volaille',                      es: 'Aves de corral',                it: 'Pollame' },
+  'Sweets and desserts':        { de: 'Süsswaren & Desserts',           fr: 'Sucreries & desserts',          es: 'Dulces & postres',              it: 'Dolci & dessert' },
   'Refined grains':             { de: 'Raffiniertes Getreide',          fr: 'Céréales raffinées',            es: 'Cereales refinados',            it: 'Cereali raffinati' },
-  'Fast & fried foods':         { de: 'Fast Food & Frittiertes',        fr: 'Fast-food & friture',           es: 'Comida rápida & frita',         it: 'Fast food & fritti' },
+  'Starchy vegetables':         { de: 'Stärkehaltiges Gemüse',          fr: 'Légumes féculents',             es: 'Verduras con almidón',          it: 'Verdure amidacee' },
+  'Sugar-sweetened beverages':  { de: 'Zuckerhaltige Getränke',         fr: 'Boissons sucrées',              es: 'Bebidas azucaradas',            it: 'Bevande zuccherate' },
+  'Liquor':                     { de: 'Spirituosen',                    fr: 'Spiritueux',                    es: 'Licor',                         it: 'Liquori' },
+  'Low-energy beverages':       { de: 'Kalorienarme Getränke',          fr: 'Boissons allégées',             es: 'Bebidas bajas en calorías',     it: 'Bevande ipocaloriche' },
+  'Added sugar and fruit juices': { de: 'Zugesetzter Zucker & Säfte',   fr: 'Sucres ajoutés & jus',          es: 'Azúcar añadido & zumos',        it: 'Zuccheri aggiunti & succhi' },
+  'French fries':               { de: 'Pommes frites',                  fr: 'Frites',                        es: 'Patatas fritas',                it: 'Patatine fritte' },
+  'Organ meats':                { de: 'Innereien',                      fr: 'Abats',                         es: 'Vísceras',                      it: 'Frattaglie' },
+  'Miscellaneous animal-based foods': { de: 'Sonstige tierische Lebensmittel', fr: 'Aliments divers d\'origine animale', es: 'Alimentos animales diversos', it: 'Alimenti vari di origine animale' },
+  'Creamy soup':                { de: 'Cremesuppen',                    fr: 'Soupes crémeuses',              es: 'Sopas cremosas',                it: 'Zuppe cremose' },
+  'Added saturated fatty acids and trans fats': { de: 'Gesättigte Fette & Transfette', fr: 'Acides gras saturés & trans', es: 'Ácidos grasos saturados & trans', it: 'Acidi grassi saturi & trans' },
+  'Unprocessed red meat':       { de: 'Unverarbeitetes rotes Fleisch',  fr: 'Viande rouge non transformée',  es: 'Carne roja no procesada',       it: 'Carne rossa non lavorata' },
+  'Margarine':                  { de: 'Margarine',                      fr: 'Margarine',                     es: 'Margarina',                     it: 'Margarina' },
+  'Butter and margarine':       { de: 'Butter & Margarine',             fr: 'Beurre & margarine',            es: 'Mantequilla & margarina',       it: 'Burro & margarina' },
+  'Processed meat':             { de: 'Verarbeitetes Fleisch',          fr: 'Viande transformée',            es: 'Carne procesada',               it: 'Carne lavorata' },
+  'Red and processed meats':    { de: 'Rotes & verarbeitetes Fleisch',  fr: 'Viandes rouges & transformées', es: 'Carnes rojas & procesadas',     it: 'Carni rosse & lavorate' },
+  'Sodium':                     { de: 'Natrium',                        fr: 'Sodium',                        es: 'Sodio',                         it: 'Sodio' },
+  'Total meats':                { de: 'Fleisch gesamt',                 fr: 'Viandes totales',               es: 'Carnes totales',                it: 'Carni totali' },
+  'Trans fats':                 { de: 'Transfette',                     fr: 'Graisses trans',                es: 'Grasas trans',                  it: 'Grassi trans' },
+  'Other vegetables':           { de: 'Anderes Gemüse',                 fr: 'Autres légumes',                es: 'Otras verduras',                it: 'Altre verdure' },
 };
 function getFoodName(food: string, lang: string): string {
   if (lang === 'en') return food;
@@ -119,12 +171,28 @@ function getFoodName(food: string, lang: string): string {
 
 // ── Evidence pyramid visual config (top=strongest → bottom=weakest) ─────────
 const PYRAMID_VISUAL = [
-  { widthPct: 28,  bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-800' },
-  { widthPct: 46,  bg: 'bg-lime-50',    border: 'border-lime-300',    text: 'text-lime-800' },
-  { widthPct: 64,  bg: 'bg-yellow-50',  border: 'border-yellow-200',  text: 'text-yellow-800' },
-  { widthPct: 82,  bg: 'bg-orange-50',  border: 'border-orange-200',  text: 'text-orange-800' },
-  { widthPct: 100, bg: 'bg-red-50',     border: 'border-red-200',     text: 'text-red-800' },
+  { widthPct: 30,  bg: 'from-emerald-600 to-emerald-700', text: 'text-white',       badge: 'bg-white/20' },
+  { widthPct: 48,  bg: 'from-emerald-400 to-emerald-500', text: 'text-white',       badge: 'bg-white/20' },
+  { widthPct: 66,  bg: 'from-amber-300 to-amber-400',     text: 'text-amber-900',   badge: 'bg-amber-900/10' },
+  { widthPct: 82,  bg: 'from-orange-300 to-orange-400',   text: 'text-orange-900',  badge: 'bg-orange-900/10' },
+  { widthPct: 100, bg: 'from-red-300 to-red-400',         text: 'text-red-900',     badge: 'bg-red-900/10' },
 ] as const;
+
+// ── Hallmark icons (mapped by index) ──────────────────────────────────────────
+const HALLMARK_ICONS = ['⚡', '♻️', '📡', '📈', '🧬', '🔀', '🔋', '🧟', '🔥', '💨', '🦠'];
+
+// ── Age-disease risk data (Gompertz-like exponential mortality curves) ────────
+// Approximate relative risk indexed from age 30 to 90 (7 points)
+// Source: WHO Global Health Estimates, GBD 2019, Gompertz law of mortality
+const AGE_RISK_POINTS = [
+  { age: 30, cvd: 2,  cancer: 3,  respiratory: 1,  diabetes: 2  },
+  { age: 40, cvd: 5,  cancer: 7,  respiratory: 2,  diabetes: 5  },
+  { age: 50, cvd: 14, cancer: 16, respiratory: 5,  diabetes: 11 },
+  { age: 60, cvd: 32, cancer: 30, respiratory: 14, diabetes: 22 },
+  { age: 70, cvd: 65, cancer: 50, respiratory: 35, diabetes: 38 },
+  { age: 80, cvd: 90, cancer: 68, respiratory: 65, diabetes: 55 },
+  { age: 90, cvd: 100,cancer: 78, respiratory: 88, diabetes: 65 },
+];
 
 // ── Disease reversal cards ───────────────────────────────────────────────────
 type LangStr = { de: string; en: string; fr: string; es: string; it: string };
@@ -425,23 +493,27 @@ const T = {
     ],
     agingHallmarksNote: 'Forscher haben 11 biologische Kennzeichen des Alterns identifiziert. Viele davon werden direkt durch die Ernährung beeinflusst.',
     agingSource: 'Quelle: Kennedy et al. (2016), Cold Spring Harb Perspect Med',
+    ageRiskTitle: 'Krankheitsrisiko nach Alter',
+    ageRiskSub: 'Das Risiko für alle vier grossen Killer-Krankheiten steigt exponentiell mit dem Alter. Wenn wir das biologische Altern verlangsamen, verschieben wir alle diese Kurven nach rechts.',
+    ageRiskYLabel: 'Relatives Risiko',
+    ageRiskSource: 'Basierend auf: WHO Global Health Estimates, Global Burden of Disease 2019, Gompertz-Mortalitätsgesetz',
     hallmarksTag: 'HALLMARKS DES ALTERNS',
     hallmarksTitle: '11 Mechanismen des Alterns – und was deine Ernährung damit macht.',
     hallmarksSub: 'Jedes Hallmark kann durch deine Ernährung beschleunigt oder verlangsamt werden.',
     animalLabel: 'Tierische Produkte:',
     plantLabel: 'Pflanzlich:',
     hallmarks: [
-      { name: 'AMPK', sub: 'Zellulärer Energiesensor', animal: 'Hohe Kaloriendichte + gesättigte Fette → AMPK gehemmt', plant: 'Ballaststoffe + Fastenfenster → AMPK aktiviert (Bohnen, Vollkorn, Beeren)' },
-      { name: 'Autophagie', sub: 'Zelluläre Selbstreinigung', animal: 'Ständiger Proteinüberschuss schaltet Autophagie ab', plant: 'Polyphenole + reduzierte Kalorienlast → Autophagie gesteigert (grüner Tee, Beeren, Blattgemüse)' },
-      { name: 'mTOR', sub: 'Wachstumssignalschalter', animal: 'Tierisches Protein (Leucin) → mTOR chronisch überaktiviert', plant: 'Pflanzliches Protein → mTOR für Langlebigkeit moduliert (Linsen, Tofu, Hanfsamen)' },
-      { name: 'IGF-1', sub: 'Insulinähnlicher Wachstumsfaktor', animal: 'Milchprodukte, Fleisch, Eier → IGF-1 auf krebsfördernde Werte erhöht', plant: 'Vollwertige Pflanzenkost → IGF-1 auf Langlebigkeitsniveau (Hülsenfrüchte, Gemüse, Vollkorn)' },
-      { name: 'Telomerverkürzung', sub: 'Biologische Uhr', animal: 'Chronische Entzündung → beschleunigter Telomerverlust', plant: 'Antioxidantien + entzündungshemmende Substanzen → Telomerschutz (Blaubeeren, Brokkoli, Leinsamen)' },
-      { name: 'Epigenetische Veränderungen', sub: 'Genexpressionsschalter', animal: 'Fördert entzündungsfördernde Genexpressionsmuster', plant: 'Polyphenole + Methyldonoren aktivieren Langlebigkeitsgene (Kurkuma, Kreuzblütler, Walnüsse)' },
-      { name: 'Mitochondriale Dysfunktion', sub: 'Energiewerk-Versagen', animal: 'Gesättigte Fette beeinträchtigen die Mitochondrienmembranfunktion', plant: 'AMPK + Antioxidantien unterstützen mitochondriale Integrität (dunkles Blattgemüse, Rote Bete, Olivenöl)' },
-      { name: 'Zelluläre Seneszenz', sub: 'Zombie-Zellen', animal: 'Erhöht DNA-Schäden → mehr seneszente Zellen akkumulieren', plant: 'Flavonoide wirken als Senolytika und eliminieren Zombie-Zellen (Äpfel, Zwiebeln, Kapern)' },
-      { name: 'Chronische Entzündung', sub: 'Inflammaging', animal: 'Gesättigte Fette + Endotoxine lösen systemische Entzündung aus', plant: 'Ballaststoffe + Polyphenole → kurzkettige Fettsäuren, entzündungshemmend (Hafer, Beeren, Leinsamen)' },
-      { name: 'Oxidativer Stress', sub: 'Freie-Radikale-Schäden', animal: 'Erzeugt reaktive Sauerstoffspezies mit wenigen schützenden Antioxidantien', plant: 'Tausende Antioxidantien neutralisieren freie Radikale (Blaubeeren, dunkle Schokolade, Walnüsse)' },
-      { name: 'Darmdysbiose', sub: 'Mikrobiom-Störung', animal: 'Ernährt pathogene Bakterien, fördert Darmentzündung', plant: 'Ballaststoffe ernähren schützende Bakterien → Langlebigkeitssignale (Hülsenfrüchte, Vollkorn, Zwiebeln)' },
+      { name: 'AMPK', sub: 'Zellulärer Energiesensor', explain: 'Stell dir AMPK als den Tankanzeigestab deiner Zellen vor. Bei niedrigem Energielevel schaltet er auf Reparatur- und Recyclingmodus — und hält die Zellen jung und effizient.', animal: 'Hohe Kaloriendichte + gesättigte Fette → AMPK gehemmt', plant: 'Ballaststoffe + Fastenfenster → AMPK aktiviert (Bohnen, Vollkorn, Beeren)' },
+      { name: 'Autophagie', sub: 'Zelluläre Selbstreinigung', explain: 'Das körpereigene Recyclingsystem. Zellen bauen beschädigte Teile ab und verwerten sie wieder — wie eine Grundreinigung, die verhindert, dass sich Abfall ansammelt.', animal: 'Ständiger Proteinüberschuss schaltet Autophagie ab', plant: 'Polyphenole + reduzierte Kalorienlast → Autophagie gesteigert (grüner Tee, Beeren, Blattgemüse)' },
+      { name: 'mTOR', sub: 'Wachstumssignalschalter', explain: 'Ein Hauptschalter, der Zellen zum Wachsen anregt. Hilfreich in der Entwicklung, aber wenn er im Erwachsenenalter ständig «an» ist, beschleunigt er Alterung und Krebsrisiko.', animal: 'Tierisches Protein (Leucin) → mTOR chronisch überaktiviert', plant: 'Pflanzliches Protein → mTOR für Langlebigkeit moduliert (Linsen, Tofu, Hanfsamen)' },
+      { name: 'IGF-1', sub: 'Insulinähnlicher Wachstumsfaktor', explain: 'Ein Wachstumshormon, das Kindern beim Wachsen hilft. Bei Erwachsenen fördern chronisch hohe Werte das Wachstum von Dingen, die man nicht will — einschliesslich Tumoren.', animal: 'Milchprodukte, Fleisch, Eier → IGF-1 auf krebsfördernde Werte erhöht', plant: 'Vollwertige Pflanzenkost → IGF-1 auf Langlebigkeitsniveau (Hülsenfrüchte, Gemüse, Vollkorn)' },
+      { name: 'Telomerverkürzung', sub: 'Biologische Uhr', explain: 'Telomere sind Schutzkappen auf deinen Chromosomen — wie die Plastikenden an Schnürsenkeln. Bei jeder Zellteilung werden sie kürzer, und wenn sie aufgebraucht sind, stirbt die Zelle.', animal: 'Chronische Entzündung → beschleunigter Telomerverlust', plant: 'Antioxidantien + entzündungshemmende Substanzen → Telomerschutz (Blaubeeren, Brokkoli, Leinsamen)' },
+      { name: 'Epigenetische Veränderungen', sub: 'Genexpressionsschalter', explain: 'Deine DNA bleibt gleich, aber chemische Markierungen entscheiden, welche Gene ein- oder ausgeschaltet werden. Schlechte Ernährung aktiviert die falschen Schalter.', animal: 'Fördert entzündungsfördernde Genexpressionsmuster', plant: 'Polyphenole + Methyldonoren aktivieren Langlebigkeitsgene (Kurkuma, Kreuzblütler, Walnüsse)' },
+      { name: 'Mitochondriale Dysfunktion', sub: 'Energiewerk-Versagen', explain: 'Mitochondrien sind winzige Kraftwerke in jeder Zelle. Wenn sie ausfallen, kann die Zelle nicht genug Energie produzieren — es folgen Müdigkeit, Krankheit und Alterung.', animal: 'Gesättigte Fette beeinträchtigen die Mitochondrienmembranfunktion', plant: 'AMPK + Antioxidantien unterstützen mitochondriale Integrität (dunkles Blattgemüse, Rote Bete, Olivenöl)' },
+      { name: 'Zelluläre Seneszenz', sub: 'Zombie-Zellen', explain: 'Alte, beschädigte Zellen, die sich weigern zu sterben, aber nicht mehr funktionieren. Sie senden Entzündungssignale aus, die gesunde Nachbarzellen schädigen.', animal: 'Erhöht DNA-Schäden → mehr seneszente Zellen akkumulieren', plant: 'Flavonoide wirken als Senolytika und eliminieren Zombie-Zellen (Äpfel, Zwiebeln, Kapern)' },
+      { name: 'Chronische Entzündung', sub: 'Inflammaging', explain: 'Ein schwelender Brand, der nie erlischt. Anders als die akute Entzündung, die eine Wunde heilt, schädigt chronische Entzündung leise das Gewebe und treibt fast jede Alterskrankheit an.', animal: 'Gesättigte Fette + Endotoxine lösen systemische Entzündung aus', plant: 'Ballaststoffe + Polyphenole → kurzkettige Fettsäuren, entzündungshemmend (Hafer, Beeren, Leinsamen)' },
+      { name: 'Oxidativer Stress', sub: 'Freie-Radikale-Schäden', explain: 'Instabile Moleküle namens freie Radikale greifen deine Zellen an wie Rost Metall. Dein Körper kann sich wehren — aber nur, wenn du ihm genug Antioxidantien gibst.', animal: 'Erzeugt reaktive Sauerstoffspezies mit wenigen schützenden Antioxidantien', plant: 'Tausende Antioxidantien neutralisieren freie Radikale (Blaubeeren, dunkle Schokolade, Walnüsse)' },
+      { name: 'Darmdysbiose', sub: 'Mikrobiom-Störung', explain: 'Billionen Bakterien in deinem Darm beeinflussen alles von der Immunabwehr bis zur Stimmung. Wenn schädliche Bakterien überhandnehmen, folgen Entzündung und Krankheit.', animal: 'Ernährt pathogene Bakterien, fördert Darmentzündung', plant: 'Ballaststoffe ernähren schützende Bakterien → Langlebigkeitssignale (Hülsenfrüchte, Vollkorn, Zwiebeln)' },
     ],
     ctaTitle: 'Nimm deine Gesundheit in die Hand.',
     ctaBtn1: 'Mit der Daily Dozen starten',
@@ -453,7 +525,6 @@ const T = {
     promoteLabel: 'Fördert gesundes Altern',
     avoidLabel: 'Beschleunigt Alterung',
     colHeaders: ['Gesundes Altern', 'Kognitiv', 'Körperlich', 'Psychische Gesundheit', 'Krankheitsfrei', 'Bis 70 überleben'],
-    dividerLabel: 'Gemischt / neutral',
     citation: 'Tessiere et al. (2025), Nature Medicine — 105.015 Teilnehmer, 30 Jahre Beobachtungszeitraum.',
     evidenceProblemTag: 'DAS EVIDENZPROBLEM',
     pyramidHead: 'Nicht alle Evidenz ist gleich.',
@@ -507,23 +578,27 @@ const T = {
     ],
     agingHallmarksNote: 'Researchers have identified 11 biological hallmarks of aging. Many of them are directly influenced by diet.',
     agingSource: 'Source: Kennedy et al. (2016), Cold Spring Harb Perspect Med',
+    ageRiskTitle: 'Disease risk by age',
+    ageRiskSub: 'The risk of all four major killer diseases rises exponentially with age. If we slow biological aging, we shift all these curves to the right.',
+    ageRiskYLabel: 'Relative risk',
+    ageRiskSource: 'Based on: WHO Global Health Estimates, Global Burden of Disease 2019, Gompertz law of mortality',
     hallmarksTag: 'HALLMARKS OF AGING',
     hallmarksTitle: '11 mechanisms of aging — and what your diet does to each one.',
     hallmarksSub: 'Each hallmark can be accelerated or slowed by what you eat.',
     animalLabel: 'Animal products:',
     plantLabel: 'Plant-based:',
     hallmarks: [
-      { name: 'AMPK', sub: 'Cellular energy sensor', animal: 'High calorie density + saturated fat → AMPK inhibited', plant: 'Dietary fiber + fasting windows → AMPK activated (beans, whole grains, berries)' },
-      { name: 'Autophagy', sub: 'Cellular self-cleaning', animal: 'Constant protein surplus shuts autophagy off', plant: 'Polyphenols + lower caloric load → autophagy enhanced (green tea, berries, leafy greens)' },
-      { name: 'mTOR', sub: 'Growth signaling switch', animal: 'Animal protein (leucine) → mTOR chronically overactivated', plant: 'Plant protein → mTOR moderated for longevity (lentils, tofu, hemp seeds)' },
-      { name: 'IGF-1', sub: 'Insulin-like growth factor', animal: 'Dairy, meat, eggs → IGF-1 elevated to cancer-promoting levels', plant: 'Whole plant foods → IGF-1 at longevity-associated levels (legumes, vegetables, whole grains)' },
-      { name: 'Telomere shortening', sub: 'Biological clock', animal: 'Chronic inflammation → accelerated telomere loss', plant: 'Antioxidants + anti-inflammatory compounds → telomere protection (blueberries, broccoli, flaxseed)' },
-      { name: 'Epigenetic alterations', sub: 'Gene expression switches', animal: 'Promotes pro-inflammatory gene expression patterns', plant: 'Polyphenols + methyl donors activate longevity genes (turmeric, cruciferous vegetables, walnuts)' },
-      { name: 'Mitochondrial dysfunction', sub: 'Energy factory failure', animal: 'Saturated fats impair mitochondrial membrane function', plant: 'AMPK + antioxidants support mitochondrial integrity (dark leafy greens, beets, olive oil)' },
-      { name: 'Cellular senescence', sub: 'Zombie cells', animal: 'Increases DNA damage → more senescent cells accumulate', plant: 'Flavonoids act as senolytics, clearing zombie cells (apples, onions, capers)' },
-      { name: 'Chronic inflammation', sub: 'Inflammaging', animal: 'Saturated fats + endotoxins trigger systemic inflammation', plant: 'Fiber + polyphenols → anti-inflammatory short-chain fatty acids (oats, berries, flaxseed)' },
-      { name: 'Oxidative stress', sub: 'Free radical damage', animal: 'Generates reactive oxygen species with few protective antioxidants', plant: 'Thousands of antioxidants neutralize free radicals (blueberries, dark chocolate, walnuts)' },
-      { name: 'Gut dysbiosis', sub: 'Microbiome disruption', animal: 'Feeds pathogenic bacteria, promotes gut inflammation', plant: 'Dietary fiber feeds protective bacteria → longevity signals (legumes, whole grains, onions)' },
+      { name: 'AMPK', sub: 'Cellular energy sensor', explain: 'Think of AMPK as your cells\' fuel gauge. When energy is low, it switches on repair and recycling mode — keeping cells young and efficient.', animal: 'High calorie density + saturated fat → AMPK inhibited', plant: 'Dietary fiber + fasting windows → AMPK activated (beans, whole grains, berries)' },
+      { name: 'Autophagy', sub: 'Cellular self-cleaning', explain: 'Your body\'s built-in recycling system. Cells break down and reuse their own damaged parts — like a deep clean that prevents waste from building up.', animal: 'Constant protein surplus shuts autophagy off', plant: 'Polyphenols + lower caloric load → autophagy enhanced (green tea, berries, leafy greens)' },
+      { name: 'mTOR', sub: 'Growth signaling switch', explain: 'A master switch that tells cells to grow. Helpful during development, but when it\'s always "on" in adulthood, it accelerates aging and cancer risk.', animal: 'Animal protein (leucine) → mTOR chronically overactivated', plant: 'Plant protein → mTOR moderated for longevity (lentils, tofu, hemp seeds)' },
+      { name: 'IGF-1', sub: 'Insulin-like growth factor', explain: 'A growth hormone that helps children grow. In adults, chronically high levels fuel the growth of things you don\'t want — including tumors.', animal: 'Dairy, meat, eggs → IGF-1 elevated to cancer-promoting levels', plant: 'Whole plant foods → IGF-1 at longevity-associated levels (legumes, vegetables, whole grains)' },
+      { name: 'Telomere shortening', sub: 'Biological clock', explain: 'Telomeres are protective caps on your chromosomes, like the plastic tips on shoelaces. Each time a cell divides, they get shorter — and when they run out, the cell dies.', animal: 'Chronic inflammation → accelerated telomere loss', plant: 'Antioxidants + anti-inflammatory compounds → telomere protection (blueberries, broccoli, flaxseed)' },
+      { name: 'Epigenetic alterations', sub: 'Gene expression switches', explain: 'Your DNA stays the same, but chemical tags decide which genes are turned on or off. Bad diet flips the wrong switches, activating disease-promoting genes.', animal: 'Promotes pro-inflammatory gene expression patterns', plant: 'Polyphenols + methyl donors activate longevity genes (turmeric, cruciferous vegetables, walnuts)' },
+      { name: 'Mitochondrial dysfunction', sub: 'Energy factory failure', explain: 'Mitochondria are tiny power plants inside every cell. When they break down, your cells can\'t produce enough energy — leading to fatigue, disease, and aging.', animal: 'Saturated fats impair mitochondrial membrane function', plant: 'AMPK + antioxidants support mitochondrial integrity (dark leafy greens, beets, olive oil)' },
+      { name: 'Cellular senescence', sub: 'Zombie cells', explain: 'Old, damaged cells that refuse to die but stop working. They linger in your body, releasing inflammatory signals that damage neighboring healthy cells.', animal: 'Increases DNA damage → more senescent cells accumulate', plant: 'Flavonoids act as senolytics, clearing zombie cells (apples, onions, capers)' },
+      { name: 'Chronic inflammation', sub: 'Inflammaging', explain: 'A low-grade fire that never goes out. Unlike the acute inflammation that heals a cut, chronic inflammation quietly damages tissues and drives nearly every age-related disease.', animal: 'Saturated fats + endotoxins trigger systemic inflammation', plant: 'Fiber + polyphenols → anti-inflammatory short-chain fatty acids (oats, berries, flaxseed)' },
+      { name: 'Oxidative stress', sub: 'Free radical damage', explain: 'Unstable molecules called free radicals attack your cells like rust attacks metal. Your body can fight them — but only if you give it enough antioxidants.', animal: 'Generates reactive oxygen species with few protective antioxidants', plant: 'Thousands of antioxidants neutralize free radicals (blueberries, dark chocolate, walnuts)' },
+      { name: 'Gut dysbiosis', sub: 'Microbiome disruption', explain: 'Trillions of bacteria in your gut influence everything from immunity to mood. When harmful bacteria outnumber the good ones, inflammation and disease follow.', animal: 'Feeds pathogenic bacteria, promotes gut inflammation', plant: 'Dietary fiber feeds protective bacteria → longevity signals (legumes, whole grains, onions)' },
     ],
     ctaTitle: 'Take control of your health.',
     ctaBtn1: 'Start with the Daily Dozen',
@@ -535,7 +610,6 @@ const T = {
     promoteLabel: 'Promotes healthy aging',
     avoidLabel: 'Accelerates aging',
     colHeaders: ['Healthy aging', 'Cognitive', 'Physical', 'Mental health', 'Disease-free', 'Survived 70'],
-    dividerLabel: 'Mixed / neutral',
     citation: 'Tessiere et al. (2025), Nature Medicine — 105,015 participants followed for 30 years.',
     evidenceProblemTag: 'THE EVIDENCE PROBLEM',
     pyramidHead: 'Not all evidence is created equal.',
@@ -589,23 +663,27 @@ const T = {
     ],
     agingHallmarksNote: 'Les chercheurs ont identifié 11 caractéristiques biologiques du vieillissement. Beaucoup d\'entre elles sont directement influencées par l\'alimentation.',
     agingSource: 'Source : Kennedy et al. (2016), Cold Spring Harb Perspect Med',
+    ageRiskTitle: 'Risque de maladie par âge',
+    ageRiskSub: 'Le risque des quatre principales maladies mortelles augmente exponentiellement avec l\'âge. Si nous ralentissons le vieillissement biologique, nous décalons toutes ces courbes vers la droite.',
+    ageRiskYLabel: 'Risque relatif',
+    ageRiskSource: 'Basé sur : Estimations mondiales de santé de l\'OMS, Global Burden of Disease 2019, loi de mortalité de Gompertz',
     hallmarksTag: 'HALLMARKS DU VIEILLISSEMENT',
     hallmarksTitle: '11 mécanismes du vieillissement — et ce que votre alimentation fait à chacun.',
     hallmarksSub: 'Chaque hallmark peut être accéléré ou ralenti par ce que vous mangez.',
     animalLabel: 'Produits animaux :',
     plantLabel: 'Végétal :',
     hallmarks: [
-      { name: 'AMPK', sub: 'Capteur d\'énergie cellulaire', animal: 'Haute densité calorique + graisses saturées → AMPK inhibée', plant: 'Fibres alimentaires + fenêtres de jeûne → AMPK activée (haricots, céréales complètes, baies)' },
-      { name: 'Autophagie', sub: 'Auto-nettoyage cellulaire', animal: 'Excès constant de protéines désactive l\'autophagie', plant: 'Polyphénols + charge calorique réduite → autophagie améliorée (thé vert, baies, légumes à feuilles)' },
-      { name: 'mTOR', sub: 'Commutateur de signalisation de croissance', animal: 'Protéines animales (leucine) → mTOR chroniquement suractivé', plant: 'Protéines végétales → mTOR modéré pour la longévité (lentilles, tofu, graines de chanvre)' },
-      { name: 'IGF-1', sub: 'Facteur de croissance insulinomimétique', animal: 'Produits laitiers, viande, œufs → IGF-1 à des niveaux favorisant le cancer', plant: 'Aliments végétaux complets → IGF-1 à des niveaux de longévité (légumineuses, légumes, céréales complètes)' },
-      { name: 'Raccourcissement des télomères', sub: 'Horloge biologique', animal: 'Inflammation chronique → perte accélérée des télomères', plant: 'Antioxydants + composés anti-inflammatoires → protection des télomères (myrtilles, brocoli, graines de lin)' },
-      { name: 'Altérations épigénétiques', sub: 'Interrupteurs d\'expression génique', animal: 'Favorise des profils d\'expression génique pro-inflammatoires', plant: 'Polyphénols + donneurs de méthyle activent les gènes de longévité (curcuma, crucifères, noix)' },
-      { name: 'Dysfonction mitochondriale', sub: 'Défaillance de la centrale énergétique', animal: 'Les graisses saturées altèrent la fonction membranaire mitochondriale', plant: 'AMPK + antioxydants soutiennent l\'intégrité mitochondriale (légumes à feuilles sombres, betteraves, huile d\'olive)' },
-      { name: 'Sénescence cellulaire', sub: 'Cellules zombies', animal: 'Augmente les dommages à l\'ADN → plus de cellules sénescentes s\'accumulent', plant: 'Les flavonoïdes agissent comme sénolytiques, éliminant les cellules zombies (pommes, oignons, câpres)' },
-      { name: 'Inflammation chronique', sub: 'Inflammaging', animal: 'Graisses saturées + endotoxines déclenchent une inflammation systémique', plant: 'Fibres + polyphénols → acides gras à chaîne courte anti-inflammatoires (avoine, baies, graines de lin)' },
-      { name: 'Stress oxydatif', sub: 'Dommages par les radicaux libres', animal: 'Génère des espèces réactives de l\'oxygène avec peu d\'antioxydants protecteurs', plant: 'Des milliers d\'antioxydants neutralisent les radicaux libres (myrtilles, chocolat noir, noix)' },
-      { name: 'Dysbiose intestinale', sub: 'Perturbation du microbiome', animal: 'Nourrit des bactéries pathogènes, favorise l\'inflammation intestinale', plant: 'Les fibres alimentaires nourrissent les bactéries protectrices → signaux de longévité (légumineuses, céréales complètes, oignons)' },
+      { name: 'AMPK', sub: 'Capteur d\'énergie cellulaire', explain: 'Imaginez l\'AMPK comme la jauge de carburant de vos cellules. Quand l\'énergie est basse, il active le mode réparation et recyclage — gardant les cellules jeunes et efficaces.', animal: 'Haute densité calorique + graisses saturées → AMPK inhibée', plant: 'Fibres alimentaires + fenêtres de jeûne → AMPK activée (haricots, céréales complètes, baies)' },
+      { name: 'Autophagie', sub: 'Auto-nettoyage cellulaire', explain: 'Le système de recyclage intégré de votre corps. Les cellules décomposent et réutilisent leurs propres parties endommagées — comme un grand nettoyage qui empêche les déchets de s\'accumuler.', animal: 'Excès constant de protéines désactive l\'autophagie', plant: 'Polyphénols + charge calorique réduite → autophagie améliorée (thé vert, baies, légumes à feuilles)' },
+      { name: 'mTOR', sub: 'Commutateur de signalisation de croissance', explain: 'Un interrupteur principal qui dit aux cellules de croître. Utile pendant le développement, mais quand il est toujours « activé » à l\'âge adulte, il accélère le vieillissement et le risque de cancer.', animal: 'Protéines animales (leucine) → mTOR chroniquement suractivé', plant: 'Protéines végétales → mTOR modéré pour la longévité (lentilles, tofu, graines de chanvre)' },
+      { name: 'IGF-1', sub: 'Facteur de croissance insulinomimétique', explain: 'Une hormone de croissance qui aide les enfants à grandir. Chez les adultes, des niveaux chroniquement élevés alimentent la croissance de ce que vous ne voulez pas — y compris les tumeurs.', animal: 'Produits laitiers, viande, œufs → IGF-1 à des niveaux favorisant le cancer', plant: 'Aliments végétaux complets → IGF-1 à des niveaux de longévité (légumineuses, légumes, céréales complètes)' },
+      { name: 'Raccourcissement des télomères', sub: 'Horloge biologique', explain: 'Les télomères sont des capuchons protecteurs sur vos chromosomes, comme les embouts en plastique des lacets. À chaque division cellulaire, ils raccourcissent — et quand ils sont épuisés, la cellule meurt.', animal: 'Inflammation chronique → perte accélérée des télomères', plant: 'Antioxydants + composés anti-inflammatoires → protection des télomères (myrtilles, brocoli, graines de lin)' },
+      { name: 'Altérations épigénétiques', sub: 'Interrupteurs d\'expression génique', explain: 'Votre ADN reste le même, mais des étiquettes chimiques décident quels gènes sont activés ou désactivés. Une mauvaise alimentation active les mauvais interrupteurs.', animal: 'Favorise des profils d\'expression génique pro-inflammatoires', plant: 'Polyphénols + donneurs de méthyle activent les gènes de longévité (curcuma, crucifères, noix)' },
+      { name: 'Dysfonction mitochondriale', sub: 'Défaillance de la centrale énergétique', explain: 'Les mitochondries sont de minuscules centrales électriques dans chaque cellule. Quand elles tombent en panne, vos cellules ne peuvent plus produire assez d\'énergie — menant à la fatigue, la maladie et le vieillissement.', animal: 'Les graisses saturées altèrent la fonction membranaire mitochondriale', plant: 'AMPK + antioxydants soutiennent l\'intégrité mitochondriale (légumes à feuilles sombres, betteraves, huile d\'olive)' },
+      { name: 'Sénescence cellulaire', sub: 'Cellules zombies', explain: 'Des cellules vieilles et endommagées qui refusent de mourir mais cessent de fonctionner. Elles persistent dans votre corps, libérant des signaux inflammatoires qui endommagent les cellules saines voisines.', animal: 'Augmente les dommages à l\'ADN → plus de cellules sénescentes s\'accumulent', plant: 'Les flavonoïdes agissent comme sénolytiques, éliminant les cellules zombies (pommes, oignons, câpres)' },
+      { name: 'Inflammation chronique', sub: 'Inflammaging', explain: 'Un feu couvant qui ne s\'éteint jamais. Contrairement à l\'inflammation aiguë qui guérit une coupure, l\'inflammation chronique endommage silencieusement les tissus et alimente presque toutes les maladies liées à l\'âge.', animal: 'Graisses saturées + endotoxines déclenchent une inflammation systémique', plant: 'Fibres + polyphénols → acides gras à chaîne courte anti-inflammatoires (avoine, baies, graines de lin)' },
+      { name: 'Stress oxydatif', sub: 'Dommages par les radicaux libres', explain: 'Des molécules instables appelées radicaux libres attaquent vos cellules comme la rouille attaque le métal. Votre corps peut les combattre — mais seulement si vous lui fournissez assez d\'antioxydants.', animal: 'Génère des espèces réactives de l\'oxygène avec peu d\'antioxydants protecteurs', plant: 'Des milliers d\'antioxydants neutralisent les radicaux libres (myrtilles, chocolat noir, noix)' },
+      { name: 'Dysbiose intestinale', sub: 'Perturbation du microbiome', explain: 'Des milliards de bactéries dans votre intestin influencent tout, de l\'immunité à l\'humeur. Quand les bactéries nocives dépassent les bonnes, l\'inflammation et la maladie suivent.', animal: 'Nourrit des bactéries pathogènes, favorise l\'inflammation intestinale', plant: 'Les fibres alimentaires nourrissent les bactéries protectrices → signaux de longévité (légumineuses, céréales complètes, oignons)' },
     ],
     ctaTitle: 'Prenez le contrôle de votre santé.',
     ctaBtn1: 'Commencer avec le Daily Dozen',
@@ -617,7 +695,6 @@ const T = {
     promoteLabel: 'Favorise un vieillissement sain',
     avoidLabel: 'Accélère le vieillissement',
     colHeaders: ['Vieillissement sain', 'Cognitif', 'Physique', 'Santé mentale', 'Sans maladie', 'Survie à 70'],
-    dividerLabel: 'Mixte / neutre',
     citation: 'Tessiere et al. (2025), Nature Medicine — 105 015 participants suivis pendant 30 ans.',
     evidenceProblemTag: 'LE PROBLÈME DE PREUVE',
     pyramidHead: 'Toutes les preuves ne se valent pas.',
@@ -671,23 +748,27 @@ const T = {
     ],
     agingHallmarksNote: 'Los investigadores han identificado 11 características biológicas del envejecimiento. Muchas de ellas están directamente influenciadas por la dieta.',
     agingSource: 'Fuente: Kennedy et al. (2016), Cold Spring Harb Perspect Med',
+    ageRiskTitle: 'Riesgo de enfermedad por edad',
+    ageRiskSub: 'El riesgo de las cuatro principales enfermedades mortales aumenta exponencialmente con la edad. Si ralentizamos el envejecimiento biológico, desplazamos todas estas curvas hacia la derecha.',
+    ageRiskYLabel: 'Riesgo relativo',
+    ageRiskSource: 'Basado en: Estimaciones de Salud Global de la OMS, Global Burden of Disease 2019, ley de mortalidad de Gompertz',
     hallmarksTag: 'HALLMARKS DEL ENVEJECIMIENTO',
     hallmarksTitle: '11 mecanismos del envejecimiento — y lo que hace tu dieta a cada uno.',
     hallmarksSub: 'Cada hallmark puede acelerarse o ralentizarse según lo que comes.',
     animalLabel: 'Productos animales:',
     plantLabel: 'Vegetal:',
     hallmarks: [
-      { name: 'AMPK', sub: 'Sensor de energía celular', animal: 'Alta densidad calórica + grasas saturadas → AMPK inhibida', plant: 'Fibra dietética + ventanas de ayuno → AMPK activada (judías, cereales integrales, bayas)' },
-      { name: 'Autofagia', sub: 'Autolimpieza celular', animal: 'Exceso constante de proteínas desactiva la autofagia', plant: 'Polifenoles + carga calórica reducida → autofagia mejorada (té verde, bayas, verduras de hoja)' },
-      { name: 'mTOR', sub: 'Interruptor de señalización de crecimiento', animal: 'Proteína animal (leucina) → mTOR crónicamente sobreactivado', plant: 'Proteína vegetal → mTOR moderado para la longevidad (lentejas, tofu, semillas de cáñamo)' },
-      { name: 'IGF-1', sub: 'Factor de crecimiento insulínico', animal: 'Lácteos, carne, huevos → IGF-1 elevado a niveles pro-cáncer', plant: 'Alimentos vegetales integrales → IGF-1 a niveles de longevidad (legumbres, verduras, cereales integrales)' },
-      { name: 'Acortamiento de telómeros', sub: 'Reloj biológico', animal: 'Inflamación crónica → pérdida acelerada de telómeros', plant: 'Antioxidantes + compuestos antiinflamatorios → protección de telómeros (arándanos, brócoli, linaza)' },
-      { name: 'Alteraciones epigenéticas', sub: 'Interruptores de expresión génica', animal: 'Promueve patrones de expresión génica proinflamatorios', plant: 'Polifenoles + donantes de metilo activan genes de longevidad (cúrcuma, crucíferas, nueces)' },
-      { name: 'Disfunción mitocondrial', sub: 'Fallo de la central energética', animal: 'Las grasas saturadas dañan la función de la membrana mitocondrial', plant: 'AMPK + antioxidantes apoyan la integridad mitocondrial (verduras de hoja oscura, remolacha, aceite de oliva)' },
-      { name: 'Senescencia celular', sub: 'Células zombi', animal: 'Aumenta el daño al ADN → más células senescentes se acumulan', plant: 'Los flavonoides actúan como senolíticos, eliminando células zombi (manzanas, cebollas, alcaparras)' },
-      { name: 'Inflamación crónica', sub: 'Inflammaging', animal: 'Grasas saturadas + endotoxinas desencadenan inflamación sistémica', plant: 'Fibra + polifenoles → ácidos grasos de cadena corta antiinflamatorios (avena, bayas, linaza)' },
-      { name: 'Estrés oxidativo', sub: 'Daño por radicales libres', animal: 'Genera especies reactivas de oxígeno con pocos antioxidantes protectores', plant: 'Miles de antioxidantes neutralizan los radicales libres (arándanos, chocolate negro, nueces)' },
-      { name: 'Disbiosis intestinal', sub: 'Alteración del microbioma', animal: 'Alimenta bacterias patógenas, promueve la inflamación intestinal', plant: 'La fibra alimenta bacterias protectoras → señales de longevidad (legumbres, cereales integrales, cebollas)' },
+      { name: 'AMPK', sub: 'Sensor de energía celular', explain: 'Piensa en AMPK como el indicador de combustible de tus células. Cuando la energía es baja, activa el modo reparación y reciclaje — manteniendo las células jóvenes y eficientes.', animal: 'Alta densidad calórica + grasas saturadas → AMPK inhibida', plant: 'Fibra dietética + ventanas de ayuno → AMPK activada (judías, cereales integrales, bayas)' },
+      { name: 'Autofagia', sub: 'Autolimpieza celular', explain: 'El sistema de reciclaje integrado de tu cuerpo. Las células descomponen y reutilizan sus propias partes dañadas — como una limpieza profunda que evita que se acumule basura.', animal: 'Exceso constante de proteínas desactiva la autofagia', plant: 'Polifenoles + carga calórica reducida → autofagia mejorada (té verde, bayas, verduras de hoja)' },
+      { name: 'mTOR', sub: 'Interruptor de señalización de crecimiento', explain: 'Un interruptor maestro que le dice a las células que crezcan. Útil durante el desarrollo, pero cuando está siempre "encendido" en la adultez, acelera el envejecimiento y el riesgo de cáncer.', animal: 'Proteína animal (leucina) → mTOR crónicamente sobreactivado', plant: 'Proteína vegetal → mTOR moderado para la longevidad (lentejas, tofu, semillas de cáñamo)' },
+      { name: 'IGF-1', sub: 'Factor de crecimiento insulínico', explain: 'Una hormona de crecimiento que ayuda a los niños a crecer. En adultos, niveles crónicamente altos alimentan el crecimiento de cosas que no quieres — incluyendo tumores.', animal: 'Lácteos, carne, huevos → IGF-1 elevado a niveles pro-cáncer', plant: 'Alimentos vegetales integrales → IGF-1 a niveles de longevidad (legumbres, verduras, cereales integrales)' },
+      { name: 'Acortamiento de telómeros', sub: 'Reloj biológico', explain: 'Los telómeros son tapas protectoras en tus cromosomas, como las puntas de plástico de los cordones. Cada vez que una célula se divide, se acortan — y cuando se agotan, la célula muere.', animal: 'Inflamación crónica → pérdida acelerada de telómeros', plant: 'Antioxidantes + compuestos antiinflamatorios → protección de telómeros (arándanos, brócoli, linaza)' },
+      { name: 'Alteraciones epigenéticas', sub: 'Interruptores de expresión génica', explain: 'Tu ADN no cambia, pero etiquetas químicas deciden qué genes se activan o desactivan. Una mala dieta activa los interruptores equivocados, activando genes promotores de enfermedades.', animal: 'Promueve patrones de expresión génica proinflamatorios', plant: 'Polifenoles + donantes de metilo activan genes de longevidad (cúrcuma, crucíferas, nueces)' },
+      { name: 'Disfunción mitocondrial', sub: 'Fallo de la central energética', explain: 'Las mitocondrias son diminutas centrales eléctricas dentro de cada célula. Cuando fallan, tus células no pueden producir suficiente energía — llevando a fatiga, enfermedad y envejecimiento.', animal: 'Las grasas saturadas dañan la función de la membrana mitocondrial', plant: 'AMPK + antioxidantes apoyan la integridad mitocondrial (verduras de hoja oscura, remolacha, aceite de oliva)' },
+      { name: 'Senescencia celular', sub: 'Células zombi', explain: 'Células viejas y dañadas que se niegan a morir pero dejan de funcionar. Permanecen en tu cuerpo liberando señales inflamatorias que dañan a las células sanas vecinas.', animal: 'Aumenta el daño al ADN → más células senescentes se acumulan', plant: 'Los flavonoides actúan como senolíticos, eliminando células zombi (manzanas, cebollas, alcaparras)' },
+      { name: 'Inflamación crónica', sub: 'Inflammaging', explain: 'Un fuego lento que nunca se apaga. A diferencia de la inflamación aguda que cura un corte, la inflamación crónica daña silenciosamente los tejidos y alimenta casi todas las enfermedades relacionadas con la edad.', animal: 'Grasas saturadas + endotoxinas desencadenan inflamación sistémica', plant: 'Fibra + polifenoles → ácidos grasos de cadena corta antiinflamatorios (avena, bayas, linaza)' },
+      { name: 'Estrés oxidativo', sub: 'Daño por radicales libres', explain: 'Moléculas inestables llamadas radicales libres atacan tus células como el óxido ataca el metal. Tu cuerpo puede combatirlos — pero solo si le das suficientes antioxidantes.', animal: 'Genera especies reactivas de oxígeno con pocos antioxidantes protectores', plant: 'Miles de antioxidantes neutralizan los radicales libres (arándanos, chocolate negro, nueces)' },
+      { name: 'Disbiosis intestinal', sub: 'Alteración del microbioma', explain: 'Billones de bacterias en tu intestino influyen en todo, desde la inmunidad hasta el estado de ánimo. Cuando las bacterias dañinas superan a las buenas, siguen inflamación y enfermedad.', animal: 'Alimenta bacterias patógenas, promueve la inflamación intestinal', plant: 'La fibra alimenta bacterias protectoras → señales de longevidad (legumbres, cereales integrales, cebollas)' },
     ],
     ctaTitle: 'Toma el control de tu salud.',
     ctaBtn1: 'Empezar con el Daily Dozen',
@@ -699,7 +780,6 @@ const T = {
     promoteLabel: 'Promueve el envejecimiento saludable',
     avoidLabel: 'Acelera el envejecimiento',
     colHeaders: ['Envej. sano', 'Cognitivo', 'Físico', 'Salud mental', 'Sin enfermedad', 'Superv. a 70'],
-    dividerLabel: 'Mixto / neutro',
     citation: 'Tessiere et al. (2025), Nature Medicine — 105.015 participantes seguidos durante 30 años.',
     evidenceProblemTag: 'EL PROBLEMA DE LA EVIDENCIA',
     pyramidHead: 'No toda la evidencia es igual.',
@@ -753,23 +833,27 @@ const T = {
     ],
     agingHallmarksNote: 'I ricercatori hanno identificato 11 caratteristiche biologiche dell\'invecchiamento. Molte di esse sono direttamente influenzate dall\'alimentazione.',
     agingSource: 'Fonte: Kennedy et al. (2016), Cold Spring Harb Perspect Med',
+    ageRiskTitle: 'Rischio di malattia per età',
+    ageRiskSub: 'Il rischio delle quattro principali malattie killer aumenta esponenzialmente con l\'età. Se rallentiamo l\'invecchiamento biologico, spostiamo tutte queste curve verso destra.',
+    ageRiskYLabel: 'Rischio relativo',
+    ageRiskSource: 'Basato su: Stime Sanitarie Globali dell\'OMS, Global Burden of Disease 2019, legge di mortalità di Gompertz',
     hallmarksTag: 'HALLMARKS DELL\'INVECCHIAMENTO',
     hallmarksTitle: '11 meccanismi dell\'invecchiamento — e cosa fa la tua dieta a ciascuno.',
     hallmarksSub: 'Ogni hallmark può essere accelerato o rallentato da ciò che mangi.',
     animalLabel: 'Prodotti animali:',
     plantLabel: 'Vegetale:',
     hallmarks: [
-      { name: 'AMPK', sub: 'Sensore energetico cellulare', animal: 'Alta densità calorica + grassi saturi → AMPK inibita', plant: 'Fibre alimentari + finestre di digiuno → AMPK attivata (fagioli, cereali integrali, frutti di bosco)' },
-      { name: 'Autofagia', sub: 'Autopulizia cellulare', animal: 'Eccesso costante di proteine disattiva l\'autofagia', plant: 'Polifenoli + carico calorico ridotto → autofagia potenziata (tè verde, frutti di bosco, verdure a foglia)' },
-      { name: 'mTOR', sub: 'Interruttore di segnalazione della crescita', animal: 'Proteine animali (leucina) → mTOR cronicamente iperattivato', plant: 'Proteine vegetali → mTOR moderato per la longevità (lenticchie, tofu, semi di canapa)' },
-      { name: 'IGF-1', sub: 'Fattore di crescita insulino-simile', animal: 'Latticini, carne, uova → IGF-1 elevato a livelli pro-cancro', plant: 'Alimenti vegetali integrali → IGF-1 a livelli di longevità (legumi, verdure, cereali integrali)' },
-      { name: 'Accorciamento dei telomeri', sub: 'Orologio biologico', animal: 'Infiammazione cronica → perdita accelerata dei telomeri', plant: 'Antiossidanti + composti antinfiammatori → protezione dei telomeri (mirtilli, broccoli, semi di lino)' },
-      { name: 'Alterazioni epigenetiche', sub: 'Interruttori dell\'espressione genica', animal: 'Promuove profili di espressione genica pro-infiammatoria', plant: 'Polifenoli + donatori di metile attivano geni della longevità (curcuma, verdure crocifere, noci)' },
-      { name: 'Disfunzione mitocondriale', sub: 'Guasto della centrale energetica', animal: 'I grassi saturi compromettono la funzione della membrana mitocondriale', plant: 'AMPK + antiossidanti supportano l\'integrità mitocondriale (verdure a foglia scura, barbabietole, olio d\'oliva)' },
-      { name: 'Senescenza cellulare', sub: 'Cellule zombi', animal: 'Aumenta il danno al DNA → si accumulano più cellule senescenti', plant: 'I flavonoidi agiscono come senolitici, eliminando le cellule zombi (mele, cipolle, capperi)' },
-      { name: 'Infiammazione cronica', sub: 'Inflammaging', animal: 'Grassi saturi + endotossine scatenano infiammazione sistemica', plant: 'Fibra + polifenoli → acidi grassi a catena corta antinfiammatori (avena, frutti di bosco, semi di lino)' },
-      { name: 'Stress ossidativo', sub: 'Danno da radicali liberi', animal: 'Genera specie reattive dell\'ossigeno con pochi antiossidanti protettivi', plant: 'Migliaia di antiossidanti neutralizzano i radicali liberi (mirtilli, cioccolato fondente, noci)' },
-      { name: 'Disbiosi intestinale', sub: 'Alterazione del microbioma', animal: 'Nutre batteri patogeni, promuove l\'infiammazione intestinale', plant: 'Le fibre alimentano batteri protettivi → segnali di longevità (legumi, cereali integrali, cipolle)' },
+      { name: 'AMPK', sub: 'Sensore energetico cellulare', explain: 'Pensa all\'AMPK come all\'indicatore del carburante delle tue cellule. Quando l\'energia è bassa, attiva la modalità riparazione e riciclo — mantenendo le cellule giovani ed efficienti.', animal: 'Alta densità calorica + grassi saturi → AMPK inibita', plant: 'Fibre alimentari + finestre di digiuno → AMPK attivata (fagioli, cereali integrali, frutti di bosco)' },
+      { name: 'Autofagia', sub: 'Autopulizia cellulare', explain: 'Il sistema di riciclaggio integrato del tuo corpo. Le cellule scompongono e riutilizzano le proprie parti danneggiate — come una pulizia profonda che impedisce l\'accumulo di rifiuti.', animal: 'Eccesso costante di proteine disattiva l\'autofagia', plant: 'Polifenoli + carico calorico ridotto → autofagia potenziata (tè verde, frutti di bosco, verdure a foglia)' },
+      { name: 'mTOR', sub: 'Interruttore di segnalazione della crescita', explain: 'Un interruttore principale che dice alle cellule di crescere. Utile durante lo sviluppo, ma quando è sempre "acceso" in età adulta, accelera l\'invecchiamento e il rischio di cancro.', animal: 'Proteine animali (leucina) → mTOR cronicamente iperattivato', plant: 'Proteine vegetali → mTOR moderato per la longevità (lenticchie, tofu, semi di canapa)' },
+      { name: 'IGF-1', sub: 'Fattore di crescita insulino-simile', explain: 'Un ormone della crescita che aiuta i bambini a crescere. Negli adulti, livelli cronicamente alti alimentano la crescita di cose indesiderate — inclusi i tumori.', animal: 'Latticini, carne, uova → IGF-1 elevato a livelli pro-cancro', plant: 'Alimenti vegetali integrali → IGF-1 a livelli di longevità (legumi, verdure, cereali integrali)' },
+      { name: 'Accorciamento dei telomeri', sub: 'Orologio biologico', explain: 'I telomeri sono cappucci protettivi sui tuoi cromosomi, come le punte di plastica dei lacci. Ad ogni divisione cellulare si accorciano — e quando finiscono, la cellula muore.', animal: 'Infiammazione cronica → perdita accelerata dei telomeri', plant: 'Antiossidanti + composti antinfiammatori → protezione dei telomeri (mirtilli, broccoli, semi di lino)' },
+      { name: 'Alterazioni epigenetiche', sub: 'Interruttori dell\'espressione genica', explain: 'Il tuo DNA rimane lo stesso, ma etichette chimiche decidono quali geni vengono attivati o disattivati. Una cattiva alimentazione attiva gli interruttori sbagliati.', animal: 'Promuove profili di espressione genica pro-infiammatoria', plant: 'Polifenoli + donatori di metile attivano geni della longevità (curcuma, verdure crocifere, noci)' },
+      { name: 'Disfunzione mitocondriale', sub: 'Guasto della centrale energetica', explain: 'I mitocondri sono minuscole centrali energetiche in ogni cellula. Quando si guastano, le cellule non possono produrre abbastanza energia — portando a stanchezza, malattia e invecchiamento.', animal: 'I grassi saturi compromettono la funzione della membrana mitocondriale', plant: 'AMPK + antiossidanti supportano l\'integrità mitocondriale (verdure a foglia scura, barbabietole, olio d\'oliva)' },
+      { name: 'Senescenza cellulare', sub: 'Cellule zombi', explain: 'Cellule vecchie e danneggiate che si rifiutano di morire ma smettono di funzionare. Restano nel corpo rilasciando segnali infiammatori che danneggiano le cellule sane vicine.', animal: 'Aumenta il danno al DNA → si accumulano più cellule senescenti', plant: 'I flavonoidi agiscono come senolitici, eliminando le cellule zombi (mele, cipolle, capperi)' },
+      { name: 'Infiammazione cronica', sub: 'Inflammaging', explain: 'Un fuoco a bassa intensità che non si spegne mai. A differenza dell\'infiammazione acuta che guarisce un taglio, l\'infiammazione cronica danneggia silenziosamente i tessuti e alimenta quasi ogni malattia legata all\'età.', animal: 'Grassi saturi + endotossine scatenano infiammazione sistemica', plant: 'Fibra + polifenoli → acidi grassi a catena corta antinfiammatori (avena, frutti di bosco, semi di lino)' },
+      { name: 'Stress ossidativo', sub: 'Danno da radicali liberi', explain: 'Molecole instabili chiamate radicali liberi attaccano le cellule come la ruggine attacca il metallo. Il tuo corpo può combatterli — ma solo se gli dai abbastanza antiossidanti.', animal: 'Genera specie reattive dell\'ossigeno con pochi antiossidanti protettivi', plant: 'Migliaia di antiossidanti neutralizzano i radicali liberi (mirtilli, cioccolato fondente, noci)' },
+      { name: 'Disbiosi intestinale', sub: 'Alterazione del microbioma', explain: 'Trilioni di batteri nel tuo intestino influenzano tutto, dall\'immunità all\'umore. Quando i batteri nocivi superano quelli buoni, seguono infiammazione e malattia.', animal: 'Nutre batteri patogeni, promuove l\'infiammazione intestinale', plant: 'Le fibre alimentano batteri protettivi → segnali di longevità (legumi, cereali integrali, cipolle)' },
     ],
     ctaTitle: 'Prendi il controllo della tua salute.',
     ctaBtn1: 'Inizia con il Daily Dozen',
@@ -781,7 +865,6 @@ const T = {
     promoteLabel: "Favorisce l'invecchiamento sano",
     avoidLabel: "Accelera l'invecchiamento",
     colHeaders: ['Inv. sano', 'Cognitivo', 'Fisico', 'Mentale', 'Senza malattia', 'A 70 anni'],
-    dividerLabel: 'Misto / neutro',
     citation: "Tessiere et al. (2025), Nature Medicine — 105.015 partecipanti seguiti per 30 anni.",
     evidenceProblemTag: 'IL PROBLEMA DELLE PROVE',
     pyramidHead: 'Non tutte le prove sono uguali.',
@@ -832,26 +915,30 @@ export default async function SciencePage() {
             <h2 className="font-serif text-2xl sm:text-3xl text-[#0e393d] mb-4 leading-tight">{t.pyramidHead}</h2>
             <p className="text-sm text-[#1c2a2b]/60 mb-10 leading-relaxed max-w-xl">{t.pyramidSub}</p>
 
-            <div className="flex flex-col items-center gap-1 w-full mb-8">
+            <div className="flex flex-col items-center gap-0 w-full mb-8" style={{ filter: 'drop-shadow(0 4px 12px rgba(14,57,61,0.08))' }}>
               {t.pyramidLevels.map((level: { label: string; desc: string; strength: string }, idx: number) => {
                 const v = PYRAMID_VISUAL[idx];
                 const num = 5 - idx;
+                const isFirst = idx === 0;
+                const isLast = idx === 4;
                 return (
                   <div
                     key={idx}
-                    className={`${v.bg} border ${v.border} rounded-lg px-4 py-3 w-full transition-all`}
-                    style={{ maxWidth: `${v.widthPct * 5.8}px` }}
+                    className="w-full flex justify-center"
+                    style={{ maxWidth: `${v.widthPct}%` }}
                   >
-                    <div className="flex items-start justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <span className={`text-[10px] font-bold ${v.text} opacity-50 shrink-0`}>{t.pyramidLevel} {num}</span>
-                        <span className={`text-[13px] font-semibold ${v.text} leading-snug`}>{level.label}</span>
+                    <div
+                      className={`w-full bg-gradient-to-r ${v.bg} px-5 ${isFirst ? 'py-3' : 'py-2.5'} ${isFirst ? 'rounded-t-xl' : ''} ${isLast ? 'rounded-b-xl' : ''} border-b border-white/20`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className={`text-[10px] font-bold ${v.text} opacity-60 shrink-0 ${v.badge} w-5 h-5 rounded flex items-center justify-center`}>{num}</span>
+                        <span className={`text-[12.5px] font-semibold ${v.text} leading-snug flex-1`}>{level.label}</span>
+                        {level.strength && (
+                          <span className={`text-[9px] font-semibold ${v.text} opacity-80 whitespace-nowrap shrink-0`}>{level.strength}</span>
+                        )}
                       </div>
-                      {level.strength && (
-                        <span className={`text-[10px] font-semibold ${v.text} whitespace-nowrap shrink-0`}>{level.strength}</span>
-                      )}
+                      <p className={`text-[10px] ${v.text} opacity-55 mt-0.5 leading-snug pl-7`}>{level.desc}</p>
                     </div>
-                    <p className={`text-[11px] ${v.text} opacity-55 mt-1 leading-snug`}>{level.desc}</p>
                   </div>
                 );
               })}
@@ -971,13 +1058,95 @@ export default async function SciencePage() {
           <h2 className="font-serif text-2xl sm:text-3xl text-[#0e393d] mb-3 leading-tight">{t.agingTitle}</h2>
           <p className="text-sm text-[#1c2a2b]/60 mb-8 leading-relaxed max-w-2xl">{t.agingSub}</p>
 
-          <div className="grid sm:grid-cols-3 gap-4 mb-8">
+          <div className="grid sm:grid-cols-3 gap-4 mb-10">
             {t.agingFacts.map((fact, i) => (
               <div key={i} className="bg-[#0e393d] rounded-xl p-6 text-white">
                 <span className="block text-[#ceab84] text-[10px] font-semibold uppercase tracking-[0.14em] mb-3">0{i + 1}</span>
                 <p className="text-[0.88rem] text-white/70 leading-relaxed">{fact}</p>
               </div>
             ))}
+          </div>
+
+          {/* ── Age-disease risk graph ── */}
+          <div className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 p-6 sm:p-8 mb-10">
+            <h3 className="font-serif text-lg text-[#0e393d] mb-2">{t.ageRiskTitle}</h3>
+            <p className="text-xs text-[#1c2a2b]/50 mb-6 leading-relaxed max-w-xl">{t.ageRiskSub}</p>
+
+            <div className="relative w-full" style={{ aspectRatio: '2.2 / 1' }}>
+              <svg viewBox="0 0 500 220" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+                {/* Y axis label */}
+                <text x="8" y="110" textAnchor="middle" transform="rotate(-90 8 110)" className="fill-[#1c2a2b]/35" fontSize="8" fontWeight="600">{t.ageRiskYLabel}</text>
+
+                {/* Grid lines */}
+                {[0, 25, 50, 75, 100].map((v) => {
+                  const y = 195 - (v / 100) * 175;
+                  return <line key={v} x1="45" y1={y} x2="480" y2={y} stroke="#0e393d" strokeOpacity="0.06" strokeWidth="0.5" />;
+                })}
+
+                {/* X axis labels */}
+                {AGE_RISK_POINTS.map((p, i) => (
+                  <text key={i} x={45 + i * (435 / 6)} y="212" textAnchor="middle" className="fill-[#1c2a2b]/45" fontSize="9" fontWeight="500">{p.age}</text>
+                ))}
+
+                {/* CVD curve - red */}
+                <polyline
+                  fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  points={AGE_RISK_POINTS.map((p, i) => `${45 + i * (435 / 6)},${195 - (p.cvd / 100) * 175}`).join(' ')}
+                />
+                {/* Cancer curve - orange */}
+                <polyline
+                  fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  points={AGE_RISK_POINTS.map((p, i) => `${45 + i * (435 / 6)},${195 - (p.cancer / 100) * 175}`).join(' ')}
+                />
+                {/* Respiratory curve - amber */}
+                <polyline
+                  fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  points={AGE_RISK_POINTS.map((p, i) => `${45 + i * (435 / 6)},${195 - (p.respiratory / 100) * 175}`).join(' ')}
+                />
+                {/* Diabetes curve - pink */}
+                <polyline
+                  fill="none" stroke="#ec4899" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  points={AGE_RISK_POINTS.map((p, i) => `${45 + i * (435 / 6)},${195 - (p.diabetes / 100) * 175}`).join(' ')}
+                />
+
+                {/* Area fills */}
+                <polygon
+                  fill="#ef4444" fillOpacity="0.06"
+                  points={`45,195 ${AGE_RISK_POINTS.map((p, i) => `${45 + i * (435 / 6)},${195 - (p.cvd / 100) * 175}`).join(' ')} ${45 + 6 * (435 / 6)},195`}
+                />
+                <polygon
+                  fill="#f97316" fillOpacity="0.05"
+                  points={`45,195 ${AGE_RISK_POINTS.map((p, i) => `${45 + i * (435 / 6)},${195 - (p.cancer / 100) * 175}`).join(' ')} ${45 + 6 * (435 / 6)},195`}
+                />
+
+                {/* Axis lines */}
+                <line x1="45" y1="195" x2="480" y2="195" stroke="#0e393d" strokeOpacity="0.15" strokeWidth="1" />
+                <line x1="45" y1="20" x2="45" y2="195" stroke="#0e393d" strokeOpacity="0.15" strokeWidth="1" />
+              </svg>
+            </div>
+
+            {/* Legend */}
+            <div className="flex flex-wrap gap-4 mt-4 justify-center">
+              {[
+                { color: 'bg-red-500', label: t.diseaseNames[0] },
+                { color: 'bg-orange-500', label: t.diseaseNames[1] },
+                { color: 'bg-amber-600', label: t.diseaseNames[2] },
+                { color: 'bg-pink-500', label: t.diseaseNames[3] },
+              ].map((d) => (
+                <div key={d.label} className="flex items-center gap-1.5">
+                  <span className={`w-2.5 h-2.5 rounded-full ${d.color}`} />
+                  <span className="text-[10px] text-[#1c2a2b]/55 font-medium">{d.label}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-[#1c2a2b]/30 mt-3 text-center">
+              {t.ageRiskSource}{' · '}
+              <a href="https://www.who.int/data/gho" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#1c2a2b]/50 transition-colors">WHO GHE</a>
+              {' · '}
+              <a href="https://www.healthdata.org/research-analysis/gbd" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#1c2a2b]/50 transition-colors">GBD 2019</a>
+              {' · '}
+              <a href="https://pubmed.ncbi.nlm.nih.gov/26320459/" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#1c2a2b]/50 transition-colors">Gompertz (PubMed)</a>
+            </p>
           </div>
 
           <div className="rounded-xl border border-[#ceab84]/30 bg-[#ceab84]/6 px-6 py-5">
@@ -1000,24 +1169,36 @@ export default async function SciencePage() {
         <section className="w-full max-w-5xl mx-auto px-6 py-16 border-b border-[#0e393d]/10">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-3">{t.hallmarksTag}</p>
           <h2 className="font-serif text-2xl sm:text-3xl text-[#0e393d] mb-3 leading-tight">{t.hallmarksTitle}</h2>
-          <p className="text-sm text-[#1c2a2b]/60 mb-8 leading-relaxed max-w-2xl">{t.hallmarksSub}</p>
+          <p className="text-sm text-[#1c2a2b]/60 mb-10 leading-relaxed max-w-2xl">{t.hallmarksSub}</p>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {t.hallmarks.map((h: { name: string; sub: string; animal: string; plant: string }, i: number) => (
-              <div key={i} className="rounded-xl bg-white ring-1 ring-[#0e393d]/8 border-l-4 border-l-[#0e393d] p-5 flex flex-col gap-3">
-                <div>
-                  <p className="font-serif text-[1.1rem] text-[#0e393d] leading-snug font-medium">{h.name}</p>
-                  <p className="text-[0.75rem] text-[#5a6e6f] mt-0.5">{h.sub}</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {t.hallmarks.map((h: { name: string; sub: string; explain: string; animal: string; plant: string }, i: number) => (
+              <div key={i} className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 overflow-hidden flex flex-col group hover:ring-[#0e393d]/15 hover:shadow-md transition-all duration-200">
+                {/* Card header with gradient */}
+                <div className="bg-gradient-to-r from-[#0e393d] to-[#1a5055] px-5 py-4 flex items-center gap-3">
+                  <span className="text-xl flex-shrink-0">{HALLMARK_ICONS[i]}</span>
+                  <div className="min-w-0">
+                    <p className="font-serif text-[1rem] text-white leading-snug font-medium truncate">{h.name}</p>
+                    <p className="text-[0.7rem] text-white/50 mt-0.5">{h.sub}</p>
+                  </div>
+                  <span className="ml-auto text-[10px] font-bold text-white/25 shrink-0">{String(i + 1).padStart(2, '0')}</span>
                 </div>
-                <div className="space-y-2 pt-2 border-t border-[#0e393d]/8">
-                  <p className="text-[0.75rem] leading-snug">
-                    <span className="text-red-500 font-medium">🔴 {t.animalLabel} </span>
-                    <span className="text-red-700/70">{h.animal}</span>
-                  </p>
-                  <p className="text-[0.75rem] leading-snug">
-                    <span className="text-emerald-600 font-medium">🟢 {t.plantLabel} </span>
-                    <span className="text-emerald-700/70">{h.plant}</span>
-                  </p>
+
+                {/* Card body */}
+                <div className="p-5 flex-1 flex flex-col gap-3">
+                  {/* Simple explanation */}
+                  <p className="text-[0.8rem] text-[#1c2a2b]/55 leading-relaxed italic">{h.explain}</p>
+
+                  {/* Harmful */}
+                  <div className="rounded-lg bg-red-50/80 border border-red-100 px-4 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-red-400 mb-1.5">{t.animalLabel}</p>
+                    <p className="text-[0.78rem] text-red-800/70 leading-snug">{h.animal}</p>
+                  </div>
+                  {/* Protective */}
+                  <div className="rounded-lg bg-emerald-50/80 border border-emerald-100 px-4 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-400 mb-1.5">{t.plantLabel}</p>
+                    <p className="text-[0.78rem] text-emerald-800/70 leading-snug">{h.plant}</p>
+                  </div>
                 </div>
               </div>
             ))}
@@ -1026,106 +1207,79 @@ export default async function SciencePage() {
 
         {/* Food & Longevity heatmap */}
         <section className="w-full bg-white border-y border-[#0e393d]/10 px-6 py-16">
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-4xl mx-auto">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-3">{t.heatmapTag}</p>
             <h2 className="font-serif text-2xl sm:text-3xl text-[#0e393d] mb-3 leading-tight">{t.heatmapTitle}</h2>
             <p className="text-sm text-[#1c2a2b]/60 mb-8 leading-relaxed">{t.heatmapSub}</p>
 
             <div className="overflow-x-auto -mx-6 px-6">
-              <div className="min-w-[640px]">
+              <div className="min-w-[600px]">
 
                 {/* Column headers */}
-                <div className="flex mb-0.5">
-                  <div className="shrink-0" style={{ width: 180 }} />
-                  {t.colHeaders.map((h, ci) => (
-                    <div key={ci} className="flex-1 flex items-end justify-center pb-1" style={{ height: 86 }}>
-                      <span
-                        className="text-[9px] font-semibold uppercase tracking-wide text-[#0e393d]/55 text-center leading-tight block"
-                        style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
-                      >
-                        {h}
-                      </span>
-                    </div>
-                  ))}
+                <div className="flex items-center justify-center mb-1">
+                  <div className="shrink-0" style={{ width: 220 }} />
+                  <div className="flex gap-[2px]" style={{ width: 240 }}>
+                    {t.colHeaders.map((h, ci) => (
+                      <div key={ci} className="flex-1 flex items-end justify-center pb-1" style={{ height: 80, maxWidth: 40 }}>
+                        <span
+                          className="text-[8px] font-semibold uppercase tracking-wide text-[#0e393d]/50 text-center leading-tight block"
+                          style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+                        >
+                          {h}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Section label: promotes */}
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="shrink-0" style={{ width: 180 }} />
-                  <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-emerald-700">{t.promoteLabel.toUpperCase()}</span>
+                <div className="flex items-center justify-center gap-2 mb-1 mt-1">
+                  <div className="shrink-0" style={{ width: 220 }} />
+                  <div className="flex items-center gap-1.5" style={{ width: 240 }}>
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span className="text-[8px] font-bold uppercase tracking-[0.16em] text-emerald-700">{t.promoteLabel.toUpperCase()}</span>
+                  </div>
                 </div>
 
-                {/* Promote rows */}
-                {HP.map((row) => (
-                  <div key={row.food} className="flex border-b border-gray-50 last:border-0">
+                {/* All rows — single continuous list matching Figure 4 */}
+                {HEATMAP_ROWS.map((row) => (
+                  <div key={row.food} className="flex items-center justify-center">
                     <div
-                      className="shrink-0 pr-2 text-right text-[10.5px] text-[#1c2a2b]/55 flex items-center justify-end leading-tight"
-                      style={{ width: 180, minHeight: 32 }}
+                      className="shrink-0 pr-3 text-right text-[11px] text-[#1c2a2b]/70 flex items-center justify-end leading-tight"
+                      style={{ width: 220, minHeight: 24 }}
                     >
                       {getFoodName(row.food, lang)}
                     </div>
-                    {row.cells.map((v, ci) => (
-                      <div key={ci} className={`flex-1 m-[2px] rounded-[2px] ${cellCls(v)}`} style={{ minHeight: 28 }} />
-                    ))}
-                  </div>
-                ))}
-
-                {/* Divider: mixed/neutral */}
-                <div className="flex items-center gap-3 my-2">
-                  <div className="shrink-0" style={{ width: 180 }} />
-                  <div className="flex-1 h-px bg-[#0e393d]/10" />
-                  <span className="text-[9px] uppercase tracking-[0.14em] text-[#0e393d]/40 whitespace-nowrap shrink-0">
-                    {t.dividerLabel}
-                  </span>
-                  <div className="flex-1 h-px bg-[#0e393d]/10" />
-                </div>
-
-                {/* Mixed rows */}
-                {HM.map((row) => (
-                  <div key={row.food} className="flex border-b border-gray-50 last:border-0">
-                    <div
-                      className="shrink-0 pr-2 text-right text-[10.5px] text-[#1c2a2b]/55 flex items-center justify-end leading-tight"
-                      style={{ width: 180, minHeight: 32 }}
-                    >
-                      {getFoodName(row.food, lang)}
+                    <div className="flex gap-[2px]" style={{ width: 240 }}>
+                      {row.cells.map((v, ci) => (
+                        <div key={ci} className={`flex-1 rounded-[2px] ${cellCls(v)} flex items-center justify-center`} style={{ height: 22, maxWidth: 40 }}>
+                          {v !== 0 && <span className={`text-[8px] font-bold ${cellTextCls(v)} opacity-60`}>*</span>}
+                        </div>
+                      ))}
                     </div>
-                    {row.cells.map((v, ci) => (
-                      <div key={ci} className={`flex-1 m-[2px] rounded-[2px] ${cellCls(v)}`} style={{ minHeight: 28 }} />
-                    ))}
                   </div>
                 ))}
 
-                {/* Divider before avoid + section label */}
-                <div className="flex items-center gap-2 mt-3 mb-1">
-                  <div className="shrink-0" style={{ width: 180 }} />
-                  <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-red-600">{t.avoidLabel.toUpperCase()}</span>
+                {/* ACCELERATES AGING label at the very bottom */}
+                <div className="flex items-center justify-center gap-2 mt-1.5 mb-0">
+                  <div className="shrink-0" style={{ width: 220 }} />
+                  <div className="flex items-center gap-1.5" style={{ width: 240 }}>
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500" />
+                    <span className="text-[8px] font-bold uppercase tracking-[0.16em] text-red-600">{t.avoidLabel.toUpperCase()}</span>
+                  </div>
                 </div>
-
-                {/* Avoid rows */}
-                {HA.map((row) => (
-                  <div key={row.food} className="flex border-b border-gray-50 last:border-0">
-                    <div
-                      className="shrink-0 pr-2 text-right text-[10.5px] text-[#1c2a2b]/55 flex items-center justify-end leading-tight"
-                      style={{ width: 180, minHeight: 32 }}
-                    >
-                      {getFoodName(row.food, lang)}
-                    </div>
-                    {row.cells.map((v, ci) => (
-                      <div key={ci} className={`flex-1 m-[2px] rounded-[2px] ${cellCls(v)}`} style={{ minHeight: 28 }} />
-                    ))}
-                  </div>
-                ))}
 
                 {/* Legend */}
-                <div className="mt-4 flex items-center gap-3">
-                  <div className="shrink-0" style={{ width: 180 }} />
-                  <span className="text-[9px] font-semibold text-red-600 whitespace-nowrap shrink-0">← {t.avoidLabel}</span>
-                  <div className="flex gap-0.5 flex-1">
+                <div className="mt-5 flex items-center justify-center gap-3">
+                  <div className="shrink-0 flex justify-end" style={{ width: 220 }}>
+                    <span className="text-[8px] font-bold uppercase tracking-wider text-red-600 whitespace-nowrap">← {t.avoidLabel}</span>
+                  </div>
+                  <div className="flex gap-0 rounded-full overflow-hidden" style={{ width: 240 }}>
                     {([-4, -3, -2, -1, 0, 1, 2, 3, 4] as CellVal[]).map((v) => (
-                      <div key={v} className={`flex-1 h-3 rounded-[1px] ${cellCls(v)}`} />
+                      <div key={v} className={`flex-1 h-2 ${cellCls(v)}`} />
                     ))}
                   </div>
-                  <span className="text-[9px] font-semibold text-emerald-700 whitespace-nowrap shrink-0">{t.promoteLabel} →</span>
+                  <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-700 whitespace-nowrap">{t.promoteLabel} →</span>
                 </div>
               </div>
             </div>

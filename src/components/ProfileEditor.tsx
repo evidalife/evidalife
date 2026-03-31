@@ -108,6 +108,9 @@ const T = {
     activityOptions: ['Sitzend', 'Leicht aktiv', 'Aktiv', 'Sehr aktiv'] as string[],
     diet: 'Ernährungsweise',
     dietOptions: ['Omnivor', 'Vegetarisch', 'Vegan', 'Pescetarisch', 'Andere'] as string[],
+    tracker: 'Täglicher Tracker', trackerHint: 'Schalte zusätzliche Tracker-Level frei, um deine Gesundheitsreise zu vertiefen.',
+    tweaksToggle: '21 Tweaks', tweaksDesc: 'Gewichtsverlust-Tricks aus How Not to Diet',
+    antiAgingToggle: 'Anti-Aging 8', antiAgingDesc: '8 Anti-Aging-Schlüssel aus How Not to Age',
     account: 'Konto', memberSince: 'Mitglied seit', adminBadge: 'Admin',
     onboarding: 'Onboarding', onboardingDone: 'Abgeschlossen', onboardingPending: 'Ausstehend',
     changeEmail: 'E-Mail ändern', changeEmailNew: 'Neue E-Mail-Adresse', changeEmailSave: 'Bestätigung senden',
@@ -149,6 +152,9 @@ const T = {
     activityOptions: ['Sedentary', 'Lightly active', 'Active', 'Very active'] as string[],
     diet: 'Diet',
     dietOptions: ['Omnivore', 'Vegetarian', 'Vegan', 'Pescatarian', 'Other'] as string[],
+    tracker: 'Daily Tracker', trackerHint: 'Unlock additional tracker levels to deepen your health journey.',
+    tweaksToggle: '21 Tweaks', tweaksDesc: 'Weight-loss tweaks from How Not to Diet',
+    antiAgingToggle: 'Anti-Aging 8', antiAgingDesc: '8 anti-aging keys from How Not to Age',
     account: 'Account', memberSince: 'Member since', adminBadge: 'Admin',
     onboarding: 'Onboarding', onboardingDone: 'Completed', onboardingPending: 'Pending',
     changeEmail: 'Change email', changeEmailNew: 'New email address', changeEmailSave: 'Send verification',
@@ -190,6 +196,9 @@ const T = {
     activityOptions: ['Sédentaire', 'Légèrement actif', 'Actif', 'Très actif'] as string[],
     diet: 'Alimentation',
     dietOptions: ['Omnivore', 'Végétarien', 'Végétalien', 'Pescatarien', 'Autre'] as string[],
+    tracker: 'Suivi quotidien', trackerHint: 'Débloquez des niveaux supplémentaires pour approfondir votre parcours santé.',
+    tweaksToggle: '21 Tweaks', tweaksDesc: 'Astuces minceur de How Not to Diet',
+    antiAgingToggle: 'Anti-Aging 8', antiAgingDesc: '8 clés anti-âge de How Not to Age',
     account: 'Compte', memberSince: 'Membre depuis', adminBadge: 'Admin',
     onboarding: 'Onboarding', onboardingDone: 'Terminé', onboardingPending: 'En attente',
     changeEmail: "Modifier l'e-mail", changeEmailNew: 'Nouvelle adresse e-mail', changeEmailSave: 'Envoyer la vérification',
@@ -231,6 +240,9 @@ const T = {
     activityOptions: ['Sedentario', 'Ligeramente activo', 'Activo', 'Muy activo'] as string[],
     diet: 'Dieta',
     dietOptions: ['Omnívoro', 'Vegetariano', 'Vegano', 'Pescatariano', 'Otro'] as string[],
+    tracker: 'Seguimiento diario', trackerHint: 'Desbloquea niveles adicionales para profundizar tu camino de salud.',
+    tweaksToggle: '21 Tweaks', tweaksDesc: 'Trucos de pérdida de peso de How Not to Diet',
+    antiAgingToggle: 'Anti-Aging 8', antiAgingDesc: '8 claves anti-envejecimiento de How Not to Age',
     account: 'Cuenta', memberSince: 'Miembro desde', adminBadge: 'Admin',
     onboarding: 'Incorporación', onboardingDone: 'Completado', onboardingPending: 'Pendiente',
     changeEmail: 'Cambiar correo', changeEmailNew: 'Nuevo correo electrónico', changeEmailSave: 'Enviar verificación',
@@ -272,6 +284,9 @@ const T = {
     activityOptions: ['Sedentario', 'Leggermente attivo', 'Attivo', 'Molto attivo'] as string[],
     diet: 'Alimentazione',
     dietOptions: ['Onnivoro', 'Vegetariano', 'Vegano', 'Pescatariano', 'Altro'] as string[],
+    tracker: 'Tracker giornaliero', trackerHint: 'Sblocca livelli aggiuntivi per approfondire il tuo percorso di salute.',
+    tweaksToggle: '21 Tweaks', tweaksDesc: 'Trucchi per la perdita di peso da How Not to Diet',
+    antiAgingToggle: 'Anti-Aging 8', antiAgingDesc: '8 chiavi anti-invecchiamento da How Not to Age',
     account: 'Account', memberSince: 'Membro dal', adminBadge: 'Admin',
     onboarding: 'Onboarding', onboardingDone: 'Completato', onboardingPending: 'In attesa',
     changeEmail: 'Cambia e-mail', changeEmailNew: 'Nuovo indirizzo e-mail', changeEmailSave: 'Invia verifica',
@@ -527,6 +542,38 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
   const [bloodType,     setBloodType]     = useState(profile.blood_type ?? '');
   const [activityLevel, setActivityLevel] = useState(profile.activity_level ?? '');
   const [diet,          setDiet]          = useState(profile.diet ?? '');
+
+  // Tracker toggles (from user_settings)
+  const [tweaksEnabled, setTweaksEnabled] = useState(false);
+  const [antiAgingEnabled, setAntiAgingEnabled] = useState(false);
+  const [trackerLoaded, setTrackerLoaded] = useState(false);
+
+  // Load user_settings on mount
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('user_settings')
+        .select('tweaks_enabled, anti_aging_enabled')
+        .eq('user_id', profile.id)
+        .single();
+      if (data) {
+        setTweaksEnabled(data.tweaks_enabled ?? false);
+        setAntiAgingEnabled(data.anti_aging_enabled ?? false);
+      }
+      setTrackerLoaded(true);
+    })();
+  }, [supabase, profile.id]);
+
+  const toggleTrackerSetting = async (field: 'tweaks_enabled' | 'anti_aging_enabled', value: boolean) => {
+    if (field === 'tweaks_enabled') setTweaksEnabled(value);
+    else setAntiAgingEnabled(value);
+
+    // Upsert into user_settings
+    await supabase.from('user_settings').upsert(
+      { user_id: profile.id, [field]: value },
+      { onConflict: 'user_id' }
+    );
+  };
 
   // UI
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -896,6 +943,71 @@ export default function ProfileEditor({ profile, lang }: { profile: ProfileData;
                 <option value="">—</option>
                 {BLOOD_TYPES.map((bt) => <option key={bt} value={bt}>{bt}</option>)}
               </select>
+            </div>
+          </div>
+        </Section>
+
+        {/* ── Tracker Levels ── */}
+        <Section title={t.tracker} icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>}>
+          <div className="space-y-2">
+            <p className="text-xs text-[#1c2a2b]/45 mb-4">{t.trackerHint}</p>
+
+            {/* Always-on Daily Dozen */}
+            <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-emerald-50/40 border border-emerald-200/30">
+              <div className="flex items-center gap-3">
+                <span className="text-lg">🥗</span>
+                <div>
+                  <div className="text-sm font-medium text-[#0e393d]">Daily Dozen</div>
+                  <div className="text-xs text-[#1c2a2b]/40">Dr. Greger&apos;s 12 daily food groups</div>
+                </div>
+              </div>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
+                ON
+              </span>
+            </div>
+
+            {/* 21 Tweaks toggle */}
+            <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-[#fafaf8] border border-[#0e393d]/8">
+              <div className="flex items-center gap-3">
+                <span className="text-lg">⚡</span>
+                <div>
+                  <div className="text-sm font-medium text-[#0e393d]">{t.tweaksToggle}</div>
+                  <div className="text-xs text-[#1c2a2b]/40">{t.tweaksDesc}</div>
+                </div>
+              </div>
+              {trackerLoaded ? (
+                <button
+                  type="button"
+                  onClick={() => toggleTrackerSetting('tweaks_enabled', !tweaksEnabled)}
+                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${tweaksEnabled ? 'bg-purple-500' : 'bg-[#0e393d]/15'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${tweaksEnabled ? 'translate-x-5' : ''}`} />
+                </button>
+              ) : (
+                <div className="w-11 h-6 rounded-full bg-[#0e393d]/8 animate-pulse" />
+              )}
+            </div>
+
+            {/* Anti-Aging 8 toggle */}
+            <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-[#fafaf8] border border-[#0e393d]/8">
+              <div className="flex items-center gap-3">
+                <span className="text-lg">🧬</span>
+                <div>
+                  <div className="text-sm font-medium text-[#0e393d]">{t.antiAgingToggle}</div>
+                  <div className="text-xs text-[#1c2a2b]/40">{t.antiAgingDesc}</div>
+                </div>
+              </div>
+              {trackerLoaded ? (
+                <button
+                  type="button"
+                  onClick={() => toggleTrackerSetting('anti_aging_enabled', !antiAgingEnabled)}
+                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${antiAgingEnabled ? 'bg-[#ceab84]' : 'bg-[#0e393d]/15'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${antiAgingEnabled ? 'translate-x-5' : ''}`} />
+                </button>
+              ) : (
+                <div className="w-11 h-6 rounded-full bg-[#0e393d]/8 animate-pulse" />
+              )}
             </div>
           </div>
         </Section>

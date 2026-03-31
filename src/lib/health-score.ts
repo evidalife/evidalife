@@ -532,7 +532,7 @@ export const CALCULATED_MARKERS: Record<string, CalculatedMarkerFn> = {
  * Already-measured values are never overwritten.
  *
  * @param measured   slug → canonical-unit value from lab_results
- * @param userAge    chronological age in years (from profiles.birthday)
+ * @param userAge    chronological age in years (from profiles.date_of_birth)
  * @param heightCm   height in cm (from profiles.height_cm) — for BMI / WHtR
  * @param userSex    biological sex from profiles.sex — used for CKD-EPI eGFR
  */

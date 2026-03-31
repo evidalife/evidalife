@@ -62,27 +62,29 @@ type LabReport = {
   pdf_file_name: string | null;
 };
 
-type SourceFilter = 'all' | 'evida_life' | 'partner_lab' | 'external' | 'archived';
-type StatusFilter = 'all' | 'pending' | 'confirmed';
+type SourceFilter = 'all' | 'evida_life' | 'partner_lab' | 'external';
+type StatusFilter = 'all' | 'pending' | 'confirmed' | 'archived';
 
 // ─── Source label helper ──────────────────────────────────────────────────────
 
 function sourceBadge(source: string, reportSource: string | null) {
-  const label = reportSource === 'evida_life'
+  const isEvida = reportSource === 'evida_life' || reportSource === 'admin_upload' || source === 'admin_import';
+  const isPartner = reportSource === 'partner_lab';
+  const isExternal = reportSource === 'external_upload';
+
+  const label = isEvida
     ? '🌿 Evida Life'
-    : reportSource === 'partner_lab'
+    : isPartner
     ? '🔬 Partner Lab'
-    : reportSource === 'external_upload'
+    : isExternal
     ? '📁 External'
-    : source === 'admin_import'
-    ? '🌿 Evida Life'
     : '📝 Self-Reported';
 
-  const cls = reportSource === 'evida_life' || source === 'admin_import'
+  const cls = isEvida
     ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20'
-    : reportSource === 'partner_lab'
+    : isPartner
     ? 'bg-[#ceab84]/10 text-[#8a6a3e] ring-1 ring-[#ceab84]/25'
-    : reportSource === 'external_upload'
+    : isExternal
     ? 'bg-sky-50 text-sky-700 ring-1 ring-sky-600/20'
     : 'bg-gray-100 text-gray-600 ring-1 ring-gray-300/40';
 
@@ -299,20 +301,24 @@ export default function AllResultsTab() {
       `)
       .order('created_at', { ascending: false });
 
-    if (sourceFilter === 'archived') {
-      query = query.not('archived_at', 'is', null);
-    } else {
-      query = query.is('archived_at', null).is('deleted_at', null);
-      if (sourceFilter === 'evida_life') {
-        query = query.or("report_source.eq.evida_life,and(report_source.is.null,source.eq.admin_import)");
-      } else if (sourceFilter === 'partner_lab') {
-        query = query.eq('report_source', 'partner_lab');
-      } else if (sourceFilter === 'external') {
-        query = query.or("report_source.eq.external_upload,and(report_source.is.null,source.in.(pdf_upload,manual_entry))");
-      }
+    // Always filter deleted
+    query = query.is('deleted_at', null);
+
+    // Source filter (independent of status)
+    if (sourceFilter === 'evida_life') {
+      query = query.or("report_source.eq.evida_life,and(report_source.is.null,source.eq.admin_import)");
+    } else if (sourceFilter === 'partner_lab') {
+      query = query.eq('report_source', 'partner_lab');
+    } else if (sourceFilter === 'external') {
+      query = query.or("report_source.eq.external_upload,and(report_source.is.null,source.in.(pdf_upload,manual_entry))");
     }
 
-    if (sourceFilter !== 'archived') {
+    // Status filter
+    if (statusFilter === 'archived') {
+      query = query.eq('status', 'archived');
+    } else {
+      // Non-archived views: exclude archived reports
+      query = query.neq('status', 'archived');
       if (statusFilter === 'pending') {
         query = query.in('status', ['ai_extracted', 'review_pending']);
       } else if (statusFilter === 'confirmed') {
@@ -408,7 +414,7 @@ export default function AllResultsTab() {
     setActionLoading(report.id);
     const { error } = await supabase
       .from('lab_reports')
-      .update({ archived_at: new Date().toISOString() })
+      .update({ status: 'archived', archived_at: new Date().toISOString() })
       .eq('id', report.id);
     setActionLoading(null);
     if (error) { addToast('Archive failed: ' + error.message, 'error'); return; }
@@ -420,7 +426,7 @@ export default function AllResultsTab() {
     setActionLoading(report.id);
     const { error } = await supabase
       .from('lab_reports')
-      .update({ archived_at: null })
+      .update({ status: 'confirmed', archived_at: null })
       .eq('id', report.id);
     setActionLoading(null);
     if (error) { addToast('Reactivate failed: ' + error.message, 'error'); return; }
@@ -485,13 +491,13 @@ export default function AllResultsTab() {
     { id: 'evida_life', label: '🌿 Evida' },
     { id: 'partner_lab',label: '🤝 Partner' },
     { id: 'external',   label: '📁 External' },
-    { id: 'archived',   label: '📦 Archived' },
   ];
 
   const STATUS_PILLS: { id: StatusFilter; label: string }[] = [
     { id: 'all',       label: 'All' },
     { id: 'pending',   label: '⏳ Pending' },
     { id: 'confirmed', label: '✅ Confirmed' },
+    { id: 'archived',  label: '📦 Archived' },
   ];
 
   return (
@@ -572,23 +578,21 @@ export default function AllResultsTab() {
         <div className="w-px h-6 bg-[#0e393d]/10" />
 
         {/* Status pills */}
-        {sourceFilter !== 'archived' && (
-          <div className="flex gap-1.5">
-            {STATUS_PILLS.map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => setStatusFilter(id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                  statusFilter === id
-                    ? 'bg-[#ceab84] text-white shadow-sm'
-                    : 'bg-[#ceab84]/10 text-[#ceab84]/70 hover:bg-[#ceab84]/20'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex gap-1.5">
+          {STATUS_PILLS.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setStatusFilter(id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                statusFilter === id
+                  ? 'bg-[#ceab84] text-white shadow-sm'
+                  : 'bg-[#ceab84]/10 text-[#ceab84]/70 hover:bg-[#ceab84]/20'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
         {/* Divider */}
         <div className="w-px h-6 bg-[#0e393d]/10" />
@@ -650,7 +654,7 @@ export default function AllResultsTab() {
               </td></tr>
             ) : sortedReports.map((report) => {
               const isExpanded = expandedId === report.id;
-              const isArchived = !!report.archived_at;
+              const isArchived = report.status === 'archived';
               const isLoading = actionLoading === report.id;
               const userName = [report.profiles?.first_name, report.profiles?.last_name].filter(Boolean).join(' ') || '—';
               const userEmail = report.profiles?.email;
@@ -700,9 +704,7 @@ export default function AllResultsTab() {
                   </td>
                   {/* Source */}
                   <td className="px-4 py-3">
-                    {isArchived
-                      ? <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-500 ring-1 ring-gray-300/50">📦 Archived</span>
-                      : sourceBadge(report.source, report.report_source)}
+                    {sourceBadge(report.source, report.report_source)}
                   </td>
                   {/* Status */}
                   <td className="px-4 py-3">

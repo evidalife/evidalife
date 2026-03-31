@@ -566,6 +566,8 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
         lab_email:   pdfMeta.lab_email   || null,
         lab_phone:   pdfMeta.lab_phone   || null,
         storagePath: pdfStoragePath,
+        fileName:    pdfFile?.name || null,
+        fileSize:    pdfFile?.size || null,
         results:     toSave.map((r) => ({ biomarker_id: r.matched_id, value: r.value, unit: r.unit })),
       }),
     });
@@ -816,6 +818,16 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Privacy notice */}
+        <div className="rounded-lg bg-[#0e393d]/[0.04] border border-[#0e393d]/8 px-4 py-3 flex gap-2.5 items-start">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#0e393d]/40 mt-0.5 shrink-0">
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          <p className="text-[11px] text-[#1c2a2b]/50 leading-relaxed">
+            Your PDF is stored securely for 7 days in case we need to re-extract values, then automatically deleted. Only your biomarker values are kept permanently.
+          </p>
         </div>
 
         <div className="flex gap-3">

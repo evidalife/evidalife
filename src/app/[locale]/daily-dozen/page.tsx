@@ -4,6 +4,8 @@ import { Link } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import DailyDozenTracker, { type DDCategory, type DDEntry, type DDStreak, type HistoricalEntry } from '@/components/DailyDozenTracker';
+import DailyChecklistTabs from '@/components/DailyChecklistTabs';
+import { type ChecklistItem, type ChecklistEntry } from '@/components/ChecklistTracker';
 import { createClient } from '@/lib/supabase/server';
 import { buildMeta, PAGE_META } from '@/lib/seo';
 
@@ -516,6 +518,9 @@ export default async function DailyDozenPage({ searchParams }: { searchParams: P
       { data: categoryRows },
       { data: histEntryRows },
       { data: streakRow },
+      { data: checklistItems },
+      { data: checklistEntryRows },
+      { data: userSettings },
     ] = await Promise.all([
       supabase
         .from('daily_dozen_categories')
@@ -533,6 +538,24 @@ export default async function DailyDozenPage({ searchParams }: { searchParams: P
       supabase
         .from('daily_dozen_streaks')
         .select('current_streak_days, longest_streak_days, last_completed_date')
+        .eq('user_id', user.id)
+        .single(),
+
+      supabase
+        .from('daily_checklist_items')
+        .select('id, framework, category, name_en, name_de, name_fr, name_es, name_it, description_en, description_de, description_fr, description_es, description_it, target_servings, unit, icon, sort_order')
+        .eq('is_active', true)
+        .order('sort_order'),
+
+      supabase
+        .from('daily_checklist_entries')
+        .select('checklist_item_id, servings_completed, is_done')
+        .eq('user_id', user.id)
+        .eq('entry_date', today),
+
+      supabase
+        .from('user_settings')
+        .select('tweaks_enabled, anti_aging_enabled')
         .eq('user_id', user.id)
         .single(),
     ]);
@@ -587,14 +610,20 @@ export default async function DailyDozenPage({ searchParams }: { searchParams: P
               </p>
             </div>
           ) : (
-            <DailyDozenTracker
+            <DailyChecklistTabs
               userId={user.id}
-              categories={categories}
-              entries={entries}
-              streak={streak}
               lang={lang}
               today={today}
-              historicalEntries={historicalEntries}
+              tweaksEnabled={userSettings?.tweaks_enabled ?? false}
+              antiAgingEnabled={userSettings?.anti_aging_enabled ?? false}
+              checklistItems={(checklistItems ?? []) as ChecklistItem[]}
+              checklistEntries={(checklistEntryRows ?? []) as ChecklistEntry[]}
+              ddTrackerProps={{
+                categories,
+                entries,
+                streak,
+                historicalEntries,
+              }}
             />
           )}
         </main>

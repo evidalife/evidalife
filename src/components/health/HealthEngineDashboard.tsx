@@ -15,7 +15,7 @@ type MStatus = 'optimal' | 'good' | 'moderate' | 'risk';
 interface Profile {
   first_name: string | null;
   last_name: string | null;
-  birthday: string | null;
+  date_of_birth: string | null;
   sex: string | null;
   height_cm: number | null;
 }
@@ -112,6 +112,7 @@ const T: Record<Lang, Record<string, string>> = {
     atAGlance: 'at a glance',
     longevityScore: 'LONGEVITY SCORE', basedOnDomains: 'Based on {n} health domains', epigeneticsSeparate: 'Epigenetics shown separately',
     bioAgeClocks: 'BIOLOGICAL AGE CLOCKS', topStrength: 'Top Strength', priorityAction: 'Priority Action', monthProgress: 'Month Progress', bioAgeDesc: 'Based on epigenetic markers',
+    healthBriefing: 'Your Health Briefing', briefingSub: 'Personalized audio summary of your latest results', askAnything: 'Ask anything about your results...', listenNow: 'Listen now', comingSoon: 'Coming soon',
   },
   de: {
     tag: 'HEALTH ENGINE', title: 'Dein Gesundheits-Score', sub: 'Verfolge deine Biomarker in 8 Gesundheitsbereichen.',
@@ -135,6 +136,7 @@ const T: Record<Lang, Record<string, string>> = {
     atAGlance: 'im Überblick',
     longevityScore: 'LONGEVITY SCORE', basedOnDomains: 'Basiert auf {n} Gesundheitsbereichen', epigeneticsSeparate: 'Epigenetik separat angezeigt',
     bioAgeClocks: 'BIOLOGISCHE ALTERSUHREN', topStrength: 'Top-Stärke', priorityAction: 'Priorität', monthProgress: 'Monatlicher Fortschritt', bioAgeDesc: 'Basierend auf epigenetischen Markern',
+    healthBriefing: 'Dein Gesundheitsbriefing', briefingSub: 'Personalisierte Audio-Zusammenfassung deiner neuesten Ergebnisse', askAnything: 'Frage alles zu deinen Ergebnissen...', listenNow: 'Jetzt anhören', comingSoon: 'Bald verfügbar',
   },
   fr: {
     tag: 'HEALTH ENGINE', title: 'Votre Score Santé', sub: 'Suivez vos biomarqueurs dans 8 domaines de santé.',
@@ -157,6 +159,7 @@ const T: Record<Lang, Record<string, string>> = {
     overallScore: 'SCORE DE LONGÉVITÉ', atAGlance: 'en un coup d\'œil',
     longevityScore: 'SCORE DE LONGÉVITÉ', basedOnDomains: 'Basé sur {n} domaines de santé', epigeneticsSeparate: 'Épigénétique affichée séparément',
     bioAgeClocks: 'HORLOGES ÂGE BIOLOGIQUE', topStrength: 'Force Top', priorityAction: 'Action Prioritaire', monthProgress: 'Progrès du Mois', bioAgeDesc: 'Basé sur les marqueurs épigénétiques',
+    healthBriefing: 'Votre Briefing Santé', briefingSub: 'Résumé audio personnalisé de vos derniers résultats', askAnything: 'Posez une question sur vos résultats...', listenNow: 'Écouter', comingSoon: 'Bientôt disponible',
   },
   es: {
     tag: 'HEALTH ENGINE', title: 'Tu Score de Salud', sub: 'Sigue tus biomarcadores en 8 dominios de salud.',
@@ -179,6 +182,7 @@ const T: Record<Lang, Record<string, string>> = {
     overallScore: 'SCORE DE LONGEVIDAD', atAGlance: 'de un vistazo',
     longevityScore: 'SCORE DE LONGEVIDAD', basedOnDomains: 'Basado en {n} dominios de salud', epigeneticsSeparate: 'Epigenética mostrada por separado',
     bioAgeClocks: 'RELOJES DE EDAD BIOLÓGICA', topStrength: 'Fortaleza Superior', priorityAction: 'Acción Prioritaria', monthProgress: 'Progreso Mensual', bioAgeDesc: 'Basado en marcadores epigenéticos',
+    healthBriefing: 'Tu Informe de Salud', briefingSub: 'Resumen de audio personalizado de tus últimos resultados', askAnything: 'Pregunta sobre tus resultados...', listenNow: 'Escuchar', comingSoon: 'Próximamente',
   },
   it: {
     tag: 'HEALTH ENGINE', title: 'Il Tuo Score Salute', sub: 'Segui i tuoi biomarcatori in 8 domini della salute.',
@@ -201,6 +205,7 @@ const T: Record<Lang, Record<string, string>> = {
     overallScore: 'SCORE DI LONGEVITÀ', atAGlance: 'a colpo d\'occhio',
     longevityScore: 'SCORE DI LONGEVITÀ', basedOnDomains: 'Basato su {n} domini della salute', epigeneticsSeparate: 'Epigenetica mostrata separatamente',
     bioAgeClocks: 'OROLOGI DELL\'ETÀ BIOLOGICA', topStrength: 'Punto di Forza Principale', priorityAction: 'Azione Prioritaria', monthProgress: 'Progresso Mensile', bioAgeDesc: 'Basato su marcatori epigenetici',
+    healthBriefing: 'Il Tuo Briefing Salute', briefingSub: 'Riepilogo audio personalizzato dei tuoi ultimi risultati', askAnything: 'Chiedi qualcosa sui tuoi risultati...', listenNow: 'Ascolta ora', comingSoon: 'Prossimamente',
   },
 };
 
@@ -337,6 +342,43 @@ function scoreColor(score: number): string {
   if (score >= 70) return '#5ba37a';
   if (score >= 50) return '#C4A96A';
   return '#E06B5B';
+}
+
+// Tachometer gauge (matches the public health-engine design)
+function Gauge({ score, max, dark = false }: { score: number; max: number; dark?: boolean }) {
+  const CX = 130, CY = 115, R = 85, MT = 10, MX = 26, W = 260, H = 210, dW = 160;
+  const fz = 42, sy = 180;
+  const SEGS = 12, GAP = 2.5, START = 135, ARC = 270;
+  const SA = (ARC - (SEGS - 1) * GAP) / SEGS;
+  const rt = Math.min(Math.max(score / max, 0), 1);
+  const filled = Math.round(rt * SEGS);
+  const na = (START + rt * ARC) * Math.PI / 180;
+  const pa = na + Math.PI / 2;
+  const tr = R - MX / 2 + 2;
+  const cl = scoreColor(score);
+  const ef = dark ? 'rgba(255,255,255,0.04)' : 'rgba(14,57,61,0.06)';
+  const nf = dark ? 'rgba(255,255,255,0.4)' : '#1c2a2b';
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={dW} style={{ display: 'block' }}>
+      {Array.from({ length: SEGS }, (_, i) => {
+        const sa = (START + i * (SA + GAP)) * Math.PI / 180;
+        const ea = (START + i * (SA + GAP) + SA) * Math.PI / 180;
+        const thick = MT + (MX - MT) * (i / (SEGS - 1));
+        const ri = R - thick / 2, ro = R + thick / 2;
+        const d = `M${(CX+ro*Math.cos(sa)).toFixed(1)},${(CY+ro*Math.sin(sa)).toFixed(1)} A${ro},${ro} 0 0,1 ${(CX+ro*Math.cos(ea)).toFixed(1)},${(CY+ro*Math.sin(ea)).toFixed(1)} L${(CX+ri*Math.cos(ea)).toFixed(1)},${(CY+ri*Math.sin(ea)).toFixed(1)} A${ri},${ri} 0 0,0 ${(CX+ri*Math.cos(sa)).toFixed(1)},${(CY+ri*Math.sin(sa)).toFixed(1)} Z`;
+        return <path key={i} d={d} fill={i < filled ? cl : ef} />;
+      })}
+      <path
+        d={`M${(CX+tr*Math.cos(na)).toFixed(1)},${(CY+tr*Math.sin(na)).toFixed(1)} L${(CX+1.8*Math.cos(pa)).toFixed(1)},${(CY+1.8*Math.sin(pa)).toFixed(1)} L${(CX-9*Math.cos(na)).toFixed(1)},${(CY-9*Math.sin(na)).toFixed(1)} L${(CX-1.8*Math.cos(pa)).toFixed(1)},${(CY-1.8*Math.sin(pa)).toFixed(1)} Z`}
+        fill={nf} opacity={dark ? 1 : 0.55}
+      />
+      <circle cx={CX} cy={CY} r={5} fill={dark ? 'rgba(255,255,255,0.1)' : '#1c2a2b'} opacity={dark ? 1 : 0.12} />
+      <circle cx={CX} cy={CY} r={2.75} fill={dark ? 'rgba(255,255,255,0.6)' : 'white'} stroke={dark ? 'rgba(255,255,255,0.3)' : '#1c2a2b'} strokeWidth={0.7} />
+      <text x={CX} y={sy} textAnchor="middle" fontFamily="'Instrument Serif',Georgia,serif" fontSize={fz} fill={cl}>{score}</text>
+      <text x={26} y={174} textAnchor="middle" fontSize={8} fill="#5a6e6f">0</text>
+      <text x={234} y={174} textAnchor="middle" fontSize={8} fill="#5a6e6f">{max}</text>
+    </svg>
+  );
 }
 
 function rPct(v: number, rL: number | null, rH: number | null): number {
@@ -1103,19 +1145,20 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
       .slice(0, 8);
 
     // Biological age clocks from epigenetics domain
+    // DB slugs use underscores (pheno_age, grim_age_v2, dunedin_pace);
+    // canonical keys used by the render section strip them (phenoage, grimage_v2, dunedinpace).
     const epiDomain = domains.find(d => d.key === 'epigenetics');
     const bioClocks: Record<string, { name: string; values: (number | null)[]; latest: number | null }> = {};
     if (epiDomain) {
-      const clockSlugs = ['phenoage', 'grimage_v2', 'grimage', 'dunedinpace', 'pace_of_aging'];
+      const clockSlugs = ['phenoage', 'grimage_v2', 'grimage', 'dunedinpace', 'pace_of_aging'] as const;
       for (const marker of epiDomain.markers) {
-        const slug = marker.slug.toLowerCase();
-        for (const clockSlug of clockSlugs) {
-          if (slug.includes(clockSlug)) {
-            bioClocks[clockSlug] = {
-              name: marker.name,
-              values: marker.values,
-              latest: marker.latest,
-            };
+        const norm = marker.slug.toLowerCase().replace(/_/g, ''); // strip underscores
+        for (const key of clockSlugs) {
+          if (norm.includes(key.replace(/_/g, ''))) {
+            const canonical = key === 'grimage' ? 'grimage_v2' : key === 'pace_of_aging' ? 'dunedinpace' : key;
+            if (!bioClocks[canonical]) {
+              bioClocks[canonical] = { name: marker.name, values: marker.values, latest: marker.latest };
+            }
             break;
           }
         }
@@ -1309,173 +1352,335 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
 
       <div className="max-w-[1040px] mx-auto px-6 md:px-10 py-16">
 
-        {/* LONGEVITY SCORE SECTION */}
+        {/* ── AUDIO HEALTH BRIEFING ── */}
+        <section className="mb-8">
+          <div className="bg-gradient-to-r from-[#0e393d] to-[#13474c] rounded-2xl overflow-hidden shadow-lg">
+            <div className="p-6 flex items-center gap-5">
+              {/* Play button */}
+              <button className="w-14 h-14 rounded-full bg-[#0C9C6C] hover:bg-[#0ab07a] transition-colors flex items-center justify-center shrink-0 shadow-lg shadow-[#0C9C6C]/20">
+                <svg width="20" height="22" viewBox="0 0 20 22" fill="none">
+                  <path d="M2 1.5v19l16-9.5L2 1.5z" fill="white" />
+                </svg>
+              </button>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-[13px] font-semibold text-white">{t.healthBriefing}</h3>
+                  <span className="text-[9px] font-semibold tracking-[.08em] uppercase px-2 py-0.5 rounded-full bg-[#ceab84]/15 text-[#ceab84]">{t.comingSoon}</span>
+                </div>
+                <p className="text-[11px] text-white/40 mb-3">{t.briefingSub}</p>
+                {/* Waveform placeholder */}
+                <div className="flex items-center gap-[2px] h-5">
+                  {Array.from({ length: 48 }, (_, i) => {
+                    const h = 4 + Math.sin(i * 0.4) * 8 + Math.random() * 6;
+                    return <div key={i} className="w-[3px] rounded-full bg-white/15" style={{ height: h }} />;
+                  })}
+                  <span className="text-[10px] text-white/25 ml-2">1:12</span>
+                </div>
+              </div>
+            </div>
+            {/* Chat input */}
+            <div className="px-6 pb-5">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder={t.askAnything}
+                  disabled
+                  className="flex-1 rounded-xl bg-white/[.06] border border-white/[.08] px-4 py-2.5 text-[12px] text-white/40 placeholder:text-white/25 outline-none"
+                />
+                <button disabled className="rounded-xl bg-white/[.06] border border-white/[.08] px-4 py-2.5 text-[11px] font-semibold text-white/25">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── TWO GAUGES: LONGEVITY SCORE + BIOLOGICAL AGE CLOCKS ── */}
         <section className="mb-16">
-          <SectionTag>{t.longevityScore}</SectionTag>
+          <div className="grid md:grid-cols-2 gap-3.5 mb-6">
 
-          <div className="grid md:grid-cols-[1fr_2fr] gap-6 mb-6">
-            {/* LEFT: Dark teal card with gauge */}
-            <div className="bg-[#0e393d] rounded-2xl p-8 shadow-lg flex flex-col">
-              <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#ceab84] mb-6">{t.longevityScore}</div>
-
-              <div className="flex justify-center mb-6">
-                <ScoreRing score={dash.longevityLatest} size={200} strokeWidth={11} />
+            {/* ─── LEFT: LONGEVITY SCORE gauge card ─── */}
+            <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col">
+              <div className="px-5 pt-5 pb-3.5 flex flex-col items-center gap-[5px]">
+                <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-[#ceab84] mb-2 self-start">
+                  {t.longevityScore}
+                </div>
+                <div className="mt-2 mb-1"><Gauge score={dash.longevityLatest} max={100} dark /></div>
+                <div className="text-xs text-white/30 text-center">
+                  {t.basedOnDomains.replace('{n}', String(dash.nonEpiDomainCount || 8))}
+                </div>
+                <div className="text-[10px] text-white/[.18] text-center leading-snug mt-1">
+                  {t.epigeneticsSeparate}
+                </div>
               </div>
 
-              <div className="text-center mb-6 text-[11px] text-white/50">
-                {t.basedOnDomains.replace('{n}', String(dash.nonEpiDomainCount || 8))} · {t.epigeneticsSeparate}
-              </div>
-
-              {/* Best/Focus mini panels */}
-              <div className="grid grid-cols-2 gap-3 mb-6 pb-6 border-b border-white/10">
+              {/* Best Domain / Focus Area panels */}
+              <div className="grid grid-cols-2 border-t border-white/[.06]">
                 {dash.longevityBest && (
-                  <div className="text-center">
-                    <div className="text-[8px] font-semibold tracking-[.1em] uppercase text-white/40 mb-2">{t.bestDomain}</div>
-                    <div className="font-serif text-2xl mb-1" style={{ color: scoreColor(dash.longevityBest.scores[dash.longevityBest.scores.length - 1]) }}>
+                  <div className="px-3.5 py-[11px] flex flex-col gap-0.5 border-r border-white/[.06]">
+                    <div className="text-xs font-semibold tracking-[.08em] uppercase text-white/28">{t.bestDomain}</div>
+                    <div className="font-serif text-[1.3rem] leading-none text-[#0C9C6C]">
                       {dash.longevityBest.scores[dash.longevityBest.scores.length - 1]}
                     </div>
-                    <div className="text-[10px] text-white/50">{getName(dash.longevityBest.name, lang).split(/\s*\(/)[0]}</div>
+                    <div className="text-xs text-white/22">{getName(dash.longevityBest.name, lang).split(/\s*\(/)[0]}</div>
                   </div>
                 )}
                 {dash.longevityWorst && (
-                  <div className="text-center">
-                    <div className="text-[8px] font-semibold tracking-[.1em] uppercase text-white/40 mb-2">{t.focusArea}</div>
-                    <div className="font-serif text-2xl mb-1" style={{ color: scoreColor(dash.longevityWorst.scores[dash.longevityWorst.scores.length - 1]) }}>
+                  <div className="px-3.5 py-[11px] flex flex-col gap-0.5">
+                    <div className="text-xs font-semibold tracking-[.08em] uppercase text-white/28">{t.focusArea}</div>
+                    <div className="font-serif text-[1.3rem] leading-none text-[#C4A96A]">
                       {dash.longevityWorst.scores[dash.longevityWorst.scores.length - 1]}
                     </div>
-                    <div className="text-[10px] text-white/50">{getName(dash.longevityWorst.name, lang).split(/\s*\(/)[0]}</div>
+                    <div className="text-xs text-white/22">{getName(dash.longevityWorst.name, lang).split(/\s*\(/)[0]}</div>
                   </div>
                 )}
               </div>
 
-              {/* Score history chart at bottom */}
+              {/* Score history chart */}
               {dash.longevityScoreData.length >= 2 && (
-                <div style={{ width: '100%', height: 120 }}>
-                  <ResponsiveContainer width="100%" height={120}>
-                    <LineChart data={dash.longevityScoreData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-                      <XAxis dataKey="date" tick={{ fontSize: 8, fill: 'rgba(255,255,255,.2)' }} axisLine={false} tickLine={false} />
-                      <YAxis domain={['dataMin - 5', 'dataMax + 3']} tick={{ fontSize: 8, fill: 'rgba(255,255,255,.2)' }} axisLine={false} tickLine={false} tickCount={3} />
-                      <RTooltip
-                        formatter={(v: unknown) => [v as number, 'Score']}
-                        contentStyle={{ fontSize: 10, background: '#0e393d', border: '1px solid rgba(255,255,255,.15)', borderRadius: 6 }}
-                        labelStyle={{ color: 'rgba(255,255,255,.6)' }}
-                      />
-                      <Line type="monotone" dataKey="score" stroke="#0C9C6C" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </div>
-
-            {/* RIGHT: Dark teal card with progress */}
-            <div className="bg-[#0e393d] rounded-2xl p-8 shadow-lg">
-              <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#ceab84] mb-6">{t.yourProgress}</div>
-
-              {(dash.borderline.length > 0 || dash.improved.length > 0) ? (
-                <>
-                  {/* Borderline section */}
-                  {dash.borderline.length > 0 && (
-                    <div className="mb-6 pb-6 border-b border-white/10">
-                      <div className="text-[13px] font-semibold text-white mb-2">{dash.borderline.length} markers need attention</div>
-                      <div className="h-1 rounded-full bg-[#C4A96A]/20 mb-3 overflow-hidden">
-                        <div className="h-full bg-[#C4A96A]" style={{ width: `${Math.min(100, (dash.borderline.length / dash.flagTotal) * 100)}%` }} />
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {dash.borderline.slice(0, 4).map((m) => (
-                          <span key={m.defId} className="text-[10px] px-2.5 py-1 rounded-full bg-[#C4A96A]/15 text-[#C4A96A] font-medium">
-                            {m.name}
-                          </span>
-                        ))}
-                        {dash.borderline.length > 4 && (
-                          <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/10 text-white/40">
-                            +{dash.borderline.length - 4}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Improved section */}
-                  {dash.improved.length > 0 && (
-                    <div>
-                      <div className="text-[13px] font-semibold text-white mb-2">{dash.improved.length} markers improved</div>
-                      <div className="h-1 rounded-full bg-[#0C9C6C]/20 mb-3 overflow-hidden">
-                        <div className="h-full bg-[#0C9C6C]" style={{ width: `${Math.min(100, (dash.improved.length / dash.flagTotal) * 100)}%` }} />
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {dash.improved.slice(0, 4).map((m) => (
-                          <span key={m.defId} className="text-[10px] px-2.5 py-1 rounded-full bg-[#0C9C6C]/15 text-[#0C9C6C] font-medium">
-                            {m.name}
-                          </span>
-                        ))}
-                        {dash.improved.length > 4 && (
-                          <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/10 text-white/40">
-                            +{dash.improved.length - 4}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="space-y-3">
-                  {([
-                    { status: 'optimal' as MStatus, count: dash.flags.optimal, label: t.optLabel },
-                    { status: 'good' as MStatus, count: dash.flags.good, label: t.goodLabel },
-                    { status: 'moderate' as MStatus, count: dash.flags.moderate, label: t.modLabel },
-                    { status: 'risk' as MStatus, count: dash.flags.risk, label: t.riskLabel },
-                  ]).map(row => (
-                    <div key={row.status} className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full shrink-0" style={{ background: statusColor(row.status) }} />
-                      <span className="text-[11px] text-white/40 w-20">{row.label}</span>
-                      <div className="flex-1 h-[5px] rounded-full bg-white/10 overflow-hidden">
-                        <div className="h-full rounded-full transition-all duration-500"
-                          style={{ width: `${dash.flagTotal ? (row.count / dash.flagTotal * 100) : 0}%`, background: statusColor(row.status) }} />
-                      </div>
-                      <span className="text-sm font-semibold text-white/60 w-8 text-right">{row.count}</span>
-                    </div>
-                  ))}
-                  <div className="mt-4 pt-3 border-t border-white/10 text-xs text-white/30">
-                    {dash.flagTotal} {t.markers} {t.atAGlance}
+                <div className="border-t border-white/[.06] px-4 py-3 bg-black/[.12]">
+                  <div className="text-[10px] font-semibold tracking-[.08em] uppercase text-white/22 mb-1.5">{t.scoreHistory}</div>
+                  <div className="h-[110px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={dash.longevityScoreData} margin={{ top: 4, right: 4, bottom: 0, left: -28 }}>
+                        <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
+                        <YAxis domain={['dataMin - 5', 'dataMax + 3']} tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={4} />
+                        <RTooltip
+                          formatter={(v: unknown) => [v as number, 'Score']}
+                          contentStyle={{ fontSize: 11, background: '#0e393d', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8 }}
+                          labelStyle={{ color: 'rgba(255,255,255,.6)' }}
+                        />
+                        <Line type="monotone" dataKey="score" stroke="#0C9C6C" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
               )}
             </div>
+
+            {/* ─── RIGHT: BIOLOGICAL AGE CLOCKS gauge card ─── */}
+            {(() => {
+              const hasBioClocks = Object.keys(dash.bioClocks).length > 0 && profile?.date_of_birth;
+              if (!hasBioClocks) return null;
+
+              const birthDate = new Date(profile!.date_of_birth!);
+              const today = new Date();
+              const chronoAge = +(((today.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)).toFixed(1));
+
+              const paceRate = dash.bioClocks['dunedinpace']?.latest;
+              const paceProjected = paceRate != null ? +(paceRate * chronoAge).toFixed(1) : null;
+
+              // Compute average bio age
+              const bioAgeValues: number[] = [];
+              const phenoLatest = dash.bioClocks['phenoage']?.latest;
+              const grimLatest = dash.bioClocks['grimage_v2']?.latest;
+              if (phenoLatest != null) bioAgeValues.push(phenoLatest);
+              if (grimLatest != null) bioAgeValues.push(grimLatest);
+              if (paceProjected != null) bioAgeValues.push(paceProjected);
+              const avgBioAge = bioAgeValues.length > 0 ? +(bioAgeValues.reduce((a, b) => a + b, 0) / bioAgeValues.length).toFixed(1) : null;
+              const avgDiff = avgBioAge != null ? +(avgBioAge - chronoAge).toFixed(1) : null;
+              const bioGaugeScore = avgDiff != null ? Math.max(0, Math.min(100, Math.round(50 - avgDiff * 5))) : 50;
+
+              // Best / worst clock
+              const CLOCK_SLUGS = [
+                { slug: 'phenoage', label: 'PhenoAge', isDunedin: false },
+                { slug: 'grimage_v2', label: 'GrimAge v2', isDunedin: false },
+                { slug: 'dunedinpace', label: 'DunedinPACE', isDunedin: true },
+              ];
+              const clockEntries = CLOCK_SLUGS
+                .map(c => {
+                  const clock = dash.bioClocks[c.slug];
+                  if (!clock) return null;
+                  const age = c.isDunedin ? paceProjected : clock.latest;
+                  const diff = age != null ? age - chronoAge : null;
+                  return { ...c, age, diff };
+                })
+                .filter((x): x is NonNullable<typeof x> => x != null && x.diff != null);
+              const best = clockEntries.length > 0 ? clockEntries.reduce((a, b) => (a.diff! < b.diff! ? a : b)) : null;
+              const worst = clockEntries.length > 1 ? clockEntries.reduce((a, b) => (a.diff! > b.diff! ? a : b)) : null;
+
+              // Bio age trend chart data
+              const CLOCKS_META: { slug: string; color: string; isDunedin?: boolean }[] = [
+                { slug: 'phenoage', color: '#0C9C6C' },
+                { slug: 'grimage_v2', color: '#8b5cf6' },
+                { slug: 'dunedinpace', color: '#ceab84', isDunedin: true },
+              ];
+              const chartData = dash.displayDates.map((_: string, di: number) => {
+                const point: Record<string, string | number | null> = { date: dash.displayLabels[di], chron: chronoAge };
+                for (const c of CLOCKS_META) {
+                  const clock = dash.bioClocks[c.slug];
+                  if (!clock || clock.values[di] == null) continue;
+                  if (c.isDunedin) {
+                    point['DunedinPACE×age'] = +((clock.values[di] as number) * chronoAge).toFixed(1);
+                  } else {
+                    point[c.slug === 'phenoage' ? 'PhenoAge' : 'GrimAge v2'] = clock.values[di];
+                  }
+                }
+                return point;
+              });
+              const allAges = chartData.flatMap(d =>
+                ['PhenoAge', 'GrimAge v2', 'DunedinPACE×age'].map(k => d[k] as number | null).filter((v): v is number => v != null)
+              );
+              const bioYMin = allAges.length > 0 ? Math.floor(Math.min(...allAges, chronoAge) / 5) * 5 - 2 : chronoAge - 10;
+              const bioYMax = allAges.length > 0 ? Math.ceil(Math.max(...allAges, chronoAge) / 5) * 5 + 2 : chronoAge + 10;
+
+              return (
+                <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col">
+                  <div className="px-5 pt-5 pb-3.5 flex flex-col items-center gap-[5px]">
+                    <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-[#ceab84] mb-2 self-start">
+                      {t.bioAgeClocks}
+                    </div>
+                    <div className="mt-2 mb-1"><Gauge score={bioGaugeScore} max={100} dark /></div>
+                    {avgBioAge != null && (
+                      <>
+                        <div className="text-xs text-white/30 text-center">
+                          {avgDiff != null && (avgDiff < 0
+                            ? `↓ ${Math.abs(avgDiff).toFixed(1)} years younger than chronological age`
+                            : `↑ ${avgDiff.toFixed(1)} years older than chronological age`
+                          )}
+                        </div>
+                        <div className="text-[10px] text-white/[.18] text-center leading-snug mt-1">
+                          {t.bioAgeDesc} · avg. across {bioAgeValues.length} clocks
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Best Clock / Focus Clock panels */}
+                  <div className="grid grid-cols-2 border-t border-white/[.06]">
+                    {best && (
+                      <div className="px-3.5 py-[11px] flex flex-col gap-0.5 border-r border-white/[.06]">
+                        <div className="text-xs font-semibold tracking-[.08em] uppercase text-white/28">Best Clock</div>
+                        <div className="font-serif text-[1.3rem] leading-none text-[#0C9C6C]">{best.age?.toFixed(1)}</div>
+                        <div className="text-xs text-white/22">{best.label}</div>
+                      </div>
+                    )}
+                    {worst && worst.slug !== best?.slug && (
+                      <div className="px-3.5 py-[11px] flex flex-col gap-0.5">
+                        <div className="text-xs font-semibold tracking-[.08em] uppercase text-white/28">Focus Clock</div>
+                        <div className="font-serif text-[1.3rem] leading-none text-[#C4A96A]">{worst.age?.toFixed(1)}</div>
+                        <div className="text-xs text-white/22">{worst.label}</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bio age trend chart */}
+                  {allAges.length > 0 && (
+                    <div className="border-t border-white/[.06] px-4 py-3 bg-black/[.12]">
+                      <div className="text-[10px] font-semibold tracking-[.08em] uppercase text-white/22 mb-1.5">Bio Clocks vs Chronological</div>
+                      <div className="h-[110px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -28 }}>
+                            <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
+                            <YAxis domain={[bioYMin, bioYMax]} tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={4} />
+                            <RTooltip
+                              formatter={(v) => typeof v === 'number' ? v.toFixed(1) : String(v ?? '')}
+                              contentStyle={{ fontSize: 11, background: '#0e393d', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8 }}
+                              labelStyle={{ color: 'rgba(255,255,255,.5)' }}
+                              itemStyle={{ fontSize: 11 }}
+                            />
+                            <Line name="Chronological" type="monotone" dataKey="chron" stroke="rgba(255,255,255,.2)" strokeWidth={1} strokeDasharray="5 4" dot={false} />
+                            {dash.bioClocks['phenoage'] && <Line name="PhenoAge" type="monotone" dataKey="PhenoAge" stroke="#0C9C6C" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />}
+                            {dash.bioClocks['grimage_v2'] && <Line name="GrimAge v2" type="monotone" dataKey="GrimAge v2" stroke="#8b5cf6" strokeWidth={2} dot={false} activeDot={{ r: 4 }} connectNulls />}
+                            {dash.bioClocks['dunedinpace'] && <Line name="DunedinPACE×age" type="monotone" dataKey="DunedinPACE×age" stroke="#ceab84" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />}
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
-          {/* Insight cards below the grid */}
+          {/* YOUR PROGRESS bar below the two gauges */}
+          <div className="bg-[#0e393d] rounded-2xl p-6 shadow-lg mb-6">
+            <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#ceab84] mb-4">{t.yourProgress}</div>
+
+            {(dash.borderline.length > 0 || dash.improved.length > 0) ? (
+              <div className="grid md:grid-cols-2 gap-6">
+                {dash.borderline.length > 0 && (
+                  <div>
+                    <div className="text-[13px] font-semibold text-white mb-2">{t.borderlineHead.replace('{n}', String(dash.borderline.length))}</div>
+                    <div className="h-1 rounded-full bg-[#C4A96A]/20 mb-3 overflow-hidden">
+                      <div className="h-full bg-[#C4A96A]" style={{ width: `${Math.min(100, (dash.borderline.length / dash.flagTotal) * 100)}%` }} />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {dash.borderline.slice(0, 6).map((m) => (
+                        <span key={m.defId} className="text-[10px] px-2.5 py-1 rounded-full bg-[#C4A96A]/15 text-[#C4A96A] font-medium">{m.name}</span>
+                      ))}
+                      {dash.borderline.length > 6 && (
+                        <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/10 text-white/40">+{dash.borderline.length - 6}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {dash.improved.length > 0 && (
+                  <div>
+                    <div className="text-[13px] font-semibold text-white mb-2">{t.improvedHead.replace('{n}', String(dash.improved.length))}</div>
+                    <div className="h-1 rounded-full bg-[#0C9C6C]/20 mb-3 overflow-hidden">
+                      <div className="h-full bg-[#0C9C6C]" style={{ width: `${Math.min(100, (dash.improved.length / dash.flagTotal) * 100)}%` }} />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {dash.improved.slice(0, 6).map((m) => (
+                        <span key={m.defId} className="text-[10px] px-2.5 py-1 rounded-full bg-[#0C9C6C]/15 text-[#0C9C6C] font-medium">{m.name}</span>
+                      ))}
+                      {dash.improved.length > 6 && (
+                        <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/10 text-white/40">+{dash.improved.length - 6}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {([
+                  { status: 'optimal' as MStatus, count: dash.flags.optimal, label: t.optLabel },
+                  { status: 'good' as MStatus, count: dash.flags.good, label: t.goodLabel },
+                  { status: 'moderate' as MStatus, count: dash.flags.moderate, label: t.modLabel },
+                  { status: 'risk' as MStatus, count: dash.flags.risk, label: t.riskLabel },
+                ]).map(row => (
+                  <div key={row.status} className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: statusColor(row.status) }} />
+                    <span className="text-[11px] text-white/40 w-16">{row.label}</span>
+                    <div className="flex-1 h-[5px] rounded-full bg-white/10 overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${dash.flagTotal ? (row.count / dash.flagTotal * 100) : 0}%`, background: statusColor(row.status) }} />
+                    </div>
+                    <span className="text-sm font-semibold text-white/60 w-6 text-right">{row.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Insight cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {dash.longevityBest && (
               <div className="bg-white rounded-2xl border border-[#1c2a2b]/[.06] p-5 shadow-sm">
                 <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#0C9C6C]/60 mb-2">{t.topStrength}</div>
                 <div className="text-[13px] font-semibold text-[#0e393d] mb-2">{getName(dash.longevityBest.name, lang).split(/\s*\(/)[0]}</div>
-                <div className="flex items-baseline gap-1 mb-2">
+                <div className="flex items-baseline gap-1">
                   <span className="font-serif text-xl" style={{ color: scoreColor(dash.longevityBest.scores[dash.longevityBest.scores.length - 1]) }}>
                     {dash.longevityBest.scores[dash.longevityBest.scores.length - 1]}
                   </span>
                   <span className="text-[10px] text-[#1c2a2b]/40">{dash.longevityBest.markers.length} {t.markers}</span>
                 </div>
-                <div className="text-[11px] text-[#1c2a2b]/50">
-                  {dash.longevityBest.scores[dash.longevityBest.scores.length - 1] >= 75 ? 'Strong domain health' : 'Solid performance'}
-                </div>
               </div>
             )}
-
             {dash.longevityWorst && (
               <div className="bg-white rounded-2xl border border-[#1c2a2b]/[.06] p-5 shadow-sm">
                 <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#C4A96A]/80 mb-2">{t.priorityAction}</div>
-                <div className="text-[13px] font-semibold text-[#0e393d] mb-2">{dash.longevityWorst.markers.length > 0 ? getName(dash.longevityWorst.markers[0].name, lang) : getName(dash.longevityWorst.name, lang).split(/\s*\(/)[0]}</div>
-                <div className="flex items-baseline gap-1 mb-2">
+                <div className="text-[13px] font-semibold text-[#0e393d] mb-2">{getName(dash.longevityWorst.name, lang).split(/\s*\(/)[0]}</div>
+                <div className="flex items-baseline gap-1">
                   <span className="font-serif text-xl" style={{ color: scoreColor(dash.longevityWorst.scores[dash.longevityWorst.scores.length - 1]) }}>
                     {dash.longevityWorst.scores[dash.longevityWorst.scores.length - 1]}
                   </span>
                 </div>
-                <div className="text-[11px] text-[#1c2a2b]/50">
-                  Focus on {dash.longevityWorst.markers.filter(m => m.latestStatus === 'risk' || m.latestStatus === 'moderate').length > 0 ? 'at-risk markers' : 'improvement'}
-                </div>
               </div>
             )}
-
             {dash.firstMeaningfulScore != null && (
               <div className="bg-white rounded-2xl border border-[#1c2a2b]/[.06] p-5 shadow-sm">
                 <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/35 mb-2">{t.monthProgress}</div>
@@ -1485,158 +1690,12 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
                   <span className="font-serif text-xl" style={{ color: scoreColor(dash.longevityLatest) }}>{dash.longevityLatest}</span>
                 </div>
                 <div className="text-[11px] text-[#1c2a2b]/50">
-                  {dash.longevityLatest - dash.firstMeaningfulScore >= 0 ? '+' : ''}{dash.longevityLatest - dash.firstMeaningfulScore} pts ({dash.improved.length > 0 ? `${dash.improved.length} improved` : 'tracking'})
+                  {dash.longevityLatest - dash.firstMeaningfulScore >= 0 ? '+' : ''}{dash.longevityLatest - dash.firstMeaningfulScore} pts
                 </div>
               </div>
             )}
           </div>
         </section>
-
-        {/* BIOLOGICAL AGE CLOCKS SECTION */}
-        {Object.keys(dash.bioClocks).length > 0 && profile?.birthday && (() => {
-          const birthDate = new Date(profile.birthday);
-          const today = new Date();
-          const chronoAge = +(((today.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)).toFixed(1));
-
-          // Clock metadata
-          const CLOCKS: { slug: string; label: string; sub: string; color: string; isDunedin?: boolean }[] = [
-            {
-              slug: 'phenoage', label: 'PHENOAGE · LEVINE 2018', color: '#0C9C6C',
-              sub: 'Calculated from 9 standard blood markers. Each year above chronological age ≈ +6% mortality risk.',
-            },
-            {
-              slug: 'grimage_v2', label: 'GRIMAGE V2 · METHYLATION', color: '#8b5cf6',
-              sub: 'Gold-standard DNA methylation clock. Most accurate predictor of healthspan and lifespan. Requires specialist lab.',
-            },
-            {
-              slug: 'dunedinpace', label: 'DUNEDINPACE · AGING RATE', color: '#ceab84', isDunedin: true,
-              sub: '',
-            },
-          ];
-
-          // DunedinPACE → projected age = rate × chronoAge
-          const paceRate = dash.bioClocks['dunedinpace']?.latest;
-          const paceProjected = paceRate != null ? +(paceRate * chronoAge).toFixed(1) : null;
-          const paceDiff = paceProjected != null ? paceProjected - chronoAge : null;
-          const paceMonths = paceRate != null ? +(paceRate * 12).toFixed(1) : null;
-          CLOCKS[2].sub = paceRate != null
-            ? `Speed of aging: ${paceRate.toFixed(2)} yr/yr · population avg 1.0 · You age ${paceMonths} months per calendar year.`
-            : 'Speed of aging rate. Population average is 1.0 yr/yr.';
-
-          // Trend chart data
-          const chartData = dash.displayDates.map((_: string, di: number) => {
-            const point: Record<string, string | number | null> = { date: dash.displayLabels[di], chron: chronoAge };
-            for (const c of CLOCKS) {
-              const clock = dash.bioClocks[c.slug];
-              if (!clock || clock.values[di] == null) continue;
-              if (c.isDunedin) {
-                // Convert rate to projected age for chart
-                point['DunedinPACE×age'] = +((clock.values[di] as number) * chronoAge).toFixed(1);
-              } else {
-                const key = c.slug === 'phenoage' ? 'PhenoAge' : 'GrimAge v2';
-                point[key] = clock.values[di];
-              }
-            }
-            return point;
-          });
-
-          // Y-axis domain from all projected values
-          const allAges = chartData.flatMap(d =>
-            ['PhenoAge', 'GrimAge v2', 'DunedinPACE×age'].map(k => d[k] as number | null).filter((v): v is number => v != null)
-          );
-          const bioYMin = allAges.length > 0 ? Math.floor(Math.min(...allAges, chronoAge) / 5) * 5 - 2 : chronoAge - 10;
-          const bioYMax = allAges.length > 0 ? Math.ceil(Math.max(...allAges, chronoAge) / 5) * 5 + 2 : chronoAge + 10;
-
-          return (
-            <section className="mb-16">
-              <div className="flex items-center justify-between mb-5">
-                <SectionTag>{t.bioAgeClocks}</SectionTag>
-                <span className="text-[10px] text-[#1c2a2b]/35 tracking-wide">Epigenetic &amp; blood-based age estimates · display only, not scored</span>
-              </div>
-
-              <div className="bg-[#0e393d] rounded-2xl overflow-hidden shadow-lg">
-                {/* 3-column clock cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3">
-                  {CLOCKS.map((c, idx) => {
-                    const clock = dash.bioClocks[c.slug];
-                    if (!clock) return null;
-
-                    let displayAge: string;
-                    let diff: number | null;
-                    let diffLabel: string;
-                    let chronLabel: string;
-
-                    if (c.isDunedin) {
-                      displayAge = paceProjected != null ? `${paceProjected} yr` : '—';
-                      diff = paceDiff;
-                      diffLabel = diff != null
-                        ? (diff < 0 ? `↓ ${Math.abs(diff).toFixed(1)} years younger (rate)` : `↑ ${diff.toFixed(1)} years older (rate)`)
-                        : '';
-                      chronLabel = 'rate × age = projected age';
-                    } else {
-                      displayAge = clock.latest?.toFixed(1) ?? '—';
-                      diff = clock.latest != null ? clock.latest - chronoAge : null;
-                      diffLabel = diff != null
-                        ? (diff < 0 ? `↓ ${Math.abs(diff).toFixed(1)} years younger` : `↑ ${diff.toFixed(1)} years older`)
-                        : '';
-                      chronLabel = `${chronoAge.toFixed(1)} chronological`;
-                    }
-
-                    const isYounger = diff != null && diff < 0;
-
-                    return (
-                      <div key={c.slug} className={`p-6 flex flex-col gap-1 ${idx < 2 ? 'border-r border-white/[.06]' : ''}`}>
-                        <div className="text-[11px] font-semibold tracking-[.1em] uppercase text-[#ceab84] mb-1">{c.label}</div>
-                        <div className="text-sm text-white/[.18] line-through">{chronLabel}</div>
-                        <div className="font-serif leading-none text-[2.4rem]" style={{ color: isYounger ? '#0C9C6C' : '#C4A96A' }}>
-                          {displayAge}
-                        </div>
-                        <div className="text-sm font-semibold" style={{ color: isYounger ? '#0C9C6C' : '#C4A96A' }}>
-                          {diffLabel}
-                        </div>
-                        <div className="text-xs text-white/[.22] leading-relaxed mt-1">{c.sub}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Trend chart */}
-                {allAges.length > 0 && (
-                  <div className="border-t border-white/[.06] px-6 pt-4 pb-5 bg-black/[.1]">
-                    <div className="text-[8px] font-semibold tracking-[.08em] uppercase text-white/[.22] mb-3">
-                      ALL BIOLOGICAL CLOCKS VS CHRONOLOGICAL AGE — YEARS
-                    </div>
-                    <div style={{ width: '100%', height: 220 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartData} margin={{ top: 4, right: 40, bottom: 0, left: -16 }}>
-                          <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
-                          <YAxis domain={[bioYMin, bioYMax]} tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={5} />
-                          <RTooltip
-                            formatter={(v) => typeof v === 'number' ? v.toFixed(1) : String(v ?? '')}
-                            contentStyle={{ fontSize: 11, background: '#0e393d', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8 }}
-                            labelStyle={{ color: 'rgba(255,255,255,.5)' }}
-                            itemStyle={{ fontSize: 11 }}
-                          />
-                          <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: 11, color: 'rgba(255,255,255,.5)', paddingTop: 6 }} />
-                          <Line name="Chronological" type="monotone" dataKey="chron" stroke="rgba(255,255,255,.2)" strokeWidth={1} strokeDasharray="5 4" dot={false} />
-                          {dash.bioClocks['dunedinpace'] && (
-                            <Line name="DunedinPACE×age" type="monotone" dataKey="DunedinPACE×age" stroke="#ceab84" strokeWidth={2} dot={{ r: 3, fill: '#ceab84' }} activeDot={{ r: 5 }} />
-                          )}
-                          {dash.bioClocks['grimage_v2'] && (
-                            <Line name="GrimAge v2" type="monotone" dataKey="GrimAge v2" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3, fill: '#8b5cf6' }} activeDot={{ r: 5 }} connectNulls />
-                          )}
-                          {dash.bioClocks['phenoage'] && (
-                            <Line name="PhenoAge" type="monotone" dataKey="PhenoAge" stroke="#0C9C6C" strokeWidth={2} dot={{ r: 3, fill: '#0C9C6C' }} activeDot={{ r: 5 }} />
-                          )}
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </section>
-          );
-        })()}
 
         {/* KEY MARKERS SECTION */}
         {dash.topRankedMarkers.length > 0 && (

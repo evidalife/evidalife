@@ -224,13 +224,13 @@ export async function POST(req: NextRequest) {
     if (labReportId && savedUserId && Object.keys(savedValues).length > 0) {
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('birthday, height_cm, sex')
+        .select('date_of_birth, height_cm, sex')
         .eq('id', savedUserId)
         .single();
 
-      const userAge = profileData?.birthday
+      const userAge = profileData?.date_of_birth
         ? Math.floor(
-            (Date.now() - new Date(profileData.birthday).getTime()) /
+            (Date.now() - new Date(profileData.date_of_birth).getTime()) /
             (365.25 * 24 * 3600 * 1000),
           )
         : undefined;

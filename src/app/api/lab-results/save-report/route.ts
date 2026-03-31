@@ -1,8 +1,8 @@
 // src/app/api/lab-results/save-report/route.ts
 // POST { title, test_date, source, lab_address?, lab_email?, lab_phone?,
-//        results: [{biomarker_id, value, unit}], storagePath? }
+//        results: [{biomarker_id, value, unit}], storagePath?, fileName?, fileSize? }
 // Creates lab_report + inserts lab_results with canonical-unit conversion.
-// If storagePath provided (PDF upload), deletes the PDF from storage after save.
+// If storagePath provided (PDF upload), keeps the file for 7 days then auto-deletes.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     const {
       title, test_date, source = 'manual_entry',
       lab_address, lab_email, lab_phone,
-      results, storagePath,
+      results, storagePath, fileName, fileSize,
     } = body;
 
     if (!title?.trim())  return NextResponse.json({ error: 'title is required' }, { status: 400 });
@@ -102,9 +102,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: insertErr.message }, { status: 500 });
     }
 
-    // 5. Delete PDF from storage (privacy — we never keep customer PDFs)
+    // 5. Track PDF upload — keep file for 7 days for re-extraction, then auto-delete
     if (storagePath) {
-      await supabase.storage.from('lab-pdfs').remove([storagePath]);
+      const deleteAfter = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      await supabase.from('lab_pdf_uploads').insert({
+        uploaded_by:       user.id,
+        user_id:           user.id,
+        file_name:         fileName || storagePath.split('/').pop() || 'upload.pdf',
+        file_url:          storagePath,
+        extraction_status: 'completed',
+        results_created:   inserts.length,
+        lab_report_id:     report.id,
+        upload_source:     'user',
+        delete_after:      deleteAfter,
+        file_size_bytes:   fileSize || null,
+      });
     }
 
     return NextResponse.json({ success: true, reportId: report.id, count: inserts.length });
