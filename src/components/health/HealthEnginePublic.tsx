@@ -80,26 +80,13 @@ const D: Domain[] = [
     { n: 'Cortisol (AM)', u: 'µg/dL', v: [18.5, 16.2, 14.2], r: [6, 23], o: [8, 15], dir: 'lower', desc: 'Chronically elevated cortisol drives muscle breakdown, visceral fat accumulation, immune suppression, and cognitive decline. Optimal morning cortisol 8–15 µg/dL. Your cortisol is trending downward.' },
     { n: 'DHEA-S', u: 'µg/dL', v: [280, 295, 310], r: [80, 560], o: [200, 450], dir: 'higher', desc: 'Master precursor hormone, declines dramatically with age. Lower DHEA-S predicts higher all-cause mortality. Your DHEA-S is in the optimal range and rising — a positive sign.' },
   ]},
-  { ic: '🏋️', nm: { en: 'Body Composition', de: 'Körperzusammensetzung', fr: 'Composition corporelle', es: 'Composición corporal', it: 'Composizione corporea' }, sc: [62, 70, 74], w: '5%', col: '#0ea5e9', m: [
-    { n: 'BMI', u: 'kg/m²', v: [26.8, 25.4, 24.6], r: [18.5, 30], o: [20, 25], dir: 'range', desc: 'Body mass index. Limited for athletes as it cannot distinguish muscle from fat. Your BMI of 24.6 is now in the optimal range.' },
-    { n: 'Body Fat', u: '%', v: [24.5, 21.8, 19.6], r: [8, 30], o: [12, 20], dir: 'lower', desc: 'DEXA body fat percentage reflects true adiposity. For men, 12–20% is the optimal range. Your body fat has fallen 5% over 18 months — significant body recomposition.' },
-    { n: 'Visceral Fat', u: 'cm²', v: [112, 95, 82], r: [10, 150], o: [10, 100], dir: 'lower', desc: 'Fat deposited around internal organs — metabolically far more dangerous than subcutaneous fat. Directly linked to insulin resistance and cardiovascular risk. Your visceral fat has fallen 27% into the optimal zone.' },
-    { n: 'Lean Mass', u: 'kg', v: [58.2, 60.5, 62.1], r: [45, 85], o: [55, 75], dir: 'higher', desc: 'Skeletal muscle mass is one of the strongest predictors of longevity. Muscle is the primary organ for glucose disposal. Your lean mass has increased 3.9 kg — exceptional result.' },
-    { n: 'Bone Density', u: 'T-score', v: [-0.4, -0.2, 0.1], r: [-2.5, 2], o: [-1, 2], dir: 'higher', desc: 'DEXA T-score comparing your bone density to a young adult reference. Above 0 means your bones are denser than the young adult average. Your trend is excellent — weight training is working.' },
-  ]},
-  { ic: '🏃', nm: { en: 'Fitness & Recovery', de: 'Fitness & Erholung', fr: 'Forme & Récupération', es: 'Fitness & Recuperación', it: 'Fitness & Recupero' }, sc: [55, 65, 72], w: '5%', col: '#16a34a', m: [
-    { n: 'VO₂max', u: 'mL/kg/min', v: [38.5, 42.1, 45.8], r: [20, 60], o: [40, 55], dir: 'higher', desc: 'The single strongest predictor of all-cause mortality. Each 1 mL/kg/min improvement reduces mortality risk meaningfully. You improved 19% from below-average to above-average for your age group — the most impactful change in your report.' },
-    { n: 'Resting Heart Rate', u: 'bpm', v: [68, 62, 58], r: [40, 100], o: [45, 60], dir: 'lower', desc: 'Lower RHR reflects a more efficient cardiovascular system. Regular aerobic training reduces RHR ~1 bpm per week. Your RHR has fallen from 68 to 58 — reflecting significant aerobic fitness improvement.' },
-    { n: 'HRV (RMSSD)', u: 'ms', v: [32, 41, 48], r: [15, 100], o: [40, 80], dir: 'higher', desc: 'Heart rate variability reflects autonomic nervous system balance. High HRV indicates good recovery, low stress, and high fitness. Your HRV has improved dramatically from 32 to 48 ms — now in the optimal zone.' },
-    { n: 'Recovery Score', u: '/100', v: [62, 71, 78], r: [0, 100], o: [70, 100], dir: 'higher', desc: 'Composite recovery metric from wearable device data. Above 70 is optimal. Your recovery has improved from 62 to 78 — consistent with the improvements in HRV, RHR, and VO₂max.' },
-  ]},
 ];
 
 const FEATURED: Featured[] = [
   { di: 0, mi: 1, why: 'Your ApoB fell from 0.92 to 0.72 g/L — a 22% drop into the optimal zone. This is your strongest cardiovascular achievement.' },
   { di: 1, mi: 3, why: 'HOMA-IR dropped from 2.31 to 1.26 in 18 months — crossing from insulin resistant to optimal. One of the most meaningful changes in your report.' },
   { di: 2, mi: 0, why: 'hsCRP has improved from 2.8 to 1.8 mg/L — still above the 1.0 optimal threshold. Keep the anti-inflammatory momentum.' },
-  { di: 7, mi: 0, why: 'Most dramatic improvement: VO₂max jumped 19% from below-average to above-average for your age group.' },
+  { di: 5, mi: 0, why: 'Testosterone rose from 480 to 580 ng/dL — now firmly in the longevity optimal range. Strength training and nutrition are paying off.' },
   { di: 4, mi: 0, why: 'Vitamin D at 24 ng/mL is your most actionable opportunity. Below optimal 40–60 ng/mL. Supplement 4,000 IU/day.' },
   { di: 0, mi: 2, why: 'HDL rose from 48 to 62 mg/dL — significant reverse cholesterol transport improvement. Diet and exercise are working.' },
   { di: 4, mi: 5, why: 'Omega-3 Index climbing from 4.2% to 6.8%. Above 8% is the longevity optimal. You are on track.' },
@@ -132,10 +119,10 @@ const T: Record<Lang, {
   allBioClocksLabel: string; markerTrendsLabel: string; scoreHistoryLabel: string; basedOn8Domains: string;
 }> = {
   en: {
-    tag: 'HEALTH ENGINE', title: 'Your Longevity Score.', sub: '46 biomarkers across 8 health domains. Track your score over time, see what improves, and know exactly what to focus on.',
+    tag: 'HEALTH ENGINE', title: 'Your Longevity Score.', sub: '46 biomarkers across 9 health domains. Track your score over time, see what improves, and know exactly what to focus on.',
     heroDate: 'Last tested: Mar 15, 2026', heroTests: '3 tests completed', heroKit: 'Evida Complete (46 markers)',
     scMsg: 'Good — above average for your age', sample: 'PREVIEW — Sample Data',
-    secScore: 'LONGEVITY SCORE', secKm: 'KEY MARKERS', secDom: '8 HEALTH DOMAINS', secBm: 'BIOMARKER DETAILS',
+    secScore: 'LONGEVITY SCORE', secKm: 'KEY MARKERS', secDom: '9 HEALTH DOMAINS', secBm: 'BIOMARKER DETAILS',
     insStrT: 'Top Strength', insPriT: 'Priority Action', insProgT: '18-Month Progress',
     alertWarnHead: '1 marker in the borderline zone', alertWarnBody: 'Within laboratory reference range but below the longevity optimal target. Lifestyle interventions can often bring these into the optimal zone within 90 days.',
     alertOkHead: '11 markers have moved into a healthy range since your first test', alertOkBody: 'Your interventions are working. Keep up the current approach and continue tracking at your next test.',
@@ -152,7 +139,7 @@ const T: Record<Lang, {
     borderlineZoneBody: 'Within laboratory reference range but below the longevity optimal target. Lifestyle interventions can often bring these into the optimal zone within 90 days.',
     improvedMarkersHead: '11 markers improved since first test',
     improvedMarkersBody: 'Your interventions are working. Keep up the current approach and continue tracking at your next test.',
-    weightedComposite: 'Weighted composite of 8 domains',
+    weightedComposite: 'Weighted composite of 9 domains',
     impactfulBiomarkers: 'Your most impactful biomarkers',
     clickDomainMarkers: 'Click any domain to see all markers',
     biomarkerDetailsRight: 'All measured values across every test',
@@ -163,13 +150,13 @@ const T: Record<Lang, {
     allBioClocksLabel: 'ALL BIOLOGICAL CLOCKS VS CHRONOLOGICAL AGE — YEARS',
     markerTrendsLabel: 'Marker trends — actual values',
     scoreHistoryLabel: 'SCORE HISTORY — 3 TESTS',
-    basedOn8Domains: 'Based on 8 health domains · Epigenetics shown separately',
+    basedOn8Domains: 'Based on 9 health domains · Epigenetics shown separately',
   },
   de: {
-    tag: 'HEALTH ENGINE', title: 'Dein Longevity Score.', sub: '46 Biomarker in 8 Gesundheitsbereichen. Verfolge deinen Score über die Zeit, sieh was sich verbessert.',
+    tag: 'HEALTH ENGINE', title: 'Dein Longevity Score.', sub: '46 Biomarker in 9 Gesundheitsbereichen. Verfolge deinen Score über die Zeit, sieh was sich verbessert.',
     heroDate: 'Zuletzt getestet: 15. März 2026', heroTests: '3 Tests abgeschlossen', heroKit: 'Evida Complete (46 Marker)',
     scMsg: 'Gut — über dem Durchschnitt für dein Alter', sample: 'VORSCHAU — Beispieldaten',
-    secScore: 'LONGEVITY SCORE', secKm: 'SCHLÜSSEL-MARKER', secDom: '8 GESUNDHEITSBEREICHE', secBm: 'BIOMARKER-DETAILS',
+    secScore: 'LONGEVITY SCORE', secKm: 'SCHLÜSSEL-MARKER', secDom: '9 GESUNDHEITSBEREICHE', secBm: 'BIOMARKER-DETAILS',
     insStrT: 'Top-Stärke', insPriT: 'Priorität', insProgT: '18-Monats-Fortschritt',
     alertWarnHead: '1 Marker im Grenzbereich', alertWarnBody: 'Im Laborbereich, aber unter dem Longevity-Zielwert. Lifestyle-Maßnahmen können dies oft in 90 Tagen korrigieren.',
     alertOkHead: '11 Marker haben sich seit dem ersten Test verbessert', alertOkBody: 'Deine Interventionen wirken. Weiter so und beim nächsten Test fortsetzen.',
@@ -186,7 +173,7 @@ const T: Record<Lang, {
     borderlineZoneBody: 'Im Laborbereich, aber unter dem Longevity-Zielwert. Lifestyle-Maßnahmen können dies oft in 90 Tagen korrigieren.',
     improvedMarkersHead: '11 Marker seit dem ersten Test verbessert',
     improvedMarkersBody: 'Deine Interventionen wirken. Weiter so und beim nächsten Test fortsetzen.',
-    weightedComposite: 'Gewichtetes Komposit aus 8 Bereichen',
+    weightedComposite: 'Gewichtetes Komposit aus 9 Bereichen',
     impactfulBiomarkers: 'Deine wirkungsvollsten Biomarker',
     clickDomainMarkers: 'Klicke auf einen Bereich, um alle Marker zu sehen',
     biomarkerDetailsRight: 'Alle gemessenen Werte aus jedem Test',
@@ -197,13 +184,13 @@ const T: Record<Lang, {
     allBioClocksLabel: 'ALLE BIO-UHREN VS CHRONOLOGISCHES ALTER — JAHRE',
     markerTrendsLabel: 'Marker-Trends — tatsächliche Werte',
     scoreHistoryLabel: 'SCORE-VERLAUF — 3 TESTS',
-    basedOn8Domains: 'Basiert auf 8 Gesundheitsbereichen · Epigenetik separat',
+    basedOn8Domains: 'Basiert auf 9 Gesundheitsbereichen · Epigenetik separat',
   },
   fr: {
-    tag: 'HEALTH ENGINE', title: 'Votre score de longévité.', sub: '46 biomarqueurs dans 8 domaines de santé. Suivez votre score dans le temps, voyez ce qui s\'améliore.',
+    tag: 'HEALTH ENGINE', title: 'Votre score de longévité.', sub: '46 biomarqueurs dans 9 domaines de santé. Suivez votre score dans le temps, voyez ce qui s\'améliore.',
     heroDate: 'Dernier test : 15 mars 2026', heroTests: '3 tests complétés', heroKit: 'Evida Complete (46 marqueurs)',
     scMsg: 'Bien — au-dessus de la moyenne pour votre âge', sample: 'APERÇU — Données d\'exemple',
-    secScore: 'SCORE DE LONGÉVITÉ', secKm: 'MARQUEURS CLÉS', secDom: '8 DOMAINES DE SANTÉ', secBm: 'DÉTAILS BIOMARQUEURS',
+    secScore: 'SCORE DE LONGÉVITÉ', secKm: 'MARQUEURS CLÉS', secDom: '9 DOMAINES DE SANTÉ', secBm: 'DÉTAILS BIOMARQUEURS',
     insStrT: 'Point fort', insPriT: 'Action prioritaire', insProgT: 'Progrès 18 mois',
     alertWarnHead: '1 marqueur en zone limite', alertWarnBody: 'Dans la plage de référence mais en dessous de la cible optimale de longévité.',
     alertOkHead: '11 marqueurs sont entrés dans une plage saine depuis votre premier test', alertOkBody: 'Vos interventions fonctionnent. Continuez et suivez au prochain test.',
@@ -220,7 +207,7 @@ const T: Record<Lang, {
     borderlineZoneBody: 'Dans la plage de référence mais en dessous de la cible optimale de longévité. Des interventions lifestyle peuvent souvent corriger cela en 90 jours.',
     improvedMarkersHead: '11 marqueurs améliorés depuis le premier test',
     improvedMarkersBody: 'Vos interventions fonctionnent. Continuez et suivez au prochain test.',
-    weightedComposite: 'Composite pondéré de 8 domaines',
+    weightedComposite: 'Composite pondéré de 9 domaines',
     impactfulBiomarkers: 'Vos biomarqueurs les plus impactants',
     clickDomainMarkers: 'Cliquez sur un domaine pour voir tous les marqueurs',
     biomarkerDetailsRight: 'Toutes les valeurs mesurées de chaque test',
@@ -231,10 +218,10 @@ const T: Record<Lang, {
     allBioClocksLabel: 'TOUTES LES HORLOGES BIOLOGIQUES VS ÂGE CHRONOLOGIQUE — ANNÉES',
     markerTrendsLabel: 'Tendances des marqueurs — valeurs réelles',
     scoreHistoryLabel: 'HISTORIQUE DES SCORES — 3 TESTS',
-    basedOn8Domains: 'Basé sur 8 domaines de santé · Épigénétique affichée séparément',
+    basedOn8Domains: 'Basé sur 9 domaines de santé · Épigénétique affichée séparément',
   },
   es: {
-    tag: 'HEALTH ENGINE', title: 'Tu puntuación de longevidad.', sub: '46 biomarcadores en 8 dominios de salud. Sigue tu puntuación a lo largo del tiempo.',
+    tag: 'HEALTH ENGINE', title: 'Tu puntuación de longevidad.', sub: '46 biomarcadores en 9 dominios de salud. Sigue tu puntuación a lo largo del tiempo.',
     heroDate: 'Último análisis: 15 mar 2026', heroTests: '3 pruebas completadas', heroKit: 'Evida Complete (46 marcadores)',
     scMsg: 'Bien — por encima de la media para tu edad', sample: 'VISTA PREVIA — Datos de muestra',
     secScore: 'PUNTUACIÓN DE LONGEVIDAD', secKm: 'MARCADORES CLAVE', secDom: '8 DOMINIOS DE SALUD', secBm: 'DETALLES BIOMARCADORES',
@@ -254,7 +241,7 @@ const T: Record<Lang, {
     borderlineZoneBody: 'Dentro del rango de referencia pero por debajo del objetivo óptimo de longevidad. Las intervenciones de estilo de vida a menudo pueden llevarlo a la zona óptima en 90 días.',
     improvedMarkersHead: '11 marcadores mejorados desde el primer análisis',
     improvedMarkersBody: 'Tus intervenciones están funcionando. Continúa y haz seguimiento en el próximo análisis.',
-    weightedComposite: 'Compuesto ponderado de 8 dominios',
+    weightedComposite: 'Compuesto ponderado de 9 dominios',
     impactfulBiomarkers: 'Tus biomarcadores más impactantes',
     clickDomainMarkers: 'Haz clic en un dominio para ver todos los marcadores',
     biomarkerDetailsRight: 'Todos los valores medidos en cada análisis',
@@ -265,10 +252,10 @@ const T: Record<Lang, {
     allBioClocksLabel: 'TODOS LOS RELOJES BIOLÓGICOS VS EDAD CRONOLÓGICA — AÑOS',
     markerTrendsLabel: 'Tendencias de marcadores — valores reales',
     scoreHistoryLabel: 'HISTORIAL DE PUNTUACIONES — 3 PRUEBAS',
-    basedOn8Domains: 'Basado en 8 dominios de salud · Epigenética mostrada por separado',
+    basedOn8Domains: 'Basado en 9 dominios de salud · Epigenética mostrada por separado',
   },
   it: {
-    tag: 'HEALTH ENGINE', title: 'Il tuo punteggio di longevità.', sub: '46 biomarcatori in 8 domini della salute. Monitora il tuo punteggio nel tempo.',
+    tag: 'HEALTH ENGINE', title: 'Il tuo punteggio di longevità.', sub: '46 biomarcatori in 9 domini della salute. Monitora il tuo punteggio nel tempo.',
     heroDate: 'Ultimo test: 15 mar 2026', heroTests: '3 test completati', heroKit: 'Evida Complete (46 marcatori)',
     scMsg: 'Buono — sopra la media per la tua età', sample: 'ANTEPRIMA — Dati di esempio',
     secScore: 'PUNTEGGIO DI LONGEVITÀ', secKm: 'MARCATORI CHIAVE', secDom: '8 DOMINI DELLA SALUTE', secBm: 'DETTAGLI BIOMARCATORI',
@@ -288,7 +275,7 @@ const T: Record<Lang, {
     borderlineZoneBody: 'Nel range di riferimento ma sotto il target ottimale di longevità. Gli interventi lifestyle spesso possono portarlo nella zona ottimale in 90 giorni.',
     improvedMarkersHead: '11 marcatori migliorati dal primo test',
     improvedMarkersBody: 'I tuoi interventi stanno funzionando. Continua e monitora al prossimo test.',
-    weightedComposite: 'Composito ponderato di 8 domini',
+    weightedComposite: 'Composito ponderato di 9 domini',
     impactfulBiomarkers: 'I tuoi biomarcatori più impattanti',
     clickDomainMarkers: 'Clicca su un dominio per vedere tutti i marcatori',
     biomarkerDetailsRight: 'Tutti i valori misurati in ogni test',
@@ -299,7 +286,7 @@ const T: Record<Lang, {
     allBioClocksLabel: 'TUTTI I CLOCK BIOLOGICI VS ETÀ CRONOLOGICA — ANNI',
     markerTrendsLabel: 'Tendenze marcatori — valori reali',
     scoreHistoryLabel: 'STORICO PUNTEGGI — 3 TEST',
-    basedOn8Domains: 'Basato su 8 domini della salute · Epigenetica mostrata separatamente',
+    basedOn8Domains: 'Basato su 9 domini della salute · Epigenetica mostrata separatamente',
   },
 };
 
@@ -764,7 +751,7 @@ export default function HealthEnginePublic({ lang }: { lang: Lang }) {
           </div>
         </section>
 
-        {/* ── 8 HEALTH DOMAINS ── */}
+        {/* ── 9 HEALTH DOMAINS ── */}
         <section className="pt-8">
           <SectionHeader label={t.secDom} right={t.clickDomainMarkers} />
 

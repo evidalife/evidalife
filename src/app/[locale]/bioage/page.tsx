@@ -98,7 +98,7 @@ const T: Record<Lang, {
     },
     bloodTestsSection: {
       title: 'Verfügbar in diesen Paketen',
-      desc: 'DunedinPACE und GrimAge v2 sind standardmäßig in allen Longevity-Bluttest-Paketen enthalten.',
+      desc: 'PhenoAge ist in allen Paketen enthalten. DunedinPACE und GrimAge v2 sind exklusiv im Complete-Paket.',
     },
     measurementUnit: 'Einheit',
   },
@@ -154,7 +154,7 @@ const T: Record<Lang, {
     },
     bloodTestsSection: {
       title: 'Available in these packages',
-      desc: 'DunedinPACE and GrimAge v2 are standard in all Longevity blood test packages.',
+      desc: 'PhenoAge is included in every package. DunedinPACE and GrimAge v2 are exclusive to the Complete package.',
     },
     measurementUnit: 'Unit',
   },
@@ -210,7 +210,7 @@ const T: Record<Lang, {
     },
     bloodTestsSection: {
       title: 'Disponible dans ces packages',
-      desc: 'DunedinPACE et GrimAge v2 sont standard dans tous les packages de tests sanguins Longevity.',
+      desc: 'PhenoAge est inclus dans chaque forfait. DunedinPACE et GrimAge v2 sont exclusifs au forfait Complete.',
     },
     measurementUnit: 'Unité',
   },
@@ -266,7 +266,7 @@ const T: Record<Lang, {
     },
     bloodTestsSection: {
       title: 'Disponible en estos paquetes',
-      desc: 'DunedinPACE y GrimAge v2 son estándar en todos los paquetes de pruebas de sangre Longevity.',
+      desc: 'PhenoAge está incluido en todos los paquetes. DunedinPACE y GrimAge v2 son exclusivos del paquete Complete.',
     },
     measurementUnit: 'Unidad',
   },
@@ -322,7 +322,7 @@ const T: Record<Lang, {
     },
     bloodTestsSection: {
       title: 'Disponibile in questi pacchetti',
-      desc: 'DunedinPACE e GrimAge v2 sono standard in tutti i pacchetti di test del sangue Longevity.',
+      desc: 'PhenoAge è incluso in ogni pacchetto. DunedinPACE e GrimAge v2 sono esclusivi del pacchetto Complete.',
     },
     measurementUnit: 'Unità',
   },
@@ -561,17 +561,28 @@ export default async function BioAgePage() {
             <h2 className="font-serif text-xl text-[#0e393d] mb-3">{t.bloodTestsSection.title}</h2>
             <p className="text-[#1c2a2b]/60 text-sm mb-6">{t.bloodTestsSection.desc}</p>
             <div className="grid gap-4 sm:grid-cols-3">
-              {bloodTestProducts.map((product) => (
-                <Link
-                  key={product.id}
-                  href={`/shop/${product.slug}`}
-                  className="rounded-xl bg-white ring-1 ring-[#0e393d]/10 p-6 hover:ring-[#ceab84]/50 transition-all group"
-                >
-                  <h3 className="font-medium text-sm text-[#0e393d] mb-2 group-hover:text-[#ceab84]">{getName(product.name, lang)}</h3>
-                  <p className="text-xs text-[#1c2a2b]/50 mb-4">Includes DunedinPACE, GrimAge v2 & PhenoAge</p>
-                  <p className="font-serif text-lg text-[#ceab84]">CHF {product.price_chf}</p>
-                </Link>
-              ))}
+              {bloodTestProducts.map((product) => {
+                const isComplete = product.slug.includes('complete');
+                const clocksLabel = isComplete
+                  ? 'PhenoAge + DunedinPACE + GrimAge v2'
+                  : 'PhenoAge';
+                return (
+                  <Link
+                    key={product.id}
+                    href={`/shop/${product.slug}`}
+                    className={`rounded-xl bg-white ring-1 p-6 hover:ring-[#ceab84]/50 transition-all group ${isComplete ? 'ring-[#ceab84]/40 ring-2' : 'ring-[#0e393d]/10'}`}
+                  >
+                    <h3 className="font-medium text-sm text-[#0e393d] mb-2 group-hover:text-[#ceab84]">{getName(product.name, lang)}</h3>
+                    <p className="text-xs text-[#1c2a2b]/50 mb-4">{clocksLabel}</p>
+                    <p className="font-serif text-lg text-[#ceab84]">CHF {product.price_chf}</p>
+                    {isComplete && (
+                      <span className="inline-block mt-2 text-[9px] font-semibold uppercase tracking-wider rounded-full bg-[#ceab84]/15 text-[#8a6a3e] px-2 py-0.5">
+                        {lang === 'de' ? 'Alle 3 Uhren' : lang === 'fr' ? 'Les 3 horloges' : lang === 'es' ? 'Los 3 relojes' : lang === 'it' ? 'Tutti e 3 gli orologi' : 'All 3 clocks'}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           </section>
         )}

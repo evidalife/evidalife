@@ -140,7 +140,7 @@ const T: Record<Lang, {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const FEATURED_DOMAINS: BiomarkerCategory[] = [
-  'heart_vessels', 'metabolism', 'inflammation', 'organ_function', 'nutrients', 'hormones', 'body_composition', 'fitness',
+  'heart_vessels', 'metabolism', 'inflammation', 'organ_function', 'nutrients', 'hormones',
 ];
 
 function TrafficDot({ light }: { light: string }) {

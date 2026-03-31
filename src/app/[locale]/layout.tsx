@@ -6,6 +6,7 @@ import { getMessages, getLocale } from 'next-intl/server';
 import { AuthProvider } from '@/context/AuthProvider';
 import { CartProvider } from '@/lib/cart';
 import CookieBanner from '@/components/CookieBanner';
+import AICompanion from '@/components/AICompanion';
 import { routing } from '@/i18n/routing';
 import '../globals.css';
 
@@ -69,6 +70,7 @@ export default async function LocaleLayout({ children }: { children: React.React
             <AuthProvider>{children}</AuthProvider>
           </CartProvider>
           <CookieBanner />
+          <AICompanion />
         </NextIntlClientProvider>
       </body>
     </html>

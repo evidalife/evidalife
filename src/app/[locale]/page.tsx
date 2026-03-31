@@ -54,11 +54,11 @@ const PRODUCT_FEATURES: Record<number, Record<Lang, string[]>> = {
     it: ['15 biomarcatori essenziali', 'Dashboard salute personale', 'Analisi range ottimali', 'Risultati digitali in 48h'],
   },
   2: { // Pro
-    en: ['27 advanced blood markers', 'All 6 health domains', 'Longevity Score tracking', 'Hormones & inflammation panel', 'Most popular package'],
-    de: ['27 erweiterte Blutmarker', 'Alle 6 Gesundheitsdomänen', 'Longevity Score Tracking', 'Hormone & Entzündungspanel', 'Unser beliebtestes Paket'],
-    fr: ['27 marqueurs sanguins avancés', 'Les 6 domaines de santé', 'Suivi du Longevity Score', 'Panel hormones & inflammation', 'Notre forfait le plus populaire'],
-    es: ['27 biomarcadores avanzados', 'Los 6 dominios de salud', 'Seguimiento del Longevity Score', 'Panel hormonal & inflamación', 'Nuestro paquete más popular'],
-    it: ['27 biomarcatori avanzati', 'Tutti i 6 domini di salute', 'Monitoraggio Longevity Score', 'Pannello ormoni & infiammazione', 'Il nostro pacchetto più popolare'],
+    en: ['27 advanced blood markers', 'All 9 health domains', 'Longevity Score tracking', 'Hormones & inflammation panel', 'Most popular package'],
+    de: ['27 erweiterte Blutmarker', 'Alle 9 Gesundheitsdomänen', 'Longevity Score Tracking', 'Hormone & Entzündungspanel', 'Unser beliebtestes Paket'],
+    fr: ['27 marqueurs sanguins avancés', 'Les 9 domaines de santé', 'Suivi du Longevity Score', 'Panel hormones & inflammation', 'Notre forfait le plus populaire'],
+    es: ['27 biomarcadores avanzados', 'Los 9 dominios de salud', 'Seguimiento del Longevity Score', 'Panel hormonal & inflamación', 'Nuestro paquete más popular'],
+    it: ['27 biomarcatori avanzati', 'Tutti i 9 domini di salute', 'Monitoraggio Longevity Score', 'Pannello ormoni & infiammazione', 'Il nostro pacchetto più popolare'],
   },
   3: { // Complete
     en: ['36 comprehensive markers', 'Full nutrient panel (B12, D, Zinc, Omega...)', 'Hormone profile (Testosterone, Cortisol...)', 'Longevity Score + trend history', 'Priority lab processing'],
@@ -117,7 +117,7 @@ const T: Record<Lang, {
       cards: [
         { title: 'Daily Dozen Tracker', desc: 'Tracke Dr. Gregers 12 Lebensmittelgruppen täglich. Einfache Checkboxen, echte Wirkung.' },
         { title: 'Vollwertige Rezepte',  desc: 'Pflanzenbasierte Rezepte passend zur Daily Dozen. Schnell, lecker, gesund.' },
-        { title: 'Blut-Biomarker',       desc: 'Professionelle Blutmarker in 6 Gesundheitsdomänen. Ab CHF 149.' },
+        { title: 'Blut-Biomarker',       desc: 'Professionelle Blutmarker in 9 Gesundheitsdomänen. Ab CHF 99.' },
         { title: 'Health Dashboard',     desc: 'Dein Longevity Score: alle Werte an einem Ort. Sieh genau, wo du stehst.' },
       ],
     },
@@ -194,7 +194,7 @@ const T: Record<Lang, {
       cards: [
         { title: 'Daily Dozen Tracker', desc: "Track Dr. Greger's 12 food groups daily. Simple checkboxes, real impact." },
         { title: 'Whole-Food Recipes',  desc: 'Plant-based recipes matched to the Daily Dozen. Quick, delicious, healthy.' },
-        { title: 'Blood Biomarkers',    desc: 'Professional blood markers across 6 health domains. From CHF 149.' },
+        { title: 'Blood Biomarkers',    desc: 'Professional blood markers across 9 health domains. From CHF 99.' },
         { title: 'Health Dashboard',    desc: 'Your Longevity Score: all results in one place. See exactly where you stand.' },
       ],
     },
@@ -271,7 +271,7 @@ const T: Record<Lang, {
       cards: [
         { title: 'Daily Dozen Tracker',      desc: 'Suivez les 12 groupes alimentaires du Dr Greger chaque jour. Cases simples, impact réel.' },
         { title: 'Recettes complètes',        desc: 'Recettes végétales adaptées au Daily Dozen. Rapides, délicieuses, saines.' },
-        { title: 'Biomarqueurs sanguins',     desc: '6 domaines de santé. À partir de CHF 149.' },
+        { title: 'Biomarqueurs sanguins',     desc: '9 domaines de santé. À partir de CHF 99.' },
         { title: 'Tableau de bord santé',     desc: 'Votre score de longévité : tous les résultats en un seul endroit. Voyez où vous en êtes.' },
       ],
     },
@@ -348,7 +348,7 @@ const T: Record<Lang, {
       cards: [
         { title: 'Daily Dozen Tracker',    desc: 'Registra los 12 grupos de alimentos del Dr. Greger cada día. Casillas simples, impacto real.' },
         { title: 'Recetas integrales',      desc: 'Recetas vegetales adaptadas al Daily Dozen. Rápidas, deliciosas, saludables.' },
-        { title: 'Biomarcadores en sangre', desc: '6 dominios de salud. Desde CHF 149.' },
+        { title: 'Biomarcadores en sangre', desc: '9 dominios de salud. Desde CHF 99.' },
         { title: 'Panel de salud',          desc: 'Tu puntuación de longevidad: todos los resultados en un lugar. Ve exactamente dónde estás.' },
       ],
     },
@@ -425,7 +425,7 @@ const T: Record<Lang, {
       cards: [
         { title: 'Daily Dozen Tracker',    desc: 'Traccia i 12 gruppi alimentari del Dr. Greger ogni giorno. Caselle semplici, impatto reale.' },
         { title: 'Ricette integrali',       desc: 'Ricette vegetali abbinate al Daily Dozen. Veloci, deliziose, sane.' },
-        { title: 'Biomarcatori nel sangue', desc: '6 domini di salute. Da CHF 149.' },
+        { title: 'Biomarcatori nel sangue', desc: '9 domini di salute. Da CHF 99.' },
         { title: 'Dashboard salute',        desc: 'Il tuo Longevity Score: tutti i risultati in un unico posto. Vedi esattamente dove ti trovi.' },
       ],
     },

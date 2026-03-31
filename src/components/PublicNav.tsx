@@ -15,10 +15,16 @@ const NAV_SLUG_MAP: Record<string, (string | null)[]> = {
   Kitchen: ['/recipes', '/daily-dozen', '/blog', '/shopping-list'],
   Health:  ['/health-engine', '/biomarkers', '/bioage', '/partner-labs'],
   Lifestyle: ['/lifestyle'],
-  Shop:    ['/shop', '/shop?type=blood_test', '/shop?type=clinical_test', '/shop?type=epigenetic_test'],
+  Shop:    ['/shop'],
 };
 
 const NAV_SECTIONS = ['Kitchen', 'Health', 'Lifestyle', 'Shop'] as const;
+
+// Sections with exactly one slug get a direct link instead of a dropdown
+const DIRECT_LINK_MAP: Record<string, string> = {
+  Lifestyle: '/lifestyle',
+  Shop: '/shop',
+};
 
 // Auth-only items appended to each section dropdown (with a separator) when the user is logged in
 type AuthDropdownItem = { label: string; href: string };
@@ -66,28 +72,6 @@ const AUTH_DROPDOWN_ITEMS: Partial<Record<string, Record<Locale, AuthDropdownIte
     it: [
       { label: 'Il mio Daily Dozen',       href: '/daily-dozen' },
       { label: 'La mia lista della spesa', href: '/shopping-list' },
-    ],
-  },
-  Shop: {
-    de: [
-      { label: 'Meine Bestellungen', href: '/profile?tab=orders' },
-      { label: 'Meine Rechnungen',   href: '/profile?tab=invoices' },
-    ],
-    en: [
-      { label: 'My Orders',   href: '/profile?tab=orders' },
-      { label: 'My Invoices', href: '/profile?tab=invoices' },
-    ],
-    fr: [
-      { label: 'Mes commandes', href: '/profile?tab=orders' },
-      { label: 'Mes factures',  href: '/profile?tab=invoices' },
-    ],
-    es: [
-      { label: 'Mis pedidos',  href: '/profile?tab=orders' },
-      { label: 'Mis facturas', href: '/profile?tab=invoices' },
-    ],
-    it: [
-      { label: 'I miei ordini',  href: '/profile?tab=orders' },
-      { label: 'Le mie fatture', href: '/profile?tab=invoices' },
     ],
   },
 };
@@ -207,10 +191,25 @@ export default function PublicNav() {
         {/* Center nav items — desktop only */}
         <div className="hidden md:flex gap-6 items-center">
           {NAV_SECTIONS.map((section) => {
+            const directHref = DIRECT_LINK_MAP[section];
             const items = dropdowns[section] ?? [];
             const slugs = NAV_SLUG_MAP[section] ?? [];
             const authItems = user ? (AUTH_DROPDOWN_ITEMS[section]?.[locale] ?? []) : [];
             const isOpen = activeDropdown === section;
+
+            // Direct link — no dropdown
+            if (directHref) {
+              return (
+                <Link
+                  key={section}
+                  href={directHref}
+                  className="text-[0.8rem] font-light cursor-pointer hover:text-[#0e393d] hover:bg-[#0e393d]/6 transition-colors px-3 py-1.5 rounded-full text-[#5a6e6f]"
+                >
+                  {section}
+                </Link>
+              );
+            }
+
             return (
               <div
                 key={section}
@@ -445,10 +444,26 @@ export default function PublicNav() {
         <div className="mt-2 rounded-2xl bg-white/90 backdrop-blur-md border border-[#0e393d]/8 shadow-[0_8px_32px_rgba(14,57,61,0.14)] overflow-hidden">
 
           {NAV_SECTIONS.map((section, si) => {
+            const directHref = DIRECT_LINK_MAP[section];
             const items = dropdowns[section] ?? [];
             const slugs = NAV_SLUG_MAP[section] ?? [];
             const authItems = user ? (AUTH_DROPDOWN_ITEMS[section]?.[locale] ?? []) : [];
             const isExp = expandedSection === section;
+
+            // Direct link — no accordion
+            if (directHref) {
+              return (
+                <div key={section} className={si > 0 ? 'border-t border-[#0e393d]/6' : ''}>
+                  <Link
+                    href={directHref}
+                    className="flex w-full items-center px-5 py-3.5 text-[0.8rem] font-medium text-[#0e393d] hover:bg-[#f5f4f0] transition-colors"
+                  >
+                    {section}
+                  </Link>
+                </div>
+              );
+            }
+
             return (
               <div key={section} className={si > 0 ? 'border-t border-[#0e393d]/6' : ''}>
                 {/* Section row — accordion trigger, not a link */}

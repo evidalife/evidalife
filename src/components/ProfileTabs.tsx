@@ -207,7 +207,46 @@ const HE_DOMAIN_LABEL: Record<string, string> = {
   longevity: 'Longevity', fitness: 'Fitness',
 };
 
-const HE_DOMAIN_ORDER = ['heart_vessels', 'metabolism', 'hormones', 'inflammation', 'nutrients', 'organ_function', 'longevity', 'fitness'];
+const HE_DOMAIN_ORDER = ['heart_vessels', 'metabolism', 'hormones', 'inflammation', 'nutrients', 'organ_function', 'body_composition', 'fitness', 'epigenetics'];
+
+const HE_DOMAIN_ICON: Record<string, string> = {
+  heart_vessels: '❤️', metabolism: '⚡', hormones: '🧬', inflammation: '🛡️',
+  nutrients: '🥗', organ_function: '🫁', body_composition: '🏋️', fitness: '🏃', epigenetics: '🧪',
+};
+
+function statusColorPT(flag: string | null): string {
+  return flag === 'optimal' ? '#0C9C6C' : flag === 'good' ? '#5ba37a' : flag === 'moderate' ? '#C4A96A' : flag === 'risk' ? '#E06B5B' : '#999';
+}
+
+function scoreFromFlag(flag: string | null): number {
+  return flag === 'optimal' ? 95 : flag === 'good' ? 82 : flag === 'moderate' ? 65 : flag === 'risk' ? 40 : 0;
+}
+
+function fmtRange(lo: number | null, hi: number | null): string {
+  if (lo != null && hi != null) return `${lo}–${hi}`;
+  if (hi != null) return `< ${hi}`;
+  if (lo != null) return `> ${lo}`;
+  return '—';
+}
+
+function MiniRangeBarPT({ value, refLow, refHigh, optLow, optHigh, status }: {
+  value: number; refLow: number | null; refHigh: number | null;
+  optLow: number | null; optHigh: number | null; status: string | null;
+}) {
+  const lo = (refLow ?? 0) * 0.7;
+  const hi = (refHigh ?? value * 2) * 1.3;
+  const range = hi - lo || 1;
+  const pct = Math.max(2, Math.min(98, ((value - lo) / range) * 100));
+  const oL = optLow != null ? Math.max(0, ((optLow - lo) / range) * 100) : 0;
+  const oW = optLow != null && optHigh != null ? Math.max(4, ((optHigh - optLow) / range) * 100) : 0;
+  const clr = statusColorPT(status);
+  return (
+    <div className="relative h-[6px] rounded-full bg-[#0e393d]/[.06] overflow-hidden">
+      {oW > 0 && <div className="absolute top-0 h-full rounded-full bg-[#0C9C6C]/[.10]" style={{ left: `${oL}%`, width: `${oW}%` }} />}
+      <div className="absolute top-[1px] w-[4px] h-[4px] rounded-full" style={{ left: `${pct}%`, transform: 'translateX(-50%)', background: clr }} />
+    </div>
+  );
+}
 
 // ─── My Orders tab ────────────────────────────────────────────────────────────
 
@@ -405,6 +444,7 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
   const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
   const [results, setResults] = useState<LabResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedProfileReports, setExpandedProfileReports] = useState<Set<string>>(() => new Set());
   const [showForm, setShowForm] = useState(false);
   const [biomarkers, setBiomarkers] = useState<BiomarkerOption[]>([]);
   const [search, setSearch] = useState('');
@@ -428,7 +468,14 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
       .order('test_date', { ascending: false })
       .order('measured_at', { ascending: false })
       .then(({ data }) => {
-        setResults((data as unknown as LabResult[]) ?? []);
+        const loaded = (data as unknown as LabResult[]) ?? [];
+        setResults(loaded);
+        // Auto-expand newest report
+        if (loaded.length > 0) {
+          const newest = loaded.reduce((a, b) => ((b.test_date ?? b.measured_at) > (a.test_date ?? a.measured_at) ? b : a));
+          const newestDate = newest.test_date ?? newest.measured_at.slice(0, 10);
+          setExpandedProfileReports(new Set([newestDate]));
+        }
         setLoading(false);
       });
   };
@@ -619,7 +666,7 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
         </div>
       )}
 
-      {/* Group by test_date */}
+      {/* Group by test_date — HE-style collapsible reports */}
       {(() => {
         const byDate: Record<string, LabResult[]> = {};
         for (const r of results) {
@@ -629,103 +676,150 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
         }
         const dates = Object.keys(byDate).sort().reverse();
 
-        return dates.map((date, dateIdx) => {
-          const dateResults = byDate[date];
-          const byDomain: Record<string, LabResult[]> = {};
-          for (const r of dateResults) {
-            const domain = r.biomarkers?.he_domain ?? 'other';
-            if (!byDomain[domain]) byDomain[domain] = [];
-            byDomain[domain].push(r);
-          }
-          const domainOrder = [...HE_DOMAIN_ORDER, ...Object.keys(byDomain).filter((d) => !HE_DOMAIN_ORDER.includes(d))];
-          const presentDomains = domainOrder.filter((d) => byDomain[d]?.length);
-          const olderResults = dates.slice(dateIdx + 1).flatMap((d) => byDate[d]);
+        return (
+          <div className="space-y-6">
+            {dates.map((date) => {
+              const dateResults = byDate[date];
+              const byDomain: Record<string, LabResult[]> = {};
+              for (const r of dateResults) {
+                const domain = r.biomarkers?.he_domain ?? 'other';
+                if (!byDomain[domain]) byDomain[domain] = [];
+                byDomain[domain].push(r);
+              }
+              const domainOrder = [...HE_DOMAIN_ORDER, ...Object.keys(byDomain).filter((d) => !HE_DOMAIN_ORDER.includes(d))];
+              const presentDomains = domainOrder.filter((d) => byDomain[d]?.length);
 
-          return (
-            <div key={date}>
-              <h3 className="text-sm font-semibold text-[#0e393d] mb-3 flex items-center gap-2">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#ceab84]">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-                {t.results.resultsFrom} {fmtDate(date)}
-                <span className="text-[11px] font-normal text-[#1c2a2b]/40">({dateResults.length} biomarkers)</span>
-              </h3>
+              const isExp = expandedProfileReports.has(date);
+              const toggleExp = () => {
+                setExpandedProfileReports(prev => {
+                  const next = new Set(prev);
+                  if (next.has(date)) next.delete(date); else next.add(date);
+                  return next;
+                });
+              };
 
-              <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
-                {presentDomains.map((domain, di) => (
-                  <div key={domain}>
-                    {di > 0 && <div className="border-t border-[#0e393d]/6" />}
-                    <div className="px-4 py-2 bg-[#0e393d]/3">
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#ceab84]/80">
-                        {HE_DOMAIN_LABEL[domain] ?? domain}
-                      </span>
+              return (
+                <div key={date} className="bg-white rounded-xl border border-[#1c2a2b]/[.06] overflow-hidden shadow-sm">
+                  {/* Report header */}
+                  <div
+                    className="bg-[#0e393d] px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-[#0e393d]/95 transition-colors"
+                    onClick={toggleExp}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-white/[.08] flex items-center justify-center">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.6">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                          <line x1="16" y1="13" x2="8" y2="13" />
+                          <line x1="16" y1="17" x2="8" y2="17" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-white">
+                          {t.results.resultsFrom} {fmtDate(date)}
+                        </div>
+                      </div>
                     </div>
-                    <div className="divide-y divide-[#0e393d]/5">
-                      {byDomain[domain].map((r) => {
-                        const def = r.biomarkers;
-                        const name = def ? locName(def.name, lang) : '—';
-                        const prevMatch = olderResults.find((pr) =>
-                          pr.biomarkers && locName(pr.biomarkers.name, lang) === name
-                        );
-                        const trend = prevMatch
-                          ? r.value_numeric > prevMatch.value_numeric ? '↑'
-                          : r.value_numeric < prevMatch.value_numeric ? '↓'
-                          : '→'
-                          : null;
-                        const trendColor = trend === '↑' ? 'text-emerald-600' : trend === '↓' ? 'text-red-500' : 'text-[#1c2a2b]/40';
-
-                        const refText = (() => {
-                          const parts: string[] = [];
-                          if (def?.ref_range_low != null || def?.ref_range_high != null) {
-                            parts.push(`${t.results.ref}: ${def?.ref_range_low ?? '—'}–${def?.ref_range_high ?? '—'}`);
-                          }
-                          if (def?.optimal_range_low != null || def?.optimal_range_high != null) {
-                            parts.push(`${t.results.opt}: ${def?.optimal_range_low ?? '—'}–${def?.optimal_range_high ?? '—'}`);
-                          }
-                          return parts.join(' · ');
-                        })();
-
-                        const isSelfReport = r.source === 'self_report';
-
-                        return (
-                          <div key={r.id} className="px-4 py-3 flex items-center gap-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-[#1c2a2b]">{name}</span>
-                                {trend && <span className={`text-xs font-semibold ${trendColor}`}>{trend}</span>}
-                                <SourceBadge source={r.source} />
-                              </div>
-                              {refText && <p className="text-[11px] text-[#1c2a2b]/35 mt-0.5">{refText}</p>}
-                            </div>
-                            <div className="text-right shrink-0 flex items-center gap-2">
-                              <span className="tabular-nums text-sm font-semibold text-[#0e393d]">
-                                {r.value_numeric} <span className="font-normal text-[#1c2a2b]/50 text-xs">{r.unit || def?.unit || ''}</span>
-                              </span>
-                              <FlagBadge flag={r.status_flag} />
-                              {isSelfReport && (
-                                <button
-                                  onClick={() => handleDelete(r.id)}
-                                  title={t.results.delete}
-                                  className="ml-1 p-1 rounded text-[#1c2a2b]/25 hover:text-red-500 hover:bg-red-50 transition"
-                                >
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-                                    <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                                  </svg>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
+                    <div className="flex items-center gap-3">
+                      <div className="text-[10px] text-white/30">{dateResults.length} biomarkers</div>
+                      <span className={`text-white/30 text-xs transition-transform duration-200 ${isExp ? 'rotate-180' : ''}`}>▼</span>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          );
-        });
+
+                  {/* Expanded domain sections */}
+                  {isExp && presentDomains.map((domain, di) => (
+                    <div key={domain}>
+                      <div className="px-5 py-2.5 bg-[#0e393d]/[.03] border-b border-[#0e393d]/[.06] flex items-center gap-4">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <span className="text-sm">{HE_DOMAIN_ICON[domain] ?? '📊'}</span>
+                          <span className="text-[10px] font-semibold tracking-[.1em] uppercase text-[#ceab84]">
+                            {HE_DOMAIN_LABEL[domain] ?? domain}
+                          </span>
+                        </div>
+                        {di === 0 && (
+                          <>
+                            <span className="text-[9px] font-semibold uppercase tracking-wider text-[#1c2a2b]/25 shrink-0 w-24 text-right">Value</span>
+                            <span className="hidden sm:block text-[9px] font-semibold uppercase tracking-wider text-[#1c2a2b]/25 shrink-0 w-16 text-right">Ref</span>
+                            <span className="hidden sm:block text-[9px] font-semibold uppercase tracking-wider text-[#0C9C6C]/30 shrink-0 w-16 text-right">Optimal</span>
+                            <span className="text-[9px] font-semibold uppercase tracking-wider text-[#1c2a2b]/25 shrink-0 w-28 text-right">Range / Score</span>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="divide-y divide-[#0e393d]/[.04]">
+                        {byDomain[domain].map((r) => {
+                          const def = r.biomarkers;
+                          const name = def ? locName(def.name, lang) : '—';
+                          const flag = r.status_flag;
+                          const clr = statusColorPT(flag);
+                          const score = scoreFromFlag(flag);
+                          const isSelfReport = r.source === 'self_report';
+
+                          return (
+                            <div key={r.id} className="px-5 py-2.5 flex items-center gap-4 hover:bg-[#0e393d]/[.01] transition-colors">
+                              {/* Status dot + name + badge */}
+                              <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                <div className="w-2 h-2 rounded-full shrink-0" style={{ background: clr }} />
+                                <span className="text-[12px] font-medium text-[#0e393d] truncate flex items-center gap-1.5">
+                                  {name}
+                                  <SourceBadge source={r.source} />
+                                  <FlagBadge flag={flag} />
+                                </span>
+                                {isSelfReport && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}
+                                    title={t.results.delete}
+                                    className="ml-1 p-1 rounded text-[#1c2a2b]/20 hover:text-red-500 hover:bg-red-50 transition shrink-0"
+                                  >
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                                      <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Value + unit */}
+                              <div className="text-right shrink-0 w-24">
+                                <span className="text-[13px] font-semibold tabular-nums" style={{ color: clr }}>
+                                  {r.value_numeric.toLocaleString('de-CH', { maximumFractionDigits: 2 })}
+                                </span>
+                                <span className="text-[10px] text-[#1c2a2b]/30 ml-1">{r.unit || def?.unit || ''}</span>
+                              </div>
+
+                              {/* Reference range */}
+                              <div className="hidden sm:block text-[10px] text-[#1c2a2b]/35 shrink-0 w-16 text-right tabular-nums">
+                                {fmtRange(def?.ref_range_low ?? null, def?.ref_range_high ?? null)}
+                              </div>
+
+                              {/* Optimal range */}
+                              <div className="hidden sm:block text-[10px] text-[#0C9C6C]/50 font-medium shrink-0 w-16 text-right tabular-nums">
+                                {fmtRange(def?.optimal_range_low ?? null, def?.optimal_range_high ?? null)}
+                              </div>
+
+                              {/* Mini range bar + score */}
+                              <div className="flex items-center gap-2 shrink-0 w-28">
+                                <div className="w-16">
+                                  {(def?.ref_range_low != null || def?.ref_range_high != null) && (
+                                    <MiniRangeBarPT value={r.value_numeric} refLow={def?.ref_range_low ?? null} refHigh={def?.ref_range_high ?? null}
+                                      optLow={def?.optimal_range_low ?? null} optHigh={def?.optimal_range_high ?? null} status={flag} />
+                                  )}
+                                </div>
+                                <span className="text-[11px] font-bold tabular-nums w-8 text-right" style={{ color: clr }}>
+                                  {score > 0 ? score : '—'}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        );
       })()}
     </div>
   );

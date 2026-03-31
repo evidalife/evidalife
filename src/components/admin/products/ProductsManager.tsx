@@ -693,6 +693,7 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
   const [sortCol, setSortCol] = useState<'name' | 'product_type' | 'price_chf' | 'is_active'>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [statusTab, setStatusTab] = useState<'active' | 'inactive' | 'deleted' | 'all'>('active');
 
   const handleSort = (col: typeof sortCol) => {
     if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -700,6 +701,11 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   };
 
   const filtered = products.filter((p) => {
+    // Status tab filter
+    if (statusTab === 'active' && (!p.is_active || p.deleted_at)) return false;
+    if (statusTab === 'inactive' && (p.is_active || p.deleted_at)) return false;
+    if (statusTab === 'deleted' && !p.deleted_at) return false;
+    // Search filter
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -760,8 +766,29 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
         </div>
       </div>
 
-      {/* Search */}
-      <div className="mb-5">
+      {/* Status tabs + Search */}
+      <div className="flex items-center gap-4 mb-5">
+        <div className="flex rounded-lg border border-[#0e393d]/10 overflow-hidden bg-white">
+          {([
+            { key: 'active' as const, label: 'Active', count: products.filter(p => p.is_active && !p.deleted_at).length },
+            { key: 'inactive' as const, label: 'Inactive', count: products.filter(p => !p.is_active && !p.deleted_at).length },
+            { key: 'deleted' as const, label: 'Deleted', count: products.filter(p => !!p.deleted_at).length },
+            { key: 'all' as const, label: 'All', count: products.length },
+          ]).map(({ key, label, count }) => (
+            <button
+              key={key}
+              onClick={() => setStatusTab(key)}
+              className={`px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                statusTab === key
+                  ? 'bg-[#0e393d] text-white'
+                  : 'text-[#1c2a2b]/50 hover:text-[#0e393d] hover:bg-[#0e393d]/5'
+              }`}
+            >
+              {label}
+              <span className={`ml-1.5 tabular-nums ${statusTab === key ? 'text-white/60' : 'text-[#1c2a2b]/30'}`}>{count}</span>
+            </button>
+          ))}
+        </div>
         <div className="relative w-64">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
             className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1c2a2b]/30 pointer-events-none">

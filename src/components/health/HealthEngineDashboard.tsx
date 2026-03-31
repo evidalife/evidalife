@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip as RTooltip, Legend,
   ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis,
 } from 'recharts';
 import BiomarkerTrendChart from './BiomarkerTrendChart';
+import BriefingPlayer from './BriefingPlayer';
 import { CATEGORY_DISPLAY } from '@/lib/health-score';
+import { createClient } from '@/lib/supabase/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Lang = 'en' | 'de' | 'fr' | 'es' | 'it';
@@ -92,7 +94,7 @@ const DOMAIN_META: Record<string, { icon: string; color: string; weight: number;
 const T: Record<Lang, Record<string, string>> = {
   en: {
     tag: 'HEALTH ENGINE', title: 'Your Health Score', sub: 'Track your biomarkers across health domains. See what improves and know exactly what to focus on.',
-    secScore: 'OVERALL SCORE', secDom: 'HEALTH DOMAINS', secBm: 'ALL BIOMARKERS', secKm: 'KEY MARKERS',
+    secScore: 'OVERALL SCORE', secDom: 'HEALTH DOMAINS', secBm: 'LAB RESULTS', secKm: 'KEY MARKERS',
     optLabel: 'Optimal', goodLabel: 'Good', modLabel: 'Borderline', riskLabel: 'Risk',
     refRange: 'Reference', longevityOpt: 'Optimal',
     viewMarkers: 'View details', close: 'Close',
@@ -111,12 +113,12 @@ const T: Record<Lang, Record<string, string>> = {
     markerStatus: 'MARKER STATUS', overallScore: 'LONGEVITY SCORE',
     atAGlance: 'at a glance',
     longevityScore: 'LONGEVITY SCORE', basedOnDomains: 'Based on {n} health domains', epigeneticsSeparate: 'Epigenetics shown separately',
-    bioAgeClocks: 'BIOLOGICAL AGE CLOCKS', topStrength: 'Top Strength', priorityAction: 'Priority Action', monthProgress: 'Month Progress', bioAgeDesc: 'Based on epigenetic markers',
+    bioAgeClocks: 'BIOLOGICAL AGE SCORE', topStrength: 'Top Strength', priorityAction: 'Priority Action', monthProgress: 'Progress', bioAgeDesc: 'Based on epigenetic markers',
     healthBriefing: 'Your Health Briefing', briefingSub: 'Personalized audio summary of your latest results', askAnything: 'Ask anything about your results...', listenNow: 'Listen now', comingSoon: 'Coming soon',
   },
   de: {
-    tag: 'HEALTH ENGINE', title: 'Dein Gesundheits-Score', sub: 'Verfolge deine Biomarker in 8 Gesundheitsbereichen.',
-    secScore: 'GESAMT-SCORE', secDom: 'GESUNDHEITSBEREICHE', secBm: 'ALLE BIOMARKER', secKm: 'SCHLÜSSEL-MARKER',
+    tag: 'HEALTH ENGINE', title: 'Dein Gesundheits-Score', sub: 'Verfolge deine Biomarker in 9 Gesundheitsbereichen.',
+    secScore: 'GESAMT-SCORE', secDom: 'GESUNDHEITSBEREICHE', secBm: 'LABORERGEBNISSE', secKm: 'SCHLÜSSEL-MARKER',
     optLabel: 'Optimal', goodLabel: 'Gut', modLabel: 'Grenzwertig', riskLabel: 'Risiko',
     refRange: 'Referenz', longevityOpt: 'Optimal',
     viewMarkers: 'Details anzeigen', close: 'Schliessen',
@@ -135,12 +137,12 @@ const T: Record<Lang, Record<string, string>> = {
     markerStatus: 'MARKER-STATUS', overallScore: 'LONGEVITY SCORE',
     atAGlance: 'im Überblick',
     longevityScore: 'LONGEVITY SCORE', basedOnDomains: 'Basiert auf {n} Gesundheitsbereichen', epigeneticsSeparate: 'Epigenetik separat angezeigt',
-    bioAgeClocks: 'BIOLOGISCHE ALTERSUHREN', topStrength: 'Top-Stärke', priorityAction: 'Priorität', monthProgress: 'Monatlicher Fortschritt', bioAgeDesc: 'Basierend auf epigenetischen Markern',
+    bioAgeClocks: 'BIOLOGISCHES ALTER SCORE', topStrength: 'Top-Stärke', priorityAction: 'Priorität', monthProgress: 'Fortschritt', bioAgeDesc: 'Basierend auf epigenetischen Markern',
     healthBriefing: 'Dein Gesundheitsbriefing', briefingSub: 'Personalisierte Audio-Zusammenfassung deiner neuesten Ergebnisse', askAnything: 'Frage alles zu deinen Ergebnissen...', listenNow: 'Jetzt anhören', comingSoon: 'Bald verfügbar',
   },
   fr: {
-    tag: 'HEALTH ENGINE', title: 'Votre Score Santé', sub: 'Suivez vos biomarqueurs dans 8 domaines de santé.',
-    secScore: 'SCORE GLOBAL', secDom: 'DOMAINES DE SANTÉ', secBm: 'TOUS LES BIOMARQUEURS', secKm: 'MARQUEURS CLÉS',
+    tag: 'HEALTH ENGINE', title: 'Votre Score Santé', sub: 'Suivez vos biomarqueurs dans 9 domaines de santé.',
+    secScore: 'SCORE GLOBAL', secDom: 'DOMAINES DE SANTÉ', secBm: 'RÉSULTATS DE LABORATOIRE', secKm: 'MARQUEURS CLÉS',
     optLabel: 'Optimal', goodLabel: 'Bon', modLabel: 'Limite', riskLabel: 'Risque',
     refRange: 'Référence', longevityOpt: 'Optimal',
     viewMarkers: 'Voir détails', close: 'Fermer',
@@ -158,12 +160,12 @@ const T: Record<Lang, Record<string, string>> = {
     allValues: 'Toutes les valeurs', domainBalance: 'ÉQUILIBRE', markerStatus: 'STATUT',
     overallScore: 'SCORE DE LONGÉVITÉ', atAGlance: 'en un coup d\'œil',
     longevityScore: 'SCORE DE LONGÉVITÉ', basedOnDomains: 'Basé sur {n} domaines de santé', epigeneticsSeparate: 'Épigénétique affichée séparément',
-    bioAgeClocks: 'HORLOGES ÂGE BIOLOGIQUE', topStrength: 'Force Top', priorityAction: 'Action Prioritaire', monthProgress: 'Progrès du Mois', bioAgeDesc: 'Basé sur les marqueurs épigénétiques',
+    bioAgeClocks: 'SCORE ÂGE BIOLOGIQUE', topStrength: 'Force Top', priorityAction: 'Action Prioritaire', monthProgress: 'Progrès', bioAgeDesc: 'Basé sur les marqueurs épigénétiques',
     healthBriefing: 'Votre Briefing Santé', briefingSub: 'Résumé audio personnalisé de vos derniers résultats', askAnything: 'Posez une question sur vos résultats...', listenNow: 'Écouter', comingSoon: 'Bientôt disponible',
   },
   es: {
-    tag: 'HEALTH ENGINE', title: 'Tu Score de Salud', sub: 'Sigue tus biomarcadores en 8 dominios de salud.',
-    secScore: 'SCORE GLOBAL', secDom: 'DOMINIOS DE SALUD', secBm: 'TODOS LOS BIOMARCADORES', secKm: 'MARCADORES CLAVE',
+    tag: 'HEALTH ENGINE', title: 'Tu Score de Salud', sub: 'Sigue tus biomarcadores en 9 dominios de salud.',
+    secScore: 'SCORE GLOBAL', secDom: 'DOMINIOS DE SALUD', secBm: 'RESULTADOS DE LABORATORIO', secKm: 'MARCADORES CLAVE',
     optLabel: 'Óptimo', goodLabel: 'Bueno', modLabel: 'Límite', riskLabel: 'Riesgo',
     refRange: 'Referencia', longevityOpt: 'Óptimo',
     viewMarkers: 'Ver detalles', close: 'Cerrar',
@@ -181,12 +183,12 @@ const T: Record<Lang, Record<string, string>> = {
     allValues: 'Todos los valores', domainBalance: 'BALANCE', markerStatus: 'ESTADO',
     overallScore: 'SCORE DE LONGEVIDAD', atAGlance: 'de un vistazo',
     longevityScore: 'SCORE DE LONGEVIDAD', basedOnDomains: 'Basado en {n} dominios de salud', epigeneticsSeparate: 'Epigenética mostrada por separado',
-    bioAgeClocks: 'RELOJES DE EDAD BIOLÓGICA', topStrength: 'Fortaleza Superior', priorityAction: 'Acción Prioritaria', monthProgress: 'Progreso Mensual', bioAgeDesc: 'Basado en marcadores epigenéticos',
+    bioAgeClocks: 'SCORE EDAD BIOLÓGICA', topStrength: 'Fortaleza Superior', priorityAction: 'Acción Prioritaria', monthProgress: 'Progreso', bioAgeDesc: 'Basado en marcadores epigenéticos',
     healthBriefing: 'Tu Informe de Salud', briefingSub: 'Resumen de audio personalizado de tus últimos resultados', askAnything: 'Pregunta sobre tus resultados...', listenNow: 'Escuchar', comingSoon: 'Próximamente',
   },
   it: {
-    tag: 'HEALTH ENGINE', title: 'Il Tuo Score Salute', sub: 'Segui i tuoi biomarcatori in 8 domini della salute.',
-    secScore: 'SCORE GLOBALE', secDom: 'DOMINI DELLA SALUTE', secBm: 'TUTTI I BIOMARCATORI', secKm: 'MARCATORI CHIAVE',
+    tag: 'HEALTH ENGINE', title: 'Il Tuo Score Salute', sub: 'Segui i tuoi biomarcatori in 9 domini della salute.',
+    secScore: 'SCORE GLOBALE', secDom: 'DOMINI DELLA SALUTE', secBm: 'RISULTATI DI LABORATORIO', secKm: 'MARCATORI CHIAVE',
     optLabel: 'Ottimale', goodLabel: 'Buono', modLabel: 'Limite', riskLabel: 'Rischio',
     refRange: 'Riferimento', longevityOpt: 'Ottimale',
     viewMarkers: 'Vedi dettagli', close: 'Chiudi',
@@ -204,7 +206,7 @@ const T: Record<Lang, Record<string, string>> = {
     allValues: 'Tutti i valori', domainBalance: 'EQUILIBRIO', markerStatus: 'STATO',
     overallScore: 'SCORE DI LONGEVITÀ', atAGlance: 'a colpo d\'occhio',
     longevityScore: 'SCORE DI LONGEVITÀ', basedOnDomains: 'Basato su {n} domini della salute', epigeneticsSeparate: 'Epigenetica mostrata separatamente',
-    bioAgeClocks: 'OROLOGI DELL\'ETÀ BIOLOGICA', topStrength: 'Punto di Forza Principale', priorityAction: 'Azione Prioritaria', monthProgress: 'Progresso Mensile', bioAgeDesc: 'Basato su marcatori epigenetici',
+    bioAgeClocks: 'SCORE ETÀ BIOLOGICA', topStrength: 'Punto di Forza Principale', priorityAction: 'Azione Prioritaria', monthProgress: 'Progresso', bioAgeDesc: 'Basato su marcatori epigenetici',
     healthBriefing: 'Il Tuo Briefing Salute', briefingSub: 'Riepilogo audio personalizzato dei tuoi ultimi risultati', askAnything: 'Chiedi qualcosa sui tuoi risultati...', listenNow: 'Ascolta ora', comingSoon: 'Prossimamente',
   },
 };
@@ -388,6 +390,35 @@ function rPct(v: number, rL: number | null, rH: number | null): number {
   return Math.max(2, Math.min(98, ((v - lo) / (hi - lo)) * 100));
 }
 
+// ── InfoTooltip ─────────────────────────────────────────────────────────────
+function InfoTooltip({ lines }: { lines: { label: string; value: string }[] }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <span className="relative inline-block align-middle">
+      <button
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onClick={() => setOpen(o => !o)}
+        className="w-[18px] h-[18px] rounded-full border border-white/20 text-white/35 flex items-center justify-center text-[10px] font-bold leading-none hover:border-white/40 hover:text-white/60 transition-colors cursor-help"
+        aria-label="Info"
+      >
+        i
+      </button>
+      {open && (
+        <div className="absolute z-50 right-0 top-7 w-56 bg-[#0b2e31] border border-white/15 rounded-xl shadow-xl p-3 text-left">
+          <div className="absolute -top-1.5 right-2 w-3 h-3 rotate-45 bg-[#0b2e31] border-l border-t border-white/15" />
+          {lines.map((l, i) => (
+            <div key={i} className="flex justify-between text-[10px] leading-relaxed">
+              <span className="text-white/50">{l.label}</span>
+              <span className="text-white/80 font-medium">{l.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </span>
+  );
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function SectionTag({ children }: { children: React.ReactNode }) {
@@ -510,448 +541,6 @@ function MiniScoreRing({ score, size = 44 }: { score: number; size?: number }) {
   );
 }
 
-// ── DEXA Body Silhouette ─────────────────────────────────────────────────────
-// Premium SVG lean/athletic body with regional fat annotations
-function BodySilhouette({ trunkFat, armsFat, legsFat, bodyFat, sex }: {
-  trunkFat: number | null; armsFat: number | null; legsFat: number | null;
-  bodyFat: number | null; sex: string | null;
-}) {
-  const fatColor = (pct: number | null) => {
-    if (pct == null) return '#c8c3ba';
-    if (pct < 15) return '#0C9C6C';
-    if (pct < 25) return '#5ba37a';
-    if (pct < 32) return '#C4A96A';
-    return '#E06B5B';
-  };
-
-  const trunkC = fatColor(trunkFat);
-  const armsC = fatColor(armsFat);
-  const legsC = fatColor(legsFat);
-
-  const isMale = sex !== 'female';
-
-  /* ─── Anatomical reference (viewBox 200×440, ~8 head-units) ───
-     Head:   y 14–54  (40px = 1 unit)    ellipse cy=34
-     Neck:   y 54–68  (14px)
-     Chest:  y 68–120 (shoulders at y=78)
-     Waist:  y 155–170
-     Hips:   y 190–210
-     Crotch: y 222
-     Knee:   y 330
-     Ankle:  y 400
-     Sole:   y 418
-
-     Male:   shoulders 56px, waist 40px, hips 48px
-     Female: shoulders 52px, waist 34px, hips 56px
-
-     Arms: closed paths, ~20° out, reach to ~y=222 (mid-thigh)
-           upper arm 14px wide → forearm 10px → wrist 6px
-     Legs: closed paths, thigh 16px → knee 10px → calf 8px → ankle 6px
-  */
-
-  return (
-    <div className="relative w-[240px] h-[420px] mx-auto flex-shrink-0">
-      <svg viewBox="0 0 200 440" width="240" height="420">
-        <defs>
-          <filter id="bSh" x="-6%" y="-2%" width="112%" height="104%">
-            <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#0e393d" floodOpacity="0.06" />
-          </filter>
-        </defs>
-        <g filter="url(#bSh)">
-          {/* Head */}
-          <ellipse cx="100" cy="34" rx="14" ry="20" fill="none" stroke="#1c2a2b" strokeWidth="1.2" opacity="0.2" />
-          {/* Neck */}
-          <path d="M93 54 L93 68 L107 68 L107 54" fill="none" stroke="#1c2a2b" strokeWidth="1" opacity="0.15" />
-
-          {isMale ? (
-            <>
-              {/* ── MALE TORSO ── shoulders 56, waist 40, hips 48 */}
-              <path d={`
-                M93 68 Q80 68 72 78
-                L73 100 L76 125 L80 148 L80 160
-                L78 178 L76 195 L78 208
-                Q78 220 88 222
-                L94 222 L106 222 L112 222
-                Q122 220 122 208
-                L124 195 L122 178
-                L120 160 L120 148 L124 125 L127 100
-                L128 78 Q120 68 107 68 Z
-              `} fill={trunkC} fillOpacity="0.12" stroke={trunkC} strokeWidth="1.1" />
-
-              {/* Left Arm — closed shape, ~20° out from body */}
-              <path d={`
-                M68 76
-                L48 126 L34 170 L22 204
-                Q18 218 16 226 Q14 232 18 234
-                Q22 232 24 224
-                L34 198 L46 162 L58 122 L74 88
-                Q72 76 68 76 Z
-              `} fill={armsC} fillOpacity="0.08" stroke={armsC} strokeWidth="1.1" />
-
-              {/* Right Arm */}
-              <path d={`
-                M132 76
-                L152 126 L166 170 L178 204
-                Q182 218 184 226 Q186 232 182 234
-                Q178 232 176 224
-                L166 198 L154 162 L142 122 L126 88
-                Q128 76 132 76 Z
-              `} fill={armsC} fillOpacity="0.08" stroke={armsC} strokeWidth="1.1" />
-
-              {/* Left Leg — thigh 16px, knee 10px, ankle 6px */}
-              <path d={`
-                M78 208
-                L76 240 L76 270 L76 300
-                L78 330 L80 360 L82 388
-                L80 406 Q80 418 86 418
-                L90 418 Q92 412 90 404
-                L88 388 L88 360 L90 330
-                L92 300 L92 270 L92 240
-                L94 222
-                Q86 214 78 208 Z
-              `} fill={legsC} fillOpacity="0.08" stroke={legsC} strokeWidth="1.1" />
-
-              {/* Right Leg */}
-              <path d={`
-                M122 208
-                L124 240 L124 270 L124 300
-                L122 330 L120 360 L118 388
-                L120 406 Q120 418 114 418
-                L110 418 Q108 412 110 404
-                L112 388 L112 360 L110 330
-                L108 300 L108 270 L108 240
-                L106 222
-                Q114 214 122 208 Z
-              `} fill={legsC} fillOpacity="0.08" stroke={legsC} strokeWidth="1.1" />
-
-              {/* Crotch divider */}
-              <line x1="100" y1="220" x2="100" y2="272" stroke={legsC} strokeWidth="0.5" opacity="0.12" />
-            </>
-          ) : (
-            <>
-              {/* ── FEMALE TORSO ── shoulders 52, waist 34, hips 56 */}
-              <path d={`
-                M93 68 Q82 68 74 78
-                L75 100 L78 120
-                Q80 132 83 142
-                Q82 152 80 162
-                L76 180 Q72 194 72 204
-                Q74 218 86 224
-                L94 226 L106 226 L114 224
-                Q126 218 128 204
-                Q128 194 124 180
-                L120 162 Q118 152 117 142
-                Q120 132 122 120
-                L125 100 L126 78
-                Q118 68 107 68 Z
-              `} fill={trunkC} fillOpacity="0.12" stroke={trunkC} strokeWidth="1.1" />
-
-              {/* Left Arm */}
-              <path d={`
-                M70 76
-                L52 126 L38 170 L26 204
-                Q22 218 20 226 Q18 232 22 234
-                Q26 232 28 224
-                L38 198 L50 162 L62 122 L74 88
-                Q74 76 70 76 Z
-              `} fill={armsC} fillOpacity="0.08" stroke={armsC} strokeWidth="1.1" />
-
-              {/* Right Arm */}
-              <path d={`
-                M130 76
-                L148 126 L162 170 L174 204
-                Q178 218 180 226 Q182 232 178 234
-                Q174 232 172 224
-                L162 198 L150 162 L138 122 L126 88
-                Q126 76 130 76 Z
-              `} fill={armsC} fillOpacity="0.08" stroke={armsC} strokeWidth="1.1" />
-
-              {/* Left Leg — wider thigh from wider hips */}
-              <path d={`
-                M72 204
-                L70 240 L70 270 L72 300
-                L74 330 L76 360 L80 388
-                L78 406 Q78 418 84 418
-                L88 418 Q90 412 88 404
-                L86 388 L86 360 L88 330
-                L90 300 L90 270 L90 240
-                L94 226
-                Q82 216 72 204 Z
-              `} fill={legsC} fillOpacity="0.08" stroke={legsC} strokeWidth="1.1" />
-
-              {/* Right Leg */}
-              <path d={`
-                M128 204
-                L130 240 L130 270 L128 300
-                L126 330 L124 360 L120 388
-                L122 406 Q122 418 116 418
-                L112 418 Q110 412 112 404
-                L114 388 L114 360 L112 330
-                L110 300 L110 270 L110 240
-                L106 226
-                Q118 216 128 204 Z
-              `} fill={legsC} fillOpacity="0.08" stroke={legsC} strokeWidth="1.1" />
-
-              {/* Crotch divider */}
-              <line x1="100" y1="224" x2="100" y2="276" stroke={legsC} strokeWidth="0.5" opacity="0.12" />
-            </>
-          )}
-        </g>
-      </svg>
-
-      {/* ── Floating Labels ── */}
-      {bodyFat != null && (
-        <div className="absolute" style={{ right: '0px', top: '1%' }}>
-          <div className="bg-[#0e393d] rounded-xl shadow-lg px-3 py-1.5 text-center">
-            <div className="text-[7px] text-white/50 uppercase tracking-[.1em]">Total Fat</div>
-            <div className="text-lg font-bold text-white leading-tight">{bodyFat.toFixed(1)}%</div>
-          </div>
-        </div>
-      )}
-      {trunkFat != null && (
-        <div className="absolute" style={{ left: '50%', top: '30%', transform: 'translateX(-50%)' }}>
-          <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow border border-[#0e393d]/[.08] px-2.5 py-1 text-center">
-            <div className="text-[7px] text-[#1c2a2b]/35 uppercase tracking-[.1em]">Trunk</div>
-            <div className="text-[12px] font-bold leading-tight" style={{ color: trunkC }}>{trunkFat.toFixed(1)}%</div>
-          </div>
-        </div>
-      )}
-      {armsFat != null && (
-        <div className="absolute" style={{ left: '0px', top: '24%' }}>
-          <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow border border-[#0e393d]/[.08] px-2 py-1 text-center">
-            <div className="text-[7px] text-[#1c2a2b]/35 uppercase tracking-[.1em]">Arms</div>
-            <div className="text-[11px] font-bold leading-tight" style={{ color: armsC }}>{armsFat.toFixed(1)}%</div>
-          </div>
-        </div>
-      )}
-      {legsFat != null && (
-        <div className="absolute" style={{ left: '50%', top: '82%', transform: 'translateX(-50%)' }}>
-          <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow border border-[#0e393d]/[.08] px-2.5 py-1 text-center">
-            <div className="text-[7px] text-[#1c2a2b]/35 uppercase tracking-[.1em]">Legs</div>
-            <div className="text-[12px] font-bold leading-tight" style={{ color: legsC }}>{legsFat.toFixed(1)}%</div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Composition Breakdown Bar ────────────────────────────────────────────────
-function CompositionBar({ lean, fat, bone }: { lean: number | null; fat: number | null; bone: number | null }) {
-  if (lean == null && fat == null && bone == null) return null;
-  // bone is stored in grams, lean/fat in kg — normalize to kg
-  const boneKg = bone != null ? (bone >= 100 ? bone / 1000 : bone) : 0;
-  const leanKg = lean ?? 0;
-  const fatKg = fat ?? 0;
-  const total = leanKg + fatKg + boneKg;
-  if (total === 0) return null;
-  const pctLean = (leanKg / total) * 100;
-  const pctFat = (fatKg / total) * 100;
-  const pctBone = (boneKg / total) * 100;
-
-  return (
-    <div>
-      <div className="flex h-6 rounded-full overflow-hidden shadow-inner">
-        <div className="transition-all duration-700 flex items-center justify-center"
-          style={{ width: `${pctLean}%`, background: 'linear-gradient(135deg, #0e393d, #16a34a)' }}>
-          {pctLean > 12 && <span className="text-[9px] font-bold text-white">{pctLean.toFixed(0)}%</span>}
-        </div>
-        <div className="transition-all duration-700 flex items-center justify-center"
-          style={{ width: `${pctFat}%`, background: 'linear-gradient(135deg, #C4A96A, #d97706)' }}>
-          {pctFat > 6 && <span className="text-[9px] font-bold text-white">{pctFat.toFixed(0)}%</span>}
-        </div>
-        <div className="transition-all duration-700 flex items-center justify-center"
-          style={{ width: `${Math.max(pctBone, 2)}%`, background: 'linear-gradient(135deg, #94a3b8, #64748b)' }}>
-          {pctBone > 4 && <span className="text-[9px] font-bold text-white">{pctBone.toFixed(0)}%</span>}
-        </div>
-      </div>
-      <div className="flex items-center gap-5 mt-2.5">
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#0e393d' }} />
-          <span className="text-[10px] text-[#1c2a2b]/50">Lean Mass</span>
-          {lean != null && <span className="text-[10px] font-bold text-[#0e393d]">{leanKg.toFixed(1)} kg</span>}
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#C4A96A' }} />
-          <span className="text-[10px] text-[#1c2a2b]/50">Fat Mass</span>
-          {fat != null && <span className="text-[10px] font-bold text-[#d97706]">{fatKg.toFixed(1)} kg</span>}
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#94a3b8' }} />
-          <span className="text-[10px] text-[#1c2a2b]/50">Bone</span>
-          {bone != null && <span className="text-[10px] font-bold text-[#64748b]">{boneKg.toFixed(1)} kg</span>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Android/Gynoid Ratio Gauge ───────────────────────────────────────────────
-function AGRatioGauge({ ratio }: { ratio: number | null }) {
-  if (ratio == null) return null;
-  // Healthy ratio: men ~0.8-1.0, women ~0.6-0.8; risk > 1.0
-  const position = Math.min(100, Math.max(0, (ratio / 1.5) * 100));
-  const color = ratio <= 0.85 ? '#0C9C6C' : ratio <= 1.0 ? '#5ba37a' : ratio <= 1.2 ? '#C4A96A' : '#E06B5B';
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[10px] text-[#1c2a2b]/40">Gynoid (pear)</span>
-        <span className="text-[10px] text-[#1c2a2b]/40">Android (apple)</span>
-      </div>
-      <div className="relative h-3 rounded-full overflow-hidden"
-        style={{ background: 'linear-gradient(90deg, #0C9C6C, #5ba37a 40%, #C4A96A 65%, #E06B5B 90%)' }}>
-        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white shadow-md border-2 transition-all duration-500"
-          style={{ left: `${position}%`, borderColor: color }} />
-      </div>
-      <div className="text-center mt-2">
-        <span className="text-xl font-bold" style={{ color }}>{ratio.toFixed(2)}</span>
-        <span className="text-[10px] text-[#1c2a2b]/40 ml-1">A/G Ratio</span>
-      </div>
-    </div>
-  );
-}
-
-// ── Training Zone Chart (VO2max) ─────────────────────────────────────────────
-function TrainingZoneChart({ vo2max, vt1, vt1Hr, vt2, vt2Hr, maxHr, restHr }: {
-  vo2max: number | null; vt1: number | null; vt1Hr: number | null;
-  vt2: number | null; vt2Hr: number | null; maxHr: number | null; restHr: number | null;
-}) {
-  if (vo2max == null) return null;
-
-  // Derive zone boundaries from VT1/VT2 or use defaults based on maxHR
-  const mHr = maxHr ?? 190;
-  const z1End = vt1Hr ? vt1Hr - 5 : Math.round(mHr * 0.6);
-  const z2End = vt1Hr ?? Math.round(mHr * 0.7);
-  const z3End = vt2Hr ? vt2Hr - 5 : Math.round(mHr * 0.8);
-  const z4End = vt2Hr ?? Math.round(mHr * 0.9);
-  const z5End = mHr;
-
-  const zones = [
-    { name: 'Zone 1', label: 'Recovery', hr: `< ${z1End}`, color: '#94a3b8', pct: 20 },
-    { name: 'Zone 2', label: 'Aerobic Base', hr: `${z1End}–${z2End}`, color: '#0C9C6C', pct: 20 },
-    { name: 'Zone 3', label: 'Tempo', hr: `${z2End}–${z3End}`, color: '#C4A96A', pct: 20 },
-    { name: 'Zone 4', label: 'Threshold', hr: `${z3End}–${z4End}`, color: '#d97706', pct: 20 },
-    { name: 'Zone 5', label: 'VO₂max', hr: `${z4End}–${z5End}`, color: '#E06B5B', pct: 20 },
-  ];
-
-  // VT markers relative positions
-  const hrRange = z5End - (restHr ?? Math.round(mHr * 0.45));
-  const vt1Pos = vt1Hr ? ((vt1Hr - (restHr ?? Math.round(mHr * 0.45))) / hrRange) * 100 : null;
-  const vt2Pos = vt2Hr ? ((vt2Hr - (restHr ?? Math.round(mHr * 0.45))) / hrRange) * 100 : null;
-
-  return (
-    <div>
-      {/* Zone bars */}
-      <div className="flex h-12 rounded-xl overflow-hidden shadow-inner mb-3">
-        {zones.map((z, i) => (
-          <div key={i} className="relative flex-1 flex flex-col items-center justify-center transition-all hover:flex-[1.3]"
-            style={{ background: z.color }}>
-            <span className="text-[9px] font-bold text-white/90">{z.name}</span>
-            <span className="text-[7px] text-white/60">{z.hr} bpm</span>
-          </div>
-        ))}
-      </div>
-
-      {/* VT markers on a continuous line */}
-      <div className="relative h-8 mb-4">
-        <div className="absolute top-3 left-0 right-0 h-[2px] bg-[#1c2a2b]/10 rounded-full" />
-        {vt1Pos != null && (
-          <div className="absolute -translate-x-1/2" style={{ left: `${Math.min(95, Math.max(5, vt1Pos))}%`, top: 0 }}>
-            <div className="w-0.5 h-6 bg-[#0C9C6C] mx-auto" />
-            <div className="text-[8px] font-bold text-[#0C9C6C] text-center whitespace-nowrap mt-0.5">
-              VT1 {vt1Hr && `${vt1Hr} bpm`}
-            </div>
-          </div>
-        )}
-        {vt2Pos != null && (
-          <div className="absolute -translate-x-1/2" style={{ left: `${Math.min(95, Math.max(5, vt2Pos))}%`, top: 0 }}>
-            <div className="w-0.5 h-6 bg-[#d97706] mx-auto" />
-            <div className="text-[8px] font-bold text-[#d97706] text-center whitespace-nowrap mt-0.5">
-              VT2 {vt2Hr && `${vt2Hr} bpm`}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Zone legend with descriptions */}
-      <div className="grid grid-cols-5 gap-1.5">
-        {zones.map((z, i) => (
-          <div key={i} className="text-center">
-            <div className="w-full h-1 rounded-full mb-1" style={{ background: z.color }} />
-            <div className="text-[8px] font-semibold text-[#1c2a2b]/60">{z.label}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── VO2max Percentile Gauge ──────────────────────────────────────────────────
-function VO2maxGauge({ vo2max, sex }: { vo2max: number; sex: string | null }) {
-  // Approximate percentile for age 30-39 (general reference)
-  // Men: Poor <33, Fair 33-36, Good 37-41, Excellent 42-46, Superior >46
-  // Women: Poor <28, Fair 28-31, Good 32-36, Excellent 37-41, Superior >41
-  const isMale = sex !== 'female';
-  const thresholds = isMale
-    ? [33, 37, 42, 47]
-    : [28, 32, 37, 42];
-  const labels = ['Poor', 'Fair', 'Good', 'Excellent', 'Superior'];
-  const colors = ['#E06B5B', '#C4A96A', '#5ba37a', '#0C9C6C', '#0e393d'];
-
-  let level = 0;
-  for (let i = 0; i < thresholds.length; i++) {
-    if (vo2max >= thresholds[i]) level = i + 1;
-  }
-
-  const maxVal = isMale ? 60 : 55;
-  const pct = Math.min(100, Math.max(0, (vo2max / maxVal) * 100));
-
-  return (
-    <div className="text-center">
-      <div className="relative w-full max-w-[280px] mx-auto">
-        {/* Semicircle gauge */}
-        <svg viewBox="0 0 200 110" className="w-full">
-          {/* Background arc segments */}
-          {[0, 1, 2, 3, 4].map(i => {
-            const startAngle = Math.PI + (i / 5) * Math.PI;
-            const endAngle = Math.PI + ((i + 1) / 5) * Math.PI;
-            const r = 85;
-            const x1 = 100 + r * Math.cos(startAngle);
-            const y1 = 100 + r * Math.sin(startAngle);
-            const x2 = 100 + r * Math.cos(endAngle);
-            const y2 = 100 + r * Math.sin(endAngle);
-            return (
-              <path key={i}
-                d={`M ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2}`}
-                fill="none" stroke={colors[i]} strokeWidth="14"
-                opacity={i <= level ? 0.9 : 0.15}
-                strokeLinecap="butt" />
-            );
-          })}
-          {/* Needle */}
-          {(() => {
-            const angle = Math.PI + (pct / 100) * Math.PI;
-            const nx = 100 + 65 * Math.cos(angle);
-            const ny = 100 + 65 * Math.sin(angle);
-            return <line x1="100" y1="100" x2={nx} y2={ny}
-              stroke="#0e393d" strokeWidth="2.5" strokeLinecap="round" />;
-          })()}
-          <circle cx="100" cy="100" r="5" fill="#0e393d" />
-        </svg>
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
-          <div className="font-serif text-3xl text-[#0e393d]">{vo2max.toFixed(1)}</div>
-          <div className="text-[10px] text-[#1c2a2b]/40">ml/kg/min</div>
-        </div>
-      </div>
-      <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
-        style={{ background: `${colors[level]}15`, color: colors[level] }}>
-        <span className="text-xs font-bold">{labels[level]}</span>
-      </div>
-    </div>
-  );
-}
-
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function HealthEngineDashboard({ lang, userId, profile, reports, results, definitions }: Props) {
   const t = T[lang];
@@ -1067,20 +656,31 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
     const best = sorted[0];
     const worst = sorted[sorted.length - 1];
 
-    // Flag counts
+    // Slugs removed from packages (not offered as part of Core/Pro/Complete)
+    const EXCLUDED_SLUGS = new Set([
+      'grip_strength', 'ages_skin_scan',
+      'bone_density_t_score', 'bone_mineral_content',
+      'trunk_fat_pct', 'arms_fat_pct', 'legs_fat_pct', 'android_gynoid_ratio',
+      'lpa',
+    ]);
+
+    // Flag counts (exclude removed markers from counts)
     const flags = { optimal: 0, good: 0, moderate: 0, risk: 0 };
     const allMarkers: (ProcessedMarker & { domainName: string; domainKey: string })[] = [];
     for (const d of domains) {
       for (const m of d.markers) {
-        flags[m.latestStatus]++;
         allMarkers.push({ ...m, domainName: getName(d.name, lang), domainKey: d.key });
+        if (!EXCLUDED_SLUGS.has(m.slug)) {
+          flags[m.latestStatus]++;
+        }
       }
     }
     const flagTotal = flags.optimal + flags.good + flags.moderate + flags.risk;
 
-    // Borderline / improved
-    const borderline = allMarkers.filter(m => m.latestStatus === 'moderate' || m.latestStatus === 'risk');
+    // Borderline / improved (exclude removed markers)
+    const borderline = allMarkers.filter(m => !EXCLUDED_SLUGS.has(m.slug) && (m.latestStatus === 'moderate' || m.latestStatus === 'risk'));
     const improved = allMarkers.filter(m => {
+      if (EXCLUDED_SLUGS.has(m.slug)) return false;
       if (m.previousScore == null) return false;
       return m.latestScore > m.previousScore + 2;
     });
@@ -1100,15 +700,47 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
       })
       .filter(d => d.domsWithData >= 3);
 
-    // First meaningful score (for progress display)
+    // First meaningful score (for progress display) + time label
     const firstMeaningfulScore = scoreData.length >= 2 ? scoreData[0].score : null;
+    // Compute time span between first and last meaningful score dates
+    const meaningfulDates = displayDates.filter((_, i) => {
+      const domsWithData = domains.filter(dom => dom.scores[i] > 0).length;
+      return domsWithData >= 3;
+    });
+    let progressLabel = '';
+    if (meaningfulDates.length >= 2) {
+      const d1 = new Date(meaningfulDates[0] + 'T00:00:00');
+      const d2 = new Date(meaningfulDates[meaningfulDates.length - 1] + 'T00:00:00');
+      const diffMs = d2.getTime() - d1.getTime();
+      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDays < 45) progressLabel = `${diffDays}-Day`;
+      else {
+        const months = Math.round(diffDays / 30.44);
+        progressLabel = months === 1 ? '1-Month' : `${months}-Month`;
+      }
+    }
 
-    // Radar data — use domain 60-100 scale for visual spread
-    const radarData = domains.map(d => ({
-      subject: getName(d.name, lang).replace(/\s*[(&].*/, '').split(' ')[0],
-      current: d.scores[d.scores.length - 1] || 0,
-      previous: d.scores.length >= 2 ? (d.scores[d.scores.length - 2] || 0) : 0,
-    }));
+    // Radar data — use domain 60-100 scale for visual spread, show last 3 tests
+    // Find latest 3 date indices that have meaningful data (at least 3 domains with scores)
+    const radarDateIndices: number[] = [];
+    for (let i = displayDates.length - 1; i >= 0 && radarDateIndices.length < 3; i--) {
+      const domsWithData = domains.filter(dom => dom.scores[i] > 0).length;
+      if (domsWithData >= 3) radarDateIndices.unshift(i);
+    }
+    const radarData = domains.map(d => {
+      const cur = radarDateIndices.length >= 1 ? (d.scores[radarDateIndices[radarDateIndices.length - 1]] || 0) : 0;
+      const prev = radarDateIndices.length >= 2 ? (d.scores[radarDateIndices[radarDateIndices.length - 2]] || 0) : 0;
+      const prev2 = radarDateIndices.length >= 3 ? (d.scores[radarDateIndices[radarDateIndices.length - 3]] || 0) : 0;
+      return {
+        subject: getName(d.name, lang).replace(/\s*[(&].*/, '').split(' ')[0],
+        current: cur,
+        previous: prev,
+        oldest: prev2,
+      };
+    });
+    const hasRadarPrev = radarDateIndices.length >= 2;
+    const hasRadarOldest = radarDateIndices.length >= 3;
+    const radarLabels = radarDateIndices.map(i => displayLabels[i]);
 
     // Longevity score: weighted score EXCLUDING epigenetics/genetic domains
     const nonEpiDomains = domains.filter(d => d.key !== 'epigenetics');
@@ -1135,8 +767,9 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
     const longevityBest = longevitySorted[0];
     const longevityWorst = longevitySorted[longevitySorted.length - 1];
 
-    // Top ranked markers by sort_order
+    // Top ranked markers by sort_order — only package biomarkers, excluding epigenetics
     const topRankedMarkers = [...allMarkers]
+      .filter(m => !EXCLUDED_SLUGS.has(m.slug) && m.domainKey !== 'epigenetics')
       .map(m => {
         const def = defMap.get(m.defId);
         return { ...m, sort: def?.sort_order ?? 999 };
@@ -1170,105 +803,16 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
       domains, overallScores, latestOverall, scoreData,
       best, worst, flags, flagTotal,
       borderline, improved, featured, allMarkers,
-      radarData, markerCount, firstMeaningfulScore,
+      radarData, hasRadarPrev, hasRadarOldest, radarLabels, markerCount, firstMeaningfulScore, progressLabel,
       longevityScores, longevityLatest, longevityScoreData, longevityBest, longevityWorst,
       topRankedMarkers, nonEpiDomainCount: nonEpiDomains.length,
-      bioClocks, mData, defMap,
+      bioClocks, mData, defMap, EXCLUDED_SLUGS,
     };
   }, [reports, results, definitions, lang]);
 
-  // ── DEXA & Fitness data extraction ─────────────────────────
-  const dexaData = useMemo(() => {
-    const defBySlug = new Map(definitions.map(d => [d.slug, d]));
-    const latestVal = (slug: string): number | null => {
-      const def = defBySlug.get(slug);
-      if (!def) return null;
-      const vals = results
-        .filter(r => r.biomarker_definition_id === def.id && r.value_numeric != null)
-        .sort((a, b) => (b.test_date || b.measured_at || '').localeCompare(a.test_date || a.measured_at || ''));
-      return vals[0]?.value_numeric ?? null;
-    };
-    const defId = (slug: string) => defBySlug.get(slug)?.id ?? null;
-    const defInfo = (slug: string) => {
-      const d = defBySlug.get(slug);
-      return d ? { id: d.id, unit: d.unit || '', refLow: d.ref_range_low, refHigh: d.ref_range_high, optLow: d.optimal_range_low, optHigh: d.optimal_range_high } : null;
-    };
+  // DEXA & Fitness data extraction removed — values shown only in ALL BIOMARKERS table
 
-    return {
-      bodyFatPct: latestVal('body_fat_pct'),
-      muscleMassPct: latestVal('muscle_mass_pct'),
-      visceralFat: latestVal('visceral_fat'),
-      boneDensityTScore: latestVal('bone_density_t_score'),
-      bmi: latestVal('bmi'),
-      leanMass: latestVal('lean_mass'),
-      fatMass: latestVal('fat_mass'),
-      boneMineralContent: latestVal('bone_mineral_content'),
-      trunkFatPct: latestVal('trunk_fat_pct'),
-      armsFatPct: latestVal('arms_fat_pct'),
-      legsFatPct: latestVal('legs_fat_pct'),
-      androidGynoidRatio: latestVal('android_gynoid_ratio'),
-      // For trend charts
-      defs: {
-        bodyFatPct: defInfo('body_fat_pct'),
-        muscleMassPct: defInfo('muscle_mass_pct'),
-        visceralFat: defInfo('visceral_fat'),
-        leanMass: defInfo('lean_mass'),
-      },
-    };
-  }, [definitions, results]);
-
-  const fitnessData = useMemo(() => {
-    const defBySlug = new Map(definitions.map(d => [d.slug, d]));
-    const latestVal = (slug: string): number | null => {
-      const def = defBySlug.get(slug);
-      if (!def) return null;
-      const vals = results
-        .filter(r => r.biomarker_definition_id === def.id && r.value_numeric != null)
-        .sort((a, b) => (b.test_date || b.measured_at || '').localeCompare(a.test_date || a.measured_at || ''));
-      return vals[0]?.value_numeric ?? null;
-    };
-    const defInfo = (slug: string) => {
-      const d = defBySlug.get(slug);
-      return d ? { id: d.id, unit: d.unit || '', refLow: d.ref_range_low, refHigh: d.ref_range_high, optLow: d.optimal_range_low, optHigh: d.optimal_range_high } : null;
-    };
-
-    return {
-      vo2max: latestVal('vo2max'),
-      vo2maxAbsolute: latestVal('vo2max_absolute'),
-      vt1: latestVal('vt1'),
-      vt1HeartRate: latestVal('vt1_heart_rate'),
-      vt2: latestVal('vt2'),
-      vt2HeartRate: latestVal('vt2_heart_rate'),
-      restingHeartRate: latestVal('resting_heart_rate'),
-      maxHeartRate: latestVal('max_heart_rate'),
-      hrv: latestVal('hrv'),
-      maxPowerOutput: latestVal('max_power_output'),
-      rerPeak: latestVal('rer_peak'),
-      spo2: latestVal('spo2'),
-      spo2Peak: latestVal('spo2_peak'),
-      // For trend charts
-      defs: {
-        vo2max: defInfo('vo2max'),
-        hrv: defInfo('hrv'),
-        restingHeartRate: defInfo('resting_heart_rate'),
-      },
-    };
-  }, [definitions, results]);
-
-  const hasDexa = dexaData.bodyFatPct != null || dexaData.leanMass != null || dexaData.fatMass != null;
-  const hasFitness = fitnessData.vo2max != null;
-
-  // ── Sub-group definitions for mixed domains ─────────────────────
-  const DOMAIN_SUBGROUPS: Record<string, { label: string; slugs: string[] }[]> = {
-    fitness: [
-      { label: 'VO₂max Test', slugs: ['vo2max', 'vo2max_absolute', 'vt1', 'vt2', 'vt1_heart_rate', 'vt2_heart_rate', 'max_heart_rate', 'max_power_output', 'rer_peak', 'spo2_peak'] },
-      { label: 'Vitality Check', slugs: ['grip_strength', 'ages_skin_scan', 'spo2', 'resting_heart_rate', 'hrv'] },
-    ],
-    body_composition: [
-      { label: 'DEXA Scan', slugs: ['body_fat_pct', 'muscle_mass_pct', 'lean_mass', 'fat_mass', 'bone_density_t_score', 'bone_mineral_content', 'trunk_fat_pct', 'arms_fat_pct', 'legs_fat_pct', 'android_gynoid_ratio', 'visceral_fat'] },
-      { label: 'General', slugs: ['bmi', 'body_weight', 'wht_ratio'] },
-    ],
-  };
+  // Sub-group definitions removed — all markers shown in their original domain
 
   // ── Domain descriptions ───────────────────────────────────────
   const DOMAIN_DESC: Record<string, Record<string, string>> = {
@@ -1313,9 +857,81 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
   // ── State ─────────────────────────────────────────────────────
   const [expandedDomain, setExpandedDomain] = useState<string | null>(null);
   const [expandedMarker, setExpandedMarker] = useState<string | null>(null);
-  const [showTable, setShowTable] = useState(false);
+  const [expandedReports, setExpandedReports] = useState<Set<string>>(() => {
+    const newest = [...reports].sort((a, b) => b.test_date.localeCompare(a.test_date))[0]?.test_date;
+    return newest ? new Set([newest]) : new Set();
+  });
 
   const lastDate = dash.displayDates[dash.displayDates.length - 1];
+
+  // ── Height onboarding gate ────────────────────────────────────
+  const [heightInput, setHeightInput] = useState('');
+  const [heightSaving, setHeightSaving] = useState(false);
+  const [heightSaved, setHeightSaved] = useState(false);
+  const needsHeight = profile?.height_cm == null && !heightSaved;
+
+  const saveHeight = useCallback(async () => {
+    const cm = parseFloat(heightInput);
+    if (isNaN(cm) || cm < 50 || cm > 250) return;
+    setHeightSaving(true);
+    try {
+      const supabase = createClient();
+      await supabase.from('profiles').update({ height_cm: cm }).eq('id', userId);
+      setHeightSaved(true);
+    } finally {
+      setHeightSaving(false);
+    }
+  }, [heightInput, userId]);
+
+  if (needsHeight && dash.allMarkers.length > 0) {
+    return (
+      <div className="min-h-[60vh] bg-[#fafaf8] flex items-center justify-center py-20 px-6">
+        <div className="bg-white rounded-2xl shadow-lg border border-[#0e393d]/[.06] max-w-md w-full p-8 text-center">
+          <div className="w-16 h-16 rounded-full bg-[#0e393d]/[.05] flex items-center justify-center mx-auto mb-5">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0e393d" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M12 2v20M9 5h6M9 9h6M10 13h4M10 17h4" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-semibold text-[#0e393d] mb-2">
+            {lang === 'de' ? 'Körpergrösse eingeben' : lang === 'fr' ? 'Entrez votre taille' : lang === 'es' ? 'Ingrese su estatura' : lang === 'it' ? 'Inserisci la tua altezza' : 'Enter Your Height'}
+          </h2>
+          <p className="text-sm text-[#1c2a2b]/50 mb-6">
+            {lang === 'de' ? 'Wir benötigen Ihre Körpergrösse, um BMI, Taille-zu-Grösse-Verhältnis und weitere Gesundheitswerte korrekt zu berechnen.' :
+             lang === 'fr' ? 'Nous avons besoin de votre taille pour calculer correctement l\'IMC, le rapport taille/taille et d\'autres valeurs de santé.' :
+             lang === 'es' ? 'Necesitamos su estatura para calcular correctamente el IMC, la relación cintura-estatura y otros valores de salud.' :
+             lang === 'it' ? 'Abbiamo bisogno della tua altezza per calcolare correttamente BMI, rapporto vita-altezza e altri valori di salute.' :
+             'We need your height to correctly calculate BMI, waist-to-height ratio, and other health metrics.'}
+          </p>
+          <div className="flex items-center gap-3 justify-center mb-5">
+            <input
+              type="number"
+              min={50} max={250} step={0.1}
+              placeholder="175"
+              value={heightInput}
+              onChange={e => setHeightInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && saveHeight()}
+              className="w-28 px-4 py-2.5 rounded-lg border border-[#0e393d]/15 text-center text-lg font-semibold text-[#0e393d] focus:outline-none focus:ring-2 focus:ring-[#0C9C6C]/30 focus:border-[#0C9C6C]"
+            />
+            <span className="text-sm text-[#1c2a2b]/40 font-medium">cm</span>
+          </div>
+          <button
+            onClick={saveHeight}
+            disabled={heightSaving || !heightInput || parseFloat(heightInput) < 50 || parseFloat(heightInput) > 250}
+            className="w-full py-3 rounded-xl bg-[#0e393d] text-white font-semibold text-sm hover:bg-[#0e393d]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          >
+            {heightSaving ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                {lang === 'de' ? 'Speichern…' : lang === 'fr' ? 'Enregistrement…' : 'Saving…'}
+              </span>
+            ) : (
+              lang === 'de' ? 'Weiter zum Dashboard' : lang === 'fr' ? 'Continuer vers le tableau de bord' : lang === 'es' ? 'Continuar al panel' : lang === 'it' ? 'Continua alla dashboard' : 'Continue to Dashboard'
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // ── Empty state ───────────────────────────────────────────────
   if (dash.allMarkers.length === 0) {
@@ -1354,64 +970,31 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
 
         {/* ── AUDIO HEALTH BRIEFING ── */}
         <section className="mb-8">
-          <div className="bg-gradient-to-r from-[#0e393d] to-[#13474c] rounded-2xl overflow-hidden shadow-lg">
-            <div className="p-6 flex items-center gap-5">
-              {/* Play button */}
-              <button className="w-14 h-14 rounded-full bg-[#0C9C6C] hover:bg-[#0ab07a] transition-colors flex items-center justify-center shrink-0 shadow-lg shadow-[#0C9C6C]/20">
-                <svg width="20" height="22" viewBox="0 0 20 22" fill="none">
-                  <path d="M2 1.5v19l16-9.5L2 1.5z" fill="white" />
-                </svg>
-              </button>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-[13px] font-semibold text-white">{t.healthBriefing}</h3>
-                  <span className="text-[9px] font-semibold tracking-[.08em] uppercase px-2 py-0.5 rounded-full bg-[#ceab84]/15 text-[#ceab84]">{t.comingSoon}</span>
-                </div>
-                <p className="text-[11px] text-white/40 mb-3">{t.briefingSub}</p>
-                {/* Waveform placeholder */}
-                <div className="flex items-center gap-[2px] h-5">
-                  {Array.from({ length: 48 }, (_, i) => {
-                    const h = 4 + Math.sin(i * 0.4) * 8 + Math.random() * 6;
-                    return <div key={i} className="w-[3px] rounded-full bg-white/15" style={{ height: h }} />;
-                  })}
-                  <span className="text-[10px] text-white/25 ml-2">1:12</span>
-                </div>
-              </div>
-            </div>
-            {/* Chat input */}
-            <div className="px-6 pb-5">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder={t.askAnything}
-                  disabled
-                  className="flex-1 rounded-xl bg-white/[.06] border border-white/[.08] px-4 py-2.5 text-[12px] text-white/40 placeholder:text-white/25 outline-none"
-                />
-                <button disabled className="rounded-xl bg-white/[.06] border border-white/[.08] px-4 py-2.5 text-[11px] font-semibold text-white/25">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
+          <BriefingPlayer lang={lang} firstName={profile?.first_name ?? ''} />
         </section>
 
         {/* ── TWO GAUGES: LONGEVITY SCORE + BIOLOGICAL AGE CLOCKS ── */}
         <section className="mb-16">
+          <SectionTag>{t.secScore}</SectionTag>
           <div className="grid md:grid-cols-2 gap-3.5 mb-6">
 
             {/* ─── LEFT: LONGEVITY SCORE gauge card ─── */}
-            <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col">
+            <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col relative">
+              <div className="absolute top-4 right-4 z-10">
+                <InfoTooltip lines={dash.domains.filter(d => d.key !== 'epigenetics').map(d => ({
+                  label: getName(d.name, lang).split(/\s*\(/)[0],
+                  value: d.weightLabel,
+                }))} />
+              </div>
               <div className="px-5 pt-5 pb-3.5 flex flex-col items-center gap-[5px]">
                 <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-[#ceab84] mb-2 self-start">
                   {t.longevityScore}
                 </div>
                 <div className="mt-2 mb-1"><Gauge score={dash.longevityLatest} max={100} dark /></div>
-                <div className="text-xs text-white/30 text-center">
+                <div className="text-[11px] text-white/30 text-center">
                   {t.basedOnDomains.replace('{n}', String(dash.nonEpiDomainCount || 8))}
                 </div>
-                <div className="text-[10px] text-white/[.18] text-center leading-snug mt-1">
+                <div className="text-[10px] text-white/[.18] text-center leading-snug mt-0.5">
                   {t.epigeneticsSeparate}
                 </div>
               </div>
@@ -1442,7 +1025,7 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
               {dash.longevityScoreData.length >= 2 && (
                 <div className="border-t border-white/[.06] px-4 py-3 bg-black/[.12]">
                   <div className="text-[10px] font-semibold tracking-[.08em] uppercase text-white/22 mb-1.5">{t.scoreHistory}</div>
-                  <div className="h-[110px]">
+                  <div className="h-[150px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={dash.longevityScoreData} margin={{ top: 4, right: 4, bottom: 0, left: -28 }}>
                         <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
@@ -1466,8 +1049,9 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
               if (!hasBioClocks) return null;
 
               const birthDate = new Date(profile!.date_of_birth!);
-              const today = new Date();
-              const chronoAge = +(((today.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)).toFixed(1));
+              // Use last test date instead of Date.now() to avoid SSR/client hydration mismatch
+              const refDate = new Date(lastDate + 'T00:00:00');
+              const chronoAge = +(((refDate.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)).toFixed(1));
 
               const paceRate = dash.bioClocks['dunedinpace']?.latest;
               const paceProjected = paceRate != null ? +(paceRate * chronoAge).toFixed(1) : null;
@@ -1501,33 +1085,49 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
               const best = clockEntries.length > 0 ? clockEntries.reduce((a, b) => (a.diff! < b.diff! ? a : b)) : null;
               const worst = clockEntries.length > 1 ? clockEntries.reduce((a, b) => (a.diff! > b.diff! ? a : b)) : null;
 
-              // Bio age trend chart data
-              const CLOCKS_META: { slug: string; color: string; isDunedin?: boolean }[] = [
-                { slug: 'phenoage', color: '#0C9C6C' },
-                { slug: 'grimage_v2', color: '#8b5cf6' },
-                { slug: 'dunedinpace', color: '#ceab84', isDunedin: true },
+              // Combined average bio age chart data (single line)
+              const CLOCKS_META: { slug: string; isDunedin?: boolean }[] = [
+                { slug: 'phenoage' },
+                { slug: 'grimage_v2' },
+                { slug: 'dunedinpace', isDunedin: true },
               ];
-              const chartData = dash.displayDates.map((_: string, di: number) => {
-                const point: Record<string, string | number | null> = { date: dash.displayLabels[di], chron: chronoAge };
+              const chartData = dash.displayDates.map((dateStr: string, di: number) => {
+                // Chronological age at each test date (increases over time)
+                const testDate = new Date(dateStr + 'T00:00:00');
+                const chronAtDate = +((testDate.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)).toFixed(1);
+                const ages: number[] = [];
                 for (const c of CLOCKS_META) {
                   const clock = dash.bioClocks[c.slug];
                   if (!clock || clock.values[di] == null) continue;
                   if (c.isDunedin) {
-                    point['DunedinPACE×age'] = +((clock.values[di] as number) * chronoAge).toFixed(1);
+                    ages.push(+((clock.values[di] as number) * chronAtDate).toFixed(1));
                   } else {
-                    point[c.slug === 'phenoage' ? 'PhenoAge' : 'GrimAge v2'] = clock.values[di];
+                    ages.push(clock.values[di] as number);
                   }
                 }
-                return point;
+                const avg = ages.length > 0 ? +(ages.reduce((a, b) => a + b, 0) / ages.length).toFixed(1) : null;
+                return { date: dash.displayLabels[di], avg, chron: chronAtDate };
               });
-              const allAges = chartData.flatMap(d =>
-                ['PhenoAge', 'GrimAge v2', 'DunedinPACE×age'].map(k => d[k] as number | null).filter((v): v is number => v != null)
-              );
-              const bioYMin = allAges.length > 0 ? Math.floor(Math.min(...allAges, chronoAge) / 5) * 5 - 2 : chronoAge - 10;
-              const bioYMax = allAges.length > 0 ? Math.ceil(Math.max(...allAges, chronoAge) / 5) * 5 + 2 : chronoAge + 10;
+              const allAvgs = chartData.map(d => d.avg).filter((v): v is number => v != null);
+              const allChrons = chartData.map(d => d.chron);
+              const bioYMin = allAvgs.length > 0 ? Math.floor(Math.min(...allAvgs, ...allChrons) / 5) * 5 - 2 : chronoAge - 10;
+              const bioYMax = allAvgs.length > 0 ? Math.ceil(Math.max(...allAvgs, ...allChrons) / 5) * 5 + 2 : chronoAge + 10;
+
+              // Clock weights for info tooltip
+              const clockWeights = [
+                { label: 'PhenoAge', value: phenoLatest != null ? '33%' : '—' },
+                { label: 'GrimAge v2', value: grimLatest != null ? '33%' : '—' },
+                { label: 'DunedinPACE', value: paceProjected != null ? '33%' : '—' },
+              ].filter(c => c.value !== '—');
+              // Redistribute weights equally among available clocks
+              const pctEach = clockWeights.length > 0 ? `${Math.round(100 / clockWeights.length)}%` : '—';
+              clockWeights.forEach(c => c.value = pctEach);
 
               return (
-                <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col">
+                <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col relative">
+                  <div className="absolute top-4 right-4 z-10">
+                    <InfoTooltip lines={clockWeights} />
+                  </div>
                   <div className="px-5 pt-5 pb-3.5 flex flex-col items-center gap-[5px]">
                     <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-[#ceab84] mb-2 self-start">
                       {t.bioAgeClocks}
@@ -1535,20 +1135,20 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
                     <div className="mt-2 mb-1"><Gauge score={bioGaugeScore} max={100} dark /></div>
                     {avgBioAge != null && (
                       <>
-                        <div className="text-xs text-white/30 text-center">
+                        <div className="text-[11px] text-white/30 text-center">
                           {avgDiff != null && (avgDiff < 0
                             ? `↓ ${Math.abs(avgDiff).toFixed(1)} years younger than chronological age`
                             : `↑ ${avgDiff.toFixed(1)} years older than chronological age`
                           )}
                         </div>
-                        <div className="text-[10px] text-white/[.18] text-center leading-snug mt-1">
-                          {t.bioAgeDesc} · avg. across {bioAgeValues.length} clocks
+                        <div className="text-[10px] text-white/[.18] text-center leading-snug mt-0.5">
+                          avg. across {bioAgeValues.length} clocks
                         </div>
                       </>
                     )}
                   </div>
 
-                  {/* Best Clock / Focus Clock panels */}
+                  {/* Summary: Best / Focus clock panels */}
                   <div className="grid grid-cols-2 border-t border-white/[.06]">
                     {best && (
                       <div className="px-3.5 py-[11px] flex flex-col gap-0.5 border-r border-white/[.06]">
@@ -1566,11 +1166,11 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
                     )}
                   </div>
 
-                  {/* Bio age trend chart */}
-                  {allAges.length > 0 && (
+                  {/* Combined avg bio age trend chart */}
+                  {allAvgs.length > 0 && (
                     <div className="border-t border-white/[.06] px-4 py-3 bg-black/[.12]">
-                      <div className="text-[10px] font-semibold tracking-[.08em] uppercase text-white/22 mb-1.5">Bio Clocks vs Chronological</div>
-                      <div className="h-[110px]">
+                      <div className="text-[10px] font-semibold tracking-[.08em] uppercase text-white/22 mb-1.5">Avg Bio Age vs Chronological</div>
+                      <div className="h-[150px]">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -28 }}>
                             <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
@@ -1582,9 +1182,7 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
                               itemStyle={{ fontSize: 11 }}
                             />
                             <Line name="Chronological" type="monotone" dataKey="chron" stroke="rgba(255,255,255,.2)" strokeWidth={1} strokeDasharray="5 4" dot={false} />
-                            {dash.bioClocks['phenoage'] && <Line name="PhenoAge" type="monotone" dataKey="PhenoAge" stroke="#0C9C6C" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />}
-                            {dash.bioClocks['grimage_v2'] && <Line name="GrimAge v2" type="monotone" dataKey="GrimAge v2" stroke="#8b5cf6" strokeWidth={2} dot={false} activeDot={{ r: 4 }} connectNulls />}
-                            {dash.bioClocks['dunedinpace'] && <Line name="DunedinPACE×age" type="monotone" dataKey="DunedinPACE×age" stroke="#ceab84" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />}
+                            <Line name="Avg Bio Age" type="monotone" dataKey="avg" stroke="#0C9C6C" strokeWidth={2} dot={false} activeDot={{ r: 4 }} connectNulls />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
@@ -1657,7 +1255,7 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
           </div>
 
           {/* Insight cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {dash.longevityBest && (
               <div className="bg-white rounded-2xl border border-[#1c2a2b]/[.06] p-5 shadow-sm">
                 <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#0C9C6C]/60 mb-2">{t.topStrength}</div>
@@ -1683,7 +1281,10 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
             )}
             {dash.firstMeaningfulScore != null && (
               <div className="bg-white rounded-2xl border border-[#1c2a2b]/[.06] p-5 shadow-sm">
-                <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/35 mb-2">{t.monthProgress}</div>
+                <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/35 mb-2">
+                  {dash.progressLabel ? `${dash.progressLabel} ${t.monthProgress}` : t.monthProgress}
+                </div>
+                <div className="text-[13px] font-semibold text-[#0e393d] mb-2">Longevity</div>
                 <div className="flex items-baseline gap-1 mb-1">
                   <span className="font-serif text-xl" style={{ color: scoreColor(dash.firstMeaningfulScore) }}>{dash.firstMeaningfulScore}</span>
                   <span className="text-[#1c2a2b]/25 mx-1">→</span>
@@ -1694,14 +1295,218 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
                 </div>
               </div>
             )}
+            {/* Bio Age progress card */}
+            {(() => {
+              const hasBio = Object.keys(dash.bioClocks).length > 0 && profile?.date_of_birth;
+              if (!hasBio) return null;
+              const birthDate = new Date(profile!.date_of_birth!);
+              // Find earliest and latest bio age averages from display dates
+              const bioAvgs: { di: number; avg: number }[] = [];
+              dash.displayDates.forEach((dateStr: string, di: number) => {
+                const testDate = new Date(dateStr + 'T00:00:00');
+                const chron = (testDate.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+                const ages: number[] = [];
+                for (const slug of ['phenoage', 'grimage_v2', 'dunedinpace']) {
+                  const clock = dash.bioClocks[slug];
+                  if (!clock || clock.values[di] == null) continue;
+                  if (slug === 'dunedinpace') ages.push((clock.values[di] as number) * chron);
+                  else ages.push(clock.values[di] as number);
+                }
+                if (ages.length > 0) bioAvgs.push({ di, avg: ages.reduce((a, b) => a + b, 0) / ages.length });
+              });
+              if (bioAvgs.length < 2) return null;
+              const first = bioAvgs[0];
+              const last = bioAvgs[bioAvgs.length - 1];
+              const firstChron = (new Date(dash.displayDates[first.di] + 'T00:00:00').getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+              const lastChron = (new Date(dash.displayDates[last.di] + 'T00:00:00').getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+              const firstDiff = +(first.avg - firstChron).toFixed(1);
+              const lastDiff = +(last.avg - lastChron).toFixed(1);
+              const delta = +(lastDiff - firstDiff).toFixed(1);
+              return (
+                <div className="bg-white rounded-2xl border border-[#1c2a2b]/[.06] p-5 shadow-sm">
+                  <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/35 mb-2">
+                    {dash.progressLabel ? `${dash.progressLabel} ${t.monthProgress}` : t.monthProgress}
+                  </div>
+                  <div className="text-[13px] font-semibold text-[#0e393d] mb-2">Bio Age</div>
+                  <div className="flex items-baseline gap-1 mb-1">
+                    <span className="font-serif text-xl" style={{ color: firstDiff < 0 ? '#0C9C6C' : '#C4A96A' }}>{firstDiff > 0 ? '+' : ''}{firstDiff}</span>
+                    <span className="text-[#1c2a2b]/25 mx-1">→</span>
+                    <span className="font-serif text-xl" style={{ color: lastDiff < 0 ? '#0C9C6C' : '#C4A96A' }}>{lastDiff > 0 ? '+' : ''}{lastDiff}</span>
+                  </div>
+                  <div className="text-[11px] text-[#1c2a2b]/50">
+                    {delta <= 0 ? '' : '+'}{delta} yrs vs chrono
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </section>
+
+        {/* ── BIOLOGICAL AGE CLOCKS — Detailed Section ── */}
+        {(() => {
+          const hasBioClocks = Object.keys(dash.bioClocks).length > 0 && profile?.date_of_birth;
+          if (!hasBioClocks) return null;
+
+          const birthDate = new Date(profile!.date_of_birth!);
+          const refDate = new Date(lastDate + 'T00:00:00');
+          const chronoAge = +(((refDate.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)).toFixed(1));
+
+          const CLOCKS_DETAIL: { slug: string; label: string; color: string; isDunedin: boolean; desc: Record<string, string> }[] = [
+            {
+              slug: 'phenoage', label: 'PhenoAge', color: '#0C9C6C', isDunedin: false,
+              desc: {
+                en: 'Calculated from 9 standard blood markers. Each year above chronological age ≈ +6% mortality risk.',
+                de: 'Berechnet aus 9 Standard-Blutmarkern. Jedes Jahr über dem chronologischen Alter ≈ +6% Sterblichkeitsrisiko.',
+              },
+            },
+            {
+              slug: 'grimage_v2', label: 'GrimAge v2', color: '#8b5cf6', isDunedin: false,
+              desc: {
+                en: 'Gold-standard DNA methylation clock. Most accurate predictor of healthspan and lifespan.',
+                de: 'Gold-Standard DNA-Methylierungsuhr. Genauester Prädiktor für Gesundheits- und Lebensspanne.',
+              },
+            },
+            {
+              slug: 'dunedinpace', label: 'DunedinPACE', color: '#ceab84', isDunedin: true,
+              desc: {
+                en: 'Speed of aging — population average is 1.0 yr/yr. Below 1.0 means you age slower than average.',
+                de: 'Alterungsgeschwindigkeit — Bevölkerungsdurchschnitt ist 1.0 J/J. Unter 1.0 bedeutet langsameres Altern.',
+              },
+            },
+          ];
+
+          const paceRate = dash.bioClocks['dunedinpace']?.latest;
+          const paceProjected = paceRate != null ? +(paceRate * chronoAge).toFixed(1) : null;
+
+          // Build individual chart data for each clock — always show all 3, grey out if no data
+          const clockCards = CLOCKS_DETAIL.map(c => {
+            const clock = dash.bioClocks[c.slug];
+            const hasAnyData = clock != null && clock.values.some(v => v != null);
+            const hasCurrent = clock?.latest != null;
+
+            const latestVal = c.isDunedin ? paceRate : clock?.latest ?? null;
+            const projectedAge = c.isDunedin ? paceProjected : clock?.latest ?? null;
+            const diff = projectedAge != null ? +(projectedAge - chronoAge).toFixed(1) : null;
+            const gaugeScore = diff != null ? Math.max(0, Math.min(100, Math.round(50 - diff * 5))) : null;
+
+            // Individual trend data (chronological age increases at each test date)
+            const trendData = dash.displayDates.map((dateStr: string, di: number) => {
+              const testDate = new Date(dateStr + 'T00:00:00');
+              const chronAtDate = +((testDate.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)).toFixed(1);
+              const v = clock?.values[di] ?? null;
+              if (v == null) return { date: dash.displayLabels[di], value: null, chron: chronAtDate };
+              const displayVal = c.isDunedin ? +((v as number) * chronAtDate).toFixed(1) : v;
+              return { date: dash.displayLabels[di], value: displayVal, chron: chronAtDate };
+            });
+            const trendVals = trendData.map(d => d.value).filter((v): v is number => v != null);
+            const trendChrons = trendData.map(d => d.chron);
+            const yMin = trendVals.length > 0 ? Math.floor(Math.min(...trendVals, ...trendChrons) / 5) * 5 - 2 : chronoAge - 10;
+            const yMax = trendVals.length > 0 ? Math.ceil(Math.max(...trendVals, ...trendChrons) / 5) * 5 + 2 : chronoAge + 10;
+
+            return { ...c, latestVal, projectedAge, diff, gaugeScore, trendData, trendVals, yMin, yMax, hasAnyData, hasCurrent };
+          });
+
+          // Show section if at least one clock has any data (current or historical)
+          if (!clockCards.some(c => c.hasAnyData)) return null;
+
+          return (
+            <section className="mb-16">
+              <SectionTag>{t.bioAgeClocks}</SectionTag>
+
+              <div className="bg-[#0e393d] rounded-2xl overflow-hidden">
+                {/* 3 clock gauges side by side */}
+                <div className={`grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-white/[.06]`}>
+                  {clockCards.map((c) => (
+                    <div key={c.slug} className={`p-5 flex flex-col items-center ${!c.hasCurrent ? 'opacity-35' : ''}`}>
+                      <div className="text-[10px] font-semibold tracking-[.12em] uppercase mb-3 self-start" style={{ color: c.hasCurrent ? c.color : 'rgba(255,255,255,.25)' }}>
+                        {c.label}
+                      </div>
+                      {c.gaugeScore != null ? (
+                        <Gauge score={c.gaugeScore} max={100} dark />
+                      ) : (
+                        <div className="w-[130px] h-[100px] flex items-center justify-center">
+                          <span className="text-white/15 text-[11px]">No current data</span>
+                        </div>
+                      )}
+                      <div className="mt-2 text-center">
+                        {c.hasCurrent ? (
+                          <>
+                            {c.isDunedin ? (
+                              <>
+                                <div className="text-xs text-white/30">
+                                  Rate: <span className="font-semibold text-white/60">{c.latestVal?.toFixed(2)}</span> yr/yr
+                                </div>
+                                <div className="text-xs text-white/30 mt-0.5">
+                                  Projected: <span className="font-serif text-lg" style={{ color: c.color }}>{c.projectedAge?.toFixed(1)}</span> years
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-xs text-white/30">
+                                Bio age: <span className="font-serif text-lg" style={{ color: c.color }}>{c.projectedAge?.toFixed(1)}</span> years
+                              </div>
+                            )}
+                            <div className="text-[10px] text-white/20 mt-0.5">
+                              Chronological: {chronoAge.toFixed(1)}
+                            </div>
+                            {c.diff != null && (
+                              <div className="text-xs font-semibold mt-1" style={{ color: c.diff < 0 ? '#0C9C6C' : '#C4A96A' }}>
+                                {c.diff < 0 ? `↓ ${Math.abs(c.diff).toFixed(1)} years younger` : `↑ ${c.diff.toFixed(1)} years older`}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="text-[10px] text-white/15 mt-1">
+                            {c.slug === 'phenoage' ? 'Available in all packages' : 'Complete package only'}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-[9px] text-white/20 text-center leading-snug mt-3 px-2">
+                        {c.desc[lang] || c.desc['en']}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Individual trend charts for each clock */}
+                <div className={`grid grid-cols-1 md:grid-cols-3 border-t border-white/[.06]`}>
+                  {clockCards.map((c) => (
+                    <div key={c.slug} className={`px-4 py-3 bg-black/[.12] border-b md:border-b-0 md:border-r border-white/[.06] last:border-r-0 last:border-b-0 ${!c.hasCurrent && !c.hasAnyData ? 'opacity-25' : ''}`}>
+                      <div className="text-[9px] font-semibold tracking-[.08em] uppercase text-white/22 mb-1.5" style={{ color: c.hasCurrent ? `${c.color}66` : 'rgba(255,255,255,.15)' }}>
+                        {c.label} trend
+                      </div>
+                      <div className="h-[200px]">
+                        {c.trendVals.length >= 2 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={c.trendData} margin={{ top: 4, right: 4, bottom: 0, left: -28 }}>
+                              <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'rgba(255,255,255,.3)' }} axisLine={false} tickLine={false} />
+                              <YAxis domain={[c.yMin, c.yMax]} tick={{ fontSize: 9, fill: 'rgba(255,255,255,.3)' }} axisLine={false} tickLine={false} tickCount={4} />
+                              <RTooltip
+                                formatter={(v) => typeof v === 'number' ? v.toFixed(1) : String(v ?? '')}
+                                contentStyle={{ fontSize: 10, background: '#0e393d', border: '1px solid rgba(255,255,255,.15)', borderRadius: 6 }}
+                                labelStyle={{ color: 'rgba(255,255,255,.5)' }}
+                              />
+                              <Line name="Chronological" type="monotone" dataKey="chron" stroke="rgba(255,255,255,.15)" strokeWidth={1} strokeDasharray="4 3" dot={false} />
+                              <Line name={c.label} type="monotone" dataKey="value" stroke={c.hasCurrent ? c.color : 'rgba(255,255,255,.2)'} strokeWidth={2} dot={{ r: 3, fill: c.hasCurrent ? c.color : 'rgba(255,255,255,.2)' }} activeDot={{ r: 5 }} connectNulls />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        ) : c.trendVals.length === 1 ? (
+                          <div className="h-full flex items-center justify-center text-[10px] text-white/15">Single data point</div>
+                        ) : (
+                          <div className="h-full flex items-center justify-center text-[10px] text-white/15">No data yet</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          );
+        })()}
 
         {/* KEY MARKERS SECTION */}
         {dash.topRankedMarkers.length > 0 && (
           <section className="mb-16">
             <SectionTag>{t.secKm}</SectionTag>
-            <p className="text-sm text-[#1c2a2b]/40 mb-5">{t.impactful}</p>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {dash.topRankedMarkers.map((m) => (
@@ -1745,16 +1550,76 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
               {/* LEFT: Radar chart */}
               <div>
                 <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#ceab84] mb-4">{t.domainBalance}</div>
-                <div style={{ width: '100%', height: 300 }}>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <RadarChart data={dash.radarData} cx="50%" cy="50%" outerRadius="65%">
+
+                <div style={{ width: '100%', height: 400 }}>
+                  <ResponsiveContainer width="100%" height={400}>
+                    <RadarChart data={dash.radarData} cx="50%" cy="50%" outerRadius="70%">
                       <PolarGrid stroke="rgba(255,255,255,.08)" />
                       <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} />
+                      {dash.hasRadarOldest && (
+                        <Radar name="2 Tests Ago" dataKey="oldest" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth={1} strokeDasharray="3 3"
+                          dot={{ r: 2.5, fill: 'rgba(255,255,255,.15)', stroke: 'none' }} />
+                      )}
+                      {dash.hasRadarPrev && (
+                        <Radar name="Previous" dataKey="previous" fill="none" stroke="rgba(206,171,132,.25)" strokeWidth={1.5} strokeDasharray="4 3"
+                          dot={{ r: 2.5, fill: 'rgba(206,171,132,.3)', stroke: 'none' }} />
+                      )}
                       <Radar name="Current" dataKey="current" fill="rgba(12,156,108,.08)" stroke="#0C9C6C" strokeWidth={2.5}
+                        dot={{ r: 3, fill: '#0C9C6C', stroke: '#0b2e31', strokeWidth: 1.5 }}
                         animationBegin={200} animationDuration={800} />
-                      <Radar name="Previous" dataKey="previous" fill="none" stroke="rgba(206,171,132,.25)" strokeWidth={1.5} strokeDasharray="4 3" />
+                      <RTooltip
+                        content={({ payload, label }: any) => {
+                          if (!payload || payload.length === 0) return null;
+                          const cur = payload.find((p: any) => p.dataKey === 'current');
+                          const prev = payload.find((p: any) => p.dataKey === 'previous');
+                          const old = payload.find((p: any) => p.dataKey === 'oldest');
+                          return (
+                            <div className="bg-[#0b2e31] border border-white/10 rounded-lg px-3 py-2 shadow-xl text-[11px]">
+                              <div className="text-white/70 font-semibold mb-1">{label}</div>
+                              {cur && cur.value != null && cur.value > 0 && (
+                                <div className="flex items-center gap-2 text-white/80">
+                                  <span className="w-2 h-2 rounded-full bg-[#0C9C6C]" />
+                                  {dash.radarLabels.length >= 1 ? dash.radarLabels[dash.radarLabels.length - 1] : 'Current'}: <span className="font-semibold ml-auto">{cur.value}</span>
+                                </div>
+                              )}
+                              {prev && prev.value != null && prev.value > 0 && dash.hasRadarPrev && (
+                                <div className="flex items-center gap-2 text-white/50">
+                                  <span className="w-2 h-2 rounded-full bg-[#ceab84]" />
+                                  {dash.radarLabels[dash.radarLabels.length - 2]}: <span className="font-semibold ml-auto">{prev.value}</span>
+                                </div>
+                              )}
+                              {old && old.value != null && old.value > 0 && dash.hasRadarOldest && (
+                                <div className="flex items-center gap-2 text-white/40">
+                                  <span className="w-2 h-2 rounded-full bg-white/30" />
+                                  {dash.radarLabels[0]}: <span className="font-semibold ml-auto">{old.value}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }}
+                      />
                     </RadarChart>
                   </ResponsiveContainer>
+                </div>
+
+                {/* Legend — centered below chart */}
+                <div className="flex items-center justify-center gap-5 mt-2">
+                  <span className="flex items-center gap-1.5 text-[10px] text-white/60">
+                    <span className="inline-block w-5 h-[2.5px] rounded-full bg-[#0C9C6C]" />
+                    {dash.radarLabels.length >= 1 ? dash.radarLabels[dash.radarLabels.length - 1] : 'Current'}
+                  </span>
+                  {dash.hasRadarPrev && (
+                    <span className="flex items-center gap-1.5 text-[10px] text-white/40">
+                      <span className="inline-block w-5 h-[2px] rounded-full bg-[#ceab84] opacity-50" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #ceab84 0 4px, transparent 4px 7px)' }} />
+                      {dash.radarLabels[dash.radarLabels.length - 2]}
+                    </span>
+                  )}
+                  {dash.hasRadarOldest && (
+                    <span className="flex items-center gap-1.5 text-[10px] text-white/30">
+                      <span className="inline-block w-5 h-[2px] rounded-full opacity-30" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #fff 0 3px, transparent 3px 6px)' }} />
+                      {dash.radarLabels[0]}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1787,292 +1652,7 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
           </div>
         </section>
 
-        {/* ═══════ DEXA BODY COMPOSITION SECTION ═══════ */}
-        {hasDexa && (
-          <section className="mb-16">
-            <SectionTag>BODY COMPOSITION</SectionTag>
-
-            <div className="bg-white rounded-2xl border border-[#0e393d]/[.08] shadow-sm overflow-hidden">
-              {/* Section header */}
-              <div className="bg-[#0e393d] px-8 py-5 flex items-center justify-between">
-                <div>
-                  <span className="font-serif text-white text-lg block">DEXA Body Composition</span>
-                  <span className="text-[10px] text-white/35 tracking-[.1em] uppercase">Gold-standard measurement</span>
-                </div>
-                <div className="text-[10px] text-[#ceab84] font-semibold tracking-[.12em] uppercase">Body Scan</div>
-              </div>
-
-              <div className="p-6 md:p-8">
-                <div className="grid md:grid-cols-[auto_1fr] gap-8 items-start">
-
-                  {/* LEFT: Body Silhouette with regional fat */}
-                  <BodySilhouette
-                    trunkFat={dexaData.trunkFatPct}
-                    armsFat={dexaData.armsFatPct}
-                    legsFat={dexaData.legsFatPct}
-                    bodyFat={dexaData.bodyFatPct}
-                    sex={profile?.sex ?? null}
-                  />
-
-                  {/* RIGHT: Metrics & Composition */}
-                  <div className="flex-1 space-y-6">
-
-                    {/* Key Metrics Grid */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                      {[
-                        { label: 'Body Fat', value: dexaData.bodyFatPct, unit: '%',
-                          color: dexaData.bodyFatPct != null && dexaData.bodyFatPct < 20 ? '#0C9C6C' : dexaData.bodyFatPct != null && dexaData.bodyFatPct < 28 ? '#C4A96A' : '#E06B5B' },
-                        { label: 'Muscle Mass', value: dexaData.muscleMassPct, unit: '%',
-                          color: '#0e393d' },
-                        { label: 'Visceral Fat', value: dexaData.visceralFat, unit: 'g',
-                          color: dexaData.visceralFat != null && dexaData.visceralFat <= 100 ? '#0C9C6C' : '#E06B5B' },
-                        { label: 'BMI', value: dexaData.bmi, unit: 'kg/m²',
-                          color: dexaData.bmi != null && dexaData.bmi >= 18.5 && dexaData.bmi <= 25 ? '#0C9C6C' : '#C4A96A' },
-                      ].filter(m => m.value != null).map((m, i) => (
-                        <div key={i} className="bg-[#fafaf8] rounded-xl border border-[#0e393d]/[.06] p-4 text-center hover:shadow-md hover:-translate-y-0.5 transition-all">
-                          <div className="text-[9px] text-[#1c2a2b]/40 uppercase tracking-[.1em] font-semibold mb-1.5">{m.label}</div>
-                          <div className="font-serif text-[1.6rem] leading-none" style={{ color: m.color }}>
-                            {m.value!.toLocaleString('de-CH', { maximumFractionDigits: 1 })}
-                          </div>
-                          {m.unit && <div className="text-[10px] text-[#1c2a2b]/25 mt-0.5">{m.unit}</div>}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Bone Health */}
-                    {(dexaData.boneDensityTScore != null || dexaData.boneMineralContent != null) && (
-                      <div className="grid grid-cols-2 gap-3">
-                        {dexaData.boneDensityTScore != null && (
-                          <div className="bg-[#fafaf8] rounded-xl border border-[#0e393d]/[.06] p-4">
-                            <div className="text-[9px] text-[#1c2a2b]/40 uppercase tracking-[.1em] font-semibold mb-2">Bone Density T-Score</div>
-                            <div className="font-serif text-2xl" style={{
-                              color: dexaData.boneDensityTScore >= -1 ? '#0C9C6C' : dexaData.boneDensityTScore >= -2.5 ? '#C4A96A' : '#E06B5B'
-                            }}>
-                              {dexaData.boneDensityTScore > 0 ? '+' : ''}{dexaData.boneDensityTScore.toFixed(1)}
-                            </div>
-                            <div className="text-[10px] text-[#1c2a2b]/35 mt-1">
-                              {dexaData.boneDensityTScore >= -1 ? 'Normal' : dexaData.boneDensityTScore >= -2.5 ? 'Osteopenia' : 'Osteoporosis'}
-                            </div>
-                          </div>
-                        )}
-                        {dexaData.boneMineralContent != null && (
-                          <div className="bg-[#fafaf8] rounded-xl border border-[#0e393d]/[.06] p-4">
-                            <div className="text-[9px] text-[#1c2a2b]/40 uppercase tracking-[.1em] font-semibold mb-2">Bone Mineral Content</div>
-                            <div className="font-serif text-2xl text-[#0e393d]">
-                              {dexaData.boneMineralContent >= 1000
-                                ? (dexaData.boneMineralContent / 1000).toFixed(2)
-                                : dexaData.boneMineralContent.toFixed(2)}
-                            </div>
-                            <div className="text-[10px] text-[#1c2a2b]/35 mt-1">
-                              {dexaData.boneMineralContent >= 1000 ? 'kg' : 'g'}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Composition Breakdown Bar */}
-                    <div>
-                      <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/35 mb-3">BODY COMPOSITION BREAKDOWN</div>
-                      <CompositionBar lean={dexaData.leanMass} fat={dexaData.fatMass} bone={dexaData.boneMineralContent} />
-                    </div>
-
-                    {/* Android/Gynoid Ratio */}
-                    {dexaData.androidGynoidRatio != null && (
-                      <div>
-                        <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/35 mb-3">FAT DISTRIBUTION PATTERN</div>
-                        <AGRatioGauge ratio={dexaData.androidGynoidRatio} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* ── DEXA Trend Charts ── */}
-                <div className="border-t border-[#1c2a2b]/[.06] px-8 py-6 bg-[#fafaf8]/50">
-                  <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/35 mb-4">KEY TRENDS</div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {([
-                      { label: 'Body Fat %', def: dexaData.defs.bodyFatPct },
-                      { label: 'Muscle Mass %', def: dexaData.defs.muscleMassPct },
-                      { label: 'Visceral Fat', def: dexaData.defs.visceralFat },
-                      { label: 'Lean Mass', def: dexaData.defs.leanMass },
-                    ]).filter(t => t.def != null).map((t, i) => (
-                      <div key={i} className="bg-white rounded-xl border border-[#1c2a2b]/[.06] p-3">
-                        <div className="text-[10px] font-medium text-[#0e393d] mb-2">{t.label}</div>
-                        <BiomarkerTrendChart
-                          userId={userId} definitionId={t.def!.id} unit={t.def!.unit}
-                          refLow={t.def!.refLow} refHigh={t.def!.refHigh}
-                          optLow={t.def!.optLow} optHigh={t.def!.optHigh}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* ═══════ FITNESS & VITALITY SECTION ═══════ */}
-        {hasFitness && (
-          <section className="mb-16">
-            <SectionTag>FITNESS & VITALITY</SectionTag>
-
-            <div className="bg-white rounded-2xl border border-[#0e393d]/[.08] shadow-sm overflow-hidden">
-              {/* Section header */}
-              <div className="bg-[#0e393d] px-8 py-5 flex items-center justify-between">
-                <div>
-                  <span className="font-serif text-white text-lg block">Fitness & VO₂max Analysis</span>
-                  <span className="text-[10px] text-white/35 tracking-[.1em] uppercase">Cardiopulmonary exercise test</span>
-                </div>
-                <div className="text-[10px] text-[#ceab84] font-semibold tracking-[.12em] uppercase">Performance</div>
-              </div>
-
-              <div className="p-6 md:p-8">
-                <div className="grid md:grid-cols-[300px_1fr] gap-8 items-start">
-
-                  {/* LEFT: VO2max gauge */}
-                  <div className="space-y-6">
-                    <VO2maxGauge vo2max={fitnessData.vo2max!} sex={profile?.sex ?? null} />
-
-                    {/* Key vitals grid */}
-                    <div className="grid grid-cols-2 gap-3">
-                      {[
-                        { label: 'Resting HR', value: fitnessData.restingHeartRate, unit: 'bpm' },
-                        { label: 'Max HR', value: fitnessData.maxHeartRate, unit: 'bpm' },
-                        { label: 'HRV', value: fitnessData.hrv, unit: 'ms' },
-                        { label: 'Max Power', value: fitnessData.maxPowerOutput, unit: 'W' },
-                      ].filter(m => m.value != null).map((m, i) => (
-                        <div key={i} className="bg-[#fafaf8] rounded-xl border border-[#0e393d]/[.06] p-3.5 text-center hover:shadow-md hover:-translate-y-0.5 transition-all">
-                          <div className="text-[8px] text-[#1c2a2b]/40 uppercase tracking-[.1em] font-semibold mb-1">{m.label}</div>
-                          <div className="font-serif text-xl text-[#0e393d]">{m.value}</div>
-                          <div className="text-[9px] text-[#1c2a2b]/25">{m.unit}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Additional metrics */}
-                    <div className="space-y-2">
-                      {[
-                        { label: 'VO₂max (absolute)', value: fitnessData.vo2maxAbsolute, unit: 'L/min' },
-                        { label: 'VT1 Power', value: fitnessData.vt1, unit: 'W' },
-                        { label: 'VT2 Power', value: fitnessData.vt2, unit: 'W' },
-                        { label: 'Peak RER', value: fitnessData.rerPeak, unit: '' },
-                        { label: 'SpO₂ rest', value: fitnessData.spo2, unit: '%' },
-                        { label: 'SpO₂ peak', value: fitnessData.spo2Peak, unit: '%' },
-                      ].filter(m => m.value != null).map((m, i) => (
-                        <div key={i} className="flex items-center justify-between py-1.5 border-b border-[#1c2a2b]/[.04]">
-                          <span className="text-[11px] text-[#1c2a2b]/50">{m.label}</span>
-                          <span className="text-[11px] font-bold text-[#0e393d]">
-                            {m.value!.toLocaleString('de-CH', { maximumFractionDigits: 2 })} {m.unit}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* RIGHT: Training Zones */}
-                  <div className="space-y-6">
-                    <div>
-                      <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/35 mb-4">HEART RATE TRAINING ZONES</div>
-                      <TrainingZoneChart
-                        vo2max={fitnessData.vo2max}
-                        vt1={fitnessData.vt1}
-                        vt1Hr={fitnessData.vt1HeartRate}
-                        vt2={fitnessData.vt2}
-                        vt2Hr={fitnessData.vt2HeartRate}
-                        maxHr={fitnessData.maxHeartRate}
-                        restHr={fitnessData.restingHeartRate}
-                      />
-                    </div>
-
-                    {/* VT Thresholds Detail */}
-                    {(fitnessData.vt1 != null || fitnessData.vt2 != null) && (
-                      <div>
-                        <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/35 mb-3">VENTILATORY THRESHOLDS</div>
-                        <div className="grid grid-cols-2 gap-4">
-                          {fitnessData.vt1 != null && (
-                            <div className="bg-[#0C9C6C]/[.04] border border-[#0C9C6C]/10 rounded-xl p-4">
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="w-3 h-3 rounded-full bg-[#0C9C6C]" />
-                                <span className="text-xs font-bold text-[#0C9C6C]">VT1 — Aerobic Threshold</span>
-                              </div>
-                              <div className="font-serif text-2xl text-[#0e393d] mb-1">
-                                {fitnessData.vt1} <span className="text-sm font-normal text-[#1c2a2b]/40">W</span>
-                              </div>
-                              {fitnessData.vt1HeartRate != null && (
-                                <div className="text-[11px] text-[#1c2a2b]/50">
-                                  Heart rate: <span className="font-bold">{fitnessData.vt1HeartRate} bpm</span>
-                                </div>
-                              )}
-                              <div className="text-[10px] text-[#1c2a2b]/35 mt-2 leading-snug">
-                                Below this threshold you can sustain effort comfortably and burn primarily fat.
-                              </div>
-                            </div>
-                          )}
-                          {fitnessData.vt2 != null && (
-                            <div className="bg-[#d97706]/[.04] border border-[#d97706]/10 rounded-xl p-4">
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="w-3 h-3 rounded-full bg-[#d97706]" />
-                                <span className="text-xs font-bold text-[#d97706]">VT2 — Anaerobic Threshold</span>
-                              </div>
-                              <div className="font-serif text-2xl text-[#0e393d] mb-1">
-                                {fitnessData.vt2} <span className="text-sm font-normal text-[#1c2a2b]/40">W</span>
-                              </div>
-                              {fitnessData.vt2HeartRate != null && (
-                                <div className="text-[11px] text-[#1c2a2b]/50">
-                                  Heart rate: <span className="font-bold">{fitnessData.vt2HeartRate} bpm</span>
-                                </div>
-                              )}
-                              <div className="text-[10px] text-[#1c2a2b]/35 mt-2 leading-snug">
-                                Above this threshold lactate accumulates rapidly — maximum sustainable intensity.
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Performance Summary */}
-                    <div className="bg-[#0e393d] rounded-xl p-5">
-                      <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#ceab84] mb-3">PERFORMANCE INSIGHT</div>
-                      <p className="text-[12px] text-white/70 leading-relaxed">
-                        {fitnessData.vo2max! >= 50
-                          ? 'Your VO₂max places you in the elite fitness category. This level of cardiorespiratory fitness is associated with significantly reduced all-cause mortality risk.'
-                          : fitnessData.vo2max! >= 40
-                          ? 'Your VO₂max indicates strong cardiorespiratory fitness. Continuing to train at your VT1/VT2 thresholds will further improve your aerobic capacity and longevity outlook.'
-                          : fitnessData.vo2max! >= 30
-                          ? 'Your VO₂max shows moderate fitness. Consistent Zone 2 training (below VT1) is the most effective way to improve your aerobic base and health outcomes.'
-                          : 'Building your aerobic base through regular Zone 2 training will be the single most impactful intervention for your cardiovascular health and longevity.'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── Fitness Trend Charts ── */}
-                <div className="border-t border-[#1c2a2b]/[.06] px-8 py-6 bg-[#fafaf8]/50">
-                  <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#1c2a2b]/35 mb-4">KEY TRENDS</div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {([
-                      { label: 'VO₂max', def: fitnessData.defs.vo2max },
-                      { label: 'HRV', def: fitnessData.defs.hrv },
-                      { label: 'Resting HR', def: fitnessData.defs.restingHeartRate },
-                    ]).filter(t => t.def != null).map((t, i) => (
-                      <div key={i} className="bg-white rounded-xl border border-[#1c2a2b]/[.06] p-3">
-                        <div className="text-[10px] font-medium text-[#0e393d] mb-2">{t.label}</div>
-                        <BiomarkerTrendChart
-                          userId={userId} definitionId={t.def!.id} unit={t.def!.unit}
-                          refLow={t.def!.refLow} refHigh={t.def!.refHigh}
-                          optLow={t.def!.optLow} optHigh={t.def!.optHigh}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
+        {/* DEXA and VO2max visualization sections removed — values remain in ALL BIOMARKERS table */}
 
         {/* DOMAIN TILES SECTION */}
         <section className="mb-16">
@@ -2119,7 +1699,7 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-[#1c2a2b]/[.05]">
-                      <span className="text-[9px] text-[#1c2a2b]/35">{d.markers.length} {t.markers} · {d.weightLabel}</span>
+                      <span className="text-[9px] text-[#1c2a2b]/35">{d.markers.filter(m => !dash.EXCLUDED_SLUGS.has(m.slug)).length} {t.markers} · {d.weightLabel}</span>
                       <span className={`text-[10px] text-[#1c2a2b]/30 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
                     </div>
 
@@ -2163,32 +1743,20 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
 
                 {/* Marker cards grid */}
                 <div className="p-6 bg-[#fafaf8]">
-                  {/* Sub-group labels for domains with mixed tests */}
                   {(() => {
-                    const subGroups = DOMAIN_SUBGROUPS[d.key];
-                    if (!subGroups) return (
+                    const activeMarkers = d.markers.filter(m => !dash.EXCLUDED_SLUGS.has(m.slug));
+                    const markerWeight = activeMarkers.length > 0 ? Math.round(100 / activeMarkers.length) : 0;
+                    return (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {d.markers.map((m) => renderMarkerCard(m, d.key))}
+                        {activeMarkers.map((m) => renderMarkerCard(m, d.key, markerWeight))}
                       </div>
                     );
-                    return subGroups.map((sg, sgi) => {
-                      const sgMarkers = d.markers.filter(m => sg.slugs.includes(m.slug));
-                      if (sgMarkers.length === 0) return null;
-                      return (
-                        <div key={sgi} className={sgi > 0 ? 'mt-6' : ''}>
-                          <div className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#ceab84] mb-3">{sg.label}</div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {sgMarkers.map((m) => renderMarkerCard(m, d.key))}
-                          </div>
-                        </div>
-                      );
-                    });
                   })()}
                 </div>
               </div>
             );
 
-            function renderMarkerCard(m: ProcessedMarker, domainKey: string) {
+            function renderMarkerCard(m: ProcessedMarker, domainKey: string, weightPct?: number) {
               const mKey = `${domainKey}-${m.defId}`;
               const isOpen = expandedMarker === mKey;
               return (
@@ -2207,7 +1775,12 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
                           <span title="Calculated value" className="inline-flex items-center justify-center px-1 py-[1px] rounded text-[8px] font-semibold leading-none bg-[#0e393d]/[.07] text-[#0e393d]/50" style={{ fontStyle: 'italic', letterSpacing: '0.01em' }}>ƒx</span>
                         )}
                       </span>
-                      <StatusBadge status={m.latestStatus} t={t} />
+                      <div className="flex items-center gap-1.5">
+                        {weightPct != null && (
+                          <span className="text-[9px] text-[#1c2a2b]/30 font-medium">{weightPct}%</span>
+                        )}
+                        <StatusBadge status={m.latestStatus} t={t} />
+                      </div>
                     </div>
 
                     {m.latest != null && (
@@ -2257,57 +1830,12 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
           })()}
         </section>
 
-        {/* ALL BIOMARKERS TABLE */}
+        {/* LAB RESULTS — Lab Reports sorted by date, grouped by he_domain */}
         <section className="mb-12">
-          <div className="flex items-center justify-between mb-4">
-            <SectionTag>{t.secBm}</SectionTag>
-            <button
-              onClick={() => setShowTable(!showTable)}
-              className="text-[11px] font-medium text-[#0e393d]/60 hover:text-[#0e393d] transition px-3 py-1.5 rounded-full border border-[#1c2a2b]/[.08] hover:border-[#0e393d]/20 hover:bg-[#0e393d]/[.02]"
-            >
-              {showTable ? t.close : t.allValues}
-            </button>
-          </div>
+          <SectionTag>{t.secBm}</SectionTag>
 
-          {showTable && (() => {
-            // ── Helper: compute unique sorted dates for a set of markers (last 5) ──
-            const getMarkerDates = (markers: ProcessedMarker[], maxDates = 5): string[] => {
-              const dates = new Set<string>();
-              for (const m of markers) {
-                const hist = dash.mData.get(m.defId);
-                if (hist) for (const d of hist.keys()) dates.add(d);
-              }
-              return [...dates].sort().slice(-maxDates);
-            };
-
-            // ── Helper: look up a marker value for a specific date ──
-            const getVal = (m: ProcessedMarker, date: string): number | null => {
-              return dash.mData.get(m.defId)?.get(date)?.value ?? null;
-            };
-
-            // ── Reusable table header row ──
-            const renderTableHead = (dates: string[], showSubgroupLabel?: string) => (
-              <thead>
-                {showSubgroupLabel && (
-                  <tr>
-                    <td colSpan={3 + dates.length + 1} className="px-4 py-2 bg-[#0e393d]/[.03] border-b border-[#0e393d]/[.06]">
-                      <span className="text-[9px] font-semibold tracking-[.12em] uppercase text-[#ceab84]">{showSubgroupLabel}</span>
-                    </td>
-                  </tr>
-                )}
-                <tr className="border-b border-[#0e393d]/[.06] bg-[#fafaf8]">
-                  <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/35 px-4 py-2">Marker</th>
-                  <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/35 px-4 py-2">{t.refRange}</th>
-                  <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#0C9C6C]/50 px-4 py-2">{t.longevityOpt}</th>
-                  {dates.map((d, i) => (
-                    <th key={i} className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/35 px-4 py-2 text-right">{fmtDate(d, lang)}</th>
-                  ))}
-                  <th className="text-[9px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/35 px-4 py-2 text-right">Score</th>
-                </tr>
-              </thead>
-            );
-
-            // ── Format range display: "X–Y", "< Y", "> X", or "—" ──
+          {(() => {
+            // ── Format range display ──
             const fmtRange = (lo: number | null, hi: number | null): string => {
               if (lo != null && hi != null) return `${lo}–${hi}`;
               if (hi != null) return `< ${hi}`;
@@ -2315,185 +1843,190 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
               return '—';
             };
 
-            // ── Reusable marker rows ──
-            const renderMarkerRows = (markers: ProcessedMarker[], dates: string[]) =>
-              markers.map((m) => (
-                <tr key={m.defId} className="border-b border-[#0e393d]/[.03] hover:bg-[#0e393d]/[.01] transition-colors">
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full shrink-0" style={{ background: statusColor(m.latestStatus) }} />
-                      <div>
-                        <div className="text-[11px] font-medium text-[#0e393d] flex items-center gap-1">
-                          {m.name}
-                          {m.isCalculated && (
-                            <span title="Calculated value" className="inline-flex items-center justify-center px-1 py-[1px] rounded text-[8px] font-semibold leading-none bg-[#0e393d]/[.07] text-[#0e393d]/50" style={{ fontStyle: 'italic', letterSpacing: '0.01em' }}>ƒx</span>
-                          )}
-                        </div>
-                        <div className="text-[9px] text-[#1c2a2b]/30">{m.unit}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 text-[11px] text-[#1c2a2b]/50">
-                    {fmtRange(m.refLow, m.refHigh)}
-                  </td>
-                  <td className="px-4 py-2.5 text-[11px] text-[#0C9C6C]/60 font-medium">
-                    {fmtRange(m.optLow, m.optHigh)}
-                  </td>
-                  {dates.map((date, vi) => {
-                    const val = getVal(m, date);
-                    const isLast = vi === dates.length - 1;
-                    return (
-                      <td key={vi} className="px-4 py-2.5 text-right">
-                        <span className="text-[11px] font-medium tabular-nums"
-                          style={{ color: isLast && val != null ? statusColor(m.latestStatus) : 'rgba(28,42,43,.4)' }}>
-                          {val != null ? val.toLocaleString('de-CH', { maximumFractionDigits: 2 }) : '—'}
-                        </span>
-                      </td>
-                    );
-                  })}
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-2 justify-end">
-                      <div className="w-16">
-                        {m.latest != null && (m.refLow != null || m.refHigh != null) && (
-                          <MiniRangeBar value={m.latest} refLow={m.refLow} refHigh={m.refHigh}
-                            optLow={m.optLow} optHigh={m.optHigh} status={m.latestStatus} />
-                        )}
-                      </div>
-                      <span className="text-[11px] font-bold tabular-nums w-8 text-right" style={{ color: scoreColor(m.latestScore) }}>
-                        {m.latestScore}
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              ));
+            // ── Build lab reports sorted by date (newest first) ──
+            // Each report: { date, title, markers grouped by domain }
+            const reportDateMap = new Map(reports.map(r => [r.id, { date: r.test_date, title: r.title }]));
 
-            // ── Slugs extracted into the "Health Check" section ──
-            const CHECKUP_SLUGS: Record<string, string[]> = {
-              'Blood Pressure': ['mean_arterial_pressure', 'pulse_pressure', 'systolic_bp', 'diastolic_bp'],
-              'Body Measurements': ['bmi', 'body_weight', 'wht_ratio', 'waist_circumference'],
-              'Vitality Check': ['grip_strength', 'ages_skin_scan', 'spo2', 'resting_heart_rate', 'hrv'],
-            };
-            const allCheckupSlugs = new Set(Object.values(CHECKUP_SLUGS).flat());
+            // Group results by report/date
+            const reportGroups = new Map<string, {
+              date: string;
+              title: string | null;
+              reportId: string | null;
+              markers: { marker: ProcessedMarker & { domainKey: string; domainIcon: string; domainName: string }; value: number; flag: string | null }[];
+            }>();
 
-            // ── Collect health-check markers from across domains ──
-            const checkupGroups: { label: string; markers: ProcessedMarker[] }[] = [];
-            for (const [label, slugs] of Object.entries(CHECKUP_SLUGS)) {
-              const found: ProcessedMarker[] = [];
-              for (const d of dash.domains) {
-                for (const m of d.markers) {
-                  if (slugs.includes(m.slug)) found.push(m);
+            for (const d of dash.domains) {
+              for (const m of d.markers) {
+                const hist = dash.mData.get(m.defId);
+                if (!hist) continue;
+                for (const [date, entry] of hist.entries()) {
+                  if (!reportGroups.has(date)) {
+                    // Find matching report
+                    const matchingReport = reports.find(r => r.test_date === date);
+                    reportGroups.set(date, {
+                      date,
+                      title: matchingReport?.title ?? null,
+                      reportId: matchingReport?.id ?? null,
+                      markers: [],
+                    });
+                  }
+                  reportGroups.get(date)!.markers.push({
+                    marker: { ...m, domainKey: d.key, domainIcon: d.icon, domainName: getName(d.name, lang) },
+                    value: entry.value,
+                    flag: entry.flag,
+                  });
                 }
               }
-              if (found.length > 0) checkupGroups.push({ label, markers: found });
             }
 
-            // ── Blood domains (exclude checkup slugs from markers & date calculation) ──
-            const bloodDomains = ['heart_vessels', 'metabolism', 'inflammation', 'organ_function', 'nutrients', 'hormones'];
-            const bloodMarkersForDates = dash.domains
-              .filter(d => bloodDomains.includes(d.key))
-              .flatMap(d => d.markers)
-              .filter(m => !allCheckupSlugs.has(m.slug));
-            const bloodDates = getMarkerDates(bloodMarkersForDates, 5);
-
-            // ── Domain header helper ──
-            const renderDomainHeader = (d: ProcessedDomain) => (
-              <div className="bg-[#0e393d] px-6 py-3.5 flex items-center gap-3">
-                <span className="text-lg">{d.icon}</span>
-                <span className="font-semibold text-white text-sm">{getName(d.name, lang)}</span>
-                <span className="text-xs text-white/40">Score: <span className="font-bold" style={{ color: scoreColor(d.scores[d.scores.length - 1]) }}>{d.scores[d.scores.length - 1]}</span>/100</span>
-              </div>
-            );
+            // Sort reports by date descending (newest first)
+            const sortedReports = [...reportGroups.values()].sort((a, b) => b.date.localeCompare(a.date));
 
             return (
-              <div className="space-y-8">
-                {/* ── Blood-test domains ── */}
-                {dash.domains.filter(d => bloodDomains.includes(d.key)).map((d) => {
-                  const domMarkers = d.markers.filter(m => !allCheckupSlugs.has(m.slug));
-                  if (domMarkers.length === 0) return null;
-                  return (
-                    <div key={d.key} className="bg-white rounded-xl border border-[#1c2a2b]/[.06] overflow-hidden shadow-sm">
-                      {renderDomainHeader(d)}
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                          {renderTableHead(bloodDates)}
-                          <tbody>{renderMarkerRows(domMarkers, bloodDates)}</tbody>
-                        </table>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="space-y-6">
+                {sortedReports.map((report) => {
+                  // Group markers by domain, maintaining DOMAIN_ORDER
+                  const domainGrouped = new Map<string, typeof report.markers>();
+                  for (const entry of report.markers) {
+                    const key = entry.marker.domainKey;
+                    if (!domainGrouped.has(key)) domainGrouped.set(key, []);
+                    domainGrouped.get(key)!.push(entry);
+                  }
 
-                {/* ── Health Check (blood pressure + body measurements + vitality) ── */}
-                {checkupGroups.length > 0 && (
-                  <div className="bg-white rounded-xl border border-[#1c2a2b]/[.06] overflow-hidden shadow-sm">
-                    <div className="bg-[#0e393d] px-6 py-3.5 flex items-center gap-3">
-                      <span className="text-lg">🩺</span>
-                      <span className="font-semibold text-white text-sm">Health Check</span>
-                    </div>
-                    {checkupGroups.map((cg, cgi) => {
-                      const cgDates = getMarkerDates(cg.markers, 5);
-                      return (
-                        <div key={cgi} className="overflow-x-auto">
-                          <table className="w-full text-left border-collapse">
-                            {renderTableHead(cgDates, cg.label)}
-                            <tbody>{renderMarkerRows(cg.markers, cgDates)}</tbody>
-                          </table>
+                  // Sort domains by DOMAIN_ORDER
+                  const orderedDomains = DOMAIN_ORDER
+                    .filter(dk => domainGrouped.has(dk))
+                    .map(dk => ({
+                      key: dk,
+                      icon: DOMAIN_META[dk]?.icon ?? '',
+                      name: domainGrouped.get(dk)![0].marker.domainName,
+                      entries: domainGrouped.get(dk)!,
+                    }));
+
+                  const isExpanded = expandedReports.has(report.date);
+                  const toggleReport = () => {
+                    setExpandedReports(prev => {
+                      const next = new Set(prev);
+                      if (next.has(report.date)) next.delete(report.date);
+                      else next.add(report.date);
+                      return next;
+                    });
+                  };
+
+                  return (
+                    <div key={report.date} className="bg-white rounded-xl border border-[#1c2a2b]/[.06] overflow-hidden shadow-sm">
+                      {/* Report header — clickable to expand/collapse */}
+                      <div
+                        className="bg-[#0e393d] px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-[#0e393d]/95 transition-colors"
+                        onClick={toggleReport}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-white/[.08] flex items-center justify-center">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.6">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                              <polyline points="14 2 14 8 20 8" />
+                              <line x1="16" y1="13" x2="8" y2="13" />
+                              <line x1="16" y1="17" x2="8" y2="17" />
+                            </svg>
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-white">
+                              {report.title || fmtDateFull(report.date, lang)}
+                            </div>
+                            {report.title && (
+                              <div className="text-[10px] text-white/35">{fmtDateFull(report.date, lang)}</div>
+                            )}
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* ── Body Composition (DEXA only, General markers moved to Health Check) ── */}
-                {dash.domains.filter(d => d.key === 'body_composition').map((d) => {
-                  const dexaSlugs = DOMAIN_SUBGROUPS.body_composition?.[0]?.slugs || [];
-                  const dexaMarkers = d.markers.filter(m => dexaSlugs.includes(m.slug));
-                  if (dexaMarkers.length === 0) return null;
-                  const dexaDates = getMarkerDates(dexaMarkers, 5);
-                  return (
-                    <div key={d.key} className="bg-white rounded-xl border border-[#1c2a2b]/[.06] overflow-hidden shadow-sm">
-                      {renderDomainHeader(d)}
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                          {renderTableHead(dexaDates, 'DEXA Scan')}
-                          <tbody>{renderMarkerRows(dexaMarkers, dexaDates)}</tbody>
-                        </table>
+                        <div className="flex items-center gap-3">
+                          <div className="text-[10px] text-white/30">
+                            {report.markers.length} {t.markers}
+                          </div>
+                          <span className={`text-white/30 text-xs transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
 
-                {/* ── Fitness (VO₂max only, Vitality Check moved to Health Check) ── */}
-                {dash.domains.filter(d => d.key === 'fitness').map((d) => {
-                  const vo2Slugs = DOMAIN_SUBGROUPS.fitness?.[0]?.slugs || [];
-                  const vo2Markers = d.markers.filter(m => vo2Slugs.includes(m.slug));
-                  if (vo2Markers.length === 0) return null;
-                  const vo2Dates = getMarkerDates(vo2Markers, 5);
-                  return (
-                    <div key={d.key} className="bg-white rounded-xl border border-[#1c2a2b]/[.06] overflow-hidden shadow-sm">
-                      {renderDomainHeader(d)}
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                          {renderTableHead(vo2Dates, 'VO₂max Test')}
-                          <tbody>{renderMarkerRows(vo2Markers, vo2Dates)}</tbody>
-                        </table>
-                      </div>
-                    </div>
-                  );
-                })}
+                      {/* Domain sections within this report — collapsible */}
+                      {isExpanded && orderedDomains.map((domGroup, di) => (
+                        <div key={domGroup.key}>
+                          {/* Domain sub-header with column titles */}
+                          <div className="px-5 py-2.5 bg-[#0e393d]/[.03] border-b border-[#0e393d]/[.06] flex items-center gap-4">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <span className="text-sm">{domGroup.icon}</span>
+                              <span className="text-[10px] font-semibold tracking-[.1em] uppercase text-[#ceab84]">
+                                {domGroup.name}
+                              </span>
+                            </div>
+                            {/* Column headers — only on first domain */}
+                            {di === 0 && (
+                              <>
+                                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#1c2a2b]/25 shrink-0 w-24 text-right">Value</span>
+                                <span className="hidden sm:block text-[9px] font-semibold uppercase tracking-wider text-[#1c2a2b]/25 shrink-0 w-16 text-right">Ref</span>
+                                <span className="hidden sm:block text-[9px] font-semibold uppercase tracking-wider text-[#0C9C6C]/30 shrink-0 w-16 text-right">Optimal</span>
+                                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#1c2a2b]/25 shrink-0 w-20 text-right">Range</span>
+                              </>
+                            )}
+                          </div>
 
-                {/* ── Epigenetics: own dates ── */}
-                {dash.domains.filter(d => d.key === 'epigenetics').map((d) => {
-                  const domDates = getMarkerDates(d.markers, 5);
-                  return (
-                    <div key={d.key} className="bg-white rounded-xl border border-[#1c2a2b]/[.06] overflow-hidden shadow-sm">
-                      {renderDomainHeader(d)}
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                          {renderTableHead(domDates)}
-                          <tbody>{renderMarkerRows(d.markers, domDates)}</tbody>
-                        </table>
-                      </div>
+                          {/* Marker rows */}
+                          <div className="divide-y divide-[#0e393d]/[.04]">
+                            {domGroup.entries.map((entry) => {
+                              const m = entry.marker;
+                              const status = m.latestStatus;
+
+                              return (
+                                <div key={m.defId} className="px-5 py-2.5 flex items-center gap-4 hover:bg-[#0e393d]/[.01] transition-colors">
+                                  {/* Status dot + name + flag badge */}
+                                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: statusColor(status) }} />
+                                    <span className="text-[12px] font-medium text-[#0e393d] truncate flex items-center gap-1.5">
+                                      {m.name}
+                                      {m.isCalculated && (
+                                        <span title="Calculated value" className="inline-flex items-center justify-center px-1 py-[1px] rounded text-[8px] font-semibold leading-none bg-[#0e393d]/[.07] text-[#0e393d]/50" style={{ fontStyle: 'italic', letterSpacing: '0.01em' }}>ƒx</span>
+                                      )}
+                                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium whitespace-nowrap ${
+                                        status === 'optimal' ? 'bg-[#0C9C6C]/12 text-[#0C9C6C]' :
+                                        status === 'good' ? 'bg-[#C4A96A]/15 text-[#7a5e20]' :
+                                        status === 'moderate' ? 'bg-[#ef9f27]/15 text-[#a05e00]' :
+                                        status === 'risk' ? 'bg-[#E24B4A]/12 text-[#E24B4A]' :
+                                        'bg-gray-50 text-gray-600'
+                                      }`}>
+                                        {status === 'optimal' ? 'Optimal' : status === 'good' ? 'Good' : status === 'moderate' ? 'Borderline' : status === 'risk' ? 'Risk' : status}
+                                      </span>
+                                    </span>
+                                  </div>
+
+                                  {/* Value + unit */}
+                                  <div className="text-right shrink-0 w-24">
+                                    <span className="text-[13px] font-semibold tabular-nums" style={{ color: statusColor(status) }}>
+                                      {entry.value.toLocaleString('de-CH', { maximumFractionDigits: 2 })}
+                                    </span>
+                                    <span className="text-[10px] text-[#1c2a2b]/30 ml-1">{m.unit}</span>
+                                  </div>
+
+                                  {/* Reference range */}
+                                  <div className="hidden sm:block text-[10px] text-[#1c2a2b]/35 shrink-0 w-16 text-right tabular-nums">
+                                    {fmtRange(m.refLow, m.refHigh)}
+                                  </div>
+
+                                  {/* Optimal range */}
+                                  <div className="hidden sm:block text-[10px] text-[#0C9C6C]/50 font-medium shrink-0 w-16 text-right tabular-nums">
+                                    {fmtRange(m.optLow, m.optHigh)}
+                                  </div>
+
+                                  {/* Mini range bar */}
+                                  <div className="shrink-0 w-20">
+                                    {(m.refLow != null || m.refHigh != null) && (
+                                      <MiniRangeBar value={entry.value} refLow={m.refLow} refHigh={m.refHigh}
+                                        optLow={m.optLow} optHigh={m.optHigh} status={status} />
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   );
                 })}

@@ -94,11 +94,8 @@ const T: Record<Lang, {
   notIncluded: string;
   total: string;
   markers: string;
-  addonsHeading: string;
-  addonsSub: string;
   detailHeading: string;
   viewAll: string;
-  learnMore: string;
   refRange: string;
   optRange: string;
   rangeTypes: Record<string, string>;
@@ -115,11 +112,8 @@ const T: Record<Lang, {
     notIncluded: 'Nicht enthalten',
     total: 'Gesamt',
     markers: 'Marker',
-    addonsHeading: 'Weitere Tests',
-    addonsSub: 'Kombinierbar mit jedem Paket',
     detailHeading: 'Alle Biomarker',
     viewAll: 'Alle ansehen',
-    learnMore: 'Mehr erfahren →',
     refRange: 'Referenzbereich',
     optRange: 'Optimalbereich',
     rangeTypes: { range: 'Bereich', lower_is_better: 'Niedriger = besser', higher_is_better: 'Höher = besser' },
@@ -140,11 +134,8 @@ const T: Record<Lang, {
     notIncluded: 'Not included',
     total: 'Total',
     markers: 'markers',
-    addonsHeading: 'Additional Tests',
-    addonsSub: 'Combinable with any package',
     detailHeading: 'All Biomarkers',
     viewAll: 'View all',
-    learnMore: 'Learn more →',
     refRange: 'Reference range',
     optRange: 'Optimal range',
     rangeTypes: { range: 'Range', lower_is_better: 'Lower is better', higher_is_better: 'Higher is better' },
@@ -165,11 +156,8 @@ const T: Record<Lang, {
     notIncluded: 'Non inclus',
     total: 'Total',
     markers: 'marqueurs',
-    addonsHeading: 'Tests complémentaires',
-    addonsSub: 'Combinable avec n\'importe quel forfait',
     detailHeading: 'Tous les biomarqueurs',
     viewAll: 'Tout voir',
-    learnMore: 'En savoir plus →',
     refRange: 'Plage de référence',
     optRange: 'Plage optimale',
     rangeTypes: { range: 'Plage', lower_is_better: 'Plus bas = mieux', higher_is_better: 'Plus haut = mieux' },
@@ -190,11 +178,8 @@ const T: Record<Lang, {
     notIncluded: 'No incluido',
     total: 'Total',
     markers: 'marcadores',
-    addonsHeading: 'Tests adicionales',
-    addonsSub: 'Combinable con cualquier paquete',
     detailHeading: 'Todos los biomarcadores',
     viewAll: 'Ver todos',
-    learnMore: 'Saber más →',
     refRange: 'Rango de referencia',
     optRange: 'Rango óptimo',
     rangeTypes: { range: 'Rango', lower_is_better: 'Menor es mejor', higher_is_better: 'Mayor es mejor' },
@@ -215,11 +200,8 @@ const T: Record<Lang, {
     notIncluded: 'Non incluso',
     total: 'Totale',
     markers: 'marcatori',
-    addonsHeading: 'Test aggiuntivi',
-    addonsSub: 'Combinabile con qualsiasi pacchetto',
     detailHeading: 'Tutti i biomarcatori',
     viewAll: 'Vedi tutti',
-    learnMore: 'Scopri di più →',
     refRange: 'Intervallo di riferimento',
     optRange: 'Intervallo ottimale',
     rangeTypes: { range: 'Intervallo', lower_is_better: 'Inferiore è meglio', higher_is_better: 'Superiore è meglio' },
@@ -231,62 +213,6 @@ const T: Record<Lang, {
   },
 };
 
-// ─── Add-on data (static — prices shown for reference) ───────────────────────
-
-const ADDONS = [
-  {
-    slug: 'assessments',
-    name: { de: 'Vitalcheck', en: 'Vitalcheck', fr: 'Vitalcheck', es: 'Vitalcheck', it: 'Vitalcheck' },
-    price: { de: 'Gratis', en: 'Free', fr: 'Gratuit', es: 'Gratis', it: 'Gratuito' },
-    desc: {
-      de: 'Blutdruck, Taillenumfang, Griffkraft, SpO₂, Ruhepuls & AGEs-Haut­scan – bei jedem Bluttest inklusive.',
-      en: 'Blood pressure, waist circumference, grip strength, SpO₂, resting heart rate & AGEs skin scan – included with every blood test.',
-      fr: 'Pression artérielle, tour de taille, force de préhension, SpO₂, FC repos & scan AGEs – inclus avec tout bilan sanguin.',
-      es: 'Tensión arterial, perímetro abdominal, fuerza de agarre, SpO₂, FC reposo & escáner AGEs – incluido con cualquier análisis.',
-      it: 'Pressione, circonferenza vita, forza presa, SpO₂, FC riposo & scan AGEs – incluso con ogni esame del sangue.',
-    },
-    link: '/health-engine',
-  },
-  {
-    slug: 'vo2max-cpet',
-    name: { de: 'VO₂max Test (CPET)', en: 'VO₂max Test (CPET)', fr: 'Test VO₂max (CPET)', es: 'Test VO₂max (CPET)', it: 'Test VO₂max (CPET)' },
-    price: { de: 'CHF 149', en: 'CHF 149', fr: 'CHF 149', es: 'CHF 149', it: 'CHF 149' },
-    desc: {
-      de: 'Kardiopulmonaler Belastungstest. Misst deine maximale Sauerstoffaufnahme – den stärksten Prädiktor für Langlebigkeit.',
-      en: 'Cardiopulmonary exercise test. Measures your VO₂max – the strongest single predictor of longevity.',
-      fr: 'Test d\'effort cardiopulmonaire. Mesure votre VO₂max – le plus puissant prédicteur de longévité.',
-      es: 'Test de esfuerzo cardiopulmonar. Mide tu VO₂max – el predictor individual más potente de longevidad.',
-      it: 'Test da sforzo cardiopolmonare. Misura il tuo VO₂max – il più potente predittore di longevità.',
-    },
-    link: '/health-engine',
-  },
-  {
-    slug: 'dexa-body-composition',
-    name: { de: 'Körperanalyse (DEXA)', en: 'Body Composition (DEXA)', fr: 'Composition corporelle (DEXA)', es: 'Composición corporal (DEXA)', it: 'Composizione corporea (DEXA)' },
-    price: { de: 'CHF 129', en: 'CHF 129', fr: 'CHF 129', es: 'CHF 129', it: 'CHF 129' },
-    desc: {
-      de: 'Gold-Standard für Körperzusammensetzung: Körperfettanteil, Viszeralfett, Muskelmasse pro Segment & Knochendichte.',
-      en: 'Gold standard for body composition: body fat %, visceral fat, lean mass per segment & bone density.',
-      fr: 'Étalon-or pour la composition corporelle: % graisse, graisse viscérale, masse maigre par segment & densité osseuse.',
-      es: 'Estándar de oro para la composición corporal: % grasa, grasa visceral, masa magra por segmento & densidad ósea.',
-      it: 'Standard oro per la composizione corporea: % grasso, grasso viscerale, massa magra per segmento & densità ossea.',
-    },
-    link: '/health-engine',
-  },
-  {
-    slug: 'addon-biological-age',
-    name: { de: 'Biologisches Alter', en: 'Biological Age', fr: 'Âge biologique', es: 'Edad biológica', it: 'Età biologica' },
-    price: { de: 'CHF 349', en: 'CHF 349', fr: 'CHF 349', es: 'CHF 349', it: 'CHF 349' },
-    desc: {
-      de: 'Epigenetische Uhr (DunedinPACE & GrimAge v2) – wie schnell alterst du wirklich? Messbar und veränderbar.',
-      en: 'Epigenetic clock (DunedinPACE & GrimAge v2) – how fast are you really aging? Measurable and changeable.',
-      fr: 'Horloge épigénétique (DunedinPACE & GrimAge v2) – à quelle vitesse vieillissez-vous vraiment?',
-      es: 'Reloj epigenético (DunedinPACE & GrimAge v2) – ¿a qué velocidad estás envejeciendo realmente?',
-      it: 'Orologio epigenetico (DunedinPACE & GrimAge v2) – quanto velocemente stai invecchiando davvero?',
-    },
-    link: '/bioage',
-  },
-];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -390,7 +316,7 @@ export default async function BiomarkersPage() {
   // Fetch active biomarkers (all types — item_type is an enum so .in() may not work)
   const { data: defs } = await supabase
     .from('biomarkers')
-    .select('id, slug, name, description, unit, range_type, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, sort_order, he_domain, item_type')
+    .select('id, slug, name, description, unit, range_type, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, sort_order, he_domain, item_type, is_calculated')
     .eq('is_active', true)
     .order('sort_order', { ascending: true });
 
@@ -409,16 +335,12 @@ export default async function BiomarkersPage() {
     if (items.length > 0) domainGroups.push({ domain, items });
   }
 
-  // Detail cards: show ALL biomarkers (not just linked to packages) for comprehensive reference
+  // Detail cards: only show biomarkers linked to at least one package (dynamic)
   const linkedDomainGroups: { domain: DomainDef; items: typeof allDefs }[] = [];
   for (const domain of DOMAINS) {
-    const items = allDefs.filter((d) => d.he_domain === domain.key);
+    const items = allDefs.filter((d) => d.he_domain === domain.key && linkedDefIds.has(d.id));
     if (items.length > 0) linkedDomainGroups.push({ domain, items });
   }
-
-  // All biomarker types relevant to blood test packages
-  const bloodTypes = ['biomarker', 'bio_age'];
-  const allLinkedDefs = allDefs.filter((d) => linkedDefIds.has(d.id));
 
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
@@ -507,6 +429,14 @@ export default async function BiomarkersPage() {
                                 </span>
                                 {def.unit && (
                                   <span className="ml-1.5 text-[11px] text-[#1c2a2b]/35">{def.unit}</span>
+                                )}
+                                {def.is_calculated && (
+                                  <span
+                                    className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded bg-violet-100 text-violet-600 text-[9px] font-bold align-text-bottom"
+                                    title={lang === 'de' ? 'Berechnet aus anderen Werten' : 'Calculated from other values'}
+                                  >
+                                    fx
+                                  </span>
                                 )}
                               </td>
                               {packages.map((pkg) => {
@@ -648,6 +578,36 @@ export default async function BiomarkersPage() {
                           </div>
                         )}
 
+                        {/* Package inclusion + calculated badge */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {packages.map((pkg) => {
+                            const included = pkgItemMap.get(pkg.id)?.has(def.id) ?? false;
+                            const pkgName = getName(pkg.name as Record<string, string>, lang);
+                            // Short label: first word only (Core, Pro, Complete)
+                            const shortLabel = (pkgName.split(/\s+/).pop() ?? pkgName);
+                            return (
+                              <span
+                                key={pkg.id}
+                                className={`text-[9px] font-semibold uppercase tracking-wider rounded-full px-2 py-0.5 ${
+                                  included
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : 'bg-[#0e393d]/5 text-[#1c2a2b]/25 line-through'
+                                }`}
+                              >
+                                {shortLabel}
+                              </span>
+                            );
+                          })}
+                          {def.is_calculated && (
+                            <span
+                              className="text-[9px] font-bold rounded-full px-2 py-0.5 bg-violet-100 text-violet-600"
+                              title={lang === 'de' ? 'Berechnet aus anderen Werten' : 'Calculated from other values'}
+                            >
+                              fx
+                            </span>
+                          )}
+                        </div>
+
                         {/* Description */}
                         {desc && (
                           <p className="text-xs text-[#1c2a2b]/55 leading-relaxed">{desc}</p>
@@ -659,37 +619,6 @@ export default async function BiomarkersPage() {
               </div>
             );
           })}
-        </section>
-
-        {/* ── Add-on tests ────────────────────────────────────────────────────── */}
-        <section className="mb-20">
-          <div className="mb-8 flex items-center gap-4">
-            <h2 className="font-serif text-2xl text-[#0e393d]">{t.addonsHeading}</h2>
-            <div className="flex-1 h-px bg-[#0e393d]/10" />
-            <p className="text-sm text-[#1c2a2b]/40">{t.addonsSub}</p>
-          </div>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {ADDONS.map((addon) => (
-              <div
-                key={addon.slug}
-                className="flex flex-col rounded-2xl bg-white ring-1 ring-[#0e393d]/8 p-6 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <h3 className="font-serif text-base text-[#0e393d]">{addon.name[lang]}</h3>
-                  <span className="shrink-0 font-semibold text-sm text-[#ceab84]">{addon.price[lang]}</span>
-                </div>
-                <p className="text-sm text-[#1c2a2b]/60 leading-relaxed flex-1 mb-4">
-                  {addon.desc[lang]}
-                </p>
-                <Link
-                  href={addon.link}
-                  className="block text-center rounded-xl border border-[#0e393d]/20 py-2.5 text-sm font-medium text-[#0e393d] hover:bg-[#0e393d] hover:text-white transition-colors"
-                >
-                  {t.learnMore}
-                </Link>
-              </div>
-            ))}
-          </div>
         </section>
 
         {/* ── Trust strip ────────────────────────────────────────────────────── */}

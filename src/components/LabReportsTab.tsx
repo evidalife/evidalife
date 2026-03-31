@@ -209,18 +209,63 @@ function FlagBadge({ flag }: { flag: string | null }) {
 
 function SourceBadge({ source }: { source: string | null }) {
   if (source === 'admin_import') {
-    return <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[#ceab84]/20 text-[#7a5e20] whitespace-nowrap">Admin</span>;
+    return <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[#ceab84]/20 text-[#ceab84] ring-1 ring-[#ceab84]/20 whitespace-nowrap">Admin</span>;
   }
   if (source === 'pdf_upload') {
-    return <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[#0e393d]/8 text-[#0e393d]/60 whitespace-nowrap">PDF</span>;
+    return <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-white/10 text-white/60 ring-1 ring-white/15 whitespace-nowrap">PDF</span>;
   }
   if (source === 'manual_entry') {
-    return <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-blue-50 text-blue-600 whitespace-nowrap">Manual</span>;
+    return <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-sky-400/15 text-sky-200 ring-1 ring-sky-300/20 whitespace-nowrap">Manual</span>;
   }
   return null;
 }
 
-// ── Results grouped by domain ─────────────────────────────────────────────────
+// ── Results grouped by domain (HE-style) ────────────────────────────────────
+
+const HE_DOMAIN_ICON: Record<string, string> = {
+  heart_vessels: '❤️', metabolism: '🔥', hormones: '⚡', inflammation: '🛡️',
+  nutrients: '🧬', organ_function: '🫁', longevity: '🧪', fitness: '💪',
+};
+
+function statusColorRD(flag: string | null): string {
+  switch (flag) {
+    case 'optimal':  return '#0C9C6C';
+    case 'good':     return '#C4A96A';
+    case 'moderate': return '#ef9f27';
+    case 'risk':     return '#E24B4A';
+    default:         return '#94a3b8';
+  }
+}
+
+function MiniRangeBarRD({ value, refLow, refHigh, optLow, optHigh, status }: {
+  value: number; refLow: number | null; refHigh: number | null;
+  optLow: number | null; optHigh: number | null; status: string | null;
+}) {
+  const lo = refLow ?? 0;
+  const hi = refHigh ?? lo + 100;
+  const span = hi - lo || 1;
+  const pct = Math.max(0, Math.min(100, ((value - lo) / span) * 100));
+  const optLeft = optLow != null ? Math.max(0, ((optLow - lo) / span) * 100) : null;
+  const optRight = optHigh != null ? Math.min(100, ((optHigh - lo) / span) * 100) : null;
+
+  return (
+    <div className="relative h-[6px] rounded-full bg-[#0e393d]/[.06] overflow-hidden">
+      {optLeft != null && optRight != null && (
+        <div className="absolute inset-y-0 rounded-full bg-[#0C9C6C]/15"
+          style={{ left: `${optLeft}%`, width: `${optRight - optLeft}%` }} />
+      )}
+      <div className="absolute top-1/2 -translate-y-1/2 w-[7px] h-[7px] rounded-full border-[1.5px] border-white shadow-sm"
+        style={{ left: `${pct}%`, background: statusColorRD(status) }} />
+    </div>
+  );
+}
+
+function fmtRangeRD(lo: number | null, hi: number | null): string {
+  if (lo != null && hi != null) return `${lo}–${hi}`;
+  if (lo != null) return `≥${lo}`;
+  if (hi != null) return `≤${hi}`;
+  return '—';
+}
 
 function ResultsDisplay({ results, lang }: { results: LabResultRow[]; lang: Lang }) {
   const byDomain: Record<string, LabResultRow[]> = {};
@@ -233,29 +278,70 @@ function ResultsDisplay({ results, lang }: { results: LabResultRow[]; lang: Lang
     .filter((d) => byDomain[d]?.length);
 
   return (
-    <div className="divide-y divide-[#0e393d]/6">
-      {presentDomains.map((domain) => (
+    <div>
+      {presentDomains.map((domain, di) => (
         <div key={domain}>
-          <div className="px-4 py-1.5 bg-[#0e393d]/3">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#ceab84]/80">
-              {HE_DOMAIN_LABEL[domain] ?? domain}
-            </span>
+          {/* Domain sub-header with column titles */}
+          <div className="px-5 py-2.5 bg-[#0e393d]/[.03] border-b border-[#0e393d]/[.06] flex items-center gap-4">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <span className="text-sm">{HE_DOMAIN_ICON[domain] ?? '📊'}</span>
+              <span className="text-[10px] font-semibold tracking-[.1em] uppercase text-[#ceab84]">
+                {HE_DOMAIN_LABEL[domain] ?? domain}
+              </span>
+            </div>
+            {di === 0 && (
+              <>
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#1c2a2b]/25 shrink-0 w-24 text-right">Value</span>
+                <span className="hidden sm:block text-[9px] font-semibold uppercase tracking-wider text-[#1c2a2b]/25 shrink-0 w-16 text-right">Ref</span>
+                <span className="hidden sm:block text-[9px] font-semibold uppercase tracking-wider text-[#0C9C6C]/30 shrink-0 w-16 text-right">Optimal</span>
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-[#1c2a2b]/25 shrink-0 w-20 text-right">Range</span>
+              </>
+            )}
           </div>
-          <div className="divide-y divide-[#0e393d]/5">
+
+          {/* Marker rows */}
+          <div className="divide-y divide-[#0e393d]/[.04]">
             {byDomain[domain].map((r) => {
               const def = r.biomarkers;
               const name = def ? locName(def.name, lang) : '—';
+              const flag = r.status_flag;
+              const val = r.value_numeric;
+
               return (
-                <div key={r.id} className="px-4 py-2.5 flex items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium text-[#1c2a2b]">{name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="tabular-nums text-sm font-semibold text-[#0e393d]">
-                      {r.value_numeric ?? '—'}{' '}
-                      <span className="font-normal text-[#1c2a2b]/50 text-xs">{r.unit || def?.unit || ''}</span>
+                <div key={r.id} className="px-5 py-2.5 flex items-center gap-4 hover:bg-[#0e393d]/[.01] transition-colors">
+                  {/* Status dot + name + flag badge */}
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: statusColorRD(flag) }} />
+                    <span className="text-[12px] font-medium text-[#0e393d] truncate flex items-center gap-1.5">
+                      {name}
+                      <FlagBadge flag={flag} />
                     </span>
-                    <FlagBadge flag={r.status_flag} />
+                  </div>
+
+                  {/* Value + unit */}
+                  <div className="text-right shrink-0 w-24">
+                    <span className="text-[13px] font-semibold tabular-nums" style={{ color: statusColorRD(flag) }}>
+                      {val != null ? val.toLocaleString('de-CH', { maximumFractionDigits: 2 }) : '—'}
+                    </span>
+                    <span className="text-[10px] text-[#1c2a2b]/30 ml-1">{r.unit || def?.unit || ''}</span>
+                  </div>
+
+                  {/* Reference range */}
+                  <div className="hidden sm:block text-[10px] text-[#1c2a2b]/35 shrink-0 w-16 text-right tabular-nums">
+                    {fmtRangeRD(def?.ref_range_low ?? null, def?.ref_range_high ?? null)}
+                  </div>
+
+                  {/* Optimal range */}
+                  <div className="hidden sm:block text-[10px] text-[#0C9C6C]/50 font-medium shrink-0 w-16 text-right tabular-nums">
+                    {fmtRangeRD(def?.optimal_range_low ?? null, def?.optimal_range_high ?? null)}
+                  </div>
+
+                  {/* Mini range bar */}
+                  <div className="shrink-0 w-20">
+                    {val != null && (def?.ref_range_low != null || def?.ref_range_high != null) && (
+                      <MiniRangeBarRD value={val} refLow={def?.ref_range_low ?? null} refHigh={def?.ref_range_high ?? null}
+                        optLow={def?.optimal_range_low ?? null} optHigh={def?.optimal_range_high ?? null} status={flag} />
+                    )}
                   </div>
                 </div>
               );
@@ -1087,24 +1173,31 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
         const isExpanded = expandedId === report.id;
         const isEditable = report.source !== 'admin_import';
         return (
-          <div key={report.id} className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
-            <button
+          <div key={report.id} className="bg-white rounded-xl border border-[#1c2a2b]/[.06] overflow-hidden shadow-sm">
+            {/* Report header — HE-style dark teal bar */}
+            <div
               onClick={() => setExpandedId(isExpanded ? null : report.id)}
-              className="w-full text-left px-5 py-4 hover:bg-[#fafaf8] transition-colors"
+              className="bg-[#0e393d] px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-[#0e393d]/95 transition-colors"
             >
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="font-semibold text-[#0e393d] text-sm">{report.title}</span>
-                    {report.report_number && (
-                      <span className="font-mono text-[11px] text-[#1c2a2b]/40">{report.report_number}</span>
-                    )}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-full bg-white/[.08] flex items-center justify-center shrink-0">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.6">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-white truncate">{report.title}</span>
+                    {/* Status tags — rendered on the dark bar */}
                     <SourceBadge source={report.source} />
                     {report.status && (() => {
                       const statusMap: Record<string, { label: string; cls: string }> = {
-                        ai_extracted:     { label: '🤖 AI Extracted',  cls: 'bg-violet-50 text-violet-700 ring-1 ring-violet-600/20' },
-                        review_pending:   { label: '⏳ Pending Review', cls: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20' },
-                        confirmed:        { label: '✅ Confirmed',     cls: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20' },
+                        ai_extracted:     { label: '🤖 AI Extracted',  cls: 'bg-white/10 text-white/70 ring-1 ring-white/15' },
+                        review_pending:   { label: '⏳ Pending Review', cls: 'bg-amber-400/15 text-amber-200 ring-1 ring-amber-300/20' },
+                        confirmed:        { label: '✅ Confirmed',     cls: 'bg-emerald-400/15 text-emerald-200 ring-1 ring-emerald-300/20' },
                       };
                       const info = statusMap[report.status!];
                       return info ? (
@@ -1114,42 +1207,43 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
                       ) : null;
                     })()}
                     {!isEditable && (
-                      <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-400">
+                      <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-white/10 text-white/50">
                         Read-only
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-[#1c2a2b]/40">
-                    {fmtDate(report.test_date ?? report.created_at)} · {report.lab_results.length} biomarkers
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  {isEditable && (
-                    <>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); openEdit(report); }}
-                        className="text-xs text-[#ceab84] hover:text-[#b8965e] font-medium transition"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(report); }}
-                        className="text-xs text-red-400 hover:text-red-600 font-medium transition"
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
-                    className={`text-[#1c2a2b]/30 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
+                  <div className="text-[10px] text-white/35 mt-0.5">
+                    {fmtDate(report.test_date ?? report.created_at)}
+                    {report.report_number && <span className="ml-2 font-mono">{report.report_number}</span>}
+                  </div>
                 </div>
               </div>
-            </button>
+              <div className="flex items-center gap-3 shrink-0">
+                {isEditable && (
+                  <>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openEdit(report); }}
+                      className="text-[10px] text-[#ceab84] hover:text-[#e0c18a] font-medium transition"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(report); }}
+                      className="text-[10px] text-red-400/70 hover:text-red-300 font-medium transition"
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+                <div className="text-[10px] text-white/30">
+                  {report.lab_results.length} biomarkers
+                </div>
+                <span className={`text-white/30 text-xs transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
+              </div>
+            </div>
 
             {isExpanded && (
-              <div className="border-t border-[#0e393d]/8">
+              <div>
                 {report.lab_results.length > 0
                   ? <ResultsDisplay results={report.lab_results} lang={lang} />
                   : <p className="px-5 py-4 text-sm text-[#1c2a2b]/40 text-center">No results in this report.</p>
@@ -1162,24 +1256,34 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
 
       {/* Orphan results from before the reports system */}
       {orphanResults.length > 0 && (
-        <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
-          <button
+        <div className="bg-white rounded-xl border border-[#1c2a2b]/[.06] overflow-hidden shadow-sm">
+          <div
             onClick={() => setExpandedId(expandedId === '__orphans__' ? null : '__orphans__')}
-            className="w-full text-left px-5 py-4 hover:bg-[#fafaf8] transition-colors"
+            className="bg-[#0e393d] px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-[#0e393d]/95 transition-colors"
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="font-semibold text-[#0e393d]/70 text-sm">Previous Results</span>
-                <p className="text-xs text-[#1c2a2b]/40 mt-0.5">{orphanResults.length} biomarkers · Read-only</p>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-white/[.08] flex items-center justify-center shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.6">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
               </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
-                className={`text-[#1c2a2b]/30 transition-transform ${expandedId === '__orphans__' ? 'rotate-180' : ''}`}>
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
+              <div>
+                <span className="text-sm font-semibold text-white">Previous Results</span>
+                <span className="ml-2 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-white/10 text-white/50">Read-only</span>
+              </div>
             </div>
-          </button>
+            <div className="flex items-center gap-3">
+              <div className="text-[10px] text-white/30">
+                {orphanResults.length} biomarkers
+              </div>
+              <span className={`text-white/30 text-xs transition-transform duration-200 ${expandedId === '__orphans__' ? 'rotate-180' : ''}`}>▼</span>
+            </div>
+          </div>
           {expandedId === '__orphans__' && (
-            <div className="border-t border-[#0e393d]/8">
+            <div>
               <ResultsDisplay results={orphanResults} lang={lang} />
             </div>
           )}

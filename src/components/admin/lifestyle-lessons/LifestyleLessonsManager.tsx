@@ -3,6 +3,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
+import CoverImageUploader from '@/components/shared/CoverImageUploader';
+import GalleryUploader from '@/components/shared/GalleryUploader';
 import {
   AdminPageHeader,
   AdminPrimaryButton,
@@ -47,6 +49,7 @@ export type LessonRow = {
   photo_alt_fr: string | null;
   photo_alt_es: string | null;
   photo_alt_it: string | null;
+  image_gallery: string[];
   video_url: string | null;
   biomarker_tags: string[];
   daily_dozen_categories: string[];
@@ -101,6 +104,7 @@ const EMPTY_FORM: FormData = {
   photo_alt_fr: null,
   photo_alt_es: null,
   photo_alt_it: null,
+  image_gallery: [],
   video_url: null,
   biomarker_tags: [],
   daily_dozen_categories: [],
@@ -166,7 +170,6 @@ export default function LifestyleLessonsManager({ initialLessons }: { initialLes
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [lang, setLang] = useState<Lang>('en');
   const [translateStatus, setTranslateStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [rewriteStatus, setRewriteStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
@@ -244,6 +247,7 @@ export default function LifestyleLessonsManager({ initialLessons }: { initialLes
       photo_alt_fr: lesson.photo_alt_fr,
       photo_alt_es: lesson.photo_alt_es,
       photo_alt_it: lesson.photo_alt_it,
+      image_gallery: lesson.image_gallery ?? [],
       video_url: lesson.video_url,
       biomarker_tags: lesson.biomarker_tags ?? [],
       daily_dozen_categories: lesson.daily_dozen_categories ?? [],
@@ -255,30 +259,6 @@ export default function LifestyleLessonsManager({ initialLessons }: { initialLes
     });
     setEditingId(lesson.id);
     setError(null);
-  };
-
-  // Photo upload
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-      const slug = form.slug || slugify(form.title_en || 'lesson');
-      const path = `lessons/${slug}/cover.${ext}`;
-      const { error: uploadErr } = await supabase.storage
-        .from('lifestyle-photos')
-        .upload(path, file, { upsert: true });
-      if (uploadErr) throw uploadErr;
-      const { data: urlData } = supabase.storage
-        .from('lifestyle-photos')
-        .getPublicUrl(path);
-      setForm(f => ({ ...f, photo_url: urlData.publicUrl }));
-    } catch (err) {
-      setError(`Upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    } finally {
-      setUploading(false);
-    }
   };
 
   // Translate to all languages
@@ -377,6 +357,7 @@ export default function LifestyleLessonsManager({ initialLessons }: { initialLes
         photo_alt_fr: form.photo_alt_fr?.trim() || null,
         photo_alt_es: form.photo_alt_es?.trim() || null,
         photo_alt_it: form.photo_alt_it?.trim() || null,
+        image_gallery: form.image_gallery,
         video_url: form.video_url?.trim() || null,
         biomarker_tags: form.biomarker_tags,
         daily_dozen_categories: form.daily_dozen_categories,
@@ -548,34 +529,31 @@ export default function LifestyleLessonsManager({ initialLessons }: { initialLes
         }
       >
         <div className="px-6 py-5 space-y-5">
-          {/* Photo upload */}
-          <div>
-            <label className="block text-xs font-medium text-[#0e393d]/70 mb-2">Cover Photo</label>
-            <div className="flex items-start gap-4">
-              {form.photo_url ? (
-                <div className="relative">
-                  <Image src={form.photo_url} alt="Cover" width={120} height={120} className="rounded-xl object-cover w-[120px] h-[120px] border border-[#0e393d]/10" />
-                  <button
-                    onClick={() => setForm(f => ({ ...f, photo_url: null }))}
-                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
-                  >×</button>
-                </div>
-              ) : (
-                <div className="w-[120px] h-[120px] rounded-xl border-2 border-dashed border-[#0e393d]/15 flex items-center justify-center text-[#0e393d]/20">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
-                </div>
-              )}
-              <div className="flex-1 space-y-2">
-                <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[#0e393d]/15 text-sm text-[#0e393d] hover:bg-[#fafaf8] cursor-pointer transition">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  {uploading ? 'Uploading…' : 'Upload Photo'}
-                  <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
-                </label>
-                <p className="text-[10px] text-[#1c2a2b]/30">JPEG, PNG, WebP, or AVIF · Max 5 MB</p>
-                <input className={inputCls} placeholder={`Alt text (${lang.toUpperCase()})`} value={(form[altField(lang)] as string) ?? ''} onChange={e => setForm(f => ({ ...f, [altField(lang)]: e.target.value }))} />
-              </div>
-            </div>
-          </div>
+          {/* Cover Photo — shared component with crop & zoom */}
+          <CoverImageUploader
+            currentUrl={form.photo_url}
+            bucket="lifestyle-photos"
+            aspect={16 / 9}
+            outputWidth={1200}
+            outputHeight={675}
+            label="Cover Photo"
+            hint="16:9 · Cropped & compressed on upload"
+            onUrlChange={(url) => setForm(f => ({ ...f, photo_url: url }))}
+          />
+          <AdminField label={`Alt text (${lang.toUpperCase()})`}>
+            <input className={inputCls} placeholder={`Alt text (${lang.toUpperCase()})`} value={(form[altField(lang)] as string) ?? ''} onChange={e => setForm(f => ({ ...f, [altField(lang)]: e.target.value }))} />
+          </AdminField>
+
+          {/* Step-by-step gallery */}
+          <GalleryUploader
+            urls={form.image_gallery}
+            bucket="lifestyle-photos"
+            maxImages={10}
+            outputWidth={1200}
+            label="Step-by-Step Gallery"
+            hint="Up to 10 photos for step-by-step instructions (e.g. growing sprouts, meal prep)"
+            onUrlsChange={(urls) => setForm(f => ({ ...f, image_gallery: urls }))}
+          />
 
           {/* Content — language-aware */}
           <div className="space-y-4">
