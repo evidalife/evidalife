@@ -245,7 +245,7 @@ const ADDONS = [
       es: 'Tensión arterial, perímetro abdominal, fuerza de agarre, SpO₂, FC reposo & escáner AGEs – incluido con cualquier análisis.',
       it: 'Pressione, circonferenza vita, forza presa, SpO₂, FC riposo & scan AGEs – incluso con ogni esame del sangue.',
     },
-    link: '/assessments',
+    link: '/health-engine',
   },
   {
     slug: 'vo2max-cpet',
@@ -258,7 +258,7 @@ const ADDONS = [
       es: 'Test de esfuerzo cardiopulmonar. Mide tu VO₂max – el predictor individual más potente de longevidad.',
       it: 'Test da sforzo cardiopolmonare. Misura il tuo VO₂max – il più potente predittore di longevità.',
     },
-    link: '/assessments',
+    link: '/health-engine',
   },
   {
     slug: 'dexa-body-composition',
@@ -271,7 +271,7 @@ const ADDONS = [
       es: 'Estándar de oro para la composición corporal: % grasa, grasa visceral, masa magra por segmento & densidad ósea.',
       it: 'Standard oro per la composizione corporea: % grasso, grasso viscerale, massa magra per segmento & densità ossea.',
     },
-    link: '/assessments',
+    link: '/health-engine',
   },
   {
     slug: 'addon-biological-age',

@@ -25,7 +25,7 @@ const PILLARS: { photo: string; href: string }[] = [
   { photo: PHOTOS.pillar1, href: '/daily-dozen' },
   { photo: PHOTOS.pillar2, href: '/recipes'     },
   { photo: PHOTOS.pillar3, href: '/biomarkers'  },
-  { photo: PHOTOS.pillar4, href: '/health'      },
+  { photo: PHOTOS.pillar4, href: '/health-engine' },
 ];
 
 const STEP_PHOTOS = [PHOTOS.step1, PHOTOS.step2, PHOTOS.step3];
@@ -597,7 +597,7 @@ export default async function HomePage() {
             </h2>
             <p className="text-[1rem] font-light text-[#5a6e6f] leading-relaxed mb-8 max-w-[420px]">{t.mission.desc}</p>
             <Link
-              href="/science"
+              href="/blog"
               className="self-start bg-[#0e393d] text-[#f2ebdb] font-medium text-[13px] tracking-wide px-7 py-3.5 rounded-full transition-colors hover:bg-[#1a5055] whitespace-nowrap"
             >
               {t.mission.cta}
@@ -706,7 +706,7 @@ export default async function HomePage() {
             ))}
           </div>
           <Link
-            href="/science"
+            href="/blog"
             className="inline-block bg-[#0e393d] text-[#f2ebdb] font-medium text-[13px] tracking-wide px-7 py-3.5 rounded-full transition-colors hover:bg-[#1a5055] whitespace-nowrap"
           >
             {t.science.link}
@@ -814,7 +814,7 @@ export default async function HomePage() {
               {t.cta.cta1}
             </Link>
             <Link
-              href="/how-to-start"
+              href="/recipes"
               className="text-white border border-white/30 text-[13px] font-light px-8 py-3.5 rounded-full transition-all hover:bg-white/10 whitespace-nowrap"
             >
               {t.cta.cta2}

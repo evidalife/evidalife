@@ -12,13 +12,13 @@ type Locale = 'de' | 'en' | 'fr' | 'es' | 'it';
 
 // URL slugs for each section's dropdown items, matching nav.dropdowns.* order in translations
 const NAV_SLUG_MAP: Record<string, (string | null)[]> = {
-  Kitchen: ['/kitchen', '/recipes', '/blog', '/courses', '/daily-dozen?view=info', '/how-to-start', '/shopping-list?view=info'],
-  Health:  ['/health', '/health-engine?view=info', '/science', '/biomarkers', '/assessments', '/bioage', '/partner-labs'],
-  Fit:     ['/fit', '/sleep', '/exercise', '/stress-recovery', '/coaching'],
+  Kitchen: ['/recipes', '/daily-dozen', '/blog', '/shopping-list'],
+  Health:  ['/health-engine', '/biomarkers', '/bioage', '/partner-labs'],
+  Lifestyle: ['/lifestyle'],
   Shop:    ['/shop', '/shop?type=blood_test', '/shop?type=clinical_test', '/shop?type=epigenetic_test'],
 };
 
-const NAV_SECTIONS = ['Kitchen', 'Health', 'Fit', 'Shop'] as const;
+const NAV_SECTIONS = ['Kitchen', 'Health', 'Lifestyle', 'Shop'] as const;
 
 // Auth-only items appended to each section dropdown (with a separator) when the user is logged in
 type AuthDropdownItem = { label: string; href: string };

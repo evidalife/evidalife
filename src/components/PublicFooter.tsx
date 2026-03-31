@@ -5,13 +5,13 @@ import { Link } from '@/i18n/navigation';
 import Image from 'next/image';
 
 const PLATFORM_ITEMS = [
-  { label: 'Kitchen', href: '/kitchen' },
-  { label: 'Health',  href: '/health'  },
-  { label: 'Fit',     href: '/fit'     },
-  { label: 'Shop',    href: '/shop'    },
+  { label: 'Kitchen',   href: '/recipes' },
+  { label: 'Health',    href: '/health-engine' },
+  { label: 'Lifestyle', href: '/lifestyle' },
+  { label: 'Shop',      href: '/shop' },
 ];
 
-const COMPANY_HREFS = ['/about', '/team', '/partner-labs', '/contact'];
+const COMPANY_HREFS = ['/about', '/partner-labs', '/contact'];
 
 export default function PublicFooter() {
   const t = useTranslations('footer');
