@@ -28,44 +28,74 @@ type DomainDef = {
 type DomainDesc = {
   en: string;
   de: string;
+  fr: string;
+  es: string;
+  it: string;
 };
 
 const DOMAIN_DESCRIPTIONS: Record<string, DomainDesc> = {
   heart_vessels: {
     en: 'Cardiovascular markers predict heart attack and stroke risk. Optimizing these biomarkers is the single most impactful step for extending healthspan.',
     de: 'Herz-Kreislauf-Marker sagen das Risiko für Herzinfarkt und Schlaganfall voraus. Die Optimierung dieser Biomarker ist der wirkungsvollste Schritt zur Verlängerung der Healthspan.',
+    fr: 'Les marqueurs cardiovasculaires prédisent le risque de crise cardiaque et d\'accident vasculaire cérébral. L\'optimisation de ces biomarqueurs est l\'étape la plus impactante pour prolonger la durée de vie en bonne santé.',
+    es: 'Los marcadores cardiovasculares predicen el riesgo de infarto de miocardio y accidente cerebrovascular. La optimización de estos biomarcadores es el paso más impactante para extender la vida útil saludable.',
+    it: 'I marcatori cardiovascolari prevedono il rischio di infarto e ictus. L\'ottimizzazione di questi biomarcatori è il passo più impattante per estendere l\'aspettativa di vita sana.',
   },
   metabolism: {
     en: 'Blood sugar regulation and insulin sensitivity are central drivers of aging. Metabolic dysfunction accelerates every chronic disease.',
     de: 'Blutzuckerregulation und Insulinempfindlichkeit sind zentrale Treiber des Alterns. Metabolische Dysfunktion beschleunigt jede chronische Krankheit.',
+    fr: 'La régulation du glucose sanguin et la sensibilité à l\'insuline sont des moteurs centraux du vieillissement. La dysfonction métabolique accélère toute maladie chronique.',
+    es: 'La regulación del azúcar en sangre y la sensibilidad a la insulina son impulsores centrales del envejecimiento. La disfunción metabólica acelera todas las enfermedades crónicas.',
+    it: 'La regolazione della glicemia e la sensibilità all\'insulina sono fattori centrali dell\'invecchiamento. La disfunzione metabolica accelera tutte le malattie croniche.',
   },
   inflammation: {
     en: 'Chronic inflammation is the root cause of age-related diseases. Anti-inflammatory lifestyle choices are fundamental to longevity.',
     de: 'Chronische Entzündung ist die Grundursache altersbedingter Krankheiten. Entzündungshemmende Lebensstiländerungen sind grundlegend für Langlebigkeit.',
+    fr: 'L\'inflammation chronique est la cause profonde des maladies liées à l\'âge. Les choix de mode de vie anti-inflammatoires sont fondamentaux pour la longévité.',
+    es: 'La inflamación crónica es la causa raíz de las enfermedades relacionadas con la edad. Las opciones de estilo de vida antiinflamatorio son fundamentales para la longevidad.',
+    it: 'L\'infiammazione cronica è la causa profonda delle malattie legate all\'età. Le scelte di stile di vita antinfiammatorio sono fondamentali per la longevità.',
   },
   organ_function: {
     en: 'Kidney, liver, and thyroid function decline with age. Maintaining organ health is essential for metabolic resilience and longevity.',
     de: 'Nieren-, Leber- und Schilddrüsenfunktion nehmen mit dem Alter ab. Der Erhalt der Organfunktion ist entscheidend für metabolische Widerstandskraft und Langlebigkeit.',
+    fr: 'La fonction rénale, hépatique et thyroïdienne diminue avec l\'âge. Maintenir la santé des organes est essentiel pour la résilience métabolique et la longévité.',
+    es: 'La función renal, hepática y tiroidea disminuye con la edad. Mantener la salud de los órganos es esencial para la resiliencia metabólica y la longevidad.',
+    it: 'La funzione renale, epatica e tiroidea diminuisce con l\'età. Mantenere la salute degli organi è essenziale per la resilienza metabolica e la longevità.',
   },
   nutrients: {
     en: 'Vitamin and mineral deficiencies impair mitochondrial function and immune defense. Optimal micronutrient status protects against disease.',
     de: 'Vitamin- und Mineralstoffmängel beeinträchtigen die Mitochondrienfunktion und die Immunabwehr. Ein optimaler Mikronährstoffstatus schützt vor Krankheiten.',
+    fr: 'Les carences en vitamines et minéraux altèrent la fonction mitochondriale et la défense immunitaire. Un statut optimal en micronutriments protège contre les maladies.',
+    es: 'Las deficiencias de vitaminas y minerales deterioran la función mitocondrial y la defensa inmunológica. Un estado óptimo de micronutrientes protege contra enfermedades.',
+    it: 'Le carenze di vitamine e minerali compromettono la funzione mitocondriale e la difesa immunitaria. Uno stato ottimale di micronutrienti protegge dalle malattie.',
   },
   hormones: {
     en: 'Hormone balance regulates energy, mood, immunity, and cellular repair. Hormonal dysregulation accelerates aging across all systems.',
     de: 'Hormonelles Gleichgewicht reguliert Energie, Stimmung, Immunität und Zellreparatur. Hormonelle Dysregulation beschleunigt das Altern in allen Systemen.',
+    fr: 'L\'équilibre hormonal régule l\'énergie, l\'humeur, l\'immunité et la réparation cellulaire. Le dérèglement hormonal accélère le vieillissement dans tous les systèmes.',
+    es: 'El equilibrio hormonal regula la energía, el estado de ánimo, la inmunidad y la reparación celular. El desequilibrio hormonal acelera el envejecimiento en todos los sistemas.',
+    it: 'L\'equilibrio ormonale regola l\'energia, l\'umore, l\'immunità e la riparazione cellulare. Lo squilibrio ormonale accelera l\'invecchiamento in tutti i sistemi.',
   },
   body_composition: {
     en: 'Excess body fat drives inflammation and insulin resistance. Lean muscle mass predicts strength, independence, and longevity.',
     de: 'Überschüssiges Körperfett fördert Entzündungen und Insulinresistenz. Magermasse sagt Kraft, Unabhängigkeit und Langlebigkeit voraus.',
+    fr: 'L\'excès de graisse corporelle provoque l\'inflammation et la résistance à l\'insuline. La masse musculaire maigre prédit la force, l\'indépendance et la longévité.',
+    es: 'El exceso de grasa corporal causa inflamación y resistencia a la insulina. La masa muscular magra predice la fuerza, la independencia y la longevidad.',
+    it: 'L\'eccesso di grasso corporeo causa infiammazione e resistenza all\'insulina. La massa muscolare magra predice la forza, l\'indipendenza e la longevità.',
   },
   fitness: {
     en: 'Cardiorespiratory fitness and recovery capacity are the strongest predictors of mortality risk. Fitness is modifiable at any age.',
     de: 'Kardiorespiratorische Fitness und Erholungskapazität sind die stärksten Prädiktoren für Sterblichkeitsrisiko. Fitness ist in jedem Alter veränderbar.',
+    fr: 'La forme cardiovasculaire et la capacité de récupération sont les plus forts prédicteurs du risque de mortalité. La forme physique est modifiable à tout âge.',
+    es: 'La forma cardiovascular y la capacidad de recuperación son los predictores más fuertes del riesgo de mortalidad. La forma física es modificable a cualquier edad.',
+    it: 'La forma cardiovascolare e la capacità di recupero sono i più forti predittori del rischio di mortalità. La forma fisica è modificabile a qualsiasi età.',
   },
   epigenetics: {
     en: 'Epigenetic clocks measure biological aging independent of chronological age. They reveal how lifestyle choices accelerate or reverse aging.',
     de: 'Epigenetische Uhren messen das biologische Altern unabhängig vom chronologischen Alter. Sie zeigen, wie Lebensstiländerungen das Altern beschleunigen oder umkehren.',
+    fr: 'Les horloges épigénétiques mesurent le vieillissement biologique indépendamment de l\'âge chronologique. Elles révèlent comment les choix de mode de vie accélèrent ou inversent le vieillissement.',
+    es: 'Los relojes epigenéticos miden el envejecimiento biológico independientemente de la edad cronológica. Revelan cómo las opciones de estilo de vida aceleran o invierten el envejecimiento.',
+    it: 'Gli orologi epigenetici misurano l\'invecchiamento biologico indipendentemente dall\'età cronologica. Rivelano come le scelte di stile di vita accelerano o invertono l\'invecchiamento.',
   },
 };
 
@@ -99,6 +129,7 @@ const T: Record<Lang, {
   refRange: string;
   optRange: string;
   rangeTypes: Record<string, string>;
+  calculatedTitle: string;
   trust: { icon: string; title: string; body: string }[];
 }> = {
   de: {
@@ -116,6 +147,7 @@ const T: Record<Lang, {
     viewAll: 'Alle ansehen',
     refRange: 'Referenzbereich',
     optRange: 'Optimalbereich',
+    calculatedTitle: 'Berechnet aus anderen Werten',
     rangeTypes: { range: 'Bereich', lower_is_better: 'Niedriger = besser', higher_is_better: 'Höher = besser' },
     trust: [
       { icon: '🔬', title: 'Zertifizierte Partnerlabore', body: 'ISO-akkreditierte Labore in der Schweiz und Deutschland.' },
@@ -138,6 +170,7 @@ const T: Record<Lang, {
     viewAll: 'View all',
     refRange: 'Reference range',
     optRange: 'Optimal range',
+    calculatedTitle: 'Calculated from other values',
     rangeTypes: { range: 'Range', lower_is_better: 'Lower is better', higher_is_better: 'Higher is better' },
     trust: [
       { icon: '🔬', title: 'Certified partner labs', body: 'ISO-accredited laboratories in Switzerland and Germany.' },
@@ -160,6 +193,7 @@ const T: Record<Lang, {
     viewAll: 'Tout voir',
     refRange: 'Plage de référence',
     optRange: 'Plage optimale',
+    calculatedTitle: 'Calculé à partir d\'autres valeurs',
     rangeTypes: { range: 'Plage', lower_is_better: 'Plus bas = mieux', higher_is_better: 'Plus haut = mieux' },
     trust: [
       { icon: '🔬', title: 'Laboratoires partenaires certifiés', body: 'Laboratoires accrédités ISO en Suisse et en Allemagne.' },
@@ -182,6 +216,7 @@ const T: Record<Lang, {
     viewAll: 'Ver todos',
     refRange: 'Rango de referencia',
     optRange: 'Rango óptimo',
+    calculatedTitle: 'Calculado a partir de otros valores',
     rangeTypes: { range: 'Rango', lower_is_better: 'Menor es mejor', higher_is_better: 'Mayor es mejor' },
     trust: [
       { icon: '🔬', title: 'Laboratorios asociados certificados', body: 'Laboratorios acreditados ISO en Suiza y Alemania.' },
@@ -204,6 +239,7 @@ const T: Record<Lang, {
     viewAll: 'Vedi tutti',
     refRange: 'Intervallo di riferimento',
     optRange: 'Intervallo ottimale',
+    calculatedTitle: 'Calcolato da altri valori',
     rangeTypes: { range: 'Intervallo', lower_is_better: 'Inferiore è meglio', higher_is_better: 'Superiore è meglio' },
     trust: [
       { icon: '🔬', title: 'Laboratori partner certificati', body: 'Laboratori accreditati ISO in Svizzera e Germania.' },
@@ -433,7 +469,7 @@ export default async function BiomarkersPage() {
                                 {def.is_calculated && (
                                   <span
                                     className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded bg-violet-100 text-violet-600 text-[9px] font-bold align-text-bottom"
-                                    title={lang === 'de' ? 'Berechnet aus anderen Werten' : 'Calculated from other values'}
+                                    title={t.calculatedTitle}
                                   >
                                     fx
                                   </span>
@@ -507,7 +543,7 @@ export default async function BiomarkersPage() {
 
           {linkedDomainGroups.map(({ domain, items }) => {
             const domainDesc = DOMAIN_DESCRIPTIONS[domain.key];
-            const descToShow = lang === 'de' && domainDesc?.de ? domainDesc.de : domainDesc?.en ?? '';
+            const descToShow = domainDesc?.[lang] ?? domainDesc?.en ?? '';
 
             return (
               <div key={domain.key} className="mb-14">
@@ -601,7 +637,7 @@ export default async function BiomarkersPage() {
                           {def.is_calculated && (
                             <span
                               className="text-[9px] font-bold rounded-full px-2 py-0.5 bg-violet-100 text-violet-600"
-                              title={lang === 'de' ? 'Berechnet aus anderen Werten' : 'Calculated from other values'}
+                              title={t.calculatedTitle}
                             >
                               fx
                             </span>

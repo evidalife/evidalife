@@ -169,6 +169,49 @@ const PENDING_T: Record<string, Record<Lang, string>> = {
   inProgressTitle:    { de: 'Laufende Analysen', en: 'In Progress', fr: 'En cours', es: 'En curso', it: 'In corso' },
 };
 
+const ALERTS_T: Record<string, Record<Lang, string>> = {
+  fileTooLarge:       { de: 'Datei zu gross (max. 10 MB)', en: 'File too large (max 10 MB)', fr: 'Fichier trop volumineux (max 10 Mo)', es: 'Archivo demasiado grande (max 10 MB)', it: 'File troppo grande (max 10 MB)' },
+  notAuthenticated:   { de: 'Nicht authentifiziert', en: 'Not authenticated', fr: 'Non authentifié', es: 'No autenticado', it: 'Non autenticato' },
+  uploadFailed:       { de: 'Upload fehlgeschlagen: ', en: 'Upload failed: ', fr: 'Le téléchargement a échoué: ', es: 'La carga falló: ', it: 'Caricamento fallito: ' },
+  extractionFailed:   { de: 'Extraktion fehlgeschlagen', en: 'Extraction failed', fr: 'Extraction échouée', es: 'Extracción falló', it: 'Estrazione fallita' },
+  noMatchedResults:   { de: 'Keine übereinstimmenden Ergebnisse zum Speichern', en: 'No matched results to save', fr: 'Aucun résultat correspondant à enregistrer', es: 'Sin resultados coincidentes para guardar', it: 'Nessun risultato corrispondente da salvare' },
+  reportTitleRequired: { de: 'Berichtstitel erforderlich', en: 'Report title is required', fr: 'Le titre du rapport est requis', es: 'El título del informe es obligatorio', it: 'Il titolo del rapporto è obbligatorio' },
+  testDateRequired:   { de: 'Testdatum erforderlich', en: 'Test date is required', fr: 'La date du test est requise', es: 'La fecha de prueba es obligatoria', it: 'La data del test è obbligatoria' },
+  saveFailed:         { de: 'Speichern fehlgeschlagen', en: 'Save failed', fr: 'Sauvegarde échouée', es: 'Guardado fallido', it: 'Salvataggio fallito' },
+  addAtLeastOne:      { de: 'Fügen Sie mindestens ein Ergebnis hinzu', en: 'Add at least one result', fr: 'Ajouter au moins un résultat', es: 'Agregue al menos un resultado', it: 'Aggiungi almeno un risultato' },
+  titleRequired:      { de: 'Titel erforderlich', en: 'Title is required', fr: 'Le titre est requis', es: 'El título es obligatorio', it: 'Il titolo è obbligatorio' },
+};
+
+const UI_T: Record<string, Record<Lang, string>> = {
+  deleteReport:       { de: 'Bericht löschen', en: 'Delete Report', fr: 'Supprimer le rapport', es: 'Eliminar informe', it: 'Elimina rapporto' },
+  newLabReport:       { de: 'Neuer Laborbericht', en: 'New Lab Report', fr: 'Nouveau rapport de laboratoire', es: 'Nuevo informe de laboratorio', it: 'Nuovo rapporto di laboratorio' },
+  editLabReport:      { de: 'Laborbericht bearbeiten', en: 'Edit Lab Report', fr: 'Modifier le rapport de laboratoire', es: 'Editar informe de laboratorio', it: 'Modifica rapporto di laboratorio' },
+  cancel:             { de: 'Abbrechen', en: 'Cancel', fr: 'Annuler', es: 'Cancelar', it: 'Annulla' },
+  cancelBack:         { de: '← Zurück', en: '← Cancel', fr: '← Annuler', es: '← Cancelar', it: '← Annulla' },
+  back:               { de: '← Zurück', en: '← Back', fr: '← Retour', es: '← Atrás', it: '← Indietro' },
+  enterManually:      { de: 'Manuell eingeben', en: 'Enter Manually', fr: 'Entrer manuellement', es: 'Ingrese manualmente', it: 'Inserisci manualmente' },
+  manual:             { de: 'Manuell', en: 'Manual', fr: 'Manuel', es: 'Manual', it: 'Manuale' },
+  optional:           { de: 'Wahlweise', en: 'Optional', fr: 'Optionnel', es: 'Opcional', it: 'Facoltativo' },
+  bloodPanelExample:  { de: 'z.B. Blutbild – Synlab Jan 2025', en: 'e.g. Blood Panel – Synlab Jan 2025', fr: 'ex. Bilan sanguin – Synlab Jan 2025', es: 'p. ej. Panel de sangre – Synlab Jan 2025', it: 'es. Esame del sangue – Synlab Gen 2025' },
+  uploadPdf:          { de: 'PDF hochladen', en: 'Upload PDF', fr: 'Télécharger le PDF', es: 'Cargar PDF', it: 'Carica PDF' },
+  addLabResults:      { de: '+ Laborergebnisse hinzufügen', en: '+ Add Lab Results', fr: '+ Ajouter des résultats de laboratoire', es: '+ Agregar resultados de laboratorio', it: '+ Aggiungi risultati di laboratorio' },
+  reviewAndSave:      { de: 'Überprüfen und Speichern', en: 'Review & Save', fr: 'Vérifier et enregistrer', es: 'Revisar y guardar', it: 'Rivedi e salva' },
+  searchBiomarker:    { de: 'Biomarker suchen…', en: 'Search biomarker…', fr: 'Rechercher biomarqueur…', es: 'Buscar biomarcador…', it: 'Cerca biomarcatore…' },
+  value:              { de: 'Wert', en: 'Value', fr: 'Valeur', es: 'Valor', it: 'Valore' },
+  addAnotherBiomarker: { de: '+ Ein weiteres Biomarker hinzufügen', en: '+ Add Another Biomarker', fr: '+ Ajouter un autre biomarqueur', es: '+ Agregar otro biomarcador', it: '+ Aggiungi un altro biomarcatore' },
+  saveReport:         { de: 'Bericht speichern', en: 'Save Report', fr: 'Enregistrer le rapport', es: 'Guardar informe', it: 'Salva rapporto' },
+  updateReport:       { de: 'Bericht aktualisieren', en: 'Update Report', fr: 'Mettre à jour le rapport', es: 'Actualizar informe', it: 'Aggiorna rapporto' },
+  saving:             { de: 'Speichern…', en: 'Saving…', fr: 'Enregistrement…', es: 'Guardando…', it: 'Salvataggio…' },
+  sourceManual:       { de: 'Manuell', en: 'Manual', fr: 'Manuel', es: 'Manual', it: 'Manuale' },
+  uploading:          { de: 'Hochladen…', en: 'Uploading…', fr: 'Téléchargement en cours…', es: 'Subiendo…', it: 'Caricamento in corso…' },
+  extractingAi:       { de: 'Extraktion mit KI… (20–30 s)', en: 'Extracting with AI… (20–30 s)', fr: 'Extraction par IA… (20–30 s)', es: 'Extrayendo con IA… (20–30 s)', it: 'Estrazione con IA… (20–30 s)' },
+  dropPdf:            { de: 'Legen Sie Ihr Laborbericht-PDF hier ab', en: 'Drop your lab PDF here', fr: 'Déposez votre PDF de laboratoire ici', es: 'Suelta tu PDF de laboratorio aquí', it: 'Rilascia il tuo PDF di laboratorio qui' },
+  fileFormats:        { de: 'PDF, JPG, PNG · Max 10 MB', en: 'PDF, JPG, PNG · Max 10 MB', fr: 'PDF, JPG, PNG · Max 10 Mo', es: 'PDF, JPG, PNG · Max 10 MB', it: 'PDF, JPG, PNG · Max 10 MB' },
+  extractButton:      { de: 'Mit KI extrahieren', en: 'Extract with AI', fr: 'Extraire avec l\'IA', es: 'Extraer con IA', it: 'Estrai con IA' },
+  noLabResults:       { de: 'Noch keine Laborergebnisse', en: 'No lab results yet', fr: 'Aucun résultat de laboratoire pour l\'instant', es: 'Sin resultados de laboratorio aún', it: 'Nessun risultato di laboratorio ancora' },
+  uploadOrEnter:      { de: 'Laden Sie ein Labor-PDF hoch oder geben Sie die Werte manuell ein', en: 'Upload a lab PDF or enter values manually', fr: 'Téléchargez un PDF de laboratoire ou entrez les valeurs manuellement', es: 'Sube un PDF de laboratorio o ingresa los valores manualmente', it: 'Carica un PDF di laboratorio o inserisci i valori manualmente' },
+};
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function locName(f: any, lang: Lang = 'en'): string {
@@ -207,7 +250,8 @@ function FlagBadge({ flag }: { flag: string | null }) {
   );
 }
 
-function SourceBadge({ source }: { source: string | null }) {
+function SourceBadge({ source, lang = 'en' }: { source: string | null; lang?: Lang }) {
+  const t = (key: string) => UI_T[key]?.[lang] ?? UI_T[key]?.en ?? key;
   if (source === 'admin_import') {
     return <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[#ceab84]/20 text-[#ceab84] ring-1 ring-[#ceab84]/20 whitespace-nowrap">Admin</span>;
   }
@@ -215,7 +259,7 @@ function SourceBadge({ source }: { source: string | null }) {
     return <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-white/10 text-white/60 ring-1 ring-white/15 whitespace-nowrap">PDF</span>;
   }
   if (source === 'manual_entry') {
-    return <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-sky-400/15 text-sky-200 ring-1 ring-sky-300/20 whitespace-nowrap">Manual</span>;
+    return <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-sky-400/15 text-sky-200 ring-1 ring-sky-300/20 whitespace-nowrap">{t('sourceManual')}</span>;
   }
   return null;
 }
@@ -355,17 +399,19 @@ function ResultsDisplay({ results, lang }: { results: LabResultRow[]; lang: Lang
 
 // ── Metadata form (shared between pdf-review and manual/edit) ─────────────────
 
-function MetaFields({ meta, onChange }: {
+function MetaFields({ meta, onChange, lang = 'en' }: {
   meta: FormMeta;
   onChange: (updates: Partial<FormMeta>) => void;
+  lang?: Lang;
 }) {
   const inp = 'w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10';
+  const t = (key: string) => UI_T[key]?.[lang] ?? UI_T[key]?.en ?? key;
   return (
     <div className="rounded-xl border border-[#0e393d]/10 bg-white p-4">
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2 sm:col-span-1">
           <label className="block text-xs text-[#1c2a2b]/50 mb-1">Report Title <span className="text-red-400">*</span></label>
-          <input type="text" value={meta.title} placeholder="e.g. Blood Panel – Synlab Jan 2025"
+          <input type="text" value={meta.title} placeholder={t('bloodPanelExample')}
             onChange={(e) => onChange({ title: e.target.value })} className={inp} />
         </div>
         <div>
@@ -375,17 +421,17 @@ function MetaFields({ meta, onChange }: {
         </div>
         <div>
           <label className="block text-xs text-[#1c2a2b]/50 mb-1">Lab Address</label>
-          <input type="text" value={meta.lab_address} placeholder="Optional"
+          <input type="text" value={meta.lab_address} placeholder={t('optional')}
             onChange={(e) => onChange({ lab_address: e.target.value })} className={inp} />
         </div>
         <div>
           <label className="block text-xs text-[#1c2a2b]/50 mb-1">Lab Email</label>
-          <input type="email" value={meta.lab_email} placeholder="Optional"
+          <input type="email" value={meta.lab_email} placeholder={t('optional')}
             onChange={(e) => onChange({ lab_email: e.target.value })} className={inp} />
         </div>
         <div>
           <label className="block text-xs text-[#1c2a2b]/50 mb-1">Lab Phone</label>
-          <input type="tel" value={meta.lab_phone} placeholder="Optional"
+          <input type="tel" value={meta.lab_phone} placeholder={t('optional')}
             onChange={(e) => onChange({ lab_phone: e.target.value })} className={inp} />
         </div>
       </div>
@@ -427,6 +473,10 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
 
   const [saving, setSaving] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  // Helper for translations
+  const t = (key: string) => UI_T[key]?.[lang] ?? UI_T[key]?.en ?? key;
+  const a = (key: string) => ALERTS_T[key]?.[lang] ?? ALERTS_T[key]?.en ?? key;
 
   // ── Load data ────────────────────────────────────────────────────────────────
 
@@ -570,7 +620,7 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
   };
 
   const handleDelete = async (report: LabReport) => {
-    if (!(await confirm({ title: 'Delete Report', message: DELETE_CONFIRM[lang] ?? DELETE_CONFIRM.en, variant: 'danger' }))) return;
+    if (!(await confirm({ title: t('deleteReport'), message: DELETE_CONFIRM[lang] ?? DELETE_CONFIRM.en, variant: 'danger' }))) return;
     const res = await fetch('/api/lab-results/delete-report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -582,7 +632,7 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
   // ── PDF upload + extract ──────────────────────────────────────────────────────
 
   const handlePdfFile = (f: File) => {
-    if (f.size > 10 * 1024 * 1024) { alert('File too large (max 10MB)'); return; }
+    if (f.size > 10 * 1024 * 1024) { alert(a('fileTooLarge')); return; }
     setPdfFile(f);
   };
 
@@ -591,14 +641,14 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
     setPdfUploading(true);
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { alert('Not authenticated'); setPdfUploading(false); return; }
+    if (!user) { alert(a('notAuthenticated')); setPdfUploading(false); return; }
 
     const storagePath = `${user.id}/${Date.now()}-${pdfFile.name}`;
     const { error: uploadError } = await supabase.storage
       .from('lab-pdfs')
       .upload(storagePath, pdfFile, { upsert: false });
 
-    if (uploadError) { alert('Upload failed: ' + uploadError.message); setPdfUploading(false); return; }
+    if (uploadError) { alert(a('uploadFailed') + uploadError.message); setPdfUploading(false); return; }
 
     setPdfStoragePath(storagePath);
     setPdfUploading(false);
@@ -613,7 +663,7 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
     setPdfExtracting(false);
 
     if (!data.success) {
-      alert(data.error ?? 'Extraction failed');
+      alert(data.error ?? a('extractionFailed'));
       await supabase.storage.from('lab-pdfs').remove([storagePath]);
       setPdfStoragePath(null);
       return;
@@ -636,9 +686,9 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
 
   const handleSavePdf = async () => {
     const toSave = extracted.filter((r) => r.include && r.matched_id);
-    if (!toSave.length) { alert('No matched results to save'); return; }
-    if (!pdfMeta.title.trim()) { alert('Report title is required'); return; }
-    if (!pdfMeta.test_date) { alert('Test date is required'); return; }
+    if (!toSave.length) { alert(a('noMatchedResults')); return; }
+    if (!pdfMeta.title.trim()) { alert(a('reportTitleRequired')); return; }
+    if (!pdfMeta.test_date) { alert(a('testDateRequired')); return; }
     setSaving(true);
 
     const res = await fetch('/api/lab-results/save-report', {
@@ -660,7 +710,7 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
     const data = await res.json();
     setSaving(false);
 
-    if (!data.success) { alert(data.error ?? 'Save failed'); return; }
+    if (!data.success) { alert(data.error ?? a('saveFailed')); return; }
     const msg = SAVE_CONFIRM[lang] ?? SAVE_CONFIRM.en;
     backToList();
     loadData();
@@ -672,9 +722,9 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
 
   const handleSaveForm = async () => {
     const validRows = formRows.filter((r) => r.biomarker_id && r.value);
-    if (!validRows.length) { alert('Add at least one result'); return; }
-    if (!formMeta.title.trim()) { alert('Title is required'); return; }
-    if (!formMeta.test_date) { alert('Test date is required'); return; }
+    if (!validRows.length) { alert(a('addAtLeastOne')); return; }
+    if (!formMeta.title.trim()) { alert(a('titleRequired')); return; }
+    if (!formMeta.test_date) { alert(a('testDateRequired')); return; }
     setSaving(true);
 
     const payload = {
@@ -703,7 +753,7 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
     const data = await res.json();
     setSaving(false);
 
-    if (!data.success) { alert(data.error ?? 'Save failed'); return; }
+    if (!data.success) { alert(data.error ?? a('saveFailed')); return; }
     backToList();
     loadData();
   };
@@ -755,7 +805,7 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold text-[#0e393d]">Add Lab Results</h2>
-        <button onClick={backToList} className="text-sm text-[#1c2a2b]/40 hover:text-[#1c2a2b]">← Back</button>
+        <button onClick={backToList} className="text-sm text-[#1c2a2b]/40 hover:text-[#1c2a2b]">{t('back')}</button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <button
@@ -764,7 +814,7 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
         >
           <div className="text-4xl">📄</div>
           <div>
-            <p className="font-semibold text-[#0e393d] mb-1">Upload PDF</p>
+            <p className="font-semibold text-[#0e393d] mb-1">{t('uploadPdf')}</p>
             <p className="text-xs text-[#1c2a2b]/50">AI extracts your values automatically</p>
           </div>
         </button>
@@ -774,7 +824,7 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
         >
           <div className="text-4xl">✏️</div>
           <div>
-            <p className="font-semibold text-[#0e393d] mb-1">Enter Manually</p>
+            <p className="font-semibold text-[#0e393d] mb-1">{t('enterManually')}</p>
             <p className="text-xs text-[#1c2a2b]/50">Type in values from your lab report</p>
           </div>
         </button>
@@ -788,7 +838,7 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold text-[#0e393d]">Upload Lab PDF</h2>
-        <button onClick={() => setMode('choose')} className="text-sm text-[#1c2a2b]/40 hover:text-[#1c2a2b]">← Back</button>
+        <button onClick={() => setMode('choose')} className="text-sm text-[#1c2a2b]/40 hover:text-[#1c2a2b]">{t('back')}</button>
       </div>
 
       {(pdfUploading || pdfExtracting) ? (
@@ -797,7 +847,7 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
             <div className="h-full rounded-full bg-[#0e393d] animate-pulse" style={{ width: '75%' }} />
           </div>
           <p className="text-xs text-[#1c2a2b]/50 text-center">
-            {pdfUploading ? 'Uploading…' : 'Extracting with AI… (20–30 s)'}
+            {pdfUploading ? t('uploading') : t('extractingAi')}
           </p>
         </div>
       ) : (
@@ -827,15 +877,15 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
               </>
             ) : (
               <>
-                <p className="font-medium text-[#0e393d]">Drop your lab PDF here</p>
-                <p className="text-xs text-[#1c2a2b]/40 mt-1">PDF, JPG, PNG · Max 10 MB</p>
+                <p className="font-medium text-[#0e393d]">{t('dropPdf')}</p>
+                <p className="text-xs text-[#1c2a2b]/40 mt-1">{t('fileFormats')}</p>
               </>
             )}
           </div>
           {pdfFile && (
             <button onClick={handleExtract}
               className="w-full rounded-xl bg-[#0e393d] text-white py-3 font-medium text-sm hover:bg-[#0e393d]/85 transition">
-              Extract with AI
+              {t('extractButton')}
             </button>
           )}
         </>
@@ -850,11 +900,11 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-[#0e393d]">Review & Save</h2>
-          <button onClick={backToList} className="text-sm text-[#1c2a2b]/40 hover:text-[#1c2a2b]">← Cancel</button>
+          <h2 className="text-base font-semibold text-[#0e393d]">{t('reviewAndSave')}</h2>
+          <button onClick={backToList} className="text-sm text-[#1c2a2b]/40 hover:text-[#1c2a2b]">{t('cancelBack')}</button>
         </div>
 
-        <MetaFields meta={pdfMeta} onChange={(u) => setPdfMeta((m) => ({ ...m, ...u }))} />
+        <MetaFields meta={pdfMeta} onChange={(u) => setPdfMeta((m) => ({ ...m, ...u }))} lang={lang} />
 
         <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
           <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-[#0e393d]/8">
@@ -939,9 +989,9 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-[#0e393d]">
-            {isEdit ? 'Edit Lab Report' : 'New Lab Report'}
+            {isEdit ? t('editLabReport') : t('newLabReport')}
           </h2>
-          <button onClick={backToList} className="text-sm text-[#1c2a2b]/40 hover:text-[#1c2a2b]">← Cancel</button>
+          <button onClick={backToList} className="text-sm text-[#1c2a2b]/40 hover:text-[#1c2a2b]">{t('cancelBack')}</button>
         </div>
 
         <MetaFields meta={formMeta} onChange={(u) => setFormMeta((m) => ({ ...m, ...u }))} />
@@ -967,7 +1017,7 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
                     }}
                     onFocus={() => { if (!row.biomarker_id) setOpenDropdown(row.rowId); }}
                     onBlur={() => setTimeout(() => setOpenDropdown(null), 150)}
-                    placeholder="Search biomarker…"
+                    placeholder={t('searchBiomarker')}
                     className="w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
                   />
                   {showDropdown && (
@@ -990,7 +1040,7 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
                   type="number"
                   value={row.value}
                   onChange={(e) => updateRow(row.rowId, { value: e.target.value })}
-                  placeholder="Value"
+                  placeholder={t('value')}
                   className="w-24 rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10"
                 />
                 {/* Unit — only show once a biomarker is selected */}
@@ -1037,18 +1087,18 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
           onClick={() => setFormRows((rows) => [...rows, emptyRow()])}
           className="w-full rounded-xl border-2 border-dashed border-[#0e393d]/15 py-2.5 text-sm text-[#0e393d]/50 hover:border-[#0e393d]/30 hover:text-[#0e393d]/70 transition"
         >
-          + Add Another Biomarker
+          {t('addAnotherBiomarker')}
         </button>
 
         <div className="flex gap-3">
           <button onClick={handleSaveForm} disabled={saving}
             className="flex items-center gap-2 rounded-xl bg-[#0e393d] text-white px-6 py-2.5 font-medium text-sm hover:bg-[#0e393d]/85 transition disabled:opacity-50">
             {saving && <Spinner />}
-            {saving ? 'Saving…' : isEdit ? 'Update Report' : 'Save Report'}
+            {saving ? t('saving') : isEdit ? t('updateReport') : t('saveReport')}
           </button>
           <button onClick={backToList}
             className="rounded-xl border border-[#0e393d]/15 text-[#1c2a2b]/60 px-6 py-2.5 font-medium text-sm hover:text-[#1c2a2b] transition">
-            Cancel
+            {t('cancel')}
           </button>
         </div>
       </div>
@@ -1076,15 +1126,15 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
           onClick={() => setMode('choose')}
           className="inline-flex items-center gap-1.5 rounded-full bg-[#0e393d] text-white px-4 py-2 text-xs font-medium hover:bg-[#0e393d]/85 transition"
         >
-          + Add Lab Results
+          {t('addLabResults')}
         </button>
       </div>
 
       {isEmpty && (
         <div className="text-center py-16">
           <div className="text-5xl mb-4">🧬</div>
-          <p className="font-medium text-[#0e393d] mb-2">No lab results yet</p>
-          <p className="text-sm text-[#1c2a2b]/50">Upload a lab PDF or enter values manually</p>
+          <p className="font-medium text-[#0e393d] mb-2">{t('noLabResults')}</p>
+          <p className="text-sm text-[#1c2a2b]/50">{t('uploadOrEnter')}</p>
         </div>
       )}
 
@@ -1192,7 +1242,7 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold text-white truncate">{report.title}</span>
                     {/* Status tags — rendered on the dark bar */}
-                    <SourceBadge source={report.source} />
+                    <SourceBadge source={report.source} lang={lang} />
                     {report.status && (() => {
                       const statusMap: Record<string, { label: string; cls: string }> = {
                         ai_extracted:     { label: '🤖 AI Extracted',  cls: 'bg-white/10 text-white/70 ring-1 ring-white/15' },

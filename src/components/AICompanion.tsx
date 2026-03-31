@@ -51,6 +51,8 @@ export default function AICompanion() {
   const [streamingText, setStreamingText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [hasNewMessage, setHasNewMessage] = useState(false);
+  const [bioContext, setBioContext] = useState<string>('');
+  const contextFetched = useRef(false);
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -73,6 +75,14 @@ export default function AICompanion() {
     if (isOpen) {
       setHasNewMessage(false);
       setTimeout(() => inputRef.current?.focus(), 150);
+      // Fetch biomarker context once on first open
+      if (!contextFetched.current) {
+        contextFetched.current = true;
+        fetch('/api/ai/context')
+          .then(r => r.json())
+          .then(data => { if (data.context) setBioContext(data.context); })
+          .catch(() => {});
+      }
     }
   }, [isOpen]);
 
@@ -100,7 +110,7 @@ export default function AICompanion() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: allMessages,
-          context: `Current page: ${pathname}`,
+          context: bioContext ? `Current page: ${pathname}\n\n${bioContext}` : `Current page: ${pathname}`,
           lang,
           mode: 'coach',
         }),

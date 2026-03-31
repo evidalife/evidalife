@@ -110,22 +110,22 @@ const T = {
   },
   fr: {
     tabs: { profile: 'Profil', orders: 'Commandes', results: 'Résultats', invoices: 'Factures' },
-    orders: { empty: 'Aucune commande.', emptySub: '', shop: 'Boutique', invoice: 'Facture (PDF)', dashboard: 'Tableau de santé', voucher: 'Code bon' },
-    results: { empty: 'Aucun résultat.', emptySub: '', shop: 'Se faire tester', resultsFrom: 'Résultats du', ref: 'Réf', opt: 'Opt', addResult: '+ Ajouter', addResultTitle: 'Ajouter un résultat', biomarker: 'Biomarqueur', value: 'Valeur', unit: 'Unité', date: 'Date', save: 'Enregistrer', cancel: 'Annuler', delete: 'Supprimer', searchBiomarker: 'Rechercher…' },
+    orders: { empty: 'Aucune commande.', emptySub: 'Testez-vous — votre historique de commandes apparaîtra ici.', shop: 'Boutique', invoice: 'Facture (PDF)', dashboard: 'Tableau de santé', voucher: 'Code bon' },
+    results: { empty: 'Aucun résultat.', emptySub: 'Testez-vous pour voir vos données de biomarqueurs ici.', shop: 'Se faire tester', resultsFrom: 'Résultats du', ref: 'Réf', opt: 'Opt', addResult: '+ Ajouter', addResultTitle: 'Ajouter un résultat', biomarker: 'Biomarqueur', value: 'Valeur', unit: 'Unité', date: 'Date', save: 'Enregistrer', cancel: 'Annuler', delete: 'Supprimer', searchBiomarker: 'Rechercher…' },
     invoices: { empty: 'Aucune facture.', download: 'Télécharger PDF', number: 'N° facture', date: 'Date', amount: 'Montant', status: 'Statut' },
     loading: 'Chargement…',
   },
   es: {
     tabs: { profile: 'Perfil', orders: 'Pedidos', results: 'Resultados', invoices: 'Facturas' },
-    orders: { empty: 'Sin pedidos.', emptySub: '', shop: 'Tienda', invoice: 'Factura (PDF)', dashboard: 'Panel de salud', voucher: 'Código bono' },
-    results: { empty: 'Sin resultados.', emptySub: '', shop: 'Hacerse el test', resultsFrom: 'Resultados del', ref: 'Ref', opt: 'Opt', addResult: '+ Añadir', addResultTitle: 'Añadir resultado', biomarker: 'Biomarcador', value: 'Valor', unit: 'Unidad', date: 'Fecha', save: 'Guardar', cancel: 'Cancelar', delete: 'Eliminar', searchBiomarker: 'Buscar…' },
+    orders: { empty: 'Sin pedidos.', emptySub: 'Realízate la prueba — tu historial de pedidos aparecerá aquí.', shop: 'Tienda', invoice: 'Factura (PDF)', dashboard: 'Panel de salud', voucher: 'Código bono' },
+    results: { empty: 'Sin resultados.', emptySub: 'Hazte la prueba para ver tus datos de biomarcadores aquí.', shop: 'Hacerse el test', resultsFrom: 'Resultados del', ref: 'Ref', opt: 'Opt', addResult: '+ Añadir', addResultTitle: 'Añadir resultado', biomarker: 'Biomarcador', value: 'Valor', unit: 'Unidad', date: 'Fecha', save: 'Guardar', cancel: 'Cancelar', delete: 'Eliminar', searchBiomarker: 'Buscar…' },
     invoices: { empty: 'Sin facturas.', download: 'Descargar PDF', number: 'N.º factura', date: 'Fecha', amount: 'Importe', status: 'Estado' },
     loading: 'Cargando…',
   },
   it: {
     tabs: { profile: 'Profilo', orders: 'Ordini', results: 'Risultati', invoices: 'Fatture' },
-    orders: { empty: 'Nessun ordine.', emptySub: '', shop: 'Negozio', invoice: 'Fattura (PDF)', dashboard: 'Dashboard salute', voucher: 'Codice voucher' },
-    results: { empty: 'Nessun risultato.', emptySub: '', shop: 'Effettua il test', resultsFrom: 'Risultati del', ref: 'Rif', opt: 'Opt', addResult: '+ Aggiungi', addResultTitle: 'Aggiungi risultato', biomarker: 'Biomarcatore', value: 'Valore', unit: 'Unità', date: 'Data', save: 'Salva', cancel: 'Annulla', delete: 'Elimina', searchBiomarker: 'Cerca…' },
+    orders: { empty: 'Nessun ordine.', emptySub: 'Effettua il test — la tua cronologia degli ordini apparirà qui.', shop: 'Negozio', invoice: 'Fattura (PDF)', dashboard: 'Dashboard salute', voucher: 'Codice voucher' },
+    results: { empty: 'Nessun risultato.', emptySub: 'Effettua il test per vedere i tuoi dati sui biomarcatori qui.', shop: 'Effettua il test', resultsFrom: 'Risultati del', ref: 'Rif', opt: 'Opt', addResult: '+ Aggiungi', addResultTitle: 'Aggiungi risultato', biomarker: 'Biomarcatore', value: 'Valore', unit: 'Unità', date: 'Data', save: 'Salva', cancel: 'Annulla', delete: 'Elimina', searchBiomarker: 'Cerca…' },
     invoices: { empty: 'Nessuna fattura.', download: 'Scarica PDF', number: 'N. fattura', date: 'Data', amount: 'Importo', status: 'Stato' },
     loading: 'Caricamento…',
   },
@@ -133,21 +133,31 @@ const T = {
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
-const FULFILMENT_LABEL: Record<string, string> = {
-  pending: 'Pending', paid: 'Paid', voucher_sent: 'Voucher sent',
-  sample_collected: 'Sample collected', processing: 'Processing',
-  results_ready: 'Results ready', completed: 'Completed',
-  cancelled: 'Cancelled', failed: 'Failed',
+const FULFILMENT_LABEL: Record<string, Record<string, string>> = {
+  pending: { en: 'Pending', de: 'Ausstehend', fr: 'En attente', es: 'Pendiente', it: 'In sospeso' },
+  paid: { en: 'Paid', de: 'Bezahlt', fr: 'Payé', es: 'Pagado', it: 'Pagato' },
+  voucher_sent: { en: 'Voucher sent', de: 'Gutschein gesendet', fr: 'Bon envoyé', es: 'Bono enviado', it: 'Voucher inviato' },
+  sample_collected: { en: 'Sample collected', de: 'Probe entnommen', fr: 'Échantillon collecté', es: 'Muestra recolectada', it: 'Campione raccolto' },
+  processing: { en: 'Processing', de: 'Verarbeitung', fr: 'Traitement', es: 'Procesamiento', it: 'Elaborazione' },
+  results_ready: { en: 'Results ready', de: 'Ergebnisse bereit', fr: 'Résultats prêts', es: 'Resultados listos', it: 'Risultati pronti' },
+  completed: { en: 'Completed', de: 'Abgeschlossen', fr: 'Complété', es: 'Completado', it: 'Completato' },
+  cancelled: { en: 'Cancelled', de: 'Abgebrochen', fr: 'Annulé', es: 'Cancelado', it: 'Annullato' },
+  failed: { en: 'Failed', de: 'Fehlgeschlagen', fr: 'Échoué', es: 'Fallido', it: 'Non riuscito' },
 };
 
-const ORDER_STATUS_LABEL: Record<string, string> = {
-  pending: 'Pending', paid: 'Paid', dispatched: 'Dispatched',
-  sample_received: 'Sample received', processing: 'Processing',
-  results_ready: 'Results ready', completed: 'Completed',
-  cancelled: 'Cancelled', refunded: 'Refunded',
+const ORDER_STATUS_LABEL: Record<string, Record<string, string>> = {
+  pending: { en: 'Pending', de: 'Ausstehend', fr: 'En attente', es: 'Pendiente', it: 'In sospeso' },
+  paid: { en: 'Paid', de: 'Bezahlt', fr: 'Payé', es: 'Pagado', it: 'Pagato' },
+  dispatched: { en: 'Dispatched', de: 'Versendet', fr: 'Envoyé', es: 'Enviado', it: 'Spedito' },
+  sample_received: { en: 'Sample received', de: 'Probe erhalten', fr: 'Échantillon reçu', es: 'Muestra recibida', it: 'Campione ricevuto' },
+  processing: { en: 'Processing', de: 'Verarbeitung', fr: 'Traitement', es: 'Procesamiento', it: 'Elaborazione' },
+  results_ready: { en: 'Results ready', de: 'Ergebnisse bereit', fr: 'Résultats prêts', es: 'Resultados listos', it: 'Risultati pronti' },
+  completed: { en: 'Completed', de: 'Abgeschlossen', fr: 'Complété', es: 'Completado', it: 'Completato' },
+  cancelled: { en: 'Cancelled', de: 'Abgebrochen', fr: 'Annulé', es: 'Cancelado', it: 'Annullato' },
+  refunded: { en: 'Refunded', de: 'Erstattet', fr: 'Remboursé', es: 'Reembolsado', it: 'Rimborsato' },
 };
 
-function StatusBadge({ status, type }: { status: string; type: 'order' | 'fulfilment' | 'invoice' }) {
+function StatusBadge({ status, type, lang = 'en' }: { status: string; type: 'order' | 'fulfilment' | 'invoice'; lang?: Lang }) {
   const greenStatuses = ['paid', 'completed', 'results_ready'];
   const redStatuses = ['cancelled', 'failed', 'refunded', 'overdue'];
   const amberStatuses = ['processing', 'sample_collected', 'sample_received', 'voucher_sent', 'dispatched'];
@@ -161,9 +171,9 @@ function StatusBadge({ status, type }: { status: string; type: 'order' | 'fulfil
         : 'bg-gray-50 text-gray-600 ring-gray-500/20';
 
   const label = type === 'fulfilment'
-    ? FULFILMENT_LABEL[status] ?? status
+    ? locName(FULFILMENT_LABEL[status], lang) || status
     : type === 'order'
-      ? ORDER_STATUS_LABEL[status] ?? status
+      ? locName(ORDER_STATUS_LABEL[status], lang) || status
       : status;
 
   return (
@@ -180,16 +190,19 @@ const FLAG_STYLE: Record<string, string> = {
   risk:         'bg-[#E24B4A]/12 text-[#E24B4A]',
 };
 
-const FLAG_LABEL: Record<string, string> = {
-  optimal: 'Optimal', good: 'Good', moderate: 'Borderline', risk: 'Risk',
+const FLAG_LABEL: Record<string, Record<string, string>> = {
+  optimal: { en: 'Optimal', de: 'Optimal', fr: 'Optimal', es: 'Óptimo', it: 'Ottimale' },
+  good: { en: 'Good', de: 'Gut', fr: 'Bon', es: 'Bueno', it: 'Buono' },
+  moderate: { en: 'Borderline', de: 'Grenzwertig', fr: 'Limite', es: 'Límite', it: 'Limite' },
+  risk: { en: 'Risk', de: 'Risiko', fr: 'Risque', es: 'Riesgo', it: 'Rischio' },
 };
 
-function FlagBadge({ flag }: { flag: string | null }) {
+function FlagBadge({ flag, lang = 'en' }: { flag: string | null; lang?: Lang }) {
   if (!flag) return null;
   const cls = FLAG_STYLE[flag] ?? 'bg-gray-50 text-gray-600';
   return (
     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${cls}`}>
-      {FLAG_LABEL[flag] ?? flag}
+      {locName(FLAG_LABEL[flag], lang) || flag}
     </span>
   );
 }
@@ -200,11 +213,17 @@ function Spinner() {
 
 // ─── HE domain labels ─────────────────────────────────────────────────────────
 
-const HE_DOMAIN_LABEL: Record<string, string> = {
-  heart_vessels: 'Heart & Vessels', metabolism: 'Metabolism',
-  hormones: 'Hormones', inflammation: 'Inflammation',
-  nutrients: 'Nutrients', organ_function: 'Organ Function',
-  longevity: 'Longevity', fitness: 'Fitness',
+const HE_DOMAIN_LABEL: Record<string, Record<string, string>> = {
+  heart_vessels: { en: 'Heart & Vessels', de: 'Herz & Blutgefäße', fr: 'Cœur & Vaisseaux', es: 'Corazón & Vasos', it: 'Cuore & Vasi' },
+  metabolism: { en: 'Metabolism', de: 'Stoffwechsel', fr: 'Métabolisme', es: 'Metabolismo', it: 'Metabolismo' },
+  hormones: { en: 'Hormones', de: 'Hormone', fr: 'Hormones', es: 'Hormonas', it: 'Ormoni' },
+  inflammation: { en: 'Inflammation', de: 'Entzündung', fr: 'Inflammation', es: 'Inflamación', it: 'Infiammazione' },
+  nutrients: { en: 'Nutrients', de: 'Nährstoffe', fr: 'Nutriments', es: 'Nutrientes', it: 'Nutrienti' },
+  organ_function: { en: 'Organ Function', de: 'Organfunktion', fr: 'Fonction organique', es: 'Función orgánica', it: 'Funzione organica' },
+  longevity: { en: 'Longevity', de: 'Langlebigkeit', fr: 'Longévité', es: 'Longevidad', it: 'Longevità' },
+  fitness: { en: 'Fitness', de: 'Fitness', fr: 'Forme physique', es: 'Fitness', it: 'Fitness' },
+  body_composition: { en: 'Body Composition', de: 'Körperzusammensetzung', fr: 'Composition corporelle', es: 'Composición corporal', it: 'Composizione corporea' },
+  epigenetics: { en: 'Epigenetics', de: 'Epigenetik', fr: 'Épigénétique', es: 'Epigenética', it: 'Epigenetica' },
 };
 
 const HE_DOMAIN_ORDER = ['heart_vessels', 'metabolism', 'hormones', 'inflammation', 'nutrients', 'organ_function', 'body_composition', 'fitness', 'epigenetics'];
@@ -319,8 +338,8 @@ function MyOrdersTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2.5 flex-wrap mb-1">
                     <span className="font-mono font-semibold text-[#0e393d] text-sm">{order.order_number}</span>
-                    <StatusBadge status={order.status} type="order" />
-                    {fs && <StatusBadge status={fs} type="fulfilment" />}
+                    <StatusBadge status={order.status} type="order" lang={lang} />
+                    {fs && <StatusBadge status={fs} type="fulfilment" lang={lang} />}
                   </div>
                   {productNames && <p className="text-xs text-[#1c2a2b]/50 truncate">{productNames}</p>}
                 </div>
@@ -421,18 +440,23 @@ type BiomarkerOption = {
   name: Record<string, string> | null;
 };
 
-function SourceBadge({ source }: { source: string | null }) {
+const SOURCE_LABEL: Record<string, Record<string, string>> = {
+  lab: { en: 'Lab', de: 'Labor', fr: 'Labo', es: 'Laboratorio', it: 'Lab' },
+  self: { en: 'Self', de: 'Selbst', fr: 'Personnel', es: 'Personal', it: 'Personale' },
+};
+
+function SourceBadge({ source, lang = 'en' }: { source: string | null; lang?: Lang }) {
   if (!source || source === 'pdf_upload' || source === 'manual') {
     return (
       <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[#0e393d]/8 text-[#0e393d]/60 whitespace-nowrap">
-        Lab
+        {locName(SOURCE_LABEL.lab, lang)}
       </span>
     );
   }
   if (source === 'self_report') {
     return (
       <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[#ceab84]/20 text-[#7a5e20] whitespace-nowrap">
-        Self
+        {locName(SOURCE_LABEL.self, lang)}
       </span>
     );
   }
@@ -733,7 +757,7 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <span className="text-sm">{HE_DOMAIN_ICON[domain] ?? '📊'}</span>
                           <span className="text-[10px] font-semibold tracking-[.1em] uppercase text-[#ceab84]">
-                            {HE_DOMAIN_LABEL[domain] ?? domain}
+                            {locName(HE_DOMAIN_LABEL[domain], lang) || domain}
                           </span>
                         </div>
                         {di === 0 && (
@@ -762,8 +786,8 @@ function MyResultsTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
                                 <div className="w-2 h-2 rounded-full shrink-0" style={{ background: clr }} />
                                 <span className="text-[12px] font-medium text-[#0e393d] truncate flex items-center gap-1.5">
                                   {name}
-                                  <SourceBadge source={r.source} />
-                                  <FlagBadge flag={flag} />
+                                  <SourceBadge source={r.source} lang={lang} />
+                                  <FlagBadge flag={flag} lang={lang} />
                                 </span>
                                 {isSelfReport && (
                                   <button
@@ -832,7 +856,7 @@ type Invoice = {
   currency: string; issued_at: string | null; order_id: string;
 };
 
-function MyInvoicesTab({ t }: { t: typeof T['en'] }) {
+function MyInvoicesTab({ t, lang }: { t: typeof T['en']; lang: Lang }) {
   const supabase = createClient();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -874,7 +898,7 @@ function MyInvoicesTab({ t }: { t: typeof T['en'] }) {
               <td className="px-4 py-3 text-xs text-[#1c2a2b]/60 whitespace-nowrap">{fmtDate(inv.issued_at)}</td>
               <td className="px-4 py-3 text-xs tabular-nums font-medium text-[#1c2a2b]">{fmtCurrency(inv.total_amount, inv.currency)}</td>
               <td className="px-4 py-3">
-                <StatusBadge status={inv.status} type="invoice" />
+                <StatusBadge status={inv.status} type="invoice" lang={lang} />
               </td>
               <td className="px-4 py-3 text-right">
                 <a
@@ -976,7 +1000,7 @@ export default function ProfileTabs({ profile, lang, initialTab }: { profile: Pr
       {tab === 'profile'  && <ProfileEditor profile={profile} lang={lang} />}
       {tab === 'orders'   && <MyOrdersTab t={t} lang={lang} />}
       {tab === 'results'  && <LabReportsTab lang={lang} userId={profile.id} />}
-      {tab === 'invoices' && <MyInvoicesTab t={t} />}
+      {tab === 'invoices' && <MyInvoicesTab t={t} lang={lang} />}
     </div>
   );
 }

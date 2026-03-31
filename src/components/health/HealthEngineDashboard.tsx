@@ -9,6 +9,8 @@ import BiomarkerTrendChart from './BiomarkerTrendChart';
 import BriefingPlayer from './BriefingPlayer';
 import { CATEGORY_DISPLAY } from '@/lib/health-score';
 import { createClient } from '@/lib/supabase/client';
+import ResearchChat from '@/components/research/ResearchChat';
+import { buildBiomarkerContext, buildResearchSuggestions } from '@/lib/research/biomarker-mapper';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Lang = 'en' | 'de' | 'fr' | 'es' | 'it';
@@ -855,6 +857,21 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
   };
 
   // ── State ─────────────────────────────────────────────────────
+  const [highlightedSection, setHighlightedSection] = useState<string | null>(null);
+
+  // Scroll highlighted section into view during briefing
+  React.useEffect(() => {
+    if (!highlightedSection) return;
+    const sectionMap: Record<string, string> = {
+      longevity: 'section-score', score: 'section-score',
+      domains: 'section-domains', markers: 'section-markers',
+    };
+    const id = sectionMap[highlightedSection];
+    if (!id) return;
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [highlightedSection]);
+
   const [expandedDomain, setExpandedDomain] = useState<string | null>(null);
   const [expandedMarker, setExpandedMarker] = useState<string | null>(null);
   const [expandedReports, setExpandedReports] = useState<Set<string>>(() => {
@@ -970,11 +987,15 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
 
         {/* ── AUDIO HEALTH BRIEFING ── */}
         <section className="mb-8">
-          <BriefingPlayer lang={lang} firstName={profile?.first_name ?? ''} />
+          <BriefingPlayer
+            lang={lang}
+            firstName={profile?.first_name ?? ''}
+            onHighlight={setHighlightedSection}
+          />
         </section>
 
         {/* ── TWO GAUGES: LONGEVITY SCORE + BIOLOGICAL AGE CLOCKS ── */}
-        <section className="mb-16">
+        <section id="section-score" className={`mb-16 rounded-2xl transition-all duration-500 ${highlightedSection === 'longevity' || highlightedSection === 'score' ? 'ring-2 ring-[#0C9C6C]/40 ring-offset-4 ring-offset-[#fafaf8]' : ''}`}>
           <SectionTag>{t.secScore}</SectionTag>
           <div className="grid md:grid-cols-2 gap-3.5 mb-6">
 
@@ -1655,7 +1676,7 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
         {/* DEXA and VO2max visualization sections removed — values remain in ALL BIOMARKERS table */}
 
         {/* DOMAIN TILES SECTION */}
-        <section className="mb-16">
+        <section id="section-domains" className={`mb-16 rounded-2xl transition-all duration-500 ${highlightedSection === 'domains' ? 'ring-2 ring-[#0C9C6C]/40 ring-offset-4 ring-offset-[#fafaf8]' : ''}`}>
           <SectionTag>{t.secDom}</SectionTag>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
@@ -1831,7 +1852,7 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
         </section>
 
         {/* LAB RESULTS — Lab Reports sorted by date, grouped by he_domain */}
-        <section className="mb-12">
+        <section id="section-markers" className={`mb-12 rounded-2xl transition-all duration-500 ${highlightedSection === 'markers' ? 'ring-2 ring-[#0C9C6C]/40 ring-offset-4 ring-offset-[#fafaf8]' : ''}`}>
           <SectionTag>{t.secBm}</SectionTag>
 
           {(() => {
@@ -2034,6 +2055,39 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
             );
           })()}
         </section>
+
+        {/* ── Research & Evidence ─────────────────────────────────────────── */}
+        {(() => {
+          const allMarkers = dash.domains.flatMap(d => d.markers);
+          const flaggedMarkers = allMarkers
+            .filter(m => m.latest != null && (m.latestStatus === 'moderate' || m.latestStatus === 'risk'))
+            .map(m => ({ slug: m.slug, name: m.name, value: m.latest!, unit: m.unit, status: m.latestStatus }));
+
+          const biomarkerCtx = buildBiomarkerContext(flaggedMarkers);
+          const suggestions = buildResearchSuggestions(flaggedMarkers.map(m => m.slug));
+
+          return (
+            <section className="mt-8">
+              <div className="flex items-center gap-3 mb-5">
+                <span className="text-[10px] font-semibold tracking-[.18em] uppercase text-[#ceab84]">Research & Evidence</span>
+                <div className="flex-1 h-px bg-gradient-to-r from-[#ceab84]/20 to-transparent" />
+                <a
+                  href="/research"
+                  className="text-[11px] text-[#0e393d]/40 hover:text-[#0e393d] transition-colors"
+                >
+                  Open full view →
+                </a>
+              </div>
+
+              <div className="rounded-2xl border border-[#0e393d]/10 bg-white overflow-hidden" style={{ height: 560 }}>
+                <ResearchChat
+                  biomarkerContext={biomarkerCtx || undefined}
+                  suggestions={suggestions.length > 0 ? suggestions : undefined}
+                />
+              </div>
+            </section>
+          );
+        })()}
 
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 type Lang = typeof VALID_LANGS[number];
@@ -99,6 +100,22 @@ export async function POST(req: NextRequest) {
     ? (body.lang as Lang)
     : 'en';
 
+  // Load AI settings from DB (admin client bypasses RLS on ai_settings)
+  const adminDb = createAdminClient();
+  const { data: settingsRows } = await adminDb
+    .from('ai_settings')
+    .select('key, value')
+    .in('key', ['briefing_enabled', 'briefing_model', 'domain_weights']);
+
+  const settingsMap = new Map((settingsRows ?? []).map(r => [r.key, r.value]));
+
+  const briefingEnabled = settingsMap.get('briefing_enabled') !== false;
+  if (!briefingEnabled) {
+    return NextResponse.json({ error: 'AI briefing feature is currently disabled' }, { status: 503 });
+  }
+
+  const briefingModel: string = (settingsMap.get('briefing_model') as string) ?? 'claude-sonnet-4-6';
+
   // Fetch user data
   const [profileRes, reportsRes, resultsRes, defsRes] = await Promise.all([
     supabase.from('profiles').select('first_name, date_of_birth, sex').eq('id', user.id).single(),
@@ -121,18 +138,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No lab data found' }, { status: 404 });
   }
 
-  // Build domain meta (same as dashboard)
-  const DOMAIN_WEIGHTS: Record<string, { name: string; weight: number; label: string }> = {
-    heart_vessels:    { name: 'Heart & Vessels', weight: 0.18, label: '18%' },
-    metabolism:       { name: 'Metabolism', weight: 0.16, label: '16%' },
-    inflammation:     { name: 'Inflammation', weight: 0.14, label: '14%' },
-    organ_function:   { name: 'Organ Function', weight: 0.13, label: '13%' },
-    nutrients:        { name: 'Nutrients', weight: 0.10, label: '10%' },
-    hormones:         { name: 'Hormones', weight: 0.09, label: '9%' },
-    epigenetics:      { name: 'Epigenetics', weight: 0.10, label: '10%' },
-    body_composition: { name: 'Body Composition', weight: 0.05, label: '5%' },
-    fitness:          { name: 'Fitness', weight: 0.05, label: '5%' },
+  // Build domain meta — weights from DB, falling back to defaults
+  const DEFAULT_WEIGHTS: Record<string, number> = {
+    heart_vessels: 0.18, metabolism: 0.16, inflammation: 0.14, organ_function: 0.13,
+    nutrients: 0.10, hormones: 0.09, epigenetics: 0.10, body_composition: 0.05, fitness: 0.05,
   };
+  const DOMAIN_NAMES: Record<string, string> = {
+    heart_vessels: 'Heart & Vessels', metabolism: 'Metabolism', inflammation: 'Inflammation',
+    organ_function: 'Organ Function', nutrients: 'Nutrients', hormones: 'Hormones',
+    epigenetics: 'Epigenetics', body_composition: 'Body Composition', fitness: 'Fitness',
+  };
+  const dbWeights = (settingsMap.get('domain_weights') as Record<string, number> | null) ?? DEFAULT_WEIGHTS;
+  const DOMAIN_WEIGHTS: Record<string, { name: string; weight: number; label: string }> = Object.fromEntries(
+    Object.entries(DOMAIN_NAMES).map(([key, name]) => [
+      key,
+      { name, weight: dbWeights[key] ?? DEFAULT_WEIGHTS[key] ?? 0.05, label: `${Math.round((dbWeights[key] ?? DEFAULT_WEIGHTS[key] ?? 0.05) * 100)}%` },
+    ])
+  );
 
   // Map: defId → date → value
   const reportDateMap = new Map(reports.map(r => [r.id, r.test_date]));
@@ -314,10 +336,11 @@ Step guidance:
 Do not include markdown, explanations, or anything outside the JSON object.`;
 
   const client = new Anthropic({ apiKey });
+  const startMs = Date.now();
 
   try {
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: briefingModel,
       max_tokens: 2048,
       system: systemPrompt,
       messages: [{ role: 'user', content: `Generate my health briefing based on this data:\n\n${summary}` }],
@@ -334,6 +357,22 @@ Do not include markdown, explanations, or anything outside the JSON object.`;
     if (!parsed.steps || !Array.isArray(parsed.steps)) {
       return NextResponse.json({ error: 'Invalid briefing format' }, { status: 500 });
     }
+
+    const durationMs = Date.now() - startMs;
+    const tokensUsed = (message.usage?.input_tokens ?? 0) + (message.usage?.output_tokens ?? 0);
+
+    // Log to health_briefings (fire-and-forget — don't block response)
+    adminDb.from('health_briefings').insert({
+      user_id: user.id,
+      lang,
+      steps: parsed.steps,
+      summary_context: { summary },
+      model_used: briefingModel,
+      tokens_used: tokensUsed,
+      duration_ms: durationMs,
+    }).then(({ error }) => {
+      if (error) console.error('[briefing] log error:', error.message);
+    });
 
     return NextResponse.json({ steps: parsed.steps, summary });
   } catch (e: unknown) {
