@@ -8,7 +8,7 @@ export const metadata = { title: 'AI Usage – Evida Admin' };
 export default async function AIUsagePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/auth/login');
+  if (!user) redirect('/login');
 
   const admin = createAdminClient();
   const { data: profile } = await admin.from('profiles').select('is_admin').eq('id', user.id).single();

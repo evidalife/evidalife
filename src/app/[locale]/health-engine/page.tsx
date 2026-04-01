@@ -65,6 +65,18 @@ const T = {
     es: 'Datos de ejemplo — Inicia sesión para ver tus resultados',
     it: 'Dati di esempio — Accedi per vedere i tuoi risultati',
   },
+  sampleBannerLoggedIn: {
+    en: 'Sample Data — This is what your Health Engine will look like',
+    de: 'Beispieldaten — So wird deine Health Engine aussehen',
+    fr: 'Données d\'exemple — Voici à quoi ressemblera votre Health Engine',
+    es: 'Datos de ejemplo — Así se verá tu Health Engine',
+    it: 'Dati di esempio — Ecco come apparirà il tuo Health Engine',
+  },
+  viewSample: {
+    en: 'View Sample Dashboard', de: 'Beispiel-Dashboard ansehen',
+    fr: 'Voir le tableau de bord exemple', es: 'Ver panel de ejemplo',
+    it: 'Vedi dashboard di esempio',
+  },
   publicTitle: {
     en: 'The Evidalife Health Engine',
     de: 'Die Evidalife Health Engine',
@@ -185,17 +197,19 @@ export default async function HealthEnginePage({
   } = await supabase.auth.getUser();
 
   // ── Not logged in or ?view=info → try sample data from test account ──
-  if (!user || params.view === 'info') {
+  const showSample = !user || params.view === 'info';
+  if (showSample) {
     const sample = await fetchHealthData(supabase, SAMPLE_USER_ID);
 
     if (sample.reports.length && sample.results.length) {
-      // Show sample dashboard with banner
+      // Show sample dashboard with appropriate banner
+      const isLoggedIn = !!user;
       return (
         <>
           <PublicNav />
           <div className="bg-[#ceab84]/20 border-b border-[#ceab84]/40 py-3 text-center">
             <p className="text-sm text-[#0e393d] font-medium">
-              {T.sampleBanner[lang]}
+              {isLoggedIn ? T.sampleBannerLoggedIn[lang] : T.sampleBanner[lang]}
             </p>
           </div>
           <HealthEngineDashboard
@@ -229,7 +243,7 @@ export default async function HealthEnginePage({
                 {T.publicDesc[lang]}
               </p>
               <Link
-                href="/auth/login"
+                href="/login"
                 className="inline-block px-8 py-3 rounded-lg font-medium transition-all hover:brightness-110"
                 style={{ backgroundColor: '#ceab84', color: '#0e393d' }}
               >
@@ -285,7 +299,7 @@ export default async function HealthEnginePage({
               </div>
               <div className="mt-12">
                 <Link
-                  href="/auth/login"
+                  href="/login"
                   className="inline-block px-8 py-3 rounded-lg font-medium transition-all hover:brightness-110"
                   style={{ backgroundColor: '#ceab84', color: '#0e393d' }}
                 >
@@ -347,6 +361,14 @@ export default async function HealthEnginePage({
                 >
                   {T.uploadBtn[lang]}
                 </Link>
+                <div className="mt-4">
+                  <Link
+                    href="/health-engine?view=info"
+                    className="text-sm text-[#0e393d]/50 hover:text-[#0e393d]/80 underline underline-offset-2 transition-colors"
+                  >
+                    {T.viewSample[lang]}
+                  </Link>
+                </div>
               </div>
 
               {/* ── Domain preview pills ── */}
