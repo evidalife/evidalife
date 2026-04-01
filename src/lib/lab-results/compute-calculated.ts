@@ -6,6 +6,7 @@
 // Call this from any import path: save-report, parse-lab-results, bulk, or manual add.
 
 import { computeAllCalculatedMarkers } from '@/lib/health-score';
+import { computeStatusFlag } from '@/lib/lab-results/flagging';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface ComputeCalcOpts {
@@ -81,11 +82,11 @@ export async function computeAndInsertCalculatedMarkers({
 
   if (newCalcEntries.length === 0) return 0;
 
-  // 6. Look up biomarker IDs for calculated slugs
+  // 6. Look up biomarker IDs for calculated slugs (including range_type)
   const calcSlugs = newCalcEntries.map(([slug]) => slug);
   const { data: calcBiomarkers } = await supabase
     .from('biomarkers')
-    .select('id, slug, unit, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high')
+    .select('id, slug, unit, range_type, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high')
     .in('slug', calcSlugs);
 
   if (!calcBiomarkers || calcBiomarkers.length === 0) return 0;
@@ -94,7 +95,32 @@ export async function computeAndInsertCalculatedMarkers({
     calcBiomarkers.map((b: any) => [b.slug, b]),
   );
 
-  // 7. Build insert rows with status_flag computation
+  // 6b. Look up age/sex-stratified range overrides (if any)
+  const bioIds = calcBiomarkers.map((b: any) => b.id);
+  const { data: rangeOverrides } = await supabase
+    .from('biomarker_range_overrides')
+    .select('biomarker_id, sex, age_min, age_max, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high')
+    .in('biomarker_id', bioIds);
+
+  // Build a lookup: biomarker_id → best-matching override for this user's age/sex
+  const overrideMap = new Map<string, typeof rangeOverrides extends (infer T)[] | null ? T : never>();
+  if (rangeOverrides && userAge != null) {
+    const sexCode = userSex === 'male' ? 'M' : userSex === 'female' ? 'F' : null;
+    for (const ov of rangeOverrides) {
+      // Check age match
+      if (ov.age_min != null && userAge < ov.age_min) continue;
+      if (ov.age_max != null && userAge > ov.age_max) continue;
+      // Check sex match (null sex in override = applies to all)
+      if (ov.sex != null && ov.sex !== sexCode) continue;
+      // Prefer sex-specific over generic, narrower age band over wider
+      const existing = overrideMap.get(ov.biomarker_id);
+      if (!existing || (ov.sex != null && existing.sex == null)) {
+        overrideMap.set(ov.biomarker_id, ov);
+      }
+    }
+  }
+
+  // 7. Build insert rows with status_flag computation (using computeStatusFlag + overrides)
   const measuredAt = testDate
     ? new Date(testDate).toISOString()
     : new Date().toISOString();
@@ -103,21 +129,20 @@ export async function computeAndInsertCalculatedMarkers({
     .filter(([slug]) => calcBioMap[slug])
     .map(([slug, value]) => {
       const bio = calcBioMap[slug];
-      let statusFlag: string = 'moderate';
-      const optLow = bio.optimal_range_low;
-      const optHigh = bio.optimal_range_high;
-      const refLow = bio.ref_range_low;
-      const refHigh = bio.ref_range_high;
-      if (optLow != null && optHigh != null && value >= optLow && value <= optHigh) {
-        statusFlag = 'optimal';
-      } else if (refLow != null && refHigh != null && value >= refLow && value <= refHigh) {
-        statusFlag = 'good';
-      } else if (
-        (refLow != null && value < refLow) ||
-        (refHigh != null && value > refHigh)
-      ) {
-        statusFlag = 'risk';
-      }
+      // Use age/sex override ranges if available, otherwise fall back to base ranges
+      const ov = overrideMap.get(bio.id);
+      const ranges = {
+        ref_range_low:     ov?.ref_range_low     ?? bio.ref_range_low     ?? null,
+        ref_range_high:    ov?.ref_range_high    ?? bio.ref_range_high    ?? null,
+        optimal_range_low: ov?.optimal_range_low ?? bio.optimal_range_low ?? null,
+        optimal_range_high: ov?.optimal_range_high ?? bio.optimal_range_high ?? null,
+        range_type:        bio.range_type ?? null,
+      };
+
+      const statusFlag = (ranges.ref_range_low != null || ranges.ref_range_high != null
+                       || ranges.optimal_range_low != null || ranges.optimal_range_high != null)
+        ? computeStatusFlag(value, ranges)
+        : 'moderate';
 
       return {
         user_id:                 userId,
