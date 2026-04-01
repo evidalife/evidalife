@@ -195,9 +195,15 @@ export default function AISettingsManager({
               );
             })}
           </div>
-          <p className="mt-3 text-[10px] text-[#1c2a2b]/35">
-            Keys are loaded from server environment variables. Set them in <code className="font-mono bg-[#0e393d]/[.06] px-1 py-0.5 rounded">.env.local</code> and Vercel project settings.
-          </p>
+          <div className="mt-3 flex items-center justify-between">
+            <p className="text-[10px] text-[#1c2a2b]/35">
+              Keys are loaded from server environment variables. Set them in <code className="font-mono bg-[#0e393d]/[.06] px-1 py-0.5 rounded">.env.local</code> and Vercel project settings.
+            </p>
+            <a href="/en/admin/ai-usage" className="text-[10px] font-medium text-[#0e393d]/50 hover:text-[#0e393d] transition-colors flex items-center gap-1">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              View AI Usage Dashboard →
+            </a>
+          </div>
         </div>
 
         {/* Feature Toggles */}
