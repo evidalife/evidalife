@@ -28,13 +28,88 @@ const DOMAIN_WEIGHTS: Record<string, number> = {
   epigenetics:     0.10,
 };
 
-function flagToScore(flag: StatusFlag): number {
-  switch (flag) {
-    case 'optimal': return 100;
-    case 'good':     return 75;
-    case 'moderate': return 50;
-    case 'risk':     return 25;
+// ── Continuous scoring — exact same logic as HealthEngineDashboard.tsx ────────
+// Returns 0–100 with realistic granularity.
+function continuousScore(
+  value: number,
+  refLow: number | null, refHigh: number | null,
+  optLow: number | null, optHigh: number | null,
+): number {
+  const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
+  const hRL = refLow != null, hRH = refHigh != null;
+  const hOL = optLow != null, hOH = optHigh != null;
+
+  // Both ref bounds (range type)
+  if (hRL && hRH) {
+    const rL = refLow!, rH = refHigh!;
+    const span = rH - rL || 1;
+    if (hOL && hOH) {
+      const oL = optLow!, oH = optHigh!;
+      const oMid = (oL + oH) / 2;
+      const oHalf = (oH - oL) / 2 || 1;
+      if (value >= oL && value <= oH) {
+        const dist = Math.abs(value - oMid) / oHalf;
+        return clamp(100 - 18 * dist);
+      }
+      if (value >= rL && value <= rH) {
+        if (value < oL) {
+          const pct = (oL - value) / (oL - rL || 1);
+          return clamp(81 - 26 * pct);
+        } else {
+          const pct = (value - oH) / (rH - oH || 1);
+          return clamp(81 - 26 * pct);
+        }
+      }
+    } else {
+      const mid = (rL + rH) / 2;
+      const half = span / 2;
+      if (value >= rL && value <= rH) {
+        const dist = Math.abs(value - mid) / half;
+        return clamp(90 - 22 * dist);
+      }
+    }
+    const overshoot = value < rL ? (rL - value) / span : (value - rH) / span;
+    if (overshoot <= 0.15) return clamp(50 - overshoot * 80);
+    if (overshoot <= 0.5) return clamp(42 - overshoot * 50);
+    return clamp(25 - overshoot * 30);
   }
+
+  // Only upper bound (lower is better)
+  if (!hRL && hRH) {
+    const rH = refHigh!;
+    const opt = hOH ? optHigh! : rH * 0.8;
+    if (value <= 0) return 100;
+    if (value <= opt * 0.5) return clamp(98 - 4 * (value / (opt * 0.5 || 1)));
+    if (value <= opt) {
+      const ratio = (value - opt * 0.5) / (opt * 0.5 || 1);
+      return clamp(94 - 12 * ratio);
+    }
+    if (value <= rH) {
+      const pct = (value - opt) / (rH - opt || 1);
+      return clamp(81 - 26 * pct);
+    }
+    const overshoot = (value - rH) / (rH || 1);
+    return clamp(50 - overshoot * 65);
+  }
+
+  // Only lower bound (higher is better)
+  if (hRL && !hRH) {
+    const rL = refLow!;
+    const opt = hOL ? optLow! : rL * 1.2;
+    if (value >= opt * 1.5) return clamp(94 - 6 * Math.min(1, (value - opt * 1.5) / (opt || 1)));
+    if (value >= opt) {
+      const excess = (value - opt) / (opt * 0.5 || 1);
+      return clamp(98 - 4 * Math.min(1, excess));
+    }
+    if (value >= rL) {
+      const pct = (opt - value) / (opt - rL || 1);
+      return clamp(81 - 26 * pct);
+    }
+    const undershoot = (rL - value) / (rL || 1);
+    return clamp(50 - undershoot * 65);
+  }
+
+  return 70; // No ranges available
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -154,12 +229,12 @@ export default async function DashboardPage() {
     userSettingsRes,
     likedRecipesCountRes,
   ] = await Promise.allSettled([
-    // 0: Lab results with biomarker definitions
+    // 0: Lab results with biomarker definitions (incl. range columns for continuousScore)
     supabase
       .from('lab_results')
       .select(`
         id, biomarker_definition_id, value_numeric, unit, status_flag, measured_at, test_date,
-        biomarkers!inner( id, slug, name, unit, he_domain )
+        biomarkers!inner( id, slug, name, unit, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, scoring_type )
       `)
       .eq('user_id', user.id)
       .is('deleted_at', null)
@@ -226,7 +301,12 @@ export default async function DashboardPage() {
 
   const labRows = labResultsRes.status === 'fulfilled' ? (labResultsRes.value.data ?? []) : [];
 
-  type BmDef = { id: string; slug: string; name: unknown; unit: string | null; he_domain: string | null };
+  type BmDef = {
+    id: string; slug: string; name: unknown; unit: string | null; he_domain: string | null;
+    ref_range_low: number | null; ref_range_high: number | null;
+    optimal_range_low: number | null; optimal_range_high: number | null;
+    scoring_type: string | null;
+  };
 
   // Deduplicate: keep latest per biomarker
   const seenBiomarkers = new Set<string>();
@@ -236,16 +316,41 @@ export default async function DashboardPage() {
     return true;
   });
 
-  // ── Compute Longevity Score + Bio Age Score (same logic as health-engine) ──
+  // ── Compute Longevity Score + Bio Age Score (exact same logic as health-engine) ──
+
+  // We need chronoAge for age_ratio markers (bio clocks)
+  const profileData = profileRes.status === 'fulfilled' ? profileRes.value.data : null;
+  const hasBirthday = !!profileData?.date_of_birth;
+  const birthDate = hasBirthday ? new Date(profileData!.date_of_birth!) : null;
+  const chronoAge = birthDate
+    ? +((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)).toFixed(1)
+    : null;
+
+  // Score a single marker using continuousScore (with age_ratio support)
+  function scoreMarker(r: typeof latestResults[number]): number | null {
+    const bd = r.biomarkers as unknown as BmDef | null;
+    if (!bd?.he_domain || r.value_numeric == null) return null;
+    const value = Number(r.value_numeric);
+
+    // age_ratio markers: divide value by chronoAge before scoring
+    if (bd.scoring_type === 'age_ratio') {
+      if (!chronoAge || chronoAge <= 0) return 70;
+      const ratio = value / chronoAge;
+      return continuousScore(ratio, bd.ref_range_low, bd.ref_range_high, bd.optimal_range_low, bd.optimal_range_high);
+    }
+
+    return continuousScore(value, bd.ref_range_low, bd.ref_range_high, bd.optimal_range_low, bd.optimal_range_high);
+  }
 
   // Group scores by he_domain
   const domainScores: Record<string, number[]> = {};
   for (const r of latestResults) {
     const bd = r.biomarkers as unknown as BmDef | null;
-    const flag = r.status_flag as StatusFlag | null;
-    if (!bd?.he_domain || !flag) continue;
+    if (!bd?.he_domain) continue;
+    const score = scoreMarker(r);
+    if (score == null) continue;
     if (!domainScores[bd.he_domain]) domainScores[bd.he_domain] = [];
-    domainScores[bd.he_domain].push(flagToScore(flag));
+    domainScores[bd.he_domain].push(score);
   }
 
   // Weighted average per domain
@@ -279,17 +384,10 @@ export default async function DashboardPage() {
   }
 
   // Compute average bio age & diff from chronological
-  const profileData = profileRes.status === 'fulfilled' ? profileRes.value.data : null;
-  const hasBirthday = !!profileData?.date_of_birth;
-
-  let chronoAge: number | null = null;
   let avgBioAge: number | null = null;
   let bioAgeDiff: number | null = null;
 
   if (hasBirthday && bioageClocks.length > 0) {
-    const birthDate = new Date(profileData!.date_of_birth!);
-    chronoAge = +((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)).toFixed(1);
-
     const ageValues: number[] = [];
     const phenoAge = bioageClocks.find(c => c.slug === 'pheno_age');
     const grimAge = bioageClocks.find(c => c.slug === 'grim_age_v2');
@@ -301,7 +399,7 @@ export default async function DashboardPage() {
 
     if (ageValues.length > 0) {
       avgBioAge = +(ageValues.reduce((a, b) => a + b, 0) / ageValues.length).toFixed(1);
-      bioAgeDiff = +(avgBioAge - chronoAge).toFixed(1);
+      bioAgeDiff = +(avgBioAge - chronoAge!).toFixed(1);
     }
   }
 
