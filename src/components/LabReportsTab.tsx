@@ -1,7 +1,7 @@
 'use client';
 
 // src/components/LabReportsTab.tsx
-// User-facing lab reports: list, PDF upload, manual entry, edit, delete.
+// User-facing lab reports: list, PDF upload (Core biomarker checklist), edit, delete.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -11,7 +11,7 @@ import { displayReportId } from '@/lib/lab-results/report-number';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Lang = 'de' | 'en' | 'fr' | 'es' | 'it';
-type Mode = 'list' | 'choose' | 'pdf' | 'pdf-review' | 'manual' | 'edit';
+type Mode = 'list' | 'pdf' | 'pdf-review' | 'edit';
 
 type LabResultRow = {
   id: string;
@@ -86,6 +86,15 @@ type ExtractedRow = {
   original_value: number | null;
   original_unit: string | null;
   include: boolean;
+};
+
+type CoreMarker = {
+  id: string;
+  slug: string;
+  name: any;
+  unit: string | null;
+  he_domain: string | null;
+  item_type: string | null;
 };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -180,6 +189,8 @@ const ALERTS_T: Record<string, Record<Lang, string>> = {
   saveFailed:         { de: 'Speichern fehlgeschlagen', en: 'Save failed', fr: 'Sauvegarde échouée', es: 'Guardado fallido', it: 'Salvataggio fallito' },
   addAtLeastOne:      { de: 'Fügen Sie mindestens ein Ergebnis hinzu', en: 'Add at least one result', fr: 'Ajouter au moins un résultat', es: 'Agregue al menos un resultado', it: 'Aggiungi almeno un risultato' },
   titleRequired:      { de: 'Titel erforderlich', en: 'Title is required', fr: 'Le titre est requis', es: 'El título es obligatorio', it: 'Il titolo è obbligatorio' },
+  coreMissing:        { de: 'Bitte füllen Sie alle erforderlichen Core-Biomarker aus', en: 'Please fill in all required Core biomarkers', fr: 'Veuillez remplir tous les biomarqueurs Core requis', es: 'Complete todos los biomarcadores Core requeridos', it: 'Compilare tutti i biomarcatori Core richiesti' },
+  notPayingUser:      { de: 'Um eigene Labor-PDFs hochzuladen, kaufen Sie zuerst ein Testpaket', en: 'To upload your own lab PDFs, purchase a test package first', fr: 'Pour télécharger vos propres PDF, achetez d\'abord un package', es: 'Para cargar sus propios PDF, compre primero un paquete', it: 'Per caricare i propri PDF, acquista prima un pacchetto' },
 };
 
 const UI_T: Record<string, Record<Lang, string>> = {
@@ -471,6 +482,24 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
   const [rowSearch, setRowSearch] = useState<Record<string, string>>({});
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
+  // Core checklist for pdf-review (one entry per Core biomarker, pre-filled from extraction)
+  type CoreChecklistItem = {
+    biomarker_id: string;
+    slug: string;
+    name: any;
+    unit: string | null;
+    he_domain: string | null;
+    item_type: string | null;
+    value: string;           // editable value string
+    enteredUnit: string;     // editable unit
+    matched: boolean;        // was matched from extraction?
+    required: boolean;       // true for blood biomarkers, false for clinical assessments
+  };
+  const [coreMarkers, setCoreMarkers] = useState<CoreMarker[]>([]);
+  const [coreChecklist, setCoreChecklist] = useState<CoreChecklistItem[]>([]);
+  const [hasActiveOrder, setHasActiveOrder] = useState<boolean | null>(null); // null = loading
+  const [extraRows, setExtraRows] = useState<ExtractedRow[]>([]); // non-core extracted rows user can add
+
   const [saving, setSaving] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
@@ -552,6 +581,48 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Load Core markers once
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('product_biomarkers')
+        .select('biomarker_id, biomarkers!inner(id, slug, name, unit, he_domain, item_type)')
+        .eq('product_id', '29109d1a-8076-4242-ba46-de63ce1806bb') // longevity-core
+        .eq('biomarkers.is_calculated', false);
+      const markers: CoreMarker[] = (data ?? []).map((row: any) => {
+        const b = row.biomarkers;
+        return { id: b.id, slug: b.slug, name: b.name, unit: b.unit, he_domain: b.he_domain, item_type: b.item_type };
+      });
+      setCoreMarkers(markers);
+    })();
+  }, [supabase]);
+
+  // Check if user is a paying user (has orders OR admin-imported lab reports)
+  useEffect(() => {
+    (async () => {
+      let uid = userId;
+      if (!uid) {
+        const { data: { user } } = await supabase.auth.getUser();
+        uid = user?.id;
+      }
+      if (!uid) { setHasActiveOrder(false); return; }
+      // Check orders first
+      const { count: orderCount } = await supabase
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', uid)
+        .in('status', ['completed', 'paid', 'processing']);
+      if ((orderCount ?? 0) > 0) { setHasActiveOrder(true); return; }
+      // Also count as paying if they have admin-imported reports (lab partner users)
+      const { count: reportCount } = await supabase
+        .from('lab_reports')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', uid)
+        .is('deleted_at', null);
+      setHasActiveOrder((reportCount ?? 0) > 0);
+    })();
+  }, [supabase, userId]);
+
   const ensureBiomarkers = async () => {
     if (allBiomarkers.length > 0) return;
     const { data } = await supabase
@@ -564,25 +635,21 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
 
   // ── Navigation ────────────────────────────────────────────────────────────────
 
-  const backToList = () => {
+  const backToList = async () => {
+    // Hard-delete PDF from storage if one was uploaded but not saved
+    if (pdfStoragePath) {
+      await supabase.storage.from('lab-pdfs').remove([pdfStoragePath]);
+    }
     setMode('list');
     setPdfFile(null);
     setPdfStoragePath(null);
     setExtracted([]);
     setPdfMeta(emptyMeta());
+    setCoreChecklist([]);
     setEditReportId(null);
     setFormMeta(emptyMeta());
     setFormRows([emptyRow()]);
     setRowSearch({});
-  };
-
-  const openManual = async () => {
-    await ensureBiomarkers();
-    setEditReportId(null);
-    setFormMeta(emptyMeta());
-    setFormRows([emptyRow()]);
-    setRowSearch({});
-    setMode('manual');
   };
 
   const openEdit = async (report: LabReport) => {
@@ -669,9 +736,33 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
       return;
     }
 
-    setExtracted(
-      (data.extracted ?? []).map((r: any) => ({ ...r, include: r.matched_id != null }))
-    );
+    const extractedRows: ExtractedRow[] = (data.extracted ?? []).map((r: any) => ({ ...r, include: r.matched_id != null }));
+    setExtracted(extractedRows);
+
+    // Build Core checklist: one item per Core biomarker, pre-fill from extraction
+    const CLINICAL_TYPES = new Set(['clinical_assessment']);
+    const checklist: CoreChecklistItem[] = coreMarkers.map((cm) => {
+      const match = extractedRows.find((r) => r.matched_id === cm.id);
+      const isClinical = CLINICAL_TYPES.has(cm.item_type ?? '');
+      return {
+        biomarker_id: cm.id,
+        slug: cm.slug,
+        name: cm.name,
+        unit: cm.unit,
+        he_domain: cm.he_domain,
+        item_type: cm.item_type,
+        value: match ? String(match.value) : '',
+        enteredUnit: match ? match.unit : (cm.unit ?? ''),
+        matched: !!match,
+        required: !isClinical,
+      };
+    });
+    setCoreChecklist(checklist);
+
+    // Collect extra extracted rows not in Core (user can review these too)
+    const coreIds = new Set(coreMarkers.map((m) => m.id));
+    setExtraRows(extractedRows.filter((r) => r.matched_id && !coreIds.has(r.matched_id)));
+
     setPdfMeta({
       title:       data.metadata?.lab_name ?? pdfFile.name.replace(/\.[^.]+$/, ''),
       test_date:   data.metadata?.test_date ?? '',
@@ -685,11 +776,25 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
   // ── Save PDF report ───────────────────────────────────────────────────────────
 
   const handleSavePdf = async () => {
-    const toSave = extracted.filter((r) => r.include && r.matched_id);
-    if (!toSave.length) { alert(a('noMatchedResults')); return; }
+    // Validate: all required Core markers must have a value
+    const requiredMissing = coreChecklist.filter((c) => c.required && !c.value.trim());
+    if (requiredMissing.length > 0) { alert(a('coreMissing')); return; }
     if (!pdfMeta.title.trim()) { alert(a('reportTitleRequired')); return; }
     if (!pdfMeta.test_date) { alert(a('testDateRequired')); return; }
     setSaving(true);
+
+    // Collect results: Core checklist items with values + included extra rows
+    const results: { biomarker_id: string; value: number; unit: string }[] = [];
+    for (const c of coreChecklist) {
+      if (c.value.trim()) {
+        results.push({ biomarker_id: c.biomarker_id, value: parseFloat(c.value), unit: c.enteredUnit });
+      }
+    }
+    for (const r of extraRows) {
+      if (r.include && r.matched_id) {
+        results.push({ biomarker_id: r.matched_id, value: r.value, unit: r.unit });
+      }
+    }
 
     const res = await fetch('/api/lab-results/save-report', {
       method: 'POST',
@@ -704,14 +809,16 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
         storagePath: pdfStoragePath,
         fileName:    pdfFile?.name || null,
         fileSize:    pdfFile?.size || null,
-        results:     toSave.map((r) => ({ biomarker_id: r.matched_id, value: r.value, unit: r.unit })),
+        results,
       }),
     });
-    const data = await res.json();
+    const json = await res.json();
     setSaving(false);
 
-    if (!data.success) { alert(data.error ?? a('saveFailed')); return; }
+    if (!json.success) { alert(json.error ?? a('saveFailed')); return; }
     const msg = SAVE_CONFIRM[lang] ?? SAVE_CONFIRM.en;
+    // Don't delete PDF on save — save-report tracks it for 7-day auto-delete
+    setPdfStoragePath(null); // prevent backToList from deleting it
     backToList();
     loadData();
     setSuccessToast(msg);
@@ -799,46 +906,13 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
 
   if (loading) return <div className="flex justify-center py-12"><Spinner /></div>;
 
-  // ── Choose ────────────────────────────────────────────────────────────────────
-
-  if (mode === 'choose') return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-[#0e393d]">Add Lab Results</h2>
-        <button onClick={backToList} className="text-sm text-[#1c2a2b]/40 hover:text-[#1c2a2b]">{t('back')}</button>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <button
-          onClick={() => setMode('pdf')}
-          className="flex flex-col items-center gap-3 rounded-2xl border-2 border-[#0e393d]/15 bg-white p-8 hover:border-[#0e393d]/40 hover:bg-[#0e393d]/3 transition text-center"
-        >
-          <div className="text-4xl">📄</div>
-          <div>
-            <p className="font-semibold text-[#0e393d] mb-1">{t('uploadPdf')}</p>
-            <p className="text-xs text-[#1c2a2b]/50">AI extracts your values automatically</p>
-          </div>
-        </button>
-        <button
-          onClick={openManual}
-          className="flex flex-col items-center gap-3 rounded-2xl border-2 border-[#0e393d]/15 bg-white p-8 hover:border-[#0e393d]/40 hover:bg-[#0e393d]/3 transition text-center"
-        >
-          <div className="text-4xl">✏️</div>
-          <div>
-            <p className="font-semibold text-[#0e393d] mb-1">{t('enterManually')}</p>
-            <p className="text-xs text-[#1c2a2b]/50">Type in values from your lab report</p>
-          </div>
-        </button>
-      </div>
-    </div>
-  );
-
   // ── PDF upload ────────────────────────────────────────────────────────────────
 
   if (mode === 'pdf') return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold text-[#0e393d]">Upload Lab PDF</h2>
-        <button onClick={() => setMode('choose')} className="text-sm text-[#1c2a2b]/40 hover:text-[#1c2a2b]">{t('back')}</button>
+        <button onClick={backToList} className="text-sm text-[#1c2a2b]/40 hover:text-[#1c2a2b]">{t('back')}</button>
       </div>
 
       {(pdfUploading || pdfExtracting) ? (
@@ -896,7 +970,24 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
   // ── PDF review ────────────────────────────────────────────────────────────────
 
   if (mode === 'pdf-review') {
-    const includedCount = extracted.filter((r) => r.include && r.matched_id).length;
+    // Group core checklist by domain
+    const domainGroups: Record<string, typeof coreChecklist> = {};
+    for (const item of coreChecklist) {
+      const d = item.he_domain ?? 'other';
+      if (!domainGroups[d]) domainGroups[d] = [];
+      domainGroups[d].push(item);
+    }
+    const orderedDomains = [...HE_DOMAIN_ORDER, ...Object.keys(domainGroups).filter((d) => !HE_DOMAIN_ORDER.includes(d))]
+      .filter((d) => domainGroups[d]?.length);
+
+    const filledRequired = coreChecklist.filter((c) => c.required && c.value.trim()).length;
+    const totalRequired = coreChecklist.filter((c) => c.required).length;
+    const allRequiredFilled = filledRequired === totalRequired;
+    const totalFilled = coreChecklist.filter((c) => c.value.trim()).length;
+
+    const updateChecklistItem = (biomarkerId: string, updates: Partial<CoreChecklistItem>) =>
+      setCoreChecklist((prev) => prev.map((c) => c.biomarker_id === biomarkerId ? { ...c, ...updates } : c));
+
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -906,55 +997,125 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
 
         <MetaFields meta={pdfMeta} onChange={(u) => setPdfMeta((m) => ({ ...m, ...u }))} lang={lang} />
 
-        <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
-          <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-[#0e393d]/8">
+        {/* Progress bar */}
+        <div className="rounded-xl border border-[#0e393d]/10 bg-white px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-[#0e393d]/60">
-              {extracted.length} extracted · {extracted.filter((r) => r.matched_id).length} matched
+              {filledRequired}/{totalRequired} required biomarkers filled
             </span>
-            <div className="flex gap-3 text-xs">
-              <button
-                onClick={() => setExtracted((rows) => rows.map((r) => ({ ...r, include: r.matched_id != null })))}
-                className="text-[#0e393d] hover:underline"
-              >
-                Select matched
-              </button>
-              <button
-                onClick={() => setExtracted((rows) => rows.map((r) => ({ ...r, include: false })))}
-                className="text-[#1c2a2b]/40 hover:underline"
-              >
-                Deselect all
-              </button>
-            </div>
+            <span className={`text-xs font-medium ${allRequiredFilled ? 'text-[#0C9C6C]' : 'text-[#E06B5B]'}`}>
+              {allRequiredFilled ? 'Ready to save' : `${totalRequired - filledRequired} missing`}
+            </span>
           </div>
-          <div className="divide-y divide-[#0e393d]/6">
-            {extracted.map((row, idx) => (
-              <div key={idx} className={`px-4 py-2.5 flex items-center gap-3 ${row.include ? '' : 'opacity-40'}`}>
-                <input
-                  type="checkbox"
-                  checked={row.include}
-                  disabled={!row.matched_id}
-                  onChange={() => setExtracted((rows) => rows.map((r, i) => i === idx ? { ...r, include: !r.include } : r))}
-                  className="rounded border-[#0e393d]/30 accent-[#0e393d] shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-[#1c2a2b] font-medium truncate">
-                    {row.matched_name ?? row.extracted_name}
-                  </p>
-                  {!row.matched_id && (
-                    <p className="text-[10px] text-red-400">Not matched — "{row.extracted_name}"</p>
-                  )}
-                </div>
-                <div className="text-sm tabular-nums text-[#0e393d] font-semibold shrink-0">
-                  {row.value}
-                  {row.was_converted
-                    ? <span className="ml-1 text-xs font-normal text-[#1c2a2b]/40">{row.original_unit} → {row.unit}</span>
-                    : <span className="ml-1 text-xs font-normal text-[#1c2a2b]/50">{row.unit}</span>
-                  }
-                </div>
-              </div>
-            ))}
+          <div className="h-1.5 rounded-full bg-[#0e393d]/8 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${allRequiredFilled ? 'bg-[#0C9C6C]' : 'bg-[#ceab84]'}`}
+              style={{ width: `${totalRequired > 0 ? (filledRequired / totalRequired) * 100 : 0}%` }}
+            />
           </div>
         </div>
+
+        {/* Core biomarker checklist grouped by domain */}
+        {orderedDomains.map((domain) => (
+          <div key={domain} className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
+            <div className="px-4 py-2.5 bg-[#0e393d]/[.03] border-b border-[#0e393d]/[.06] flex items-center gap-2">
+              <span className="text-sm">{HE_DOMAIN_ICON[domain] ?? '📊'}</span>
+              <span className="text-[10px] font-semibold tracking-[.1em] uppercase text-[#ceab84]">
+                {HE_DOMAIN_LABEL[domain] ?? domain}
+              </span>
+            </div>
+
+            {/* Column header */}
+            <div className="grid grid-cols-[auto_1fr_100px_56px_28px] items-center gap-x-3 px-5 pt-2.5 pb-1.5">
+              <div className="w-2" />
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-[#1c2a2b]/20">Biomarker</span>
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-[#1c2a2b]/20 text-right">Value</span>
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-[#1c2a2b]/20 text-right">Unit</span>
+              <span />
+            </div>
+
+            <div className="divide-y divide-[#0e393d]/[.04]">
+              {domainGroups[domain].map((item) => {
+                const isFilled = !!item.value.trim();
+                return (
+                  <div key={item.biomarker_id}
+                    className="grid grid-cols-[auto_1fr_100px_56px_28px] items-center gap-x-3 px-5 py-2">
+                    {/* Status dot */}
+                    <div className={`w-2 h-2 rounded-full ${
+                      isFilled ? 'bg-[#0C9C6C]' : item.required ? 'bg-[#E06B5B]' : 'bg-[#0e393d]/15'
+                    }`} />
+
+                    {/* Name */}
+                    <div className="min-w-0">
+                      <span className="text-[12.5px] font-medium text-[#0e393d] truncate block leading-tight">
+                        {locName(item.name, lang)}
+                      </span>
+                      {!item.required && (
+                        <span className="text-[10px] text-[#1c2a2b]/30 leading-none">{t('optional')}</span>
+                      )}
+                    </div>
+
+                    {/* Value */}
+                    <input
+                      type="number"
+                      step="any"
+                      value={item.value}
+                      onChange={(e) => updateChecklistItem(item.biomarker_id, { value: e.target.value })}
+                      placeholder="—"
+                      className={`w-full rounded-md border px-2.5 py-1.5 text-[13px] tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 ${
+                        isFilled
+                          ? 'border-[#0C9C6C]/30 bg-[#0C9C6C]/[.04] text-[#0e393d] font-semibold'
+                          : item.required
+                            ? 'border-[#E06B5B]/20 bg-[#E06B5B]/[.03] text-[#1c2a2b]/50'
+                            : 'border-[#0e393d]/10 bg-[#0e393d]/[.02] text-[#1c2a2b]/50'
+                      }`}
+                    />
+
+                    {/* Unit */}
+                    <span className="text-[11px] text-[#1c2a2b]/35 text-right truncate">
+                      {item.enteredUnit || item.unit || ''}
+                    </span>
+
+                    {/* AI badge */}
+                    <div className="flex justify-end">
+                      {item.matched && (
+                        <span className="text-[9px] text-[#0C9C6C]/70 bg-[#0C9C6C]/10 rounded px-1.5 py-0.5">AI</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {/* Extra extracted rows (non-Core biomarkers) */}
+        {extraRows.length > 0 && (
+          <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden">
+            <div className="px-4 py-2.5 bg-[#0e393d]/[.03] border-b border-[#0e393d]/[.06] flex items-center justify-between">
+              <span className="text-[10px] font-semibold tracking-[.1em] uppercase text-[#1c2a2b]/40">
+                Additional extracted markers
+              </span>
+              <span className="text-[10px] text-[#1c2a2b]/30">{extraRows.filter((r) => r.include).length} selected</span>
+            </div>
+            <div className="divide-y divide-[#0e393d]/[.04]">
+              {extraRows.map((row, idx) => (
+                <div key={idx}
+                  className={`grid grid-cols-[auto_1fr_100px_56px] items-center gap-x-3 px-5 py-2 ${row.include ? '' : 'opacity-40'}`}>
+                  <input
+                    type="checkbox"
+                    checked={row.include}
+                    onChange={() => setExtraRows((rows) => rows.map((r, i) => i === idx ? { ...r, include: !r.include } : r))}
+                    className="rounded border-[#0e393d]/30 accent-[#0e393d]"
+                  />
+                  <span className="text-[12.5px] font-medium text-[#0e393d] truncate">{row.matched_name ?? row.extracted_name}</span>
+                  <span className="text-[13px] tabular-nums text-[#0e393d] font-semibold text-right">{row.value}</span>
+                  <span className="text-[11px] text-[#1c2a2b]/35 text-right">{row.unit}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Privacy notice */}
         <div className="rounded-lg bg-[#0e393d]/[0.04] border border-[#0e393d]/8 px-4 py-3 flex gap-2.5 items-start">
@@ -967,14 +1128,14 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
         </div>
 
         <div className="flex gap-3">
-          <button onClick={handleSavePdf} disabled={saving || includedCount === 0}
+          <button onClick={handleSavePdf} disabled={saving || !allRequiredFilled}
             className="flex items-center gap-2 rounded-xl bg-[#0e393d] text-white px-6 py-2.5 font-medium text-sm hover:bg-[#0e393d]/85 transition disabled:opacity-50">
             {saving && <Spinner />}
-            {saving ? 'Saving…' : `Save ${includedCount} Results`}
+            {saving ? t('saving') : `Save ${totalFilled} Results`}
           </button>
           <button onClick={backToList}
             className="rounded-xl border border-[#0e393d]/15 text-[#1c2a2b]/60 px-6 py-2.5 font-medium text-sm hover:text-[#1c2a2b] transition">
-            Cancel
+            {t('cancel')}
           </button>
         </div>
       </div>
@@ -983,8 +1144,8 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
 
   // ── Manual / Edit form ────────────────────────────────────────────────────────
 
-  if (mode === 'manual' || mode === 'edit') {
-    const isEdit = mode === 'edit';
+  if (mode === 'edit') {
+    const isEdit = true;
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -1123,8 +1284,12 @@ export default function LabReportsTab({ lang, userId }: { lang: Lang; userId?: s
       <div className="flex items-center justify-between">
         <span />
         <button
-          onClick={() => setMode('choose')}
-          className="inline-flex items-center gap-1.5 rounded-full bg-[#0e393d] text-white px-4 py-2 text-xs font-medium hover:bg-[#0e393d]/85 transition"
+          onClick={() => {
+            if (hasActiveOrder === false) { alert(a('notPayingUser')); return; }
+            setMode('pdf');
+          }}
+          disabled={hasActiveOrder === null}
+          className="inline-flex items-center gap-1.5 rounded-full bg-[#0e393d] text-white px-4 py-2 text-xs font-medium hover:bg-[#0e393d]/85 transition disabled:opacity-50"
         >
           {t('addLabResults')}
         </button>
