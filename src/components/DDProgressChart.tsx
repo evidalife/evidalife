@@ -19,8 +19,16 @@ import {
 type Period = 'week' | 'month' | 'year';
 type Lang = 'de' | 'en' | 'fr' | 'es' | 'it';
 
-type RawEntry = { category_id: string; entry_date: string; servings_completed: number };
+type RawEntry = { item_id: string; entry_date: string; servings_completed: number };
 type ChartBar = { x: number; label: string; date: string; servings: number; catsDone: number; total: number; totalCats: number };
+
+// Data source config — allows reuse for daily_dozen_entries AND daily_checklist_entries
+export type ChartDataSource = {
+  table: string;       // e.g. 'daily_dozen_entries' or 'daily_checklist_entries'
+  idField: string;     // e.g. 'category_id' or 'checklist_item_id'
+};
+
+const DEFAULT_SOURCE: ChartDataSource = { table: 'daily_dozen_entries', idField: 'category_id' };
 
 interface Props {
   userId:      string;
@@ -29,6 +37,7 @@ interface Props {
   lang:        Lang;
   compact?:    boolean;
   refreshKey?: number;
+  source?:     ChartDataSource;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -49,7 +58,7 @@ function dotColor(v: number, max: number): string {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function DDProgressChart({ userId, categories, today, lang, compact = false, refreshKey = 0 }: Props) {
+export default function DDProgressChart({ userId, categories, today, lang, compact = false, refreshKey = 0, source = DEFAULT_SOURCE }: Props) {
   const [period, setPeriod]     = useState<Period>('week');
   const [entries, setEntries]   = useState<RawEntry[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -63,17 +72,21 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
     const fromStr = from.toISOString().split('T')[0];
 
     const { data } = await supabase
-      .from('daily_dozen_entries')
-      .select('category_id, entry_date, servings_completed')
+      .from(source.table)
+      .select('*')
       .eq('user_id', userId)
       .gte('entry_date', fromStr)
       .lte('entry_date', today)
       .order('entry_date');
 
-    setEntries(data ?? []);
+    setEntries((data ?? []).map((e: Record<string, any>) => ({  // eslint-disable-line @typescript-eslint/no-explicit-any
+      item_id: e[source.idField] as string,
+      entry_date: e.entry_date as string,
+      servings_completed: e.servings_completed as number,
+    })));
     setInitialLoad(false);
     setLoading(false);
-  }, [supabase, userId, today]);
+  }, [supabase, userId, today, source.table, source.idField]);
 
   useEffect(() => { fetchData(period); }, [fetchData, period, refreshKey]);
 
@@ -90,11 +103,11 @@ export default function DDProgressChart({ userId, categories, today, lang, compa
       dateRange.push(d.toISOString().split('T')[0]);
     }
 
-    // Index entries by entry_date → category_id → servings_completed
+    // Index entries by entry_date → item_id → servings_completed
     const byDate: Record<string, Record<string, number>> = {};
     for (const e of entries) {
       if (!byDate[e.entry_date]) byDate[e.entry_date] = {};
-      byDate[e.entry_date][e.category_id] = e.servings_completed;
+      byDate[e.entry_date][e.item_id] = e.servings_completed;
     }
 
     const dailyData = dateRange.map((date, i) => {

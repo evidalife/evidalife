@@ -6,6 +6,14 @@ import { createClient } from '@/lib/supabase/client';
 type Lang = 'de' | 'en' | 'fr' | 'es' | 'it';
 type Completion = 'full' | 'partial' | 'empty';
 
+// Data source config — allows reuse for daily_dozen_entries AND daily_checklist_entries
+export type CalendarDataSource = {
+  table: string;       // e.g. 'daily_dozen_entries' or 'daily_checklist_entries'
+  idField: string;     // e.g. 'category_id' or 'checklist_item_id'
+};
+
+const DEFAULT_SOURCE: CalendarDataSource = { table: 'daily_dozen_entries', idField: 'category_id' };
+
 interface Props {
   userId:       string;
   categories:   Array<{ id: string; target_servings: number }>;
@@ -14,6 +22,7 @@ interface Props {
   selectedDate: string;
   onSelectDate: (date: string) => void;
   refreshKey?:  number;
+  source?:      CalendarDataSource;
 }
 
 function addDays(dateStr: string, n: number): string {
@@ -23,7 +32,7 @@ function addDays(dateStr: string, n: number): string {
 }
 
 export default function DDMiniCalendar({
-  userId, categories, today, lang, selectedDate, onSelectDate, refreshKey = 0,
+  userId, categories, today, lang, selectedDate, onSelectDate, refreshKey = 0, source = DEFAULT_SOURCE,
 }: Props) {
   const supabase = createClient();
 
@@ -57,16 +66,18 @@ export default function DDMiniCalendar({
 
   const fetchRange = useCallback(async (from: string, to: string) => {
     const { data } = await supabase
-      .from('daily_dozen_entries')
-      .select('entry_date, category_id, servings_completed')
+      .from(source.table)
+      .select('*')
       .eq('user_id', userId)
       .gte('entry_date', from)
       .lte('entry_date', to);
 
     const byDate: Record<string, Record<string, number>> = {};
-    for (const e of (data ?? [])) {
-      if (!byDate[e.entry_date]) byDate[e.entry_date] = {};
-      byDate[e.entry_date][e.category_id] = e.servings_completed;
+    for (const e of (data ?? []) as Record<string, any>[]) {  // eslint-disable-line @typescript-eslint/no-explicit-any
+      const date = e.entry_date as string;
+      const itemId = e[source.idField] as string;
+      if (!byDate[date]) byDate[date] = {};
+      byDate[date][itemId] = e.servings_completed as number;
     }
 
     const map: Record<string, Completion> = {};
@@ -77,7 +88,7 @@ export default function DDMiniCalendar({
     }
     // Merge so data from other windows persists while navigating
     setCompletionMap((prev) => ({ ...prev, ...map }));
-  }, [supabase, userId, categories]);
+  }, [supabase, userId, categories, source.table, source.idField]);
 
   useEffect(() => {
     fetchRange(dates[0], windowEnd);
