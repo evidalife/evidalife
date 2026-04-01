@@ -734,16 +734,20 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
   const showEnterHint = query.trim().length >= 2 && !selectedIng && !showDropdown;
 
   return (
-    <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto px-4 sm:px-6 pt-28 pb-0">
+    <div className="flex-1 flex flex-col">
 
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-1">{t.eyebrow}</p>
-          <h1 className="font-serif text-3xl text-[#0e393d]">{t.heading}</h1>
+      {/* Hero header */}
+      <section className="w-full bg-[#0e393d] px-6 pt-28 pb-14">
+        <div className="max-w-5xl mx-auto flex items-start justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.eyebrow}</p>
+            <h1 className="font-serif text-3xl sm:text-4xl text-white leading-tight">{t.heading}</h1>
+          </div>
+          {totalItems > 0 && <ProgressRing checked={totalChecked} total={totalItems} />}
         </div>
-        {totalItems > 0 && <ProgressRing checked={totalChecked} total={totalItems} />}
-      </div>
+      </section>
+
+      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-6 pb-0">
 
       {/* Recipe filter pills */}
       {uniqueRecipes.length > 0 && (
@@ -894,6 +898,7 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

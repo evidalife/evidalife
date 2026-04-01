@@ -45,6 +45,9 @@ export const T = {
       nutritional:       'Ernährung',
       body_composition:  'Körperzusammensetzung',
     },
+    likedRecipes:     'Lieblingsrezepte',
+    likedRecipesDesc: 'Deine bestbewerteten pflanzlichen Rezepte — schneller Zugriff auf deine Favoriten.',
+    likedRecipesCta:  'Rezepte ansehen →',
     quickLinkLabels: {
       labResults: 'Laborergebnisse',
       research:   'KI-Forschung',
@@ -100,6 +103,9 @@ export const T = {
       nutritional:       'Nutritional',
       body_composition:  'Body Composition',
     },
+    likedRecipes:     'Favourite Recipes',
+    likedRecipesDesc: 'Your top-rated plant-based recipes — quick access to your favourites.',
+    likedRecipesCta:  'Browse recipes →',
     quickLinkLabels: {
       labResults: 'Lab Results',
       research:   'AI Research',
@@ -155,6 +161,9 @@ export const T = {
       nutritional:       'Nutritionnel',
       body_composition:  'Composition corporelle',
     },
+    likedRecipes:     'Recettes favorites',
+    likedRecipesDesc: 'Vos recettes végétales les mieux notées — accès rapide à vos favoris.',
+    likedRecipesCta:  'Voir les recettes →',
     quickLinkLabels: {
       labResults: 'Résultats de labo',
       research:   'Recherche IA',
@@ -210,6 +219,9 @@ export const T = {
       nutritional:       'Nutricional',
       body_composition:  'Composición corporal',
     },
+    likedRecipes:     'Recetas favoritas',
+    likedRecipesDesc: 'Tus recetas plant-based mejor valoradas — acceso rápido a tus favoritas.',
+    likedRecipesCta:  'Ver recetas →',
     quickLinkLabels: {
       labResults: 'Resultados de lab',
       research:   'Investigación IA',
@@ -265,6 +277,9 @@ export const T = {
       nutritional:       'Nutrizionale',
       body_composition:  'Composizione corporea',
     },
+    likedRecipes:     'Ricette preferite',
+    likedRecipesDesc: 'Le tue ricette plant-based meglio valutate — accesso rapido ai tuoi preferiti.',
+    likedRecipesCta:  'Vedi le ricette →',
     quickLinkLabels: {
       labResults: 'Risultati di lab',
       research:   'Ricerca IA',
