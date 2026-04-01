@@ -46,26 +46,26 @@ const SCIENCE_FINDINGS = [
 ];
 
 const PRODUCT_FEATURES: Record<number, Record<Lang, string[]>> = {
-  1: { // Core
-    en: ['16 essential blood markers', 'Personal health dashboard', 'Optimal range analysis', 'Digital results in 48h'],
-    de: ['16 essenzielle Blutmarker', 'Persönliches Gesundheits-Dashboard', 'Optimal-Bereich-Analyse', 'Digitale Ergebnisse in 48h'],
-    fr: ['16 marqueurs sanguins essentiels', 'Tableau de bord santé personnel', 'Analyse des plages optimales', 'Résultats numériques en 48h'],
-    es: ['16 marcadores sanguíneos esenciales', 'Panel de salud personal', 'Análisis de rangos óptimos', 'Resultados digitales en 48h'],
-    it: ['16 biomarcatori essenziali', 'Dashboard salute personale', 'Analisi range ottimali', 'Risultati digitali in 48h'],
+  1: { // Core – 38 measured + 19 calculated = 57 total
+    en: ['38 essential blood markers', 'Personal health dashboard', 'Optimal range analysis', 'Digital results in 48h'],
+    de: ['38 essenzielle Blutmarker', 'Persönliches Gesundheits-Dashboard', 'Optimal-Bereich-Analyse', 'Digitale Ergebnisse in 48h'],
+    fr: ['38 marqueurs sanguins essentiels', 'Tableau de bord santé personnel', 'Analyse des plages optimales', 'Résultats numériques en 48h'],
+    es: ['38 marcadores sanguíneos esenciales', 'Panel de salud personal', 'Análisis de rangos óptimos', 'Resultados digitales en 48h'],
+    it: ['38 biomarcatori essenziali', 'Dashboard salute personale', 'Analisi range ottimali', 'Risultati digitali in 48h'],
   },
-  2: { // Pro
-    en: ['27 advanced blood markers', 'All 9 health domains', 'Longevity Score tracking', 'Hormones & inflammation panel', 'Most popular package'],
-    de: ['27 erweiterte Blutmarker', 'Alle 9 Gesundheitsdomänen', 'Longevity Score Tracking', 'Hormone & Entzündungspanel', 'Unser beliebtestes Paket'],
-    fr: ['27 marqueurs sanguins avancés', 'Les 9 domaines de santé', 'Suivi du Longevity Score', 'Panel hormones & inflammation', 'Notre forfait le plus populaire'],
-    es: ['27 biomarcadores avanzados', 'Los 9 dominios de salud', 'Seguimiento del Longevity Score', 'Panel hormonal & inflamación', 'Nuestro paquete más popular'],
-    it: ['27 biomarcatori avanzati', 'Tutti i 9 domini di salute', 'Monitoraggio Longevity Score', 'Pannello ormoni & infiammazione', 'Il nostro pacchetto più popolare'],
+  2: { // Pro – 55 measured + 21 calculated = 76 total
+    en: ['55 advanced blood markers', 'All 9 health domains', 'Longevity Score tracking', 'Hormones & inflammation panel', 'Most popular package'],
+    de: ['55 erweiterte Blutmarker', 'Alle 9 Gesundheitsdomänen', 'Longevity Score Tracking', 'Hormone & Entzündungspanel', 'Unser beliebtestes Paket'],
+    fr: ['55 marqueurs sanguins avancés', 'Les 9 domaines de santé', 'Suivi du Longevity Score', 'Panel hormones & inflammation', 'Notre forfait le plus populaire'],
+    es: ['55 biomarcadores avanzados', 'Los 9 dominios de salud', 'Seguimiento del Longevity Score', 'Panel hormonal & inflamación', 'Nuestro paquete más popular'],
+    it: ['55 biomarcatori avanzati', 'Tutti i 9 domini di salute', 'Monitoraggio Longevity Score', 'Pannello ormoni & infiammazione', 'Il nostro pacchetto più popolare'],
   },
-  3: { // Complete
-    en: ['36 comprehensive markers', 'Full nutrient panel (B12, D, Zinc, Omega...)', 'Hormone profile (Testosterone, Cortisol...)', 'Longevity Score + trend history', 'Priority lab processing'],
-    de: ['36 umfassende Marker', 'Volles Nährstoffpanel (B12, D, Zink, Omega...)', 'Hormonprofil (Testosteron, Cortisol...)', 'Longevity Score + Verlauf', 'Prioritäts-Laborverarbeitung'],
-    fr: ['36 marqueurs complets', 'Panel nutritionnel complet (B12, D, Zinc, Oméga...)', 'Profil hormonal (Testostérone, Cortisol...)', 'Longevity Score + historique', 'Traitement laboratoire prioritaire'],
-    es: ['36 marcadores completos', 'Panel nutricional completo (B12, D, Zinc, Omega...)', 'Perfil hormonal (Testosterona, Cortisol...)', 'Longevity Score + historial', 'Procesamiento prioritario'],
-    it: ['36 marcatori completi', 'Pannello nutrienti completo (B12, D, Zinco, Omega...)', 'Profilo ormonale (Testosterone, Cortisolo...)', 'Longevity Score + storico', 'Elaborazione lab prioritaria'],
+  3: { // Complete – 57 measured + 21 calculated = 78 total
+    en: ['57 markers + epigenetics', 'Full Pro panel + GrimAge v2 & DunedinPACE', 'Biological age at DNA level', 'Longevity Score + trend history', 'Priority lab processing'],
+    de: ['57 Marker + Epigenetik', 'Volles Pro-Panel + GrimAge v2 & DunedinPACE', 'Biologisches Alter auf DNA-Ebene', 'Longevity Score + Verlauf', 'Prioritäts-Laborverarbeitung'],
+    fr: ['57 marqueurs + épigénétique', 'Panel Pro complet + GrimAge v2 & DunedinPACE', 'Âge biologique au niveau ADN', 'Longevity Score + historique', 'Traitement laboratoire prioritaire'],
+    es: ['57 marcadores + epigenética', 'Panel Pro completo + GrimAge v2 & DunedinPACE', 'Edad biológica a nivel ADN', 'Longevity Score + historial', 'Procesamiento prioritario'],
+    it: ['57 marcatori + epigenetica', 'Pannello Pro completo + GrimAge v2 & DunedinPACE', 'Età biologica a livello DNA', 'Longevity Score + storico', 'Elaborazione lab prioritaria'],
   },
 };
 
