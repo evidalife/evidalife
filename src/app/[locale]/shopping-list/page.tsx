@@ -118,13 +118,11 @@ function PublicIntro({ lang }: { lang: Lang }) {
   return (
     <div className="flex-1 flex flex-col">
       {/* Hero */}
-      <section className="relative h-[72vh] min-h-[480px] flex items-end">
-        <img src={HERO_IMG} alt="" className="absolute inset-0 w-full h-full object-cover object-center" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0e393d]/85 via-[#0e393d]/30 to-transparent" />
-        <div className="relative z-10 max-w-3xl mx-auto px-6 pb-16 w-full">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-3">{t.tag}</p>
-          <h1 className="font-serif text-5xl md:text-6xl text-white leading-tight mb-4">{t.h1}</h1>
-          <p className="text-white/80 text-lg leading-relaxed max-w-xl">{t.sub}</p>
+      <section className="w-full bg-[#0e393d] px-6 pt-28 pb-16">
+        <div className="max-w-3xl mx-auto">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.tag}</p>
+          <h1 className="font-serif text-4xl sm:text-5xl text-white leading-tight mb-4">{t.h1}</h1>
+          <p className="text-white/60 text-base leading-relaxed max-w-xl">{t.sub}</p>
         </div>
       </section>
 

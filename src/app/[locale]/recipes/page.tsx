@@ -149,14 +149,15 @@ export default async function RecipesPage() {
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-6 pt-28 pb-12">
-        {/* Hero */}
-        <div className="mb-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-2">{t.eyebrow}</p>
-          <h1 className="font-serif text-4xl text-[#0e393d] mb-3">{t.heading}</h1>
-          <p className="text-[#1c2a2b]/60 text-base leading-relaxed max-w-xl">{t.sub}</p>
+      <section className="w-full bg-[#0e393d] px-6 pt-28 pb-16">
+        <div className="max-w-5xl mx-auto">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.eyebrow}</p>
+          <h1 className="font-serif text-4xl sm:text-5xl text-white leading-tight mb-4">{t.heading}</h1>
+          <p className="text-white/60 text-base leading-relaxed max-w-xl">{t.sub}</p>
         </div>
+      </section>
 
+      <main className="flex-1 w-full max-w-5xl mx-auto px-6 py-10">
         <RecipesGrid
           recipes={recipes}
           lang={locale}

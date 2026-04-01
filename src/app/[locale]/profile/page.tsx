@@ -68,13 +68,14 @@ export default async function ProfilePage({ searchParams }: { searchParams?: Pro
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-6 pt-28 pb-12">
-        {/* Hero */}
-        <div className="mb-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-2">{t.eyebrow}</p>
-          <h1 className="font-serif text-3xl text-[#0e393d]">{t.heading}</h1>
+      <section className="w-full bg-[#0e393d] px-6 pt-28 pb-14">
+        <div className="max-w-5xl mx-auto">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.eyebrow}</p>
+          <h1 className="font-serif text-3xl sm:text-4xl text-white leading-tight">{t.heading}</h1>
         </div>
+      </section>
 
+      <main className="flex-1 w-full max-w-5xl mx-auto px-6 py-8">
         <ProfileTabs profile={profile} lang={lang} initialTab={initialTab} />
       </main>
 

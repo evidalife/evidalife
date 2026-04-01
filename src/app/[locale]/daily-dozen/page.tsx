@@ -591,12 +591,14 @@ export default async function DailyDozenPage({ searchParams }: { searchParams: P
     return (
       <div className="min-h-screen bg-[#fafaf8] flex flex-col">
         <PublicNav />
-        <main className="flex-1 w-full max-w-5xl mx-auto px-6 pt-28 pb-12">
-          <div className="mb-8">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-2">{t.eyebrow}</p>
-            <h1 className="font-serif text-4xl text-[#0e393d] mb-3">{t.heading}</h1>
-            <p className="text-[#1c2a2b]/60 text-base max-w-xl">{t.sub}</p>
+        <section className="w-full bg-[#0e393d] px-6 pt-28 pb-14">
+          <div className="max-w-5xl mx-auto">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.eyebrow}</p>
+            <h1 className="font-serif text-4xl sm:text-5xl text-white leading-tight mb-4">{t.heading}</h1>
+            <p className="text-white/60 text-base leading-relaxed max-w-xl">{t.sub}</p>
           </div>
+        </section>
+        <main className="flex-1 w-full max-w-5xl mx-auto px-6 py-8">
 
           {categories.length === 0 ? (
             <div className="rounded-2xl border border-[#ceab84]/30 bg-[#ceab84]/8 px-6 py-10 text-center">
@@ -641,12 +643,14 @@ export default async function DailyDozenPage({ searchParams }: { searchParams: P
       <PublicNav />
 
       {/* ── 1. HERO ─────────────────────────────────────────────────────────────── */}
-      <section className="max-w-[1060px] mx-auto px-8 md:px-12 pt-32 pb-16">
-        <p className="text-[#ceab84] text-[10.5px] font-medium tracking-[0.14em] uppercase mb-4">{t.tag}</p>
-        <h1 className="font-serif font-normal text-4xl md:text-5xl lg:text-[3.5rem] text-[#0e393d] leading-[1.08] tracking-tight mb-5 max-w-[640px]">
-          {t.title}
-        </h1>
-        <p className="text-[1rem] font-light text-[#5a6e6f] leading-relaxed max-w-[580px]">{t.sub}</p>
+      <section className="w-full bg-[#0e393d] px-8 md:px-12 pt-28 pb-16">
+        <div className="max-w-[1060px] mx-auto">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.tag}</p>
+          <h1 className="font-serif font-normal text-4xl md:text-5xl text-white leading-tight mb-5 max-w-[640px]">
+            {t.title}
+          </h1>
+          <p className="text-white/60 text-base leading-relaxed max-w-[580px]">{t.sub}</p>
+        </div>
       </section>
 
       {/* ── 2. DR. GREGER PROFILE ───────────────────────────────────────────────── */}

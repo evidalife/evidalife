@@ -71,6 +71,8 @@ const PRODUCT_FEATURES: Record<number, Record<Lang, string[]>> = {
 
 const T: Record<Lang, {
   hero: { h1: string; h1em: string; sub: string; cta1: string; cta2: string };
+  loop: { tag: string; heading: string; headingEm: string; sub: string; steps: { icon: string; title: string; desc: string }[] };
+  ai: { tag: string; heading: string; headingEm: string; sub: string; features: { icon: string; title: string; desc: string }[] };
   problem: { tag: string; heading: string; headingEm: string; context: string; deathsYear: string; cards: { label: string; desc: string }[]; callout: string; calloutSub: string; source: string };
   mission: { tag: string; heading: string; headingEm: string; desc: string; cta: string };
   pillars: { tag: string; heading: string; headingEm: string; cards: { title: string; desc: string }[] };
@@ -83,9 +85,33 @@ const T: Record<Lang, {
     hero: {
       h1: 'Gesund leben.',
       h1em: 'Wissenschaftlich fundiert.',
-      sub: '40 Millionen Menschen sterben jedes Jahr an vermeidbaren Krankheiten. Die meisten essen das Falsche. Wir ändern das – messbar.',
+      sub: 'Biomarker messen. KI-gestützt optimieren. Fortschritt verfolgen. Ein geschlossener Kreislauf für deine Gesundheit – gestützt auf 500.000+ Studien.',
       cta1: 'Kostenlos registrieren',
-      cta2: 'Daily Dozen entdecken',
+      cta2: 'Mehr erfahren',
+    },
+    loop: {
+      tag: 'Der geschlossene Kreislauf',
+      heading: 'Messen. Optimieren.',
+      headingEm: 'Verbessern. Wiederholen.',
+      sub: 'Evida Life schliesst die Lücke zwischen Wissen und Handeln. Deine Biomarker zeigen, wo du stehst – unsere KI zeigt dir, was du tun kannst.',
+      steps: [
+        { icon: '🩸', title: 'Messen', desc: 'Professionelle Blutanalyse in 9 Gesundheitsdomänen über zertifizierte Partnerlabore.' },
+        { icon: '🤖', title: 'Verstehen', desc: 'KI analysiert deine Werte, verknüpft sie mit Forschung und erstellt personalisierte Empfehlungen.' },
+        { icon: '🥗', title: 'Handeln', desc: 'Rezepte, Daily Dozen und Lifestyle-Coaching – abgestimmt auf deine Werte.' },
+        { icon: '📈', title: 'Verbessern', desc: 'Wiederhole den Test und sieh messbar, wie sich deine Biomarker verbessern.' },
+      ],
+    },
+    ai: {
+      tag: 'KI-gestützte Gesundheit',
+      heading: 'Dein persönlicher',
+      headingEm: 'Forschungsassistent.',
+      sub: 'Unsere KI durchsucht 500.000+ peer-reviewed Studien und verbindet sie mit deinen Biomarkern – für Empfehlungen, die auf echten Daten basieren.',
+      features: [
+        { icon: '🔬', title: 'Research Chat', desc: 'Stelle Fragen zu Gesundheit und Ernährung. Jede Antwort mit Studien-Zitaten belegt.' },
+        { icon: '🎯', title: 'Personalisierte Einblicke', desc: 'KI-Briefings basierend auf deinen Biomarkern – nicht generische Tipps.' },
+        { icon: '📊', title: 'Health Engine Score', desc: 'Dein Longevity Score: 0–100, gewichtet über 9 Domänen, mit Trend-Tracking.' },
+        { icon: '🧬', title: 'Biologisches Alter', desc: 'PhenoAge, GrimAge v2, DunedinPACE – sieh dein echtes biologisches Alter.' },
+      ],
     },
     problem: {
       tag: 'Das Problem',
@@ -159,10 +185,34 @@ const T: Record<Lang, {
   en: {
     hero: {
       h1: 'Live well.',
-      h1em: 'Scientifically grounded.',
-      sub: '40 million people die every year from preventable diseases. Most of them eat the wrong foods. We are changing that — measurably.',
+      h1em: 'AI-powered longevity.',
+      sub: 'Measure your biomarkers. Get AI-driven insights from 500,000+ studies. Track your progress. A closed-loop system for your health.',
       cta1: 'Sign up free',
-      cta2: 'Explore Daily Dozen',
+      cta2: 'Learn more',
+    },
+    loop: {
+      tag: 'The Closed Loop',
+      heading: 'Measure. Optimise.',
+      headingEm: 'Improve. Repeat.',
+      sub: 'Evida Life bridges the gap between knowledge and action. Your biomarkers show where you stand — our AI shows you what to do.',
+      steps: [
+        { icon: '🩸', title: 'Measure', desc: 'Professional blood analysis across 9 health domains via certified partner labs.' },
+        { icon: '🤖', title: 'Understand', desc: 'AI analyses your results, connects them with research, and creates personalised recommendations.' },
+        { icon: '🥗', title: 'Act', desc: 'Recipes, Daily Dozen tracking, and lifestyle coaching — tailored to your biomarkers.' },
+        { icon: '📈', title: 'Improve', desc: 'Retest and see measurable improvement in your biomarkers over time.' },
+      ],
+    },
+    ai: {
+      tag: 'AI-Powered Health',
+      heading: 'Your personal',
+      headingEm: 'research assistant.',
+      sub: 'Our AI searches 500,000+ peer-reviewed studies and connects them with your biomarkers — for recommendations based on real evidence.',
+      features: [
+        { icon: '🔬', title: 'Research Chat', desc: 'Ask any health or nutrition question. Every answer backed by study citations.' },
+        { icon: '🎯', title: 'Personalised Insights', desc: 'AI briefings based on your biomarkers — not generic tips.' },
+        { icon: '📊', title: 'Health Engine Score', desc: 'Your Longevity Score: 0–100, weighted across 9 domains, with trend tracking.' },
+        { icon: '🧬', title: 'Biological Age', desc: 'PhenoAge, GrimAge v2, DunedinPACE — see your true biological age.' },
+      ],
     },
     problem: {
       tag: 'The Problem',
@@ -236,10 +286,34 @@ const T: Record<Lang, {
   fr: {
     hero: {
       h1: 'Vivez bien.',
-      h1em: 'Fondé sur la science.',
-      sub: "40 millions de personnes meurent chaque année de maladies évitables. La plupart mangent les mauvais aliments. Nous changeons cela — de manière mesurable.",
+      h1em: 'Longévité par l\'IA.',
+      sub: 'Mesurez vos biomarqueurs. Obtenez des insights IA basés sur 500 000+ études. Suivez vos progrès. Un système en boucle fermée pour votre santé.',
       cta1: "S'inscrire gratuitement",
-      cta2: 'Explorer le Daily Dozen',
+      cta2: 'En savoir plus',
+    },
+    loop: {
+      tag: 'La boucle fermée',
+      heading: 'Mesurer. Optimiser.',
+      headingEm: 'Améliorer. Répéter.',
+      sub: 'Evida Life comble le fossé entre le savoir et l\'action. Vos biomarqueurs montrent où vous en êtes — notre IA vous montre quoi faire.',
+      steps: [
+        { icon: '🩸', title: 'Mesurer', desc: 'Analyses sanguines professionnelles dans 9 domaines de santé via des laboratoires partenaires certifiés.' },
+        { icon: '🤖', title: 'Comprendre', desc: 'L\'IA analyse vos résultats, les relie à la recherche et crée des recommandations personnalisées.' },
+        { icon: '🥗', title: 'Agir', desc: 'Recettes, suivi Daily Dozen et coaching lifestyle — adaptés à vos biomarqueurs.' },
+        { icon: '📈', title: 'Améliorer', desc: 'Refaites le test et constatez l\'amélioration mesurable de vos biomarqueurs.' },
+      ],
+    },
+    ai: {
+      tag: 'Santé par l\'IA',
+      heading: 'Votre assistant',
+      headingEm: 'de recherche personnel.',
+      sub: 'Notre IA explore 500 000+ études évaluées par des pairs et les relie à vos biomarqueurs — pour des recommandations basées sur de vraies preuves.',
+      features: [
+        { icon: '🔬', title: 'Chat Recherche', desc: 'Posez toute question santé ou nutrition. Chaque réponse appuyée par des citations d\'études.' },
+        { icon: '🎯', title: 'Insights personnalisés', desc: 'Briefings IA basés sur vos biomarqueurs — pas des conseils génériques.' },
+        { icon: '📊', title: 'Health Engine Score', desc: 'Votre score de longévité : 0–100, pondéré sur 9 domaines, avec suivi de tendance.' },
+        { icon: '🧬', title: 'Âge biologique', desc: 'PhenoAge, GrimAge v2, DunedinPACE — découvrez votre vrai âge biologique.' },
+      ],
     },
     problem: {
       tag: 'Le Problème',
@@ -313,10 +387,34 @@ const T: Record<Lang, {
   es: {
     hero: {
       h1: 'Vive bien.',
-      h1em: 'Con base científica.',
-      sub: '40 millones de personas mueren cada año por enfermedades prevenibles. La mayoría come los alimentos equivocados. Estamos cambiando eso — de forma medible.',
+      h1em: 'Longevidad con IA.',
+      sub: 'Mide tus biomarcadores. Obtén insights de IA basados en 500.000+ estudios. Sigue tu progreso. Un sistema de circuito cerrado para tu salud.',
       cta1: 'Registrarse gratis',
-      cta2: 'Explorar el Daily Dozen',
+      cta2: 'Saber más',
+    },
+    loop: {
+      tag: 'El circuito cerrado',
+      heading: 'Medir. Optimizar.',
+      headingEm: 'Mejorar. Repetir.',
+      sub: 'Evida Life cierra la brecha entre el conocimiento y la acción. Tus biomarcadores muestran dónde estás — nuestra IA te muestra qué hacer.',
+      steps: [
+        { icon: '🩸', title: 'Medir', desc: 'Análisis de sangre profesional en 9 dominios de salud a través de laboratorios certificados.' },
+        { icon: '🤖', title: 'Comprender', desc: 'La IA analiza tus resultados, los conecta con la investigación y crea recomendaciones personalizadas.' },
+        { icon: '🥗', title: 'Actuar', desc: 'Recetas, seguimiento Daily Dozen y coaching — adaptados a tus biomarcadores.' },
+        { icon: '📈', title: 'Mejorar', desc: 'Repite el test y ve la mejora medible en tus biomarcadores.' },
+      ],
+    },
+    ai: {
+      tag: 'Salud con IA',
+      heading: 'Tu asistente',
+      headingEm: 'de investigación personal.',
+      sub: 'Nuestra IA busca en 500.000+ estudios revisados por pares y los conecta con tus biomarcadores — para recomendaciones basadas en evidencia real.',
+      features: [
+        { icon: '🔬', title: 'Chat de Investigación', desc: 'Haz cualquier pregunta de salud o nutrición. Cada respuesta respaldada por citas de estudios.' },
+        { icon: '🎯', title: 'Insights personalizados', desc: 'Briefings de IA basados en tus biomarcadores — no consejos genéricos.' },
+        { icon: '📊', title: 'Health Engine Score', desc: 'Tu puntuación de longevidad: 0–100, ponderada en 9 dominios, con seguimiento de tendencias.' },
+        { icon: '🧬', title: 'Edad biológica', desc: 'PhenoAge, GrimAge v2, DunedinPACE — descubre tu verdadera edad biológica.' },
+      ],
     },
     problem: {
       tag: 'El Problema',
@@ -390,10 +488,34 @@ const T: Record<Lang, {
   it: {
     hero: {
       h1: 'Vivi bene.',
-      h1em: 'Con base scientifica.',
-      sub: '40 milioni di persone muoiono ogni anno per malattie prevenibili. La maggior parte mangia i cibi sbagliati. Stiamo cambiando questo — in modo misurabile.',
+      h1em: 'Longevità con IA.',
+      sub: 'Misura i tuoi biomarcatori. Ottieni insights IA basati su 500.000+ studi. Monitora i tuoi progressi. Un sistema a circuito chiuso per la tua salute.',
       cta1: 'Registrati gratis',
-      cta2: 'Esplora il Daily Dozen',
+      cta2: 'Scopri di più',
+    },
+    loop: {
+      tag: 'Il circuito chiuso',
+      heading: 'Misurare. Ottimizzare.',
+      headingEm: 'Migliorare. Ripetere.',
+      sub: 'Evida Life colma il divario tra conoscenza e azione. I tuoi biomarcatori mostrano dove sei — la nostra IA ti mostra cosa fare.',
+      steps: [
+        { icon: '🩸', title: 'Misurare', desc: 'Analisi del sangue professionale in 9 domini di salute tramite laboratori partner certificati.' },
+        { icon: '🤖', title: 'Capire', desc: 'L\'IA analizza i tuoi risultati, li collega alla ricerca e crea raccomandazioni personalizzate.' },
+        { icon: '🥗', title: 'Agire', desc: 'Ricette, tracciamento Daily Dozen e coaching lifestyle — su misura per i tuoi biomarcatori.' },
+        { icon: '📈', title: 'Migliorare', desc: 'Ripeti il test e vedi il miglioramento misurabile nei tuoi biomarcatori.' },
+      ],
+    },
+    ai: {
+      tag: 'Salute con IA',
+      heading: 'Il tuo assistente',
+      headingEm: 'di ricerca personale.',
+      sub: 'La nostra IA esplora 500.000+ studi peer-reviewed e li collega ai tuoi biomarcatori — per raccomandazioni basate su prove reali.',
+      features: [
+        { icon: '🔬', title: 'Chat Ricerca', desc: 'Fai qualsiasi domanda su salute o nutrizione. Ogni risposta supportata da citazioni di studi.' },
+        { icon: '🎯', title: 'Insights personalizzati', desc: 'Briefing IA basati sui tuoi biomarcatori — non consigli generici.' },
+        { icon: '📊', title: 'Health Engine Score', desc: 'Il tuo punteggio di longevità: 0–100, ponderato su 9 domini, con monitoraggio tendenze.' },
+        { icon: '🧬', title: 'Età biologica', desc: 'PhenoAge, GrimAge v2, DunedinPACE — scopri la tua vera età biologica.' },
+      ],
     },
     problem: {
       tag: 'Il Problema',
@@ -547,7 +669,75 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ─── 2. THE PROBLEM ─── */}
+      {/* ─── 2. THE CLOSED LOOP ─── */}
+      <section className="bg-[#0e393d] py-20 md:py-28 px-8 md:px-12">
+        <div className="max-w-[1060px] mx-auto">
+          <div className="mb-14">
+            <SectionTagDark label={t.loop.tag} />
+            <h2 className="font-serif font-normal text-4xl md:text-5xl text-white leading-[1.1] tracking-tight mb-5">
+              {t.loop.heading}<br />
+              <em className="italic font-normal text-white/60">{t.loop.headingEm}</em>
+            </h2>
+            <p className="text-white/50 text-[0.95rem] leading-relaxed max-w-[560px]">{t.loop.sub}</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
+            {t.loop.steps.map((step, i) => (
+              <div key={i} className="relative rounded-2xl bg-white/[.06] border border-white/10 p-7 hover:bg-white/[.10] transition-colors group">
+                {/* connector line */}
+                {i < t.loop.steps.length - 1 && (
+                  <div className="hidden md:block absolute top-1/2 -right-3 w-6 h-px bg-[#ceab84]/40" />
+                )}
+                <div className="text-3xl mb-4">{step.icon}</div>
+                <div className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-2">
+                  {String(i + 1).padStart(2, '0')}
+                </div>
+                <h3 className="font-serif text-xl text-white mb-2">{step.title}</h3>
+                <p className="text-[0.82rem] font-light text-white/45 leading-relaxed">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+          {/* Loop arrow visual */}
+          <div className="flex justify-center mt-8">
+            <div className="flex items-center gap-2 text-[#ceab84]/60 text-xs font-medium tracking-wider uppercase">
+              <svg width="120" height="24" viewBox="0 0 120 24" fill="none" className="opacity-40">
+                <path d="M10 12h95m0 0l-8-6m8 6l-8 6" stroke="#ceab84" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M105 12A95 95 0 0 0 10 12" stroke="#ceab84" strokeWidth="1" strokeDasharray="4 4" opacity="0.3" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 3. AI FEATURES ─── */}
+      <section className="max-w-[1060px] mx-auto px-8 md:px-12 py-20 md:py-28">
+        <div className="mb-12">
+          <SectionTag label={t.ai.tag} />
+          <h2 className="font-serif font-normal text-4xl md:text-5xl text-[#0e393d] leading-[1.1] tracking-tight mb-5">
+            {t.ai.heading}<br />
+            <em className="italic font-normal text-[#0e393d]/60">{t.ai.headingEm}</em>
+          </h2>
+          <p className="text-[0.95rem] font-light text-[#5a6e6f] leading-relaxed max-w-[560px]">{t.ai.sub}</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {t.ai.features.map((feat, i) => (
+            <div key={i} className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 p-8 hover:-translate-y-0.5 transition-transform duration-200">
+              <div className="w-12 h-12 rounded-xl bg-[#0e393d]/[.06] flex items-center justify-center text-2xl mb-5">{feat.icon}</div>
+              <h3 className="font-serif text-[1.15rem] text-[#0e393d] mb-2 leading-snug">{feat.title}</h3>
+              <p className="text-[0.82rem] font-light text-[#5a6e6f] leading-relaxed">{feat.desc}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-8 text-center">
+          <Link
+            href="/research"
+            className="inline-block bg-[#0e393d] text-[#f2ebdb] font-medium text-[13px] tracking-wide px-7 py-3.5 rounded-full transition-colors hover:bg-[#1a5055] whitespace-nowrap"
+          >
+            {lang === 'de' ? 'Research Chat testen' : lang === 'fr' ? 'Essayer le Research Chat' : lang === 'es' ? 'Probar Research Chat' : lang === 'it' ? 'Provare Research Chat' : 'Try the Research Chat'}
+          </Link>
+        </div>
+      </section>
+
+      {/* ─── 4. THE PROBLEM ─── */}
       <section className="max-w-[1060px] mx-auto px-8 md:px-12 py-20 md:py-28">
         <div className="mb-10">
           <SectionTag label={t.problem.tag} />
