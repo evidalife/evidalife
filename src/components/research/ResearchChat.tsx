@@ -24,8 +24,17 @@ interface Message {
   isStreaming?: boolean;
 }
 
+interface FlaggedMarker {
+  slug: string;
+  name: string;
+  value: number;
+  unit: string;
+  status: string;
+}
+
 interface ResearchChatProps {
   biomarkerContext?: string;
+  flaggedMarkers?: FlaggedMarker[];  // From briefing AI handoff
   suggestions?: string[];
   placeholder?: string;
 }
@@ -211,12 +220,14 @@ function AssistantMessage({ message }: { message: Message }) {
 
 export default function ResearchChat({
   biomarkerContext,
+  flaggedMarkers,
   suggestions = DEFAULT_SUGGESTIONS,
   placeholder = 'Ask a research question, e.g. "Does reducing saturated fat lower cardiovascular risk?"',
 }: ResearchChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [briefingHandoffDone, setBriefingHandoffDone] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -224,13 +235,15 @@ export default function ResearchChat({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const sendQuestion = useCallback(async (question: string) => {
-    if (!question.trim() || isLoading) return;
-
+  // Shared SSE stream handler for both question mode and briefing handoff
+  const streamResponse = useCallback(async (
+    body: Record<string, unknown>,
+    userContent: string
+  ) => {
     const userMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: question.trim(),
+      content: userContent,
       citations: [],
     };
 
@@ -243,14 +256,13 @@ export default function ResearchChat({
     };
 
     setMessages(prev => [...prev, userMsg, assistantMsg]);
-    setInput('');
     setIsLoading(true);
 
     try {
       const res = await fetch('/api/ai/research', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: question.trim(), biomarkerContext }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok || !res.body) throw new Error(`Request failed: ${res.status}`);
@@ -290,7 +302,7 @@ export default function ResearchChat({
               );
             }
           } catch {
-            // Skip malformed chunks
+            // Skip malformed SSE chunks
           }
         }
       }
@@ -303,7 +315,28 @@ export default function ResearchChat({
       setIsLoading(false);
       inputRef.current?.focus();
     }
-  }, [isLoading, biomarkerContext]);
+  }, []);
+
+  // Auto-trigger briefing handoff when flagged markers are provided
+  useEffect(() => {
+    if (flaggedMarkers && flaggedMarkers.length > 0 && !briefingHandoffDone && !isLoading) {
+      setBriefingHandoffDone(true);
+      const markerNames = flaggedMarkers.map(m => `${m.name} (${m.value} ${m.unit})`).join(', ');
+      streamResponse(
+        { flaggedMarkers },
+        `Research my flagged biomarkers: ${markerNames}`
+      );
+    }
+  }, [flaggedMarkers, briefingHandoffDone, isLoading, streamResponse]);
+
+  const sendQuestion = useCallback(async (question: string) => {
+    if (!question.trim() || isLoading) return;
+    setInput('');
+    await streamResponse(
+      { question: question.trim(), biomarkerContext },
+      question.trim()
+    );
+  }, [isLoading, biomarkerContext, streamResponse]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {

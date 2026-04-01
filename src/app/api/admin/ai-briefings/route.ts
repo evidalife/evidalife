@@ -96,7 +96,11 @@ export async function DELETE(req: NextRequest) {
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
-  const { error } = await admin.from('health_briefings').delete().eq('id', id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+  const { error, count } = await admin.from('health_briefings').delete({ count: 'exact' }).eq('id', id);
+  if (error) {
+    console.error('[admin/ai-briefings] DELETE error:', error.message, error.code, error.details);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  console.log(`[admin/ai-briefings] Deleted briefing ${id}, rows affected: ${count}`);
+  return NextResponse.json({ ok: true, deleted: count });
 }

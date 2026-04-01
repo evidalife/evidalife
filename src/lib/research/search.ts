@@ -18,6 +18,8 @@ export interface StudyResult {
   source: string;
   biomarker_slugs: string[] | null;
   he_domains: string[] | null;
+  disease_tags: string[] | null;
+  quality_tier: number | null;
   similarity: number;
 }
 
@@ -27,6 +29,7 @@ export interface SearchOptions {
   source?: string;           // filter by source: 'greger', 'pubmed_nutrition', etc.
   biomarkerSlug?: string;    // filter studies related to a specific biomarker
   heDomain?: string;         // filter by health engine domain
+  diseaseTag?: string;       // filter by disease/condition tag
 }
 
 // Search studies by vector similarity + optional filters
@@ -42,6 +45,7 @@ export async function searchStudies(
     source,
     biomarkerSlug,
     heDomain,
+    diseaseTag,
   } = options;
 
   // Embed the query
@@ -57,6 +61,7 @@ export async function searchStudies(
     filter_source: source ?? null,
     filter_biomarker_slug: biomarkerSlug ?? null,
     filter_he_domain: heDomain ?? null,
+    filter_disease_tag: diseaseTag ?? null,
   });
 
   if (error) throw new Error(`Study search failed: ${error.message}`);
@@ -75,6 +80,7 @@ export async function searchStudiesAdmin(
     source,
     biomarkerSlug,
     heDomain,
+    diseaseTag,
   } = options;
 
   const queryEmbedding = await embedText(query, openaiApiKey);
@@ -88,6 +94,7 @@ export async function searchStudiesAdmin(
     filter_source: source ?? null,
     filter_biomarker_slug: biomarkerSlug ?? null,
     filter_he_domain: heDomain ?? null,
+    filter_disease_tag: diseaseTag ?? null,
   });
 
   if (error) throw new Error(`Study search failed: ${error.message}`);

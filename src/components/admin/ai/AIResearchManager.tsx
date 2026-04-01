@@ -1,17 +1,26 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface SourceCount { source: string; count: number }
+interface TierCount { tier: number; count: number }
+interface DiseaseCount { tag: string; count: number }
+
+interface BookStat { book_id: string; title: string; total_citations: number; resolved_studies: number }
 
 interface StatsData {
   totalStudies: number;
   withEmbeddings: number;
   withoutEmbeddings: number;
   sourceCounts: SourceCount[];
+  tierCounts: TierCount[];
+  diseaseCounts: DiseaseCount[];
+  bookStats: BookStat[];
+  withBiomarkers: number;
+  withDiseaseTags: number;
   recentJobs: IngestionJob[];
   estimatedEmbeddingCostUsd: string;
 }
@@ -56,8 +65,37 @@ type Tab = 'overview' | 'studies' | 'ingest' | 'jobs';
 
 const SOURCE_LABELS: Record<string, string> = {
   greger: 'Greger / NutritionFacts',
+  greger_epub: 'Greger Books (EPUB)',
   pubmed_nutrition: 'PubMed Nutrition',
   pubmed_longevity: 'PubMed Longevity',
+};
+
+const TIER_LABELS: Record<number, { label: string; color: string }> = {
+  1: { label: 'Tier 1 — Greger-cited', color: 'bg-emerald-500' },
+  2: { label: 'Tier 2 — Systematic Review / Meta-analysis', color: 'bg-teal-500' },
+  3: { label: 'Tier 3 — RCT', color: 'bg-blue-500' },
+  4: { label: 'Tier 4 — Cohort / Observational', color: 'bg-amber-500' },
+  5: { label: 'Tier 5 — Other', color: 'bg-gray-400' },
+};
+
+const DISEASE_LABELS: Record<string, string> = {
+  cardiovascular: 'Cardiovascular Disease', atherosclerosis: 'Atherosclerosis',
+  hypertension: 'Hypertension', stroke: 'Stroke',
+  diabetes_t2: 'Type 2 Diabetes', obesity: 'Obesity',
+  metabolic_syndrome: 'Metabolic Syndrome', nafld: 'NAFLD',
+  colorectal_cancer: 'Colorectal Cancer', breast_cancer: 'Breast Cancer',
+  prostate_cancer: 'Prostate Cancer', lung_cancer: 'Lung Cancer',
+  alzheimers: "Alzheimer's", parkinsons: "Parkinson's",
+  depression: 'Depression', cognitive_decline: 'Cognitive Decline',
+  ibd: 'IBD', ibs: 'IBS', gut_microbiome: 'Gut Microbiome',
+  osteoporosis: 'Osteoporosis', arthritis: 'Arthritis', sarcopenia: 'Sarcopenia',
+  ckd: 'Chronic Kidney Disease', kidney_stones: 'Kidney Stones',
+  copd: 'COPD', asthma: 'Asthma',
+  autoimmune: 'Autoimmune Disease', lupus: 'Lupus',
+  multiple_sclerosis: 'Multiple Sclerosis',
+  aging: 'Aging / Longevity', frailty: 'Frailty',
+  telomere: 'Telomere Length', oxidative_stress: 'Oxidative Stress',
+  inflammation: 'Chronic Inflammation',
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -92,33 +130,264 @@ function fmt(iso: string | null) {
 
 // ── Overview tab ──────────────────────────────────────────────────────────────
 
+// ── Ingestion Roadmap — planned sources and targets ──────────────────────────
+// This defines the full ingestion plan: all sources, tiers, and target study counts.
+
+interface RoadmapSource {
+  key: string;
+  label: string;
+  tier: number;
+  target: number;
+  description: string;
+}
+
+const INGESTION_ROADMAP: RoadmapSource[] = [
+  // Tier 1 — Greger-cited (all citations from books + videos)
+  { key: 'greger_epub', label: 'Greger Books (EPUB)', tier: 1, target: 22000, description: '6 books: How Not to Age/Die/Diet, Lower LDL, Ozempic, Ultra-Processed' },
+  { key: 'greger_videos', label: 'NutritionFacts.org Videos', tier: 1, target: 5000, description: 'Video citations from nutritionfacts.org' },
+  // Tier 2 — Systematic Reviews & Meta-analyses
+  { key: 'pubmed_sr_nutrition', label: 'PubMed — Nutrition Reviews', tier: 2, target: 8000, description: 'Systematic reviews on dietary interventions and nutrition' },
+  { key: 'pubmed_sr_longevity', label: 'PubMed — Longevity Reviews', tier: 2, target: 5000, description: 'Meta-analyses on aging, mortality, biological age' },
+  // Tier 3 — RCTs
+  { key: 'pubmed_rct_nutrition', label: 'PubMed — Nutrition RCTs', tier: 3, target: 12000, description: 'Randomized controlled trials: diet, supplements, fasting' },
+  { key: 'pubmed_rct_exercise', label: 'PubMed — Exercise RCTs', tier: 3, target: 6000, description: 'RCTs on exercise, VO2max, fitness and health outcomes' },
+  { key: 'pubmed_rct_biomarker', label: 'PubMed — Biomarker RCTs', tier: 3, target: 8000, description: 'RCTs measuring biomarker changes from interventions' },
+  // Tier 4 — Cohort / Observational
+  { key: 'pubmed_cohort_cardio', label: 'PubMed — Cardiovascular Cohorts', tier: 4, target: 8000, description: 'Large cohort studies on heart disease, stroke, hypertension' },
+  { key: 'pubmed_cohort_cancer', label: 'PubMed — Cancer Prevention Cohorts', tier: 4, target: 6000, description: 'Observational studies on diet and cancer risk' },
+  { key: 'pubmed_cohort_metabolic', label: 'PubMed — Metabolic Cohorts', tier: 4, target: 5000, description: 'Cohort studies on diabetes, obesity, metabolic syndrome' },
+  { key: 'pubmed_cohort_neuro', label: 'PubMed — Neurological Cohorts', tier: 4, target: 4000, description: "Cohort studies on Alzheimer's, cognitive decline, depression" },
+  // Tier 5 — Other
+  { key: 'pubmed_general', label: 'PubMed — General Health & Longevity', tier: 5, target: 5000, description: 'Broader research on lifestyle, environment, and health' },
+];
+
+const TOTAL_TARGET = INGESTION_ROADMAP.reduce((sum, s) => sum + s.target, 0);
+
+function RoadmapSection({ stats }: { stats: StatsData }) {
+  // Map actual study counts by source key
+  const sourceMap = new Map(stats.sourceCounts.map(s => [s.source, s.count]));
+  const totalIngested = stats.totalStudies;
+  const overallPct = TOTAL_TARGET > 0 ? Math.round((totalIngested / TOTAL_TARGET) * 100) : 0;
+
+  // Group by tier
+  const tiers = [1, 2, 3, 4, 5];
+
+  return (
+    <div className="rounded-xl border border-[#0e393d]/8 bg-white overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#0e393d]/8">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-[#0e393d]">Ingestion Roadmap</p>
+            <p className="text-[11px] text-[#1c2a2b]/35 mt-0.5">
+              Target: {TOTAL_TARGET.toLocaleString()} studies across {INGESTION_ROADMAP.length} sources
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-semibold text-[#0e393d] tabular-nums">{overallPct}%</p>
+            <p className="text-[11px] text-[#1c2a2b]/35">{totalIngested.toLocaleString()} / {TOTAL_TARGET.toLocaleString()}</p>
+          </div>
+        </div>
+        {/* Overall progress bar */}
+        <div className="mt-3 h-3 rounded-full bg-[#0e393d]/8 overflow-hidden">
+          <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all" style={{ width: `${overallPct}%` }} />
+        </div>
+      </div>
+
+      <div className="divide-y divide-[#0e393d]/[.04]">
+        {tiers.map(tier => {
+          const tierSources = INGESTION_ROADMAP.filter(s => s.tier === tier);
+          const tierInfo = TIER_LABELS[tier];
+          const tierTarget = tierSources.reduce((sum, s) => sum + s.target, 0);
+          const tierActual = tierSources.reduce((sum, s) => sum + (sourceMap.get(s.key) ?? 0), 0);
+          const tierPct = tierTarget > 0 ? Math.round((tierActual / tierTarget) * 100) : 0;
+
+          return (
+            <div key={tier} className="px-5 py-4">
+              {/* Tier header */}
+              <div className="flex items-center gap-3 mb-3">
+                <span className={`w-2.5 h-2.5 rounded-full ${tierInfo.color} shrink-0`} />
+                <p className="text-[13px] font-semibold text-[#0e393d] flex-1">{tierInfo.label}</p>
+                <span className="text-[12px] font-semibold text-[#1c2a2b]/50 tabular-nums">
+                  {tierActual.toLocaleString()} / {tierTarget.toLocaleString()}
+                </span>
+                <span className={`text-[11px] font-bold tabular-nums rounded-full px-2 py-0.5 ${
+                  tierPct === 0 ? 'bg-gray-100 text-gray-400' :
+                  tierPct < 50 ? 'bg-amber-50 text-amber-600' :
+                  tierPct < 100 ? 'bg-blue-50 text-blue-600' :
+                  'bg-emerald-50 text-emerald-600'
+                }`}>
+                  {tierPct}%
+                </span>
+              </div>
+
+              {/* Sources within tier */}
+              <div className="space-y-2 ml-5">
+                {tierSources.map(src => {
+                  const actual = sourceMap.get(src.key) ?? 0;
+                  const pct = src.target > 0 ? Math.min((actual / src.target) * 100, 100) : 0;
+                  const isActive = actual > 0;
+
+                  return (
+                    <div key={src.key}>
+                      <div className={`flex items-center gap-3 ${isActive ? '' : 'opacity-50'}`}>
+                        {/* Status indicator */}
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                          actual >= src.target ? 'bg-emerald-500' :
+                          actual > 0 ? 'bg-blue-500 animate-pulse' :
+                          'bg-gray-300'
+                        }`} />
+
+                        {/* Source label + bar */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline gap-2">
+                            <p className="text-[12px] font-medium text-[#0e393d] truncate">{src.label}</p>
+                            <p className="text-[10px] text-[#1c2a2b]/30 shrink-0">{src.description}</p>
+                          </div>
+                          <div className="mt-1 h-1 rounded-full bg-[#0e393d]/6 overflow-hidden w-full max-w-xs">
+                            <div className={`h-full rounded-full transition-all ${
+                              actual >= src.target ? 'bg-emerald-500' :
+                              actual > 0 ? 'bg-blue-400' :
+                              'bg-transparent'
+                            }`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+
+                        {/* Count */}
+                        <p className="text-[11px] text-[#1c2a2b]/40 tabular-nums shrink-0 w-28 text-right">
+                          {actual > 0 ? `${actual.toLocaleString()} / ` : ''}{src.target.toLocaleString()}
+                        </p>
+                      </div>
+
+                      {/* Per-book breakdown for Greger EPUB source */}
+                      {src.key === 'greger_epub' && stats.bookStats.length > 0 && (
+                        <div className="ml-6 mt-2 space-y-1.5 pb-1">
+                          {stats.bookStats.map(book => {
+                            const bookPct = book.total_citations > 0
+                              ? Math.round((book.resolved_studies / book.total_citations) * 100)
+                              : 0;
+                            return (
+                              <div key={book.book_id} className="flex items-center gap-2.5">
+                                <span className={`w-1 h-1 rounded-full shrink-0 ${
+                                  bookPct >= 90 ? 'bg-emerald-400' :
+                                  bookPct >= 50 ? 'bg-amber-400' :
+                                  'bg-gray-300'
+                                }`} />
+                                <p className="text-[11px] text-[#1c2a2b]/60 flex-1 truncate">{book.title}</p>
+                                <div className="w-16 h-1 rounded-full bg-[#0e393d]/6 overflow-hidden shrink-0">
+                                  <div className={`h-full rounded-full ${
+                                    bookPct >= 90 ? 'bg-emerald-400' :
+                                    bookPct >= 50 ? 'bg-amber-400' :
+                                    'bg-gray-300'
+                                  }`} style={{ width: `${bookPct}%` }} />
+                                </div>
+                                <p className="text-[10px] text-[#1c2a2b]/35 tabular-nums shrink-0 w-24 text-right">
+                                  {book.resolved_studies.toLocaleString()} / {book.total_citations.toLocaleString()} ({bookPct}%)
+                                </p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ProgressBar({ value, max, color = 'bg-[#0C9C6C]', label }: { value: number; max: number; color?: string; label?: string }) {
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        {label && <p className="text-sm font-medium text-[#0e393d]">{label}</p>}
+        <p className="text-sm font-semibold text-[#0e393d] tabular-nums">{pct}%</p>
+      </div>
+      <div className="h-2.5 rounded-full bg-[#0e393d]/8 overflow-hidden">
+        <div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-[11px] text-[#1c2a2b]/40 mt-1.5">
+        {value.toLocaleString()} / {max.toLocaleString()} studies
+      </p>
+    </div>
+  );
+}
+
 function OverviewTab({ stats }: { stats: StatsData }) {
   const embPct = stats.totalStudies > 0
     ? Math.round((stats.withEmbeddings / stats.totalStudies) * 100)
     : 0;
+  const biomarkerPct = stats.totalStudies > 0
+    ? Math.round((stats.withBiomarkers / stats.totalStudies) * 100)
+    : 0;
+  const diseasePct = stats.totalStudies > 0
+    ? Math.round((stats.withDiseaseTags / stats.totalStudies) * 100)
+    : 0;
+
+  const [showAllDiseases, setShowAllDiseases] = useState(false);
+  const visibleDiseases = showAllDiseases ? stats.diseaseCounts : stats.diseaseCounts.slice(0, 12);
 
   return (
     <div className="p-8 space-y-8">
+      {/* Ingestion Roadmap — full plan with targets */}
+      <RoadmapSection stats={stats} />
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total Studies" value={stats.totalStudies} />
         <StatCard label="With Embeddings" value={stats.withEmbeddings} sub={`${embPct}% of total`} />
-        <StatCard label="Missing Embeddings" value={stats.withoutEmbeddings} sub={`~$${stats.estimatedEmbeddingCostUsd} to embed`} />
-        <StatCard label="Sources Indexed" value={stats.sourceCounts.length} />
+        <StatCard label="Biomarker-tagged" value={stats.withBiomarkers} sub={`${biomarkerPct}% of total`} />
+        <StatCard label="Disease-tagged" value={stats.withDiseaseTags} sub={`${diseasePct}% of total`} />
       </div>
 
-      {/* Embedding coverage bar */}
-      <div className="rounded-xl border border-[#0e393d]/8 bg-white p-5">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-medium text-[#0e393d]">Embedding Coverage</p>
-          <p className="text-sm font-semibold text-[#0e393d] tabular-nums">{embPct}%</p>
+      {/* Coverage progress bars */}
+      <div className="rounded-xl border border-[#0e393d]/8 bg-white p-5 space-y-5">
+        <p className="text-xs font-semibold tracking-wider uppercase text-[#ceab84]">Indexing Coverage</p>
+        <ProgressBar value={stats.withEmbeddings} max={stats.totalStudies} label="Embeddings" color="bg-[#0C9C6C]" />
+        <ProgressBar value={stats.withBiomarkers} max={stats.totalStudies} label="Biomarker Tags" color="bg-[#0e393d]" />
+        <ProgressBar value={stats.withDiseaseTags} max={stats.totalStudies} label="Disease Tags" color="bg-[#ceab84]" />
+        {stats.withoutEmbeddings > 0 && (
+          <p className="text-[11px] text-[#1c2a2b]/35">
+            {stats.withoutEmbeddings.toLocaleString()} studies need embeddings · ~${stats.estimatedEmbeddingCostUsd} estimated cost
+          </p>
+        )}
+      </div>
+
+      {/* Quality tier breakdown */}
+      <div className="rounded-xl border border-[#0e393d]/8 bg-white overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#0e393d]/8">
+          <p className="text-sm font-semibold text-[#0e393d]">Evidence Quality Tiers</p>
+          <p className="text-[11px] text-[#1c2a2b]/35 mt-0.5">Studies ranked by evidence strength</p>
         </div>
-        <div className="h-2.5 rounded-full bg-[#0e393d]/8 overflow-hidden">
-          <div className="h-full rounded-full bg-[#0C9C6C] transition-all" style={{ width: `${embPct}%` }} />
-        </div>
-        <p className="text-[11px] text-[#1c2a2b]/40 mt-2">
-          {stats.withEmbeddings.toLocaleString()} / {stats.totalStudies.toLocaleString()} studies embedded
-        </p>
+        {stats.tierCounts.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm text-[#1c2a2b]/35">No quality tiers assigned yet.</div>
+        ) : (
+          <div className="divide-y divide-[#0e393d]/[.04]">
+            {stats.tierCounts.map(({ tier, count }) => {
+              const pct = stats.totalStudies > 0 ? (count / stats.totalStudies) * 100 : 0;
+              const info = TIER_LABELS[tier] ?? { label: `Tier ${tier}`, color: 'bg-gray-400' };
+              return (
+                <div key={tier} className="px-5 py-3.5 flex items-center gap-4">
+                  <span className={`w-2.5 h-2.5 rounded-full ${info.color} shrink-0`} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-[#0e393d]">{info.label}</p>
+                    <div className="mt-1.5 h-1.5 rounded-full bg-[#0e393d]/8 overflow-hidden w-48">
+                      <div className={`h-full rounded-full ${info.color}`} style={{ width: `${Math.max(pct, 1)}%` }} />
+                    </div>
+                  </div>
+                  <p className="text-sm font-semibold text-[#1c2a2b]/60 tabular-nums w-20 text-right">
+                    {count.toLocaleString()} <span className="text-[11px] font-normal text-[#1c2a2b]/30">({pct.toFixed(1)}%)</span>
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Source breakdown */}
@@ -149,6 +418,40 @@ function OverviewTab({ stats }: { stats: StatsData }) {
               );
             })}
           </div>
+        )}
+      </div>
+
+      {/* Disease/condition distribution */}
+      <div className="rounded-xl border border-[#0e393d]/8 bg-white overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#0e393d]/8">
+          <p className="text-sm font-semibold text-[#0e393d]">Disease & Condition Coverage</p>
+          <p className="text-[11px] text-[#1c2a2b]/35 mt-0.5">
+            {stats.diseaseCounts.length} conditions indexed across {stats.withDiseaseTags.toLocaleString()} studies
+          </p>
+        </div>
+        {stats.diseaseCounts.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm text-[#1c2a2b]/35">No disease tags assigned yet. Run the backfill script.</div>
+        ) : (
+          <>
+            <div className="px-5 py-4">
+              <div className="flex flex-wrap gap-2">
+                {visibleDiseases.map(({ tag, count }) => (
+                  <span key={tag} className="inline-flex items-center gap-1.5 rounded-lg bg-[#0e393d]/[.04] px-3 py-1.5 text-[12px]">
+                    <span className="font-medium text-[#0e393d]">{DISEASE_LABELS[tag] ?? tag}</span>
+                    <span className="text-[#1c2a2b]/30 tabular-nums">{count.toLocaleString()}</span>
+                  </span>
+                ))}
+              </div>
+              {stats.diseaseCounts.length > 12 && (
+                <button
+                  onClick={() => setShowAllDiseases(!showAllDiseases)}
+                  className="mt-3 text-[11px] font-medium text-[#0e393d]/50 hover:text-[#0e393d] transition-colors"
+                >
+                  {showAllDiseases ? 'Show fewer' : `Show all ${stats.diseaseCounts.length} conditions`}
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
 
@@ -279,9 +582,8 @@ function StudiesTab() {
             ) : studies.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-[#1c2a2b]/35">No studies found</td></tr>
             ) : studies.map(study => (
-              <>
+              <Fragment key={study.id}>
                 <tr
-                  key={study.id}
                   className="hover:bg-[#0e393d]/[.01] cursor-pointer"
                   onClick={() => setExpanded(expanded === study.id ? null : study.id)}
                 >
@@ -326,7 +628,7 @@ function StudiesTab() {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>

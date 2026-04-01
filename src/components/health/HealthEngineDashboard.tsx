@@ -9,8 +9,7 @@ import BiomarkerTrendChart from './BiomarkerTrendChart';
 import BriefingPlayer from './BriefingPlayer';
 import { CATEGORY_DISPLAY } from '@/lib/health-score';
 import { createClient } from '@/lib/supabase/client';
-import ResearchChat from '@/components/research/ResearchChat';
-import { buildBiomarkerContext, buildResearchSuggestions } from '@/lib/research/biomarker-mapper';
+// ResearchChat removed — moving to Health Engine v2
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Lang = 'en' | 'de' | 'fr' | 'es' | 'it';
@@ -2110,38 +2109,7 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
           })()}
         </section>
 
-        {/* ── Research & Evidence ─────────────────────────────────────────── */}
-        {(() => {
-          const allMarkers = dash.domains.flatMap(d => d.markers);
-          const flaggedMarkers = allMarkers
-            .filter(m => m.latest != null && (m.latestStatus === 'moderate' || m.latestStatus === 'risk'))
-            .map(m => ({ slug: m.slug, name: m.name, value: m.latest!, unit: m.unit, status: m.latestStatus }));
-
-          const biomarkerCtx = buildBiomarkerContext(flaggedMarkers);
-          const suggestions = buildResearchSuggestions(flaggedMarkers.map(m => m.slug));
-
-          return (
-            <section className="mt-8">
-              <div className="flex items-center gap-3 mb-5">
-                <span className="text-[10px] font-semibold tracking-[.18em] uppercase text-[#ceab84]">Research & Evidence</span>
-                <div className="flex-1 h-px bg-gradient-to-r from-[#ceab84]/20 to-transparent" />
-                <a
-                  href="/research"
-                  className="text-[11px] text-[#0e393d]/40 hover:text-[#0e393d] transition-colors"
-                >
-                  Open full view →
-                </a>
-              </div>
-
-              <div className="rounded-2xl border border-[#0e393d]/10 bg-white overflow-hidden" style={{ height: 560 }}>
-                <ResearchChat
-                  biomarkerContext={biomarkerCtx || undefined}
-                  suggestions={suggestions.length > 0 ? suggestions : undefined}
-                />
-              </div>
-            </section>
-          );
-        })()}
+        {/* Research & Evidence removed — will be in Health Engine v2 */}
 
       </div>
     </div>

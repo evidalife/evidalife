@@ -29,19 +29,14 @@ export async function GET() {
 
   const supabase = createAdminClient();
 
-  // Total studies + by source
-  const { data: sourceCounts } = await supabase
-    .from('studies')
-    .select('source')
-    .then(({ data, error }) => {
-      if (error || !data) return { data: [] };
-      const counts: Record<string, number> = {};
-      for (const row of data) counts[row.source] = (counts[row.source] ?? 0) + 1;
-      return {
-        data: Object.entries(counts).map(([source, count]) => ({ source, count })),
-      };
-    });
+  // ── Aggregation via dedicated RPC functions (avoids Supabase 1,000-row default limit) ──
 
+  // Source counts — server-side GROUP BY
+  const { data: sourceCounts } = await supabase
+    .rpc('studies_count_by_source')
+    .then(({ data, error }) => ({ data: error ? [] : (data as { source: string; count: number }[]) }));
+
+  // Total / embedding counts (head: true with count: 'exact' is fine — no row limit issue)
   const { count: totalStudies } = await supabase
     .from('studies')
     .select('*', { count: 'exact', head: true });
@@ -63,6 +58,32 @@ export async function GET() {
     .order('created_at', { ascending: false })
     .limit(10);
 
+  // Quality tier breakdown — server-side GROUP BY
+  const { data: tierRows } = await supabase
+    .rpc('studies_count_by_tier')
+    .then(({ data, error }) => ({ data: error ? [] : (data as { tier: number; count: number }[]) }));
+
+  // Disease tag breakdown — server-side unnest + GROUP BY
+  const { data: diseaseRows } = await supabase
+    .rpc('studies_count_by_disease')
+    .then(({ data, error }) => ({ data: error ? [] : (data as { tag: string; count: number }[]) }));
+
+  // Per-book citation progress
+  const { data: bookStats } = await supabase
+    .rpc('studies_count_by_book')
+    .then(({ data, error }) => ({ data: error ? [] : (data as { book_id: string; title: string; total_citations: number; resolved_studies: number }[]) }));
+
+  // Biomarker coverage
+  const { count: withBiomarkers } = await supabase
+    .from('studies')
+    .select('*', { count: 'exact', head: true })
+    .not('biomarker_slugs', 'eq', '{}');
+
+  const { count: withDiseaseTags } = await supabase
+    .from('studies')
+    .select('*', { count: 'exact', head: true })
+    .not('disease_tags', 'eq', '{}');
+
   // Estimated cost
   const avgAbstractTokens = 300;
   const costPer1M = 0.02;
@@ -73,6 +94,11 @@ export async function GET() {
     withEmbeddings: withEmbeddings ?? 0,
     withoutEmbeddings: withoutEmbeddings ?? 0,
     sourceCounts: sourceCounts ?? [],
+    tierCounts: tierRows ?? [],
+    diseaseCounts: diseaseRows ?? [],
+    bookStats: bookStats ?? [],
+    withBiomarkers: withBiomarkers ?? 0,
+    withDiseaseTags: withDiseaseTags ?? 0,
     recentJobs: recentJobs ?? [],
     estimatedEmbeddingCostUsd: estimatedCost,
   });

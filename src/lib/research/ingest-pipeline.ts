@@ -4,6 +4,27 @@
 
 import { fetchPubMedStudies, sleep, chunk, type PubMedStudy } from './pubmed-api';
 import { embedBatch, buildStudyEmbeddingText } from './embed';
+import { detectDiseaseTags } from './disease-mapper';
+import { detectBiomarkerSlugs } from './biomarker-mapper';
+
+/**
+ * Derive quality_tier from source + MeSH terms:
+ *   1 = Greger-cited (trusted curation)
+ *   2 = Systematic review / meta-analysis
+ *   3 = RCT (Randomized Controlled Trial)
+ *   4 = Prospective cohort / observational
+ *   5 = Other
+ */
+function deriveQualityTier(source: string, meshTerms: string[]): number {
+  if (source.startsWith('greger')) return 1;
+
+  const joined = meshTerms.join(' ').toLowerCase();
+  if (joined.includes('systematic review') || joined.includes('meta-analysis')) return 2;
+  if (joined.includes('randomized controlled trial') || joined.includes('rct')) return 3;
+  if (joined.includes('prospective') || joined.includes('cohort study') || joined.includes('longitudinal')) return 4;
+
+  return 5;
+}
 
 export interface IngestOptions {
   supabaseUrl: string;
@@ -61,7 +82,7 @@ async function upsertStudies(
   supabaseUrl: string,
   supabaseServiceKey: string
 ): Promise<void> {
-  const res = await fetch(`${supabaseUrl}/rest/v1/studies`, {
+  const res = await fetch(`${supabaseUrl}/rest/v1/studies?on_conflict=pmid`, {
     method: 'POST',
     headers: {
       'apikey': supabaseServiceKey,
@@ -140,7 +161,7 @@ async function linkStudiesToBooks(
   let linked = 0;
   for (let i = 0; i < rows.length; i += insertBatchSize) {
     const batch = rows.slice(i, i + insertBatchSize);
-    const res = await fetch(`${supabaseUrl}/rest/v1/book_citations`, {
+    const res = await fetch(`${supabaseUrl}/rest/v1/book_citations?on_conflict=book_id,study_id`, {
       method: 'POST',
       headers: {
         ...headers,
@@ -256,30 +277,43 @@ export async function ingestPmids(
     const rows = studiesWithAbstracts
       .map((study, i) => ({ study, embedding: embeddings[i] }))
       .filter(({ embedding }) => embedding.length === 1536)
-      .map(({ study, embedding }) => ({
-        pmid: study.pmid,
-        title: study.title,
-        authors: study.authors,
-        journal: study.journal,
-        publication_year: study.publication_year,
-        abstract: study.abstract,
-        mesh_terms: study.mesh_terms,
-        doi: study.doi,
-        source,
-        embedding: `[${embedding.join(',')}]`, // pgvector expects array literal string
-      }));
+      .map(({ study, embedding }) => {
+        const searchText = [study.title, study.abstract, ...study.mesh_terms].join(' ');
+        return {
+          pmid: study.pmid,
+          title: study.title,
+          authors: study.authors,
+          journal: study.journal,
+          publication_year: study.publication_year,
+          abstract: study.abstract,
+          mesh_terms: study.mesh_terms,
+          doi: study.doi,
+          source,
+          quality_tier: deriveQualityTier(source, study.mesh_terms),
+          biomarker_slugs: detectBiomarkerSlugs(searchText),
+          disease_tags: detectDiseaseTags(study.title, study.abstract, study.mesh_terms),
+          embedding: `[${embedding.join(',')}]`, // pgvector expects array literal string
+        };
+      });
 
     onProgress(`  Inserting ${rows.length} studies into Supabase...`);
 
     if (!dryRun && rows.length > 0) {
-      try {
-        await upsertStudies(rows as any, supabaseUrl, supabaseServiceKey);
-        result.inserted += rows.length;
-        onProgress(`  ✓ Inserted ${rows.length} studies`);
-      } catch (e) {
-        onProgress(`  Insert error: ${e}`);
-        result.errors += rows.length;
+      // Insert in sub-batches of 25 to avoid statement timeouts on large embedding payloads
+      const insertSubBatchSize = 25;
+      let insertedCount = 0;
+      for (let i = 0; i < rows.length; i += insertSubBatchSize) {
+        const insertBatch = rows.slice(i, i + insertSubBatchSize);
+        try {
+          await upsertStudies(insertBatch as any, supabaseUrl, supabaseServiceKey);
+          insertedCount += insertBatch.length;
+        } catch (e) {
+          onProgress(`  Insert error (sub-batch ${Math.floor(i / insertSubBatchSize) + 1}): ${e}`);
+          result.errors += insertBatch.length;
+        }
       }
+      result.inserted += insertedCount;
+      onProgress(`  ✓ Inserted ${insertedCount} studies`);
     } else if (dryRun) {
       onProgress(`  [DRY RUN] Would insert ${rows.length} studies`);
       result.inserted += rows.length;

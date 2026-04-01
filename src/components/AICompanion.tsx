@@ -190,6 +190,9 @@ export default function AICompanion() {
     return () => recognitionRef.current?.stop();
   }, []);
 
+  // Health Engine v2 has its own built-in chat — hide global companion
+  if (pathname.includes('health-engine-v2')) return null;
+
   return (
     <>
       {/* Suggestion chips — shown when closed and on relevant pages */}

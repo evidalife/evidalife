@@ -42,3 +42,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .claude/
+
+# research engine data (EPUBs are copyrighted, don't commit)
+/data/greger-books/

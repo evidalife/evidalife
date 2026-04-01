@@ -157,13 +157,25 @@ export default function AICoachManager() {
   const deleteBriefing = async (id: string) => {
     if (!(await confirm({ title: 'Delete Briefing', message: 'Delete this briefing log entry?', variant: 'danger' }))) return;
     setDeleting(id);
-    await fetch('/api/admin/ai-briefings', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
-    setBriefings(prev => prev.filter(b => b.id !== id));
-    setDeleting(null);
+    try {
+      const res = await fetch('/api/admin/ai-briefings', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        console.error('[deleteBriefing] failed:', data.error);
+        alert(`Delete failed: ${data.error || res.statusText}`);
+        return;
+      }
+      setBriefings(prev => prev.filter(b => b.id !== id));
+    } catch (err) {
+      console.error('[deleteBriefing] error:', err);
+      alert('Delete failed — check console');
+    } finally {
+      setDeleting(null);
+    }
   };
 
   const toggleExpand = async (id: string, lang: string) => {
