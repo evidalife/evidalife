@@ -270,14 +270,18 @@ function CategoryCard({
         <ProgressRing progress={progress} done={done} icon={category.icon} />
       </button>
 
-      {/* ③ Category name + optional ✓ */}
+      {/* ③ Category name + done badge */}
       <div className="flex-1 min-w-0">
-        <span className="text-[13px] font-medium text-[#0e393d] leading-tight">
-          {name}
-        </span>
-        {done && (
-          <span className="ml-1 text-[#1D9E75] text-[13px] font-semibold">✓</span>
-        )}
+        <div className="flex items-center gap-2">
+          <span className={`text-[13px] font-medium leading-tight ${done ? 'text-[#0e393d]/50 line-through' : 'text-[#0e393d]'}`}>
+            {name}
+          </span>
+          {done && (
+            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[#E1F5EE] text-[#1D9E75]">
+              {T[lang]?.complete ?? 'Done!'}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* ④ Counter: minus | X / Y | plus */}

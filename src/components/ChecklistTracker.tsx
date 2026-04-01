@@ -248,11 +248,11 @@ export default function ChecklistTracker({
 
   // ── Color tokens ──────────────────────────────────────────────────────────
 
-  const accentDone = framework === '21_tweaks' ? 'border-purple-200 bg-purple-50/40' : 'border-[#ceab84]/30 bg-[#ceab84]/5';
-  const badgeDone = framework === '21_tweaks' ? 'bg-purple-100 text-purple-600' : 'bg-[#ceab84]/20 text-[#8a6a3e]';
-  const minusDone = framework === '21_tweaks'
-    ? 'border-purple-300 bg-purple-50 text-purple-600 hover:bg-purple-100'
-    : 'border-[#ceab84]/40 bg-[#ceab84]/10 text-[#8a6a3e] hover:bg-[#ceab84]/20';
+  // Done state: unified green across all frameworks
+  const accentDone = 'border-[#9FE1CB] bg-[#f0faf5]';
+  const badgeDone = 'bg-[#E1F5EE] text-[#1D9E75]';
+  const minusDone = 'border-[#5DCAA5] bg-[#E1F5EE] text-[#1D9E75] hover:bg-[#c8f0e1]';
+  // Partial state: accent per framework
   const plusPartial = framework === '21_tweaks'
     ? 'border-purple-400/40 bg-purple-50 text-purple-600 hover:bg-purple-100'
     : 'border-[#ceab84]/40 bg-[#FAEEDA] text-[#BA7517] hover:bg-[#f5e1c0]';
