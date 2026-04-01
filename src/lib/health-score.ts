@@ -512,9 +512,11 @@ export const CALCULATED_MARKERS: Record<string, CalculatedMarkerFn> = {
   // ── Epigenetics ──────────────────────────────────────────────────────────────
 
   // PhenoAge — Levine 2018 biological age (years)
+  // Ref: Levine et al. "An epigenetic biomarker of aging…" Aging 10(4):573-591
+  // Implementation validated against BioAge R package (Kwon & Belsky)
   //
   // DB canonical units → Levine formula units:
-  //   albumin        g/dL    → g/L       (×10)
+  //   albumin        g/dL    → g/dL      (as-is — Levine uses g/dL)
   //   creatinine     µmol/L  → µmol/L    (already correct)
   //   fasting_glucose mg/dL  → mmol/L    (÷18.0182)
   //   hs_crp         mg/L    → mg/dL     (÷10) then ln()
@@ -524,15 +526,15 @@ export const CALCULATED_MARKERS: Record<string, CalculatedMarkerFn> = {
   //   alp            U/L     → as-is
   //   userAge        years   → from profile (NOT a lab slug)
   pheno_age: (v, userAge) => {
-    const albumin    = get(v, 'albumin');
-    const creatinine = get(v, 'creatinine'); // µmol/L canonical
-    const glucose    = get(v, 'fasting_glucose');
-    const crp        = get(v, 'hs_crp');
-    const lymphoAbs  = get(v, 'lymphocytes'); // x10^9/L absolute
-    const wbc        = get(v, 'wbc');         // x10^9/L for % conversion
-    const mcv        = get(v, 'mcv');
-    const rdw        = get(v, 'rdw');
-    const alp        = get(v, 'alp');
+    const albumin    = get(v, 'albumin');      // g/dL
+    const creatinine = get(v, 'creatinine');   // µmol/L
+    const glucose    = get(v, 'fasting_glucose'); // mg/dL
+    const crp        = get(v, 'hs_crp');       // mg/L
+    const lymphoAbs  = get(v, 'lymphocytes');  // x10^9/L absolute
+    const wbc        = get(v, 'wbc');          // x10^9/L
+    const mcv        = get(v, 'mcv');          // fL
+    const rdw        = get(v, 'rdw');          // %
+    const alp        = get(v, 'alp');          // U/L
 
     if (
       albumin === null || creatinine === null || glucose === null ||
@@ -540,28 +542,35 @@ export const CALCULATED_MARKERS: Record<string, CalculatedMarkerFn> = {
       mcv === null || rdw === null || alp === null || !userAge
     ) return null;
 
-    const albGL     = albumin * 10;
-    const creatUmol = creatinine; // already in µmol/L
+    // Unit conversions (albumin stays in g/dL — NOT g/L)
     const glucMmol  = glucose / 18.0182;
     const crpMgDl   = crp / 10;
     const lnCrp     = Math.log(Math.max(crpMgDl, 0.001));
-    const lympho    = (lymphoAbs / wbc) * 100; // convert absolute → percentage
+    const lymphoPct = (lymphoAbs / wbc) * 100;
 
-    const ms =
-      -19.907
-      - 0.0336  * albGL
-      + 0.0095  * creatUmol
-      + 0.1953  * glucMmol
-      + 0.0954  * lnCrp
-      - 0.0120  * lympho
-      + 0.0268  * mcv
-      + 0.3306  * rdw
-      + 0.00188 * alp
-      + 0.0554  * userAge;
+    // Mortality score (Gompertz proportional hazards model)
+    const xb =
+      -19.9067
+      - 0.0336  * albumin       // g/dL — NOT g/L
+      + 0.0095  * creatinine    // µmol/L
+      + 0.1953  * glucMmol      // mmol/L
+      + 0.0954  * lnCrp         // ln(mg/dL)
+      - 0.0120  * lymphoPct     // %
+      + 0.0268  * mcv           // fL
+      + 0.3306  * rdw           // %
+      + 0.00188 * alp           // U/L
+      + 0.0554  * userAge;      // years
 
-    const mortalityRisk = 1 - Math.exp(-Math.exp(ms) * 0.0076927);
+    // Gompertz cumulative hazard at reference horizon (120 months)
+    // γ = 0.0076927 (Gompertz shape), factor = (e^(120γ) − 1) / γ
+    const gamma = 0.0076927;
+    const cumulFactor = (Math.exp(120 * gamma) - 1) / gamma;
+    const mortalityRisk = 1 - Math.exp(-Math.exp(xb) * cumulFactor);
+
     if (mortalityRisk <= 0 || mortalityRisk >= 1) return null;
-    return 141.50 + Math.log(-Math.log(1 - mortalityRisk)) / 0.09165;
+
+    // Convert mortality risk back to PhenoAge (inverse Gompertz)
+    return 141.50225 + Math.log(-0.00553 * Math.log(1 - mortalityRisk)) / 0.09165;
   },
 };
 

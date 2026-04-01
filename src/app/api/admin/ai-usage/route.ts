@@ -13,22 +13,31 @@ async function fetchElevenLabsSubscription() {
   const key = process.env.ELEVENLABS_API_KEY;
   if (!key) return { ok: false as const, error: 'Not configured' };
   try {
-    const res = await fetch('https://api.elevenlabs.io/v1/user/subscription', {
-      headers: { 'xi-api-key': key },
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) return { ok: false as const, error: `HTTP ${res.status}` };
-    const d = await res.json();
-    return {
-      ok: true as const,
-      characterCount: d.character_count ?? 0,
-      characterLimit: d.character_limit ?? 0,
-      remaining: (d.character_limit ?? 0) - (d.character_count ?? 0),
-      tier: d.tier ?? 'unknown',
-      nextReset: d.next_character_count_reset_unix
-        ? new Date(d.next_character_count_reset_unix * 1000).toISOString()
-        : null,
-    };
+    // Try /v1/user/subscription first, fallback to /v1/user (workspace keys)
+    for (const endpoint of [
+      'https://api.elevenlabs.io/v1/user/subscription',
+      'https://api.elevenlabs.io/v1/user',
+    ]) {
+      const res = await fetch(endpoint, {
+        headers: { 'xi-api-key': key },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) continue;
+      const d = await res.json();
+      // /v1/user nests subscription info
+      const sub = d.subscription ?? d;
+      return {
+        ok: true as const,
+        characterCount: sub.character_count ?? 0,
+        characterLimit: sub.character_limit ?? 0,
+        remaining: (sub.character_limit ?? 0) - (sub.character_count ?? 0),
+        tier: sub.tier ?? d.tier ?? 'unknown',
+        nextReset: sub.next_character_count_reset_unix
+          ? new Date(sub.next_character_count_reset_unix * 1000).toISOString()
+          : null,
+      };
+    }
+    return { ok: false as const, error: 'API key active (TTS works) but subscription endpoint unavailable' };
   } catch (e: unknown) {
     return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
   }

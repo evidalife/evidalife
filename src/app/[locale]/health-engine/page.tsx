@@ -3,6 +3,7 @@ import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import HealthEngineDashboard from '@/components/health/HealthEngineDashboard';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { Link } from '@/i18n/navigation';
 
 export const metadata = { title: 'Health Engine – Evida Life' };
@@ -199,7 +200,9 @@ export default async function HealthEnginePage({
   // ── Not logged in or ?view=info → try sample data from test account ──
   const showSample = !user || params.view === 'info';
   if (showSample) {
-    const sample = await fetchHealthData(supabase, SAMPLE_USER_ID);
+    // Use admin client to bypass RLS — anonymous users can't read other users' data
+    const adminDb = createAdminClient();
+    const sample = await fetchHealthData(adminDb, SAMPLE_USER_ID);
 
     if (sample.reports.length && sample.results.length) {
       // Show sample dashboard with appropriate banner
