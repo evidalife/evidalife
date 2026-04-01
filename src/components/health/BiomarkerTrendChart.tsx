@@ -173,11 +173,11 @@ export default function BiomarkerTrendChart({
           axisLine={false}
           tickLine={false}
           width={40}
-          tickFormatter={(v) => `${v} ${unit}`}
+          tickFormatter={(v) => `${typeof v === 'number' ? parseFloat(v.toFixed(2)) : v} ${unit}`}
         />
         <Tooltip
           contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid rgba(14,57,61,0.12)' }}
-          formatter={(value) => [`${value} ${unit}`, 'Value']}
+          formatter={(value) => [`${typeof value === 'number' ? parseFloat(value.toFixed(2)) : value} ${unit}`, 'Value']}
         />
 
         <Line

@@ -167,7 +167,7 @@ async function fetchHealthData(supabase: any, userId: string) {
     supabase
       .from('biomarkers')
       .select(
-        'id, slug, name, unit, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, item_type, sort_order, is_calculated',
+        'id, slug, name, unit, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, item_type, sort_order, is_calculated, scoring_type',
       )
       .eq('is_active', true),
   ]);

@@ -25,6 +25,7 @@ export type ItemDefinition = {
   sort_order: number | null;
   unit: string | null;
   range_type: string | null;
+  scoring_type: string | null;
   ref_range_low: number | null;
   ref_range_high: number | null;
   optimal_range_low: number | null;
@@ -65,6 +66,7 @@ type FormState = {
   is_active: boolean;
   unit: string;
   range_type: string;
+  scoring_type: string;
   ref_range_low: string;
   ref_range_high: string;
   optimal_range_low: string;
@@ -139,6 +141,7 @@ const EMPTY_FORM: FormState = {
   is_active: true,
   unit: '',
   range_type: 'range',
+  scoring_type: 'standard',
   ref_range_low: '',
   ref_range_high: '',
   optimal_range_low: '',
@@ -626,7 +629,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
   const refresh = useCallback(async () => {
     const { data } = await supabase
       .from('biomarkers')
-      .select('id, slug, name, name_short, description, item_type, is_active, is_calculated, formula, calculation_inputs, sort_order, unit, range_type, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, he_domain, chart_range_low, chart_range_high, has_sex_specific_ranges, ref_range_low_f, ref_range_high_f, optimal_range_low_f, optimal_range_high_f, requires_fasting, fasting_hours, preferred_draw_time, critical_low, critical_high, age_stratified, cvi_pct, cva_pct, assay_note, loinc_code')
+      .select('id, slug, name, name_short, description, item_type, is_active, is_calculated, formula, calculation_inputs, sort_order, unit, range_type, scoring_type, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, he_domain, chart_range_low, chart_range_high, has_sex_specific_ranges, ref_range_low_f, ref_range_high_f, optimal_range_low_f, optimal_range_high_f, requires_fasting, fasting_hours, preferred_draw_time, critical_low, critical_high, age_stratified, cvi_pct, cva_pct, assay_note, loinc_code')
       .order('sort_order', { ascending: true });
     if (data) setItems(data as ItemDefinition[]);
   }, [supabase]);
@@ -656,6 +659,7 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
       is_active:   item.is_active ?? true,
       unit:        item.unit ?? '',
       range_type:  item.range_type ?? 'range',
+      scoring_type: item.scoring_type ?? 'standard',
       ref_range_low:     item.ref_range_low  != null ? String(item.ref_range_low)  : '',
       ref_range_high:    item.ref_range_high != null ? String(item.ref_range_high) : '',
       optimal_range_low:  item.optimal_range_low  != null ? String(item.optimal_range_low)  : '',
@@ -825,10 +829,12 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
       sort_order:  form.sort_order ? Number(form.sort_order) : null,
       is_active:   form.is_active,
       unit:        form.unit || null,
-      range_type:  rt,
-      ref_range_low:     rt === 'lower_is_better'  ? null : parseNum(form.ref_range_low),
+      range_type:   rt,
+      scoring_type: form.scoring_type || 'standard',
+      // age_ratio: ref/opt high hold ratio thresholds (e.g. 1.0 / 0.8); low bounds unused
+      ref_range_low:     (rt === 'lower_is_better' || form.scoring_type === 'age_ratio')  ? null : parseNum(form.ref_range_low),
       ref_range_high:    rt === 'higher_is_better' ? null : parseNum(form.ref_range_high),
-      optimal_range_low: rt === 'lower_is_better'  ? null : parseNum(form.optimal_range_low),
+      optimal_range_low: (rt === 'lower_is_better' || form.scoring_type === 'age_ratio')  ? null : parseNum(form.optimal_range_low),
       optimal_range_high:rt === 'higher_is_better' ? null : parseNum(form.optimal_range_high),
       he_domain:   form.he_domain || null,
       // Chart range
@@ -1364,10 +1370,25 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
                     {RANGE_TYPES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
                   </select>
                 </Field>
+                <Field label="Scoring Method" hint="How the raw value is converted to a 0–100 score">
+                  <select className={selectCls} value={form.scoring_type} onChange={(e) => setForm((f) => ({ ...f, scoring_type: e.target.value }))}>
+                    <option value="standard">Standard — score against absolute ranges</option>
+                    <option value="age_ratio">Age Ratio — score (value ÷ patient age at test)</option>
+                  </select>
+                  {form.scoring_type === 'age_ratio' && (
+                    <p className="mt-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">
+                      <strong>Age Ratio mode:</strong> the value is divided by the patient&apos;s chronological age at the time of the test before scoring.
+                      Set <em>Optimal Max</em> and <em>Max Normal</em> below as ratio thresholds — e.g. <strong>0.8</strong> (optimal) and <strong>1.0</strong> (normal).
+                      A ratio of 0.8 means the bio-age is 80% of real age. Ref/Opt Low are ignored.
+                    </p>
+                  )}
+                </Field>
                 {form.range_type && (
                   <>
-                    <RangeBar refLow={previewRanges.refLow} refHigh={previewRanges.refHigh} optLow={previewRanges.optLow} optHigh={previewRanges.optHigh} />
-                    <RangeFields form={form} setForm={setForm} rangeType={form.range_type} sexSpecific={form.has_sex_specific_ranges} />
+                    {form.scoring_type !== 'age_ratio' && (
+                      <RangeBar refLow={previewRanges.refLow} refHigh={previewRanges.refHigh} optLow={previewRanges.optLow} optHigh={previewRanges.optHigh} />
+                    )}
+                    <RangeFields form={form} setForm={setForm} rangeType={form.scoring_type === 'age_ratio' ? 'lower_is_better' : form.range_type} sexSpecific={form.has_sex_specific_ranges} />
                     <div className="flex gap-3 text-xs text-[#1c2a2b]/50 pt-1">
                       <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-200" />Normal range</span>
                       <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-emerald-400/70" />Optimal range</span>

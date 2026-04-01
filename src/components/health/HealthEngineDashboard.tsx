@@ -43,6 +43,7 @@ interface BiomarkerDef {
   ref_range_high: number | null;
   optimal_range_low: number | null;
   optimal_range_high: number | null;
+  scoring_type: string | null;
   item_type: string | null;
   sort_order: number | null;
   is_calculated: boolean | null;
@@ -235,12 +236,14 @@ function fmtDateFull(iso: string, lang: string): string {
 }
 
 // ── Continuous Scoring ────────────────────────────────────────────────────────
-// Returns 0–100 with realistic granularity (not just 100/75/50/25)
+// Returns 0–100 with realistic granularity (not just 100/75/50/25).
+// All paths clamped to [0, 100].
 function continuousScore(
   value: number,
   refLow: number | null, refHigh: number | null,
   optLow: number | null, optHigh: number | null,
 ): number {
+  const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
   const hRL = refLow != null, hRH = refHigh != null;
   const hOL = optLow != null, hOH = optHigh != null;
 
@@ -257,16 +260,16 @@ function continuousScore(
       if (value >= oL && value <= oH) {
         // In optimal: 82–100 based on centering (wider spread for realism)
         const dist = Math.abs(value - oMid) / oHalf;
-        return Math.round(100 - 18 * dist);
+        return clamp(100 - 18 * dist);
       }
       if (value >= rL && value <= rH) {
         // In reference, not optimal: 55–81
         if (value < oL) {
           const pct = (oL - value) / (oL - rL || 1);
-          return Math.round(81 - 26 * pct);
+          return clamp(81 - 26 * pct);
         } else {
           const pct = (value - oH) / (rH - oH || 1);
-          return Math.round(81 - 26 * pct);
+          return clamp(81 - 26 * pct);
         }
       }
     } else {
@@ -275,34 +278,37 @@ function continuousScore(
       const half = span / 2;
       if (value >= rL && value <= rH) {
         const dist = Math.abs(value - mid) / half;
-        return Math.round(90 - 22 * dist);
+        return clamp(90 - 22 * dist);
       }
     }
 
     // Out of reference
     const overshoot = value < rL ? (rL - value) / span : (value - rH) / span;
-    if (overshoot <= 0.15) return Math.round(50 - overshoot * 80);
-    if (overshoot <= 0.5) return Math.round(42 - overshoot * 50);
-    return Math.max(0, Math.round(25 - overshoot * 30));
+    if (overshoot <= 0.15) return clamp(50 - overshoot * 80);
+    if (overshoot <= 0.5) return clamp(42 - overshoot * 50);
+    return clamp(25 - overshoot * 30);
   }
 
   // Only upper bound (lower is better)
   if (!hRL && hRH) {
     const rH = refHigh!;
     const opt = hOH ? optHigh! : rH * 0.8;
+    // Negative values on lower-is-better markers are always optimal
+    // (e.g. AIP = log10(TG/HDL): negative means HDL > TG → excellent CV health)
+    if (value <= 0) return 100;
     if (value <= opt * 0.5) {
-      return Math.round(98 - 4 * (value / (opt * 0.5 || 1)));
+      return clamp(98 - 4 * (value / (opt * 0.5 || 1)));
     }
     if (value <= opt) {
       const ratio = (value - opt * 0.5) / (opt * 0.5 || 1);
-      return Math.round(94 - 12 * ratio);
+      return clamp(94 - 12 * ratio);
     }
     if (value <= rH) {
       const pct = (value - opt) / (rH - opt || 1);
-      return Math.round(81 - 26 * pct);
+      return clamp(81 - 26 * pct);
     }
     const overshoot = (value - rH) / (rH || 1);
-    return Math.max(0, Math.round(50 - overshoot * 65));
+    return clamp(50 - overshoot * 65);
   }
 
   // Only lower bound (higher is better)
@@ -310,18 +316,18 @@ function continuousScore(
     const rL = refLow!;
     const opt = hOL ? optLow! : rL * 1.2;
     if (value >= opt * 1.5) {
-      return Math.round(94 - 6 * Math.min(1, (value - opt * 1.5) / (opt || 1)));
+      return clamp(94 - 6 * Math.min(1, (value - opt * 1.5) / (opt || 1)));
     }
     if (value >= opt) {
       const excess = (value - opt) / (opt * 0.5 || 1);
-      return Math.round(98 - 4 * Math.min(1, excess));
+      return clamp(98 - 4 * Math.min(1, excess));
     }
     if (value >= rL) {
       const pct = (opt - value) / (opt - rL || 1);
-      return Math.round(81 - 26 * pct);
+      return clamp(81 - 26 * pct);
     }
     const undershoot = (rL - value) / (rL || 1);
-    return Math.max(0, Math.round(50 - undershoot * 65));
+    return clamp(50 - undershoot * 65);
   }
 
   return 70; // No ranges available
@@ -575,18 +581,18 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
       }
     }
 
-    // Bio-clock ratio scoring: score pheno_age / grim_age_v2 as (value / chronoAge)
-    // with ref_high=1.0 and opt_high=0.8 — same logic as DunedinPACE.
-    // Ratio < 0.8 → optimal, 0.8–1.0 → good, > 1.0 → risk.
+    // Bio-clock ratio scoring: markers with scoring_type='age_ratio' are scored as
+    // (value ÷ chronologicalAge) against ref_range_high / optimal_range_high stored in the DB.
+    // e.g. pheno_age=32, chronoAge=40 → ratio=0.80 → optimal (threshold 0.8 in DB)
+    // Thresholds are fully configurable from the admin panel — no hardcoded slugs.
     const birthDate = profile?.date_of_birth ? new Date(profile.date_of_birth) : null;
-    const BIO_CLOCK_RATIO_SLUGS = new Set(['pheno_age', 'grim_age_v2']);
-    const bioClockRatioScore = (value: number, testDateStr: string): number => {
+    const bioClockRatioScore = (value: number, testDateStr: string, def: BiomarkerDef): number => {
       if (!birthDate) return 70;
       const testDate = new Date(testDateStr + 'T00:00:00');
       const chronoAge = (testDate.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
       if (chronoAge <= 0) return 70;
       const ratio = value / chronoAge;
-      return continuousScore(ratio, null, 1.0, null, 0.8);
+      return continuousScore(ratio, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high);
     };
 
     // Build domains
@@ -611,18 +617,18 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
           }
         }
 
-        // Continuous score — bio-clock markers scored as ratio to chronological age
-        const isBioClockRatio = BIO_CLOCK_RATIO_SLUGS.has(def.slug);
+        // Continuous score — age_ratio markers: divide value by chronoAge before scoring
+        const isAgeRatio = def.scoring_type === 'age_ratio';
         const latestDate = displayDates[displayDates.length - 1] ?? '';
         const latestScore = latest != null
-          ? (isBioClockRatio
-              ? bioClockRatioScore(latest, latestDate)
+          ? (isAgeRatio
+              ? bioClockRatioScore(latest, latestDate, def)
               : continuousScore(latest, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high))
           : 50;
 
         const previousScore = previous != null
-          ? (isBioClockRatio
-              ? bioClockRatioScore(previous, latestDate)
+          ? (isAgeRatio
+              ? bioClockRatioScore(previous, latestDate, def)
               : continuousScore(previous, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high))
           : null;
 
@@ -647,8 +653,8 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
             const entry = mData.get(m.defId)?.get(date);
             if (!entry) return null;
             const def = defMap.get(m.defId)!;
-            if (BIO_CLOCK_RATIO_SLUGS.has(def.slug)) {
-              return bioClockRatioScore(entry.value, date);
+            if (def.scoring_type === 'age_ratio') {
+              return bioClockRatioScore(entry.value, date, def);
             }
             return continuousScore(entry.value, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high);
           })
@@ -897,11 +903,8 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
   }, [highlightedSection]);
 
   const [expandedDomain, setExpandedDomain] = useState<string | null>(null);
-  const [expandedMarker, setExpandedMarker] = useState<string | null>(null);
-  const [expandedReports, setExpandedReports] = useState<Set<string>>(() => {
-    const newest = [...reports].sort((a, b) => b.test_date.localeCompare(a.test_date))[0]?.test_date;
-    return newest ? new Set([newest]) : new Set();
-  });
+  const [expandedMarkerDomain, setExpandedMarkerDomain] = useState<string | null>(null);
+  const [expandedReports, setExpandedReports] = useState<Set<string>>(new Set());
 
   const lastDate = dash.displayDates[dash.displayDates.length - 1];
 
@@ -1078,7 +1081,7 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={dash.longevityScoreData} margin={{ top: 4, right: 4, bottom: 0, left: -28 }}>
                         <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
-                        <YAxis domain={['dataMin - 5', 'dataMax + 3']} tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={4} />
+                        <YAxis domain={['dataMin - 5', 'dataMax + 3']} tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={4} tickFormatter={(v: number) => parseFloat(v.toFixed(2)).toString()} />
                         <RTooltip
                           formatter={(v: unknown) => [v as number, 'Score']}
                           contentStyle={{ fontSize: 11, background: '#0e393d', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8 }}
@@ -1114,7 +1117,10 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
               if (paceProjected != null) bioAgeValues.push(paceProjected);
               const avgBioAge = bioAgeValues.length > 0 ? +(bioAgeValues.reduce((a, b) => a + b, 0) / bioAgeValues.length).toFixed(1) : null;
               const avgDiff = avgBioAge != null ? +(avgBioAge - chronoAge).toFixed(1) : null;
-              const bioGaugeScore = avgDiff != null ? Math.max(0, Math.min(100, Math.round(50 - avgDiff * 5))) : 50;
+              // Use epigenetics domain average from continuousScore (matches domain cards)
+              const epiDomainSummary = dash.domains.find((d: { key: string }) => d.key === 'epigenetics');
+              const epiLatestScore = epiDomainSummary?.scores[epiDomainSummary.scores.length - 1];
+              const bioGaugeScore = (epiLatestScore != null && epiLatestScore > 0) ? epiLatestScore : (avgDiff != null ? Math.max(0, Math.min(100, Math.round(50 - avgDiff * 5))) : 50);
 
               // Best / worst clock
               const CLOCK_SLUGS = [
@@ -1135,26 +1141,36 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
               const worst = clockEntries.length > 1 ? clockEntries.reduce((a, b) => (a.diff! > b.diff! ? a : b)) : null;
 
               // Combined average bio age chart data (single line)
+              // Only include dates where ALL active clocks have data so the
+              // denominator stays constant and the trend line is comparable.
               const CLOCKS_META: { slug: string; isDunedin?: boolean }[] = [
                 { slug: 'phenoage' },
                 { slug: 'grimage_v2' },
                 { slug: 'dunedinpace', isDunedin: true },
               ];
+              // Determine which clocks actually have ANY data at all
+              const activeClocks = CLOCKS_META.filter(c => {
+                const clock = dash.bioClocks[c.slug];
+                return clock && clock.values.some((v: number | null) => v != null);
+              });
               const chartData = dash.displayDates.map((dateStr: string, di: number) => {
                 // Chronological age at each test date (increases over time)
                 const testDate = new Date(dateStr + 'T00:00:00');
-                const chronAtDate = +((testDate.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)).toFixed(1);
+                const chronAtDate = +((testDate.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)).toFixed(2);
                 const ages: number[] = [];
-                for (const c of CLOCKS_META) {
+                for (const c of activeClocks) {
                   const clock = dash.bioClocks[c.slug];
-                  if (!clock || clock.values[di] == null) continue;
+                  if (!clock || clock.values[di] == null) break; // missing → skip entire date
                   if (c.isDunedin) {
-                    ages.push(+((clock.values[di] as number) * chronAtDate).toFixed(1));
+                    ages.push(+((clock.values[di] as number) * chronAtDate).toFixed(2));
                   } else {
                     ages.push(clock.values[di] as number);
                   }
                 }
-                const avg = ages.length > 0 ? +(ages.reduce((a, b) => a + b, 0) / ages.length).toFixed(1) : null;
+                // Only produce avg when ALL active clocks contributed
+                const avg = ages.length === activeClocks.length && ages.length > 0
+                  ? +(ages.reduce((a, b) => a + b, 0) / ages.length).toFixed(2)
+                  : null;
                 return { date: dash.displayLabels[di], avg, chron: chronAtDate };
               });
               const allAvgs = chartData.map(d => d.avg).filter((v): v is number => v != null);
@@ -1223,9 +1239,9 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -28 }}>
                             <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
-                            <YAxis domain={[bioYMin, bioYMax]} tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={4} />
+                            <YAxis domain={[bioYMin, bioYMax]} tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={4} tickFormatter={(v: number) => parseFloat(v.toFixed(2)).toString()} />
                             <RTooltip
-                              formatter={(v) => typeof v === 'number' ? v.toFixed(1) : String(v ?? '')}
+                              formatter={(v) => typeof v === 'number' ? parseFloat(v.toFixed(2)).toString() : String(v ?? '')}
                               contentStyle={{ fontSize: 11, background: '#0e393d', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8 }}
                               labelStyle={{ color: 'rgba(255,255,255,.5)' }}
                               itemStyle={{ fontSize: 11 }}
@@ -1427,6 +1443,16 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
           const paceRate = dash.bioClocks['dunedinpace']?.latest;
           const paceProjected = paceRate != null ? +(paceRate * chronoAge).toFixed(1) : null;
 
+          // Look up canonical scores from the epigenetics domain (computed via continuousScore)
+          // so the detail gauges match the domain card scores exactly.
+          const epiDom = dash.domains.find((d: { key: string }) => d.key === 'epigenetics');
+          const epiScoreByNorm: Record<string, number> = {};
+          if (epiDom) {
+            for (const m of epiDom.markers) {
+              epiScoreByNorm[m.slug.toLowerCase().replace(/_/g, '')] = m.latestScore;
+            }
+          }
+
           // Build individual chart data for each clock — always show all 3, grey out if no data
           const clockCards = CLOCKS_DETAIL.map(c => {
             const clock = dash.bioClocks[c.slug];
@@ -1436,7 +1462,8 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
             const latestVal = c.isDunedin ? paceRate : clock?.latest ?? null;
             const projectedAge = c.isDunedin ? paceProjected : clock?.latest ?? null;
             const diff = projectedAge != null ? +(projectedAge - chronoAge).toFixed(1) : null;
-            const gaugeScore = diff != null ? Math.max(0, Math.min(100, Math.round(50 - diff * 5))) : null;
+            // Use canonical continuousScore from domain data (matches the expandable domain cards)
+            const gaugeScore = epiScoreByNorm[c.slug.replace(/_/g, '')] ?? (diff != null ? Math.max(0, Math.min(100, Math.round(50 - diff * 5))) : null);
 
             // Individual trend data (chronological age increases at each test date)
             const trendData = dash.displayDates.map((dateStr: string, di: number) => {
@@ -1528,9 +1555,9 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
                           <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={c.trendData} margin={{ top: 4, right: 4, bottom: 0, left: -28 }}>
                               <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'rgba(255,255,255,.3)' }} axisLine={false} tickLine={false} />
-                              <YAxis domain={[c.yMin, c.yMax]} tick={{ fontSize: 9, fill: 'rgba(255,255,255,.3)' }} axisLine={false} tickLine={false} tickCount={4} />
+                              <YAxis domain={[c.yMin, c.yMax]} tick={{ fontSize: 9, fill: 'rgba(255,255,255,.3)' }} axisLine={false} tickLine={false} tickCount={4} tickFormatter={(v: number) => parseFloat(v.toFixed(2)).toString()} />
                               <RTooltip
-                                formatter={(v) => typeof v === 'number' ? v.toFixed(1) : String(v ?? '')}
+                                formatter={(v) => typeof v === 'number' ? parseFloat(v.toFixed(2)).toString() : String(v ?? '')}
                                 contentStyle={{ fontSize: 10, background: '#0e393d', border: '1px solid rgba(255,255,255,.15)', borderRadius: 6 }}
                                 labelStyle={{ color: 'rgba(255,255,255,.5)' }}
                               />
@@ -1806,14 +1833,13 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
             );
 
             function renderMarkerCard(m: ProcessedMarker, domainKey: string, weightPct?: number) {
-              const mKey = `${domainKey}-${m.defId}`;
-              const isOpen = expandedMarker === mKey;
+              const isOpen = expandedMarkerDomain === domainKey;
               return (
                 <div key={m.defId}
                   className={`bg-white rounded-xl border transition-all cursor-pointer ${
                     isOpen ? 'border-[#0e393d]/15 shadow-md' : 'border-[#1c2a2b]/[.06] hover:shadow-md hover:-translate-y-0.5'
                   }`}
-                  onClick={() => setExpandedMarker(isOpen ? null : mKey)}
+                  onClick={() => setExpandedMarkerDomain(isOpen ? null : domainKey)}
                   style={{ borderTop: isOpen ? '3px solid #0e393d' : `3px solid ${statusColor(m.latestStatus)}` }}
                 >
                   <div className="p-4">
