@@ -5,6 +5,7 @@ import PublicFooter from '@/components/PublicFooter';
 import { createClient } from '@/lib/supabase/server';
 import { T } from './translations';
 import BirthdayNudgeBanner from '@/components/health/BirthdayNudgeBanner';
+import HealthGauge from '@/components/health/HealthGauge';
 
 export const metadata = { title: 'Dashboard – Evida Life' };
 
@@ -38,13 +39,7 @@ function flagToScore(flag: StatusFlag): number {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function scoreColor(score: number): string {
-  if (score >= 85) return '#10b981';
-  if (score >= 70) return '#f59e0b';
-  if (score >= 55) return '#f97316';
-  return '#ef4444';
-}
-
+// Score label for gauge sub-text
 const SCORE_LABELS: Record<Lang, [string, string, string, string]> = {
   de: ['Ausgezeichnet', 'Gut', 'Mäßig', 'Verbesserungsbedarf'],
   en: ['Excellent', 'Good', 'Fair', 'Needs attention'],
@@ -87,55 +82,12 @@ function fmtDate(iso: string | null, lang: Lang): string {
   });
 }
 
-// ─── SVG Gauge (matches health-engine style) ─────────────────────────────────
-
-const GAUGE_R = 52;
-const GAUGE_CX = 70;
-const GAUGE_CIRC = 2 * Math.PI * GAUGE_R;
-const GAUGE_ARC  = GAUGE_CIRC * (270 / 360);
-const GAUGE_GAP  = GAUGE_CIRC - GAUGE_ARC;
-
-function ScoreGauge({ score, lang, sub }: { score: number; lang: Lang; sub?: string }) {
-  const filled  = GAUGE_ARC * (score / 100);
-  const color   = scoreColor(score);
-  const label   = scoreLabel(score, lang);
-
-  return (
-    <div className="flex flex-col items-center">
-      <svg width="140" height="140" viewBox="0 0 140 140">
-        <circle cx={GAUGE_CX} cy={GAUGE_CX} r={GAUGE_R}
-          fill="none" stroke="#0e393d12" strokeWidth="9"
-          strokeDasharray={`${GAUGE_ARC} ${GAUGE_GAP}`}
-          strokeLinecap="round" transform={`rotate(135 ${GAUGE_CX} ${GAUGE_CX})`} />
-        <circle cx={GAUGE_CX} cy={GAUGE_CX} r={GAUGE_R}
-          fill="none" stroke={color} strokeWidth="9"
-          strokeDasharray={`${filled} ${GAUGE_CIRC - filled}`}
-          strokeLinecap="round" transform={`rotate(135 ${GAUGE_CX} ${GAUGE_CX})`}
-          style={{ transition: 'stroke-dasharray 0.6s ease' }} />
-        <text x={GAUGE_CX} y={GAUGE_CX - 4} textAnchor="middle" dominantBaseline="middle"
-          fontSize="26" fontWeight="700" fill={color} fontFamily="serif">
-          {Math.round(score)}
-        </text>
-        <text x={GAUGE_CX} y={GAUGE_CX + 18} textAnchor="middle" dominantBaseline="middle"
-          fontSize="10" fill="#1c2a2b55" fontFamily="sans-serif">/ 100</text>
-      </svg>
-      <p className="text-sm font-semibold mt-1" style={{ color }}>{label}</p>
-      {sub && <p className="text-[11px] text-[#1c2a2b]/35 mt-0.5">{sub}</p>}
-    </div>
-  );
-}
+// ─── Empty gauge placeholder ─────────────────────────────────────────────────
 
 function EmptyGauge({ hint }: { hint: string }) {
   return (
     <div className="flex flex-col items-center py-2 text-center">
-      <svg width="140" height="140" viewBox="0 0 140 140">
-        <circle cx={GAUGE_CX} cy={GAUGE_CX} r={GAUGE_R}
-          fill="none" stroke="#0e393d12" strokeWidth="9"
-          strokeDasharray={`${GAUGE_ARC} ${GAUGE_GAP}`}
-          strokeLinecap="round" transform={`rotate(135 ${GAUGE_CX} ${GAUGE_CX})`} />
-        <text x={GAUGE_CX} y={GAUGE_CX} textAnchor="middle" dominantBaseline="middle"
-          fontSize="13" fill="#1c2a2b40" fontFamily="sans-serif">—</text>
-      </svg>
+      <HealthGauge score={0} size="md" />
       <p className="text-xs text-[#1c2a2b]/35 mt-1 max-w-[180px]">{hint}</p>
     </div>
   );
@@ -450,13 +402,16 @@ export default async function DashboardPage() {
           <Link href="/health-engine" className="rounded-2xl border border-[#0e393d]/10 bg-white p-6 flex flex-col items-center hover:border-[#0e393d]/25 hover:shadow-sm transition group">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84] mb-4">{t.score}</p>
             {longevityScore != null && longevityScore > 0 ? (
-              <ScoreGauge
-                score={longevityScore}
-                lang={lang}
-                sub={lang === 'de'
-                  ? `Basiert auf ${nonEpiDomainCount} Gesundheitsbereichen`
-                  : `Based on ${nonEpiDomainCount} health domains`}
-              />
+              <div className="flex flex-col items-center">
+                <HealthGauge
+                  score={longevityScore}
+                  size="md"
+                  label={scoreLabel(longevityScore, lang)}
+                  subLabel={lang === 'de'
+                    ? `Basiert auf ${nonEpiDomainCount} Gesundheitsbereichen`
+                    : `Based on ${nonEpiDomainCount} health domains`}
+                />
+              </div>
             ) : (
               <EmptyGauge hint={t.scoreNoneHint} />
             )}
@@ -495,10 +450,11 @@ export default async function DashboardPage() {
 
             {bioAgeScore != null && bioAgeScore > 0 ? (
               <>
-                <ScoreGauge
+                <HealthGauge
                   score={bioAgeScore}
-                  lang={lang}
-                  sub={bioAgeDiff != null
+                  size="md"
+                  label={scoreLabel(bioAgeScore, lang)}
+                  subLabel={bioAgeDiff != null
                     ? (bioAgeDiff < 0
                       ? (lang === 'de'
                         ? `↓ ${Math.abs(bioAgeDiff)} Jahre jünger als chronologisches Alter`
