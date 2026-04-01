@@ -207,13 +207,14 @@ function InfoModal({ category, lang, onClose }: { category: DDCategory; lang: La
 // ─── Category card (compact horizontal) ───────────────────────────────────────
 
 function CategoryCard({
-  category, servings, lang, onIncrement, onDecrement, pending, onInfoClick,
+  category, servings, lang, onIncrement, onDecrement, onToggle, pending, onInfoClick,
 }: {
   category:    DDCategory;
   servings:    number;
   lang:        Lang;
   onIncrement: () => void;
   onDecrement: () => void;
+  onToggle:    () => void;
   pending:     boolean;
   onInfoClick: () => void;
 }) {
@@ -264,8 +265,10 @@ function CategoryCard({
         </svg>
       </button>
 
-      {/* ② Progress ring 52px — emoji always inside */}
-      <ProgressRing progress={progress} done={done} icon={category.icon} />
+      {/* ② Progress ring 52px — click to toggle complete */}
+      <button type="button" onClick={onToggle} disabled={pending} className="shrink-0" style={{ touchAction: 'manipulation' }}>
+        <ProgressRing progress={progress} done={done} icon={category.icon} />
+      </button>
 
       {/* ③ Category name + optional ✓ */}
       <div className="flex-1 min-w-0">
@@ -508,6 +511,34 @@ export default function DailyDozenTracker({
     }, 2000);
   }, [upsertEntry, updateStreak, selectedDate, today]);
 
+  // ── Toggle complete (click ring to fill / unfill all servings) ─────────────
+
+  const toggleComplete = useCallback((categoryId: string) => {
+    const date = selectedDate;
+    const cat  = categories.find((c) => c.id === categoryId);
+    if (!cat) return;
+    const current = servingsMap[categoryId] ?? 0;
+    const isDone  = current >= cat.target_servings;
+    const next    = isDone ? 0 : cat.target_servings;
+
+    setServingsMap((prev) => {
+      const newMap = { ...prev, [categoryId]: next };
+
+      clearTimeout(debounceRef.current[categoryId]);
+      debounceRef.current[categoryId] = setTimeout(async () => {
+        await upsertEntry(categoryId, next, date);
+        setRefreshKey((k) => k + 1);
+      }, 400);
+
+      return newMap;
+    });
+
+    if (streakTimeoutRef.current) clearTimeout(streakTimeoutRef.current);
+    streakTimeoutRef.current = setTimeout(() => {
+      updateStreak(servingsMapRef.current, date);
+    }, 2000);
+  }, [upsertEntry, updateStreak, selectedDate, servingsMap, categories]);
+
   // ── Derived ────────────────────────────────────────────────────────────────
 
   const modalCat = modalCatId ? categories.find((c) => c.id === modalCatId) ?? null : null;
@@ -590,6 +621,7 @@ export default function DailyDozenTracker({
             lang={lang}
             onIncrement={() => changeServings(cat.id, +1)}
             onDecrement={() => changeServings(cat.id, -1)}
+            onToggle={() => toggleComplete(cat.id)}
             pending={!!pending[cat.id]}
             onInfoClick={() => setModalCatId(cat.id)}
           />
