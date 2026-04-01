@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server';
 import { convertLabResultsBatch } from '@/lib/lab-results/convert-and-save';
 import { computeStatusFlag } from '@/lib/lab-results/flagging';
 import { generateReportNumber } from '@/lib/lab-results/report-number';
+import { computeAndInsertCalculatedMarkers } from '@/lib/lab-results/compute-calculated';
 
 export async function POST(req: NextRequest) {
   try {
@@ -102,7 +103,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: insertErr.message }, { status: 500 });
     }
 
-    // 5. Track PDF upload — keep file for 7 days for re-extraction, then auto-delete
+    // 5. Auto-compute calculated biomarkers (PhenoAge, De Ritis, FIB-4, etc.)
+    const adminDb = createAdminClient();
+    const calcCount = await computeAndInsertCalculatedMarkers({
+      supabase: adminDb,
+      userId: user.id,
+      labReportId: report.id,
+      testDate: test_date,
+    });
+
+    // 6. Track PDF upload — keep file for 7 days for re-extraction, then auto-delete
     if (storagePath) {
       const deleteAfter = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
       await supabase.from('lab_pdf_uploads').insert({
@@ -119,7 +129,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true, reportId: report.id, count: inserts.length });
+    return NextResponse.json({ success: true, reportId: report.id, count: inserts.length, calculatedCount: calcCount });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+export const maxDuration = 30;
+
 // ElevenLabs voice IDs — all support eleven_multilingual_v2
 // Rachel: natural, warm female voice — works well across all 5 languages
 const ELEVENLABS_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'; // Rachel
@@ -55,7 +57,11 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       const err = await response.text();
-      return NextResponse.json({ error: `ElevenLabs error: ${err}` }, { status: 500 });
+      console.error('[TTS] ElevenLabs error:', response.status, err);
+      // Return 502 (not 501) so the client knows TTS IS configured but failed
+      // 501 = not configured → triggers browser fallback
+      // 502 = configured but error → client should show error, not use browser voice
+      return NextResponse.json({ error: `ElevenLabs error: ${err}` }, { status: 502 });
     }
 
     const audioBuffer = Buffer.from(await response.arrayBuffer());

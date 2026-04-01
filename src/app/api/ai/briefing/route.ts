@@ -3,6 +3,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
+export const maxDuration = 60;
+
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 type Lang = typeof VALID_LANGS[number];
 
@@ -136,6 +138,48 @@ export async function POST(req: NextRequest) {
 
   if (!reports.length || !results.length) {
     return NextResponse.json({ error: 'No lab data found' }, { status: 404 });
+  }
+
+  // ── Caching: return existing briefing if lab data hasn't changed ─────────
+  // Find the latest lab_result updated_at or created_at to use as a freshness marker
+  const latestReportDate = reports[reports.length - 1]?.test_date ?? '';
+
+  const { data: cachedBriefing } = await adminDb
+    .from('health_briefings')
+    .select('id, steps, summary_context, created_at')
+    .eq('user_id', user.id)
+    .eq('lang', lang)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (cachedBriefing?.steps && Array.isArray(cachedBriefing.steps) && cachedBriefing.steps.length > 0) {
+    // Check if any lab_results were modified after the briefing was created
+    const briefingTime = cachedBriefing.created_at;
+    const { count: newerResults } = await adminDb
+      .from('lab_results')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .is('deleted_at', null)
+      .gt('created_at', briefingTime);
+
+    // Also check if any reports were added after the briefing
+    const { count: newerReports } = await adminDb
+      .from('lab_reports')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .in('status', ['confirmed', 'completed'])
+      .gt('created_at', briefingTime);
+
+    if ((newerResults ?? 0) === 0 && (newerReports ?? 0) === 0) {
+      // Data hasn't changed — return cached briefing
+      const ctx = cachedBriefing.summary_context as { summary?: string } | null;
+      return NextResponse.json({
+        steps: cachedBriefing.steps,
+        summary: ctx?.summary ?? '',
+        cached: true,
+      });
+    }
   }
 
   // Build domain meta — weights from DB, falling back to defaults
@@ -338,45 +382,59 @@ Do not include markdown, explanations, or anything outside the JSON object.`;
   const client = new Anthropic({ apiKey });
   const startMs = Date.now();
 
-  try {
-    const message = await client.messages.create({
-      model: briefingModel,
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: `Generate my health briefing based on this data:\n\n${summary}` }],
-    });
+  const MAX_RETRIES = 2;
+  let lastError: unknown;
 
-    const content = message.content[0];
-    if (content.type !== 'text') {
-      return NextResponse.json({ error: 'Unexpected response type' }, { status: 500 });
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const message = await client.messages.create({
+        model: briefingModel,
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: `Generate my health briefing based on this data:\n\n${summary}` }],
+      });
+
+      const content = message.content[0];
+      if (content.type !== 'text') {
+        return NextResponse.json({ error: 'Unexpected response type' }, { status: 500 });
+      }
+
+      const raw = content.text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+      const parsed: { steps: BriefingStep[] } = JSON.parse(raw);
+
+      if (!parsed.steps || !Array.isArray(parsed.steps)) {
+        return NextResponse.json({ error: 'Invalid briefing format' }, { status: 500 });
+      }
+
+      const durationMs = Date.now() - startMs;
+      const tokensUsed = (message.usage?.input_tokens ?? 0) + (message.usage?.output_tokens ?? 0);
+
+      // Log to health_briefings (fire-and-forget — don't block response)
+      adminDb.from('health_briefings').insert({
+        user_id: user.id,
+        lang,
+        steps: parsed.steps,
+        summary_context: { summary },
+        model_used: briefingModel,
+        tokens_used: tokensUsed,
+        duration_ms: durationMs,
+      }).then(({ error }) => {
+        if (error) console.error('[briefing] log error:', error.message);
+      });
+
+      return NextResponse.json({ steps: parsed.steps, summary });
+    } catch (e: unknown) {
+      lastError = e;
+      // Retry on 529 Overloaded with exponential backoff
+      const status = (e as { status?: number })?.status;
+      if (status === 529 && attempt < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt))); // 1s, 2s
+        continue;
+      }
+      break;
     }
-
-    const raw = content.text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
-    const parsed: { steps: BriefingStep[] } = JSON.parse(raw);
-
-    if (!parsed.steps || !Array.isArray(parsed.steps)) {
-      return NextResponse.json({ error: 'Invalid briefing format' }, { status: 500 });
-    }
-
-    const durationMs = Date.now() - startMs;
-    const tokensUsed = (message.usage?.input_tokens ?? 0) + (message.usage?.output_tokens ?? 0);
-
-    // Log to health_briefings (fire-and-forget — don't block response)
-    adminDb.from('health_briefings').insert({
-      user_id: user.id,
-      lang,
-      steps: parsed.steps,
-      summary_context: { summary },
-      model_used: briefingModel,
-      tokens_used: tokensUsed,
-      duration_ms: durationMs,
-    }).then(({ error }) => {
-      if (error) console.error('[briefing] log error:', error.message);
-    });
-
-    return NextResponse.json({ steps: parsed.steps, summary });
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: msg }, { status: 500 });
   }
+
+  const msg = lastError instanceof Error ? lastError.message : String(lastError);
+  return NextResponse.json({ error: msg }, { status: 500 });
 }

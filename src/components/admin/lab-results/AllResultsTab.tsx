@@ -121,21 +121,133 @@ const HE_DOMAIN_ORDER = [
   'nutrients', 'organ_function', 'longevity', 'fitness',
 ];
 
+type BiomarkerDef = {
+  id: string;
+  slug: string;
+  name: Record<string, string> | string | null;
+  he_domain: string | null;
+  unit: string | null;
+  ref_range_low: number | null;
+  ref_range_high: number | null;
+  optimal_range_low: number | null;
+  optimal_range_high: number | null;
+};
+
 function ReportResults({
   results,
   supabase,
   addToast,
   onResultUpdated,
+  reportId,
+  userId,
+  testDate,
+  onResultAdded,
 }: {
   results: LabResultSummary[];
   supabase: ReturnType<typeof createClient>;
   addToast: (msg: string, type?: Toast['type']) => void;
   onResultUpdated?: (id: string, value: number, unit: string) => void;
+  reportId: string;
+  userId: string;
+  testDate: string | null;
+  onResultAdded?: () => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [editUnit, setEditUnit] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Add biomarker state
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [biomarkerDefs, setBiomarkerDefs] = useState<BiomarkerDef[]>([]);
+  const [bioSearch, setBioSearch] = useState('');
+  const [selectedBio, setSelectedBio] = useState<BiomarkerDef | null>(null);
+  const [addValue, setAddValue] = useState('');
+  const [addUnit, setAddUnit] = useState('');
+  const [addSaving, setAddSaving] = useState(false);
+
+  // Load biomarker definitions when add form opens
+  useEffect(() => {
+    if (!showAddForm || biomarkerDefs.length > 0) return;
+    supabase.from('biomarkers').select('id, slug, name, he_domain, unit, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high')
+      .order('slug')
+      .then(({ data }) => {
+        if (data) setBiomarkerDefs(data as unknown as BiomarkerDef[]);
+      });
+  }, [showAddForm, biomarkerDefs.length, supabase]);
+
+  const existingSlugs = new Set(results.map(r => {
+    const bio = r.biomarkers as unknown as BiomarkerDef | null;
+    return bio && 'slug' in bio ? bio.slug : null;
+  }).filter(Boolean));
+
+  const filteredDefs = biomarkerDefs.filter(d => {
+    if (existingSlugs.has(d.slug)) return false;
+    if (!bioSearch.trim()) return true;
+    const q = bioSearch.toLowerCase();
+    const nameStr = typeof d.name === 'string' ? d.name : Object.values(d.name ?? {}).join(' ');
+    return d.slug.includes(q) || nameStr.toLowerCase().includes(q);
+  });
+
+  const handleAddResult = async () => {
+    if (!selectedBio || !addValue.trim()) return;
+    const numeric = parseFloat(addValue);
+    if (isNaN(numeric)) { addToast('Invalid number', 'error'); return; }
+    setAddSaving(true);
+
+    // Compute status_flag
+    const unit = addUnit || selectedBio.unit || '';
+    let statusFlag: string = 'moderate';
+    const optLow = selectedBio.optimal_range_low;
+    const optHigh = selectedBio.optimal_range_high;
+    const refLow = selectedBio.ref_range_low;
+    const refHigh = selectedBio.ref_range_high;
+    if (optLow != null && optHigh != null && numeric >= optLow && numeric <= optHigh) {
+      statusFlag = 'optimal';
+    } else if (refLow != null && refHigh != null && numeric >= refLow && numeric <= refHigh) {
+      statusFlag = 'good';
+    } else if (
+      (refLow != null && numeric < refLow) ||
+      (refHigh != null && numeric > refHigh)
+    ) {
+      statusFlag = 'risk';
+    }
+
+    const { error } = await supabase.from('lab_results').insert({
+      lab_report_id: reportId,
+      user_id: userId,
+      biomarker_definition_id: selectedBio.id,
+      value_numeric: numeric,
+      unit,
+      status_flag: statusFlag,
+      measured_at: testDate ? new Date(testDate).toISOString() : new Date().toISOString(),
+      test_date: testDate,
+      source: 'manual_entry',
+    });
+
+    if (error) { setAddSaving(false); addToast(`Failed to add: ${error.message}`, 'error'); return; }
+
+    // Trigger auto-computation of derived biomarkers (PhenoAge, De Ritis, FIB-4, etc.)
+    fetch('/api/admin/lab-results/compute-calculated', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ labReportId: reportId, userId, testDate }),
+    }).then(res => res.json()).then(data => {
+      if (data.calculatedCount > 0) {
+        addToast(`${data.calculatedCount} calculated marker(s) auto-computed`);
+        onResultAdded?.(); // re-fetch to show new calc markers
+      }
+    }).catch(() => { /* non-critical */ });
+
+    setAddSaving(false);
+    addToast(`${locName(selectedBio.name)} added`);
+    setShowAddForm(false);
+    setSelectedBio(null);
+    setAddValue('');
+    setAddUnit('');
+    setBioSearch('');
+    onResultAdded?.();
+  };
 
   const startEdit = (r: LabResultSummary) => {
     setEditingId(r.id);
@@ -253,6 +365,98 @@ function ReportResults({
           </div>
         </div>
       ))}
+
+      {/* ── Add Biomarker ── */}
+      {showAddForm ? (
+        <div className="px-5 py-4 bg-[#ceab84]/[0.06] border-t border-[#ceab84]/20">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-[11px] font-semibold text-[#0e393d]">Add Biomarker Result</span>
+            <button onClick={() => { setShowAddForm(false); setSelectedBio(null); setBioSearch(''); }}
+              className="ml-auto text-[10px] text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
+              Cancel
+            </button>
+          </div>
+
+          {!selectedBio ? (
+            <div>
+              <input
+                type="text"
+                placeholder="Search biomarker by name or slug..."
+                value={bioSearch}
+                onChange={(e) => setBioSearch(e.target.value)}
+                className="w-full px-3 py-2 text-[12px] rounded-lg border border-[#0e393d]/15 bg-white focus:outline-none focus:ring-2 focus:ring-[#ceab84]/30 mb-2"
+                autoFocus
+              />
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-[#0e393d]/10 bg-white divide-y divide-[#0e393d]/5">
+                {filteredDefs.slice(0, 30).map(d => (
+                  <button
+                    key={d.id}
+                    onClick={() => { setSelectedBio(d); setAddUnit(d.unit || ''); }}
+                    className="w-full text-left px-3 py-2 hover:bg-[#fafaf8] transition-colors flex items-center gap-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[12px] font-medium text-[#0e393d]">{locName(d.name)}</span>
+                      <span className="ml-2 text-[10px] text-[#1c2a2b]/30 font-mono">{d.slug}</span>
+                    </div>
+                    <span className="text-[10px] text-[#ceab84] shrink-0">{HE_DOMAIN_LABEL[d.he_domain ?? ''] ?? d.he_domain}</span>
+                    {d.unit && <span className="text-[10px] text-[#1c2a2b]/30 shrink-0">{d.unit}</span>}
+                  </button>
+                ))}
+                {filteredDefs.length === 0 && (
+                  <div className="px-3 py-4 text-[11px] text-[#1c2a2b]/30 text-center">
+                    {biomarkerDefs.length === 0 ? 'Loading biomarkers…' : 'No matching biomarkers found'}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <span className="text-[13px] font-medium text-[#0e393d]">{locName(selectedBio.name)}</span>
+                <span className="ml-2 text-[10px] text-[#1c2a2b]/30 font-mono">{selectedBio.slug}</span>
+                <button onClick={() => { setSelectedBio(null); setBioSearch(''); }} className="ml-2 text-[10px] text-[#ceab84] hover:underline">change</button>
+              </div>
+              <input
+                type="number"
+                step="any"
+                value={addValue}
+                onChange={(e) => setAddValue(e.target.value)}
+                placeholder="Value"
+                className="w-24 px-2 py-1.5 text-[13px] font-semibold text-[#0e393d] bg-white border border-[#ceab84]/40 rounded focus:outline-none focus:ring-1 focus:ring-[#ceab84]/60 tabular-nums"
+                autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddResult(); }}
+              />
+              <input
+                type="text"
+                value={addUnit}
+                onChange={(e) => setAddUnit(e.target.value)}
+                className="w-20 px-2 py-1.5 text-[11px] text-[#1c2a2b]/60 bg-white border border-[#0e393d]/15 rounded focus:outline-none focus:ring-1 focus:ring-[#ceab84]/40"
+                placeholder="unit"
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddResult(); }}
+              />
+              <button
+                onClick={handleAddResult}
+                disabled={addSaving || !addValue.trim()}
+                className="px-3 py-1.5 rounded-lg bg-[#0e393d] text-white text-[11px] font-medium hover:bg-[#154347] transition disabled:opacity-40"
+              >
+                {addSaving ? 'Adding…' : 'Add'}
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="px-5 py-3">
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="flex items-center gap-1.5 text-[11px] font-medium text-[#0e393d]/50 hover:text-[#0e393d] transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add biomarker result
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -801,11 +1005,14 @@ export default function AllResultsTab() {
                         {/* ── Biomarker Results ── */}
                         {loadingResults === report.id ? (
                           <div className="flex justify-center py-6"><Spinner size={4} /></div>
-                        ) : (expandedResults[report.id]?.length ?? 0) > 0 ? (
+                        ) : (
                           <ReportResults
-                            results={expandedResults[report.id]!}
+                            results={expandedResults[report.id] ?? []}
                             supabase={supabase}
                             addToast={addToast}
+                            reportId={report.id}
+                            userId={report.profiles?.id ?? ''}
+                            testDate={report.test_date}
                             onResultUpdated={(id, value, unit) => {
                               setExpandedResults((prev) => ({
                                 ...prev,
@@ -814,9 +1021,26 @@ export default function AllResultsTab() {
                                 ) ?? [],
                               }));
                             }}
+                            onResultAdded={() => {
+                              // Re-fetch results for this report
+                              setLoadingResults(report.id);
+                              supabase
+                                .from('lab_results')
+                                .select(`
+                                  id, value_numeric, unit, status_flag, test_date,
+                                  biomarkers:biomarker_definition_id(name, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, unit)
+                                `)
+                                .eq('lab_report_id', report.id)
+                                .is('deleted_at', null)
+                                .order('test_date', { ascending: false })
+                                .then(({ data }) => {
+                                  setExpandedResults((prev) => ({ ...prev, [report.id]: (data as unknown as LabResultSummary[]) ?? [] }));
+                                  setLoadingResults(null);
+                                  // Update results count in the report row
+                                  setReports(prev => prev.map(r => r.id === report.id ? { ...r, results_count: (data?.length ?? r.results_count) } : r));
+                                });
+                            }}
                           />
-                        ) : (
-                          <p className="px-5 py-4 text-sm text-[#1c2a2b]/40 text-center">No results in this report.</p>
                         )}
                       </div>
                     </td>

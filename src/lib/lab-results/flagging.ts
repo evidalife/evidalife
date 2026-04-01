@@ -512,13 +512,17 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
   ],
 
   // === EPIGENETICS / AGING ===
+  // NOTE: pheno_age is in CALCULATED_SKIP_IMPORT — Evidalife computes it from component markers.
+  // GrimAge v2 and DunedinPACE are lab-measured (methylation assays) and MUST be imported.
   grim_age_v2: [
     'GrimAge', 'GrimAge v2', 'GrimAge2', 'Grim Age', 'Grim Age v2',
     'GrimAge Version 2', 'Biological Age (GrimAge)',
+    'Biologisches Alter (GrimAge)', 'Âge biologique (GrimAge)',
   ],
   dunedin_pace: [
     'DunedinPACE', 'Dunedin PACE', 'DunedinPace', 'PACE',
-    'Pace of Aging', 'DunedinPoAm',
+    'Pace of Aging', 'DunedinPoAm', 'Pace of Aging (DunedinPACE)',
+    'Alterungsgeschwindigkeit', 'Rythme de vieillissement',
   ],
   // === OTHER ===
   omega_3_index: [
@@ -611,6 +615,19 @@ export function matchBiomarkerName(
     for (const lang of ['de', 'en', 'es', 'fr', 'it'] as const) {
       const langName = norm((b.name as Record<string, string>)[lang] ?? '');
       if (langName && langName === n) {
+        if (CALCULATED_SKIP_IMPORT.has(b.slug)) return null;
+        return { biomarker: b, confidence: 'exact' };
+      }
+    }
+  }
+
+  // 2b. Exact name_short match in any language
+  for (const b of biomarkers) {
+    if (!b.name_short) continue;
+    const shorts = typeof b.name_short === 'string' ? { en: b.name_short } : (b.name_short as Record<string, string>);
+    for (const lang of ['de', 'en', 'es', 'fr', 'it'] as const) {
+      const shortName = norm(shorts[lang] ?? '');
+      if (shortName && shortName === n) {
         if (CALCULATED_SKIP_IMPORT.has(b.slug)) return null;
         return { biomarker: b, confidence: 'exact' };
       }

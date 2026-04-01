@@ -1,7 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import PageShell from '@/components/admin/PageShell';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+
+interface BriefingStep {
+  id: string;
+  title: string;
+  narration: string;
+  highlight: string;
+}
 
 interface BriefingRow {
   id: string;
@@ -32,11 +40,106 @@ function fmtDuration(ms: number | null) {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
+// ── Mini audio player for individual steps ──────────────────────────────────
+function StepPlayer({ narration, lang }: { narration: string; lang: string }) {
+  const [playing, setPlaying] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
+
+  const play = useCallback(async () => {
+    // If already have audio, just toggle play/pause
+    if (audioRef.current && blobUrlRef.current) {
+      if (playing) {
+        audioRef.current.pause();
+        setPlaying(false);
+      } else {
+        audioRef.current.play();
+        setPlaying(true);
+      }
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/ai/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: narration, lang }),
+      });
+      if (!res.ok) {
+        // Fallback to browser speech
+        if ('speechSynthesis' in window) {
+          const utt = new SpeechSynthesisUtterance(narration);
+          utt.lang = lang === 'de' ? 'de-DE' : lang === 'fr' ? 'fr-FR' : lang === 'es' ? 'es-ES' : lang === 'it' ? 'it-IT' : 'en-US';
+          utt.onend = () => setPlaying(false);
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(utt);
+          setPlaying(true);
+          setLoading(false);
+          return;
+        }
+        setLoading(false);
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      blobUrlRef.current = url;
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.addEventListener('ended', () => setPlaying(false));
+      audio.play();
+      setPlaying(true);
+    } catch {
+      // silent fail
+    }
+    setLoading(false);
+  }, [narration, lang, playing]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause();
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+    };
+  }, []);
+
+  return (
+    <button
+      onClick={play}
+      disabled={loading}
+      className="p-1 rounded-md hover:bg-[#0e393d]/5 text-[#0e393d]/40 hover:text-[#0e393d] transition disabled:opacity-30"
+      title={playing ? 'Pause' : 'Play step'}
+    >
+      {loading ? (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+          <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="8" />
+        </svg>
+      ) : playing ? (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" />
+        </svg>
+      ) : (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polygon points="5 3 19 12 5 21 5 3" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 export default function AICoachManager() {
+  const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
   const [briefings, setBriefings] = useState<BriefingRow[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
+
+  // Expanded briefing state
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedSteps, setExpandedSteps] = useState<Record<string, BriefingStep[]>>({});
+  const [loadingSteps, setLoadingSteps] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,7 +155,7 @@ export default function AICoachManager() {
   useEffect(() => { load(); }, [load]);
 
   const deleteBriefing = async (id: string) => {
-    if (!confirm('Delete this briefing log entry?')) return;
+    if (!(await confirm({ title: 'Delete Briefing', message: 'Delete this briefing log entry?', variant: 'danger' }))) return;
     setDeleting(id);
     await fetch('/api/admin/ai-briefings', {
       method: 'DELETE',
@@ -61,6 +164,28 @@ export default function AICoachManager() {
     });
     setBriefings(prev => prev.filter(b => b.id !== id));
     setDeleting(null);
+  };
+
+  const toggleExpand = async (id: string, lang: string) => {
+    if (expandedId === id) { setExpandedId(null); return; }
+    setExpandedId(id);
+    if (expandedSteps[id]) return;
+
+    setLoadingSteps(id);
+    try {
+      const res = await fetch('/api/admin/ai-briefings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setExpandedSteps(prev => ({ ...prev, [id]: data.steps ?? [] }));
+      }
+    } catch {
+      // silent
+    }
+    setLoadingSteps(null);
   };
 
   return (
@@ -116,51 +241,47 @@ export default function AICoachManager() {
             <div className="text-sm text-[#1c2a2b]/40">No briefings generated yet</div>
           </div>
         ) : (
-          <table className="w-full text-[12px]">
-            <thead>
-              <tr className="border-b border-[#0e393d]/[.05]">
-                {['User', 'Lang', 'Model', 'Tokens', 'Duration', 'Date', ''].map(h => (
-                  <th key={h} className="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-[#1c2a2b]/35">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#0e393d]/[.04]">
-              {briefings.map(b => (
-                <tr key={b.id} className="hover:bg-[#fafaf8] transition-colors">
-                  <td className="px-5 py-3">
-                    {b.user ? (
-                      <div>
-                        <div className="font-medium text-[#0e393d]">
-                          {[b.user.first_name, b.user.last_name].filter(Boolean).join(' ') || '—'}
-                        </div>
-                        <div className="text-[10px] text-[#1c2a2b]/35">{b.user.email}</div>
+          <div className="divide-y divide-[#0e393d]/[.04]">
+            {briefings.map(b => {
+              const isExpanded = expandedId === b.id;
+              const steps = expandedSteps[b.id];
+              const isLoadingSteps = loadingSteps === b.id;
+              return (
+                <div key={b.id}>
+                  <div className="flex items-center hover:bg-[#fafaf8] transition-colors">
+                    <button onClick={() => toggleExpand(b.id, b.lang)} className="flex-1 flex items-center text-left px-5 py-3 gap-5">
+                      <div className="min-w-0 flex-1">
+                        {b.user ? (
+                          <div>
+                            <span className="font-medium text-[12px] text-[#0e393d]">
+                              {[b.user.first_name, b.user.last_name].filter(Boolean).join(' ') || '—'}
+                            </span>
+                            <span className="text-[10px] text-[#1c2a2b]/35 ml-2">{b.user.email}</span>
+                          </div>
+                        ) : (
+                          <span className="text-[12px] text-[#1c2a2b]/30">{b.user_id.slice(0, 8)}…</span>
+                        )}
                       </div>
-                    ) : (
-                      <span className="text-[#1c2a2b]/30">{b.user_id.slice(0, 8)}…</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className="text-base">{LANG_FLAGS[b.lang] ?? b.lang}</span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className="font-mono text-[10px] bg-[#0e393d]/[.05] px-2 py-0.5 rounded">
-                      {b.model_used.replace('claude-', '').replace('-4-6', ' 4.6').replace('-4-5', ' 4.5')}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 tabular-nums text-[#1c2a2b]/60">
-                    {b.tokens_used?.toLocaleString() ?? '—'}
-                  </td>
-                  <td className="px-5 py-3 tabular-nums text-[#1c2a2b]/60">
-                    {fmtDuration(b.duration_ms)}
-                  </td>
-                  <td className="px-5 py-3 text-[#1c2a2b]/40">{fmt(b.created_at)}</td>
-                  <td className="px-5 py-3">
+                      <span className="text-base shrink-0">{LANG_FLAGS[b.lang] ?? b.lang}</span>
+                      <span className="font-mono text-[10px] bg-[#0e393d]/[.05] px-2 py-0.5 rounded shrink-0">
+                        {b.model_used.replace('claude-', '').replace('-4-6', ' 4.6').replace('-4-5', ' 4.5')}
+                      </span>
+                      <span className="tabular-nums text-[12px] text-[#1c2a2b]/60 shrink-0 w-14 text-right">
+                        {b.tokens_used?.toLocaleString() ?? '—'}
+                      </span>
+                      <span className="tabular-nums text-[12px] text-[#1c2a2b]/60 shrink-0 w-12 text-right">
+                        {fmtDuration(b.duration_ms)}
+                      </span>
+                      <span className="text-[12px] text-[#1c2a2b]/40 shrink-0 w-32 text-right">{fmt(b.created_at)}</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                        className={`text-[#1c2a2b]/30 transition-transform shrink-0 ml-2 ${isExpanded ? 'rotate-180' : ''}`}>
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
                     <button
                       onClick={() => deleteBriefing(b.id)}
                       disabled={deleting === b.id}
-                      className="text-[#1c2a2b]/20 hover:text-red-400 transition-colors disabled:opacity-30"
+                      className="px-3 py-3 text-[#1c2a2b]/20 hover:text-red-400 transition-colors disabled:opacity-30"
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
                         <polyline points="3 6 5 6 21 6" />
@@ -169,13 +290,46 @@ export default function AICoachManager() {
                         <path d="M9 6V4h6v2" />
                       </svg>
                     </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+
+                  {/* Expanded steps */}
+                  {isExpanded && (
+                    <div className="bg-[#fafaf8] border-t border-[#0e393d]/6 px-5 py-4">
+                      {isLoadingSteps ? (
+                        <div className="flex justify-center py-4 text-[12px] text-[#1c2a2b]/40">Loading steps…</div>
+                      ) : steps && steps.length > 0 ? (
+                        <div className="space-y-3">
+                          <div className="text-[10px] font-semibold uppercase tracking-[.12em] text-[#ceab84] mb-2">
+                            Briefing Steps ({steps.length})
+                          </div>
+                          {steps.map((step, i) => (
+                            <div key={step.id || i} className="bg-white rounded-lg border border-[#0e393d]/8 p-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="w-6 h-6 rounded-full bg-[#0e393d]/8 text-[10px] font-bold text-[#0e393d] flex items-center justify-center">
+                                  {i + 1}
+                                </span>
+                                <span className="text-[12px] font-semibold text-[#0e393d]">{step.title}</span>
+                                <span className="text-[9px] text-[#1c2a2b]/30 font-mono ml-auto">highlight: {step.highlight || '—'}</span>
+                                <StepPlayer narration={step.narration} lang={b.lang} />
+                              </div>
+                              <p className="text-[12px] text-[#1c2a2b]/60 leading-relaxed pl-8">
+                                {step.narration}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-[12px] text-[#1c2a2b]/30 text-center py-4">No steps data stored for this briefing</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
+      {confirmDialog}
     </PageShell>
   );
 }

@@ -68,6 +68,25 @@ export async function GET(req: NextRequest) {
   });
 }
 
+// POST — get single briefing with steps (for playback)
+export async function POST(req: NextRequest) {
+  const auth = await requireAdmin();
+  if (!auth) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const { admin } = auth;
+  const { id } = await req.json();
+  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+  const { data, error } = await admin
+    .from('health_briefings')
+    .select('id, user_id, lang, steps, model_used, tokens_used, duration_ms, created_at')
+    .eq('id', id)
+    .single();
+
+  if (error || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  return NextResponse.json(data);
+}
+
 // DELETE a briefing
 export async function DELETE(req: NextRequest) {
   const auth = await requireAdmin();

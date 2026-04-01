@@ -164,8 +164,11 @@ export default function BriefingPlayer({ lang, firstName, onHighlight }: Props) 
   const [audioDuration, setAudioDuration] = useState(0);
   const [isListening, setIsListening] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [ttsMode, setTtsMode] = useState<'elevenlabs' | 'browser' | null>(null);
+  const [ttsError, setTtsError] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const usingBrowserTTSRef = useRef(false); // true when current step plays via SpeechSynthesis
   const audioBlobUrls = useRef<Record<number, string>>({});
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -177,10 +180,15 @@ export default function BriefingPlayer({ lang, firstName, onHighlight }: Props) 
     chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [chatMessages, streamingText]);
 
+  // Track whether TTS provider is available (not just unconfigured)
+  const ttsAvailable = useRef<boolean | null>(null); // null = unknown, true = works, false = not configured
+
   // Fetch TTS audio for a step
   const fetchAudio = useCallback(async (stepIndex: number, narration: string): Promise<string | null> => {
     // If already fetched, return cached URL
     if (audioBlobUrls.current[stepIndex]) return audioBlobUrls.current[stepIndex];
+    // If we already know TTS is not configured, skip API call
+    if (ttsAvailable.current === false) return null;
 
     try {
       const res = await fetch('/api/ai/tts', {
@@ -190,11 +198,27 @@ export default function BriefingPlayer({ lang, firstName, onHighlight }: Props) 
       });
 
       if (!res.ok) {
-        // If TTS not configured (501), fall back to browser speech synthesis
-        if (res.status === 501) return null;
-        throw new Error('TTS failed');
+        if (res.status === 501) {
+          // Not configured — skip further attempts
+          ttsAvailable.current = false;
+          setTtsMode('browser');
+          return null;
+        }
+        // 402 = payment required, 429 = quota exceeded, 500/502 = API error
+        let hint = '';
+        if (res.status === 402) hint = 'ElevenLabs account needs credits or an active plan';
+        else if (res.status === 429) hint = 'ElevenLabs quota exceeded';
+        else hint = `ElevenLabs error ${res.status}`;
+        console.warn('[BriefingPlayer] TTS failed:', hint);
+        ttsAvailable.current = false; // don't retry for this session
+        setTtsMode('browser');
+        setTtsError(hint);
+        return null;
       }
 
+      ttsAvailable.current = true;
+      setTtsMode('elevenlabs');
+      setTtsError(null);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       audioBlobUrls.current[stepIndex] = url;
@@ -216,9 +240,11 @@ export default function BriefingPlayer({ lang, firstName, onHighlight }: Props) 
 
     if (audioUrl) {
       // HTML Audio playback
+      usingBrowserTTSRef.current = false;
+      window.speechSynthesis?.cancel(); // stop any leftover speech
       if (audioRef.current) {
         audioRef.current.pause();
-        URL.revokeObjectURL(audioRef.current.src); // clean up only non-cached
+        audioRef.current.src = '';
       }
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
@@ -245,24 +271,42 @@ export default function BriefingPlayer({ lang, firstName, onHighlight }: Props) 
       });
     } else {
       // SpeechSynthesis fallback
+      usingBrowserTTSRef.current = true;
+      audioRef.current = null; // clear stale audio ref so togglePause uses the right path
       if ('speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(step.narration);
         utterance.lang = lang === 'de' ? 'de-DE' : lang === 'fr' ? 'fr-FR' : lang === 'es' ? 'es-ES' : lang === 'it' ? 'it-IT' : 'en-US';
         utterance.rate = 0.95;
         utterance.pitch = 1.0;
         utterance.onend = () => {
-          setState('waiting');
+          // Only transition to waiting if we're still playing (not already paused/stopped)
+          usingBrowserTTSRef.current = false;
+          setState(prev => prev === 'playing' ? 'waiting' : prev);
           onHighlight?.(null);
         };
         window.speechSynthesis.cancel();
         window.speechSynthesis.speak(utterance);
       } else {
         // No audio available — just show text
+        usingBrowserTTSRef.current = false;
         setState('waiting');
         onHighlight?.(null);
       }
     }
   }, [steps, lang, fetchAudio, onHighlight]);
+
+  // Track whether we should auto-play after steps load
+  const shouldAutoPlay = useRef(false);
+  const stepsRef = useRef<BriefingStep[]>([]);
+  stepsRef.current = steps;
+
+  // When steps are set and auto-play is flagged, start playing step 0
+  useEffect(() => {
+    if (shouldAutoPlay.current && steps.length > 0 && state === 'loading') {
+      shouldAutoPlay.current = false;
+      playStep(0);
+    }
+  }, [steps, state, playStep]);
 
   // Generate briefing
   const generateBriefing = useCallback(async () => {
@@ -270,6 +314,9 @@ export default function BriefingPlayer({ lang, firstName, onHighlight }: Props) 
     setErrorMsg('');
     setChatMessages([]);
     setCurrentStep(0);
+    // Clear cached audio blobs so a fresh briefing gets fresh TTS
+    Object.values(audioBlobUrls.current).forEach(url => URL.revokeObjectURL(url));
+    audioBlobUrls.current = {};
 
     try {
       const res = await fetch('/api/ai/briefing', {
@@ -284,22 +331,15 @@ export default function BriefingPlayer({ lang, firstName, onHighlight }: Props) 
       }
 
       const data = await res.json();
+      shouldAutoPlay.current = true;
       setSteps(data.steps);
       setBioContext(data.summary ?? '');
-
-      // Start playing first step
-      // Use setTimeout to let state update settle
-      setTimeout(() => playStep(0), 100);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
       setErrorMsg(msg);
       setState('error');
     }
-  }, [lang, playStep]);
-
-  // Need to trigger playStep after steps are set — use effect
-  const stepsRef = useRef<BriefingStep[]>([]);
-  stepsRef.current = steps;
+  }, [lang]);
 
   const goToNextStep = useCallback(() => {
     const next = currentStep + 1;
@@ -314,26 +354,28 @@ export default function BriefingPlayer({ lang, firstName, onHighlight }: Props) 
   }, [currentStep, steps, playStep, onHighlight]);
 
   const togglePause = useCallback(() => {
-    if (audioRef.current) {
+    if (!usingBrowserTTSRef.current && audioRef.current) {
+      // HTML Audio — reliable pause/resume
       if (state === 'playing') {
         audioRef.current.pause();
-        window.speechSynthesis?.pause();
         setState('paused');
       } else if (state === 'paused') {
-        audioRef.current.play();
-        window.speechSynthesis?.resume();
+        audioRef.current.play().catch(() => {});
         setState('playing');
       }
     } else {
+      // Browser SpeechSynthesis — pause() is unreliable in Chrome.
+      // Cancel and restart the step (goes to waiting, user can replay via Continue).
       if (state === 'playing') {
-        window.speechSynthesis?.pause();
-        setState('paused');
+        window.speechSynthesis?.cancel();
+        usingBrowserTTSRef.current = false;
+        setState('waiting');
       } else if (state === 'paused') {
-        window.speechSynthesis?.resume();
-        setState('playing');
+        // Re-play the current step from the beginning
+        playStep(currentStep);
       }
     }
-  }, [state]);
+  }, [state, currentStep, playStep]);
 
   // Streaming chat
   const sendMessage = useCallback(async (text: string) => {
@@ -564,13 +606,27 @@ export default function BriefingPlayer({ lang, firstName, onHighlight }: Props) 
 
         {/* Step info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <h3 className="text-[13px] font-semibold text-white">
               {state === 'done' ? t.done : currentStepData?.title ?? t.title}
             </h3>
             {steps.length > 0 && state !== 'done' && (
               <span className="text-[9px] text-white/30">
                 {t.step} {currentStep + 1} {t.of} {steps.length}
+              </span>
+            )}
+            {/* TTS mode badge */}
+            {ttsMode === 'browser' && (
+              <span
+                className="text-[8px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 cursor-help"
+                title={ttsError ?? 'Using browser text-to-speech (ElevenLabs unavailable)'}
+              >
+                Browser TTS{ttsError ? ' ⚠' : ''}
+              </span>
+            )}
+            {ttsMode === 'elevenlabs' && (
+              <span className="text-[8px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#0C9C6C]/20 text-[#0C9C6C]">
+                ElevenLabs
               </span>
             )}
           </div>
