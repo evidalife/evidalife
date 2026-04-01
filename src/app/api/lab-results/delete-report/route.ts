@@ -42,6 +42,13 @@ export async function POST(req: NextRequest) {
     // Hard-delete the report
     await supabase.from('lab_reports').delete().eq('id', reportId);
 
+    // Invalidate cached AI briefings — underlying lab data changed
+    // Delete all briefings for this user so next request generates a fresh one
+    await supabase
+      .from('health_briefings')
+      .delete()
+      .eq('user_id', user.id);
+
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

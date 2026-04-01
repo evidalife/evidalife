@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase/server';
+import { logAIUsage } from '@/lib/ai/usage-logger';
 
 export const maxDuration = 30;
 
@@ -74,11 +75,14 @@ ${context ? `USER'S BIOMARKER CONTEXT:\n${context}` : ''}`;
 
   const encoder = new TextEncoder();
 
+  const chatModel = 'claude-haiku-4-5-20251001';
+  const chatStartMs = Date.now();
+
   const stream = new ReadableStream({
     async start(controller) {
       try {
         const anthropicStream = await client.messages.stream({
-          model: 'claude-haiku-4-5-20251001',
+          model: chatModel,
           max_tokens: 512,
           system: systemPrompt,
           messages: messages.map(m => ({ role: m.role, content: m.content })),
@@ -90,6 +94,19 @@ ${context ? `USER'S BIOMARKER CONTEXT:\n${context}` : ''}`;
             controller.enqueue(encoder.encode(chunk));
           }
         }
+
+        // Log usage after stream completes
+        const finalMessage = await anthropicStream.finalMessage();
+        logAIUsage({
+          userId: user.id,
+          provider: 'anthropic',
+          endpoint: 'chat',
+          model: chatModel,
+          inputTokens: finalMessage.usage?.input_tokens ?? 0,
+          outputTokens: finalMessage.usage?.output_tokens ?? 0,
+          durationMs: Date.now() - chatStartMs,
+          metadata: { lang, mode },
+        });
 
         controller.enqueue(encoder.encode('data: [DONE]\n\n'));
         controller.close();

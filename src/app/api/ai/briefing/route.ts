@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logAIUsage } from '@/lib/ai/usage-logger';
 
 export const maxDuration = 60;
 
@@ -420,6 +421,18 @@ Do not include markdown, explanations, or anything outside the JSON object.`;
         duration_ms: durationMs,
       }).then(({ error }) => {
         if (error) console.error('[briefing] log error:', error.message);
+      });
+
+      // Log to ai_usage_log for cost tracking
+      logAIUsage({
+        userId: user.id,
+        provider: 'anthropic',
+        endpoint: 'briefing',
+        model: briefingModel,
+        inputTokens: message.usage?.input_tokens ?? 0,
+        outputTokens: message.usage?.output_tokens ?? 0,
+        durationMs,
+        metadata: { lang },
       });
 
       return NextResponse.json({ steps: parsed.steps, summary });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { logAIUsage } from '@/lib/ai/usage-logger';
 
 type Action = 'translate' | 'proofread' | 'rewrite';
 
@@ -85,6 +86,8 @@ Return ONLY valid JSON with this exact structure:
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
 
+  const emailStartMs = Date.now();
+
   try {
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
@@ -96,6 +99,18 @@ Return ONLY valid JSON with this exact structure:
     if (text.type !== 'text') {
       return NextResponse.json({ error: 'Unexpected response type' }, { status: 500 });
     }
+
+    // Log usage
+    logAIUsage({
+      userId: null, // admin endpoint, no specific user
+      provider: 'anthropic',
+      endpoint: 'email-assist',
+      model: 'claude-sonnet-4-6',
+      inputTokens: message.usage?.input_tokens ?? 0,
+      outputTokens: message.usage?.output_tokens ?? 0,
+      durationMs: Date.now() - emailStartMs,
+      metadata: { action, sourceLang },
+    });
 
     const raw = text.text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
     const result = JSON.parse(raw);

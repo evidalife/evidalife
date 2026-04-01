@@ -211,6 +211,15 @@ const NAV_GROUPS: NavGroup[] = [
         ),
       },
       {
+        label: 'AI Usage',
+        href: '/admin/ai-usage',
+        icon: (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 20V10" /><path d="M18 20V4" /><path d="M6 20v-4" />
+          </svg>
+        ),
+      },
+      {
         label: 'AI Settings',
         href: '/admin/ai-settings',
         icon: (

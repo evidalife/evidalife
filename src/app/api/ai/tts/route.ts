@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logAIUsage } from '@/lib/ai/usage-logger';
 
 export const maxDuration = 30;
 
@@ -32,6 +33,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'text is required' }, { status: 400 });
   }
 
+  const ttsStartMs = Date.now();
+
   try {
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`,
@@ -58,13 +61,21 @@ export async function POST(req: NextRequest) {
     if (!response.ok) {
       const err = await response.text();
       console.error('[TTS] ElevenLabs error:', response.status, err);
-      // Return 502 (not 501) so the client knows TTS IS configured but failed
-      // 501 = not configured → triggers browser fallback
-      // 502 = configured but error → client should show error, not use browser voice
       return NextResponse.json({ error: `ElevenLabs error: ${err}` }, { status: 502 });
     }
 
     const audioBuffer = Buffer.from(await response.arrayBuffer());
+
+    // Log TTS usage (ElevenLabs charges per character)
+    logAIUsage({
+      userId: user.id,
+      provider: 'elevenlabs',
+      endpoint: 'tts',
+      model: 'eleven_multilingual_v2',
+      characters: text.length,
+      durationMs: Date.now() - ttsStartMs,
+      metadata: { lang: body.lang ?? 'en', voiceId: ELEVENLABS_VOICE_ID },
+    });
 
     return new NextResponse(audioBuffer, {
       headers: {

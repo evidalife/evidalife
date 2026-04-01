@@ -47,11 +47,11 @@ const SCIENCE_FINDINGS = [
 
 const PRODUCT_FEATURES: Record<number, Record<Lang, string[]>> = {
   1: { // Core
-    en: ['15 essential blood markers', 'Personal health dashboard', 'Optimal range analysis', 'Digital results in 48h'],
-    de: ['15 essenzielle Blutmarker', 'Persönliches Gesundheits-Dashboard', 'Optimal-Bereich-Analyse', 'Digitale Ergebnisse in 48h'],
-    fr: ['15 marqueurs sanguins essentiels', 'Tableau de bord santé personnel', 'Analyse des plages optimales', 'Résultats numériques en 48h'],
-    es: ['15 marcadores sanguíneos esenciales', 'Panel de salud personal', 'Análisis de rangos óptimos', 'Resultados digitales en 48h'],
-    it: ['15 biomarcatori essenziali', 'Dashboard salute personale', 'Analisi range ottimali', 'Risultati digitali in 48h'],
+    en: ['16 essential blood markers', 'Personal health dashboard', 'Optimal range analysis', 'Digital results in 48h'],
+    de: ['16 essenzielle Blutmarker', 'Persönliches Gesundheits-Dashboard', 'Optimal-Bereich-Analyse', 'Digitale Ergebnisse in 48h'],
+    fr: ['16 marqueurs sanguins essentiels', 'Tableau de bord santé personnel', 'Analyse des plages optimales', 'Résultats numériques en 48h'],
+    es: ['16 marcadores sanguíneos esenciales', 'Panel de salud personal', 'Análisis de rangos óptimos', 'Resultados digitales en 48h'],
+    it: ['16 biomarcatori essenziali', 'Dashboard salute personale', 'Analisi range ottimali', 'Risultati digitali in 48h'],
   },
   2: { // Pro
     en: ['27 advanced blood markers', 'All 9 health domains', 'Longevity Score tracking', 'Hormones & inflammation panel', 'Most popular package'],
