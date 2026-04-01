@@ -438,13 +438,13 @@ export const CALCULATED_MARKERS: Record<string, CalculatedMarkerFn> = {
   // ── Nutrients ────────────────────────────────────────────────────────────────
 
   // TSAT — Transferrin Saturation (%)
-  // iron_serum µg/dL → µmol/L: ÷5.585
+  // iron_serum is stored in µmol/L (already converted at ingestion — do NOT divide by 5.585)
   // transferrin mg/dL → g/L: ×0.01 → µmol/L: ×25.2 (MW 79,570 Da, 2 Fe sites)
   tsat: (v) => {
     const r = all(v, 'iron_serum', 'transferrin');
     if (!r) return null;
-    const [ironUgDl, transferrinMgDl] = r;
-    const ironUmolL     = ironUgDl / 5.585;
+    const [ironUmolL, transferrinMgDl] = r;
+    // iron_serum already in µmol/L
     const transferrinGL = transferrinMgDl * 0.01;
     const tibcUmolL     = transferrinGL * 25.2;
     if (tibcUmolL <= 0) return null;
@@ -488,8 +488,8 @@ export const CALCULATED_MARKERS: Record<string, CalculatedMarkerFn> = {
     // Albumin g/dL → mol/L (÷6.6 → ×10⁻⁴ effectively, but standard is g/L ÷66430)
     const albumin_mol = (albumin * 10) / 66430; // g/dL → g/L → mol/L
 
-    // Association constants (Vermeulen)
-    const Ka_T_SHBG = 1.0e10;   // T–SHBG affinity (L/mol)
+    // Association constants (Vermeulen 1999, J Clin Endocrinol Metab 84:3666–3672)
+    const Ka_T_SHBG = 5.97e8;   // T–SHBG affinity (L/mol) — corrected from erroneous 1.0e10
     const Ka_T_Alb  = 3.6e4;    // T–albumin affinity (L/mol)
 
     // Solve quadratic for free T concentration

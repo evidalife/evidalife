@@ -575,6 +575,20 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
       }
     }
 
+    // Bio-clock ratio scoring: score pheno_age / grim_age_v2 as (value / chronoAge)
+    // with ref_high=1.0 and opt_high=0.8 — same logic as DunedinPACE.
+    // Ratio < 0.8 → optimal, 0.8–1.0 → good, > 1.0 → risk.
+    const birthDate = profile?.date_of_birth ? new Date(profile.date_of_birth) : null;
+    const BIO_CLOCK_RATIO_SLUGS = new Set(['pheno_age', 'grim_age_v2']);
+    const bioClockRatioScore = (value: number, testDateStr: string): number => {
+      if (!birthDate) return 70;
+      const testDate = new Date(testDateStr + 'T00:00:00');
+      const chronoAge = (testDate.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+      if (chronoAge <= 0) return 70;
+      const ratio = value / chronoAge;
+      return continuousScore(ratio, null, 1.0, null, 0.8);
+    };
+
     // Build domains
     const domains: ProcessedDomain[] = DOMAIN_ORDER.map(key => {
       const meta = DOMAIN_META[key];
@@ -597,13 +611,19 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
           }
         }
 
-        // Continuous score (always range-based for realism)
+        // Continuous score — bio-clock markers scored as ratio to chronological age
+        const isBioClockRatio = BIO_CLOCK_RATIO_SLUGS.has(def.slug);
+        const latestDate = displayDates[displayDates.length - 1] ?? '';
         const latestScore = latest != null
-          ? continuousScore(latest, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high)
+          ? (isBioClockRatio
+              ? bioClockRatioScore(latest, latestDate)
+              : continuousScore(latest, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high))
           : 50;
 
         const previousScore = previous != null
-          ? continuousScore(previous, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high)
+          ? (isBioClockRatio
+              ? bioClockRatioScore(previous, latestDate)
+              : continuousScore(previous, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high))
           : null;
 
         const delta = latest != null && previous != null ? +(latest - previous).toFixed(2) : null;
@@ -627,6 +647,9 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
             const entry = mData.get(m.defId)?.get(date);
             if (!entry) return null;
             const def = defMap.get(m.defId)!;
+            if (BIO_CLOCK_RATIO_SLUGS.has(def.slug)) {
+              return bioClockRatioScore(entry.value, date);
+            }
             return continuousScore(entry.value, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high);
           })
           .filter((s): s is number => s !== null);
@@ -811,7 +834,7 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
       topRankedMarkers, nonEpiDomainCount: nonEpiDomains.length,
       bioClocks, mData, defMap, EXCLUDED_SLUGS,
     };
-  }, [reports, results, definitions, lang]);
+  }, [reports, results, definitions, lang, profile]);
 
   // DEXA & Fitness data extraction removed — values shown only in ALL BIOMARKERS table
 
