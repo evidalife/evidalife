@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Badge, FlagBadge, Spinner, Toast, ToastContainer, fmtDate, locName, nextToastId } from './shared';
+import { normalizeUnit } from '@/lib/biomarker-conversions';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -349,7 +350,7 @@ export default function ReviewQueueTab({ onCountChange, onSwitchToPdf }: { onCou
                     const bm = lr.biomarkers;
                     const defUnit = bm?.unit ?? null;
                     const resultUnit = lr.unit;
-                    const unitMismatch = defUnit && resultUnit && defUnit.toLowerCase() !== resultUnit.toLowerCase();
+                    const unitMismatch = defUnit && resultUnit && normalizeUnit(defUnit) !== normalizeUnit(resultUnit);
                     const refLow = bm?.ref_range_low ?? null;
                     const refHigh = bm?.ref_range_high ?? null;
                     const optLow = bm?.optimal_range_low ?? null;

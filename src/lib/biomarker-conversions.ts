@@ -59,6 +59,9 @@ export function normalizeUnit(unit: string): string {
     .toLowerCase()
     .replace(/μ/g, 'µ')         // Greek mu → micro sign
     .replace(/\bmc(?=[a-z])/g, 'µ')  // "mc" prefix → micro (mcmol → µmol, mcg → µg)
+    .replace(/\bumol\b/g, 'µmol')    // umol → µmol (ASCII u → micro sign)
+    .replace(/\bug\b/g, 'µg')        // ug → µg
+    .replace(/\bul\b/g, 'µl')        // ul → µl
     .replace(/\s+/g, '')         // remove spaces
     .replace(/per/g, '/')        // "per" → "/"
     .replace(/litre/g, 'l')      // British spelling
