@@ -218,11 +218,13 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
   // === LIVER ===
   alt: [
     'GPT (ALAT)', 'GPT', 'ALAT', 'ALT', 'GPT (ALAT) (WI)',
+    'ALT (GPT)', 'ALT (ALAT)', 'ALT/GPT', 'ALAT/GPT',
     'Alanine Aminotransferase', 'Alanin-Aminotransferase',
     'ALAT (GPT)', 'GPT/ALAT', 'Transaminasa GPT',
   ],
   ast: [
     'GOT (ASAT)', 'GOT', 'ASAT', 'AST', 'GOT (ASAT) (WI)',
+    'AST (GOT)', 'AST (ASAT)', 'AST/GOT', 'ASAT/GOT',
     'Aspartate Aminotransferase', 'Aspartat-Aminotransferase',
     'ASAT (GOT)', 'GOT/ASAT', 'Transaminasa GOT',
   ],
@@ -336,7 +338,8 @@ export const BIOMARKER_ALIASES: Record<string, string[]> = {
     'IGF-I', 'insulinähnlicher Wachstumsfaktor', 'facteur de croissance insulinomimétique',
     'Factor de crecimiento insulínico tipo 1',
   ],
-  cortisol: ['Cortisol', 'Kortisol', 'Hydrocortisone'],
+  cortisol: ['Cortisol', 'Cortisol (AM)', 'Cortisol (morning)', 'Cortisol (Morgen)',
+    'Cortisol matinal', 'Kortisol', 'Hydrocortisone', 'Morning Cortisol'],
 
   // === VITAMINS ===
   vitamin_d: [

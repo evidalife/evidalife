@@ -22,8 +22,16 @@ type Review = {
     status_flag: string | null;
     source: string | null;
     measured_at: string | null;
+    original_value: number | null;
+    original_unit: string | null;
     biomarkers: {
       name: Record<string, string> | string | null;
+      slug: string | null;
+      unit: string | null;
+      ref_range_low: number | null;
+      ref_range_high: number | null;
+      optimal_range_low: number | null;
+      optimal_range_high: number | null;
     } | null;
     profiles: {
       first_name: string | null;
@@ -101,8 +109,8 @@ export default function ReviewQueueTab({ onCountChange, onSwitchToPdf }: { onCou
         .select(`
           id, review_type, severity, message, original_value, suggested_value, is_resolved, created_at,
           lab_results:lab_result_id (
-            id, value_numeric, unit, status_flag, source, measured_at,
-            biomarkers:biomarker_definition_id ( name ),
+            id, value_numeric, unit, status_flag, source, measured_at, original_value, original_unit,
+            biomarkers:biomarker_definition_id ( name, slug, unit, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high ),
             profiles:user_id ( first_name, last_name, email )
           )
         `)
@@ -337,39 +345,98 @@ export default function ReviewQueueTab({ onCountChange, onSwitchToPdf }: { onCou
                   <p className="text-[13px] text-[#1c2a2b]/80">{review.message}</p>
 
                   {/* Lab result details */}
-                  {lr && (
-                    <div className="rounded-lg bg-[#0e393d]/[0.02] border border-[#0e393d]/6 px-4 py-3 flex items-center gap-6 flex-wrap">
-                      <div>
-                        <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Biomarker</div>
-                        <div className="text-[12px] font-medium text-[#0e393d]">{bmName}</div>
-                      </div>
-                      <div>
-                        <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Patient</div>
-                        <div className="text-[12px] text-[#1c2a2b]/70">{userName}</div>
-                      </div>
-                      <div>
-                        <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Value</div>
-                        <div className="text-[12px] font-semibold text-[#0e393d]">{lr.value_numeric} <span className="font-normal text-[#1c2a2b]/40">{lr.unit}</span></div>
-                      </div>
-                      {review.original_value && (
-                        <div>
-                          <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Original</div>
-                          <div className="text-[12px] text-[#1c2a2b]/60">{review.original_value}</div>
+                  {lr && (() => {
+                    const bm = lr.biomarkers;
+                    const defUnit = bm?.unit ?? null;
+                    const resultUnit = lr.unit;
+                    const unitMismatch = defUnit && resultUnit && defUnit.toLowerCase() !== resultUnit.toLowerCase();
+                    const refLow = bm?.ref_range_low ?? null;
+                    const refHigh = bm?.ref_range_high ?? null;
+                    const optLow = bm?.optimal_range_low ?? null;
+                    const optHigh = bm?.optimal_range_high ?? null;
+                    const fmtRange = (low: number | null, high: number | null) => {
+                      if (low != null && high != null) return `${low} – ${high}`;
+                      if (low != null) return `≥ ${low}`;
+                      if (high != null) return `≤ ${high}`;
+                      return '—';
+                    };
+
+                    return (
+                      <div className="rounded-lg bg-[#0e393d]/[0.02] border border-[#0e393d]/6 overflow-hidden">
+                        {/* Unit mismatch banner */}
+                        {unitMismatch && (
+                          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-2">
+                            <span className="text-amber-600 text-sm">⚠️</span>
+                            <span className="text-[11px] font-medium text-amber-700">
+                              Unit mismatch: result is in <strong>{resultUnit}</strong> but definition expects <strong>{defUnit}</strong>
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="px-4 py-3 flex items-center gap-6 flex-wrap">
+                          <div>
+                            <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Biomarker</div>
+                            <div className="text-[12px] font-medium text-[#0e393d]">{bmName}</div>
+                            {bm?.slug && <div className="text-[10px] text-[#1c2a2b]/30 font-mono">{bm.slug}</div>}
+                          </div>
+                          <div>
+                            <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Patient</div>
+                            <div className="text-[12px] text-[#1c2a2b]/70">{userName}</div>
+                          </div>
+                          <div>
+                            <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Value</div>
+                            <div className="text-[12px] font-semibold text-[#0e393d]">
+                              {lr.value_numeric} <span className={`font-normal ${unitMismatch ? 'text-amber-600 font-medium' : 'text-[#1c2a2b]/40'}`}>{lr.unit}</span>
+                            </div>
+                          </div>
+                          {(lr.original_value != null || review.original_value) && (
+                            <div>
+                              <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Original</div>
+                              <div className="text-[12px] text-[#1c2a2b]/60">
+                                {lr.original_value ?? review.original_value}
+                                {lr.original_unit && <span className="text-[#1c2a2b]/35 ml-1">{lr.original_unit}</span>}
+                              </div>
+                            </div>
+                          )}
+                          <FlagBadge flag={lr.status_flag} />
+                          <div>
+                            <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Source</div>
+                            <div className="text-[12px] text-[#1c2a2b]/50">{lr.source || 'manual'}</div>
+                          </div>
+                          {lr.measured_at && (
+                            <div>
+                              <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Date</div>
+                              <div className="text-[12px] text-[#1c2a2b]/50 tabular-nums">{fmtDate(lr.measured_at)}</div>
+                            </div>
+                          )}
                         </div>
-                      )}
-                      <FlagBadge flag={lr.status_flag} />
-                      <div>
-                        <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Source</div>
-                        <div className="text-[12px] text-[#1c2a2b]/50">{lr.source || 'manual'}</div>
+
+                        {/* Reference & Optimal ranges */}
+                        {(refLow != null || refHigh != null || optLow != null || optHigh != null) && (
+                          <div className="px-4 py-2.5 border-t border-[#0e393d]/5 bg-[#0e393d]/[0.015] flex items-center gap-6 flex-wrap">
+                            <div>
+                              <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Ref Range</div>
+                              <div className={`text-[12px] tabular-nums ${unitMismatch ? 'text-amber-600' : 'text-[#1c2a2b]/60'}`}>
+                                {fmtRange(refLow, refHigh)} <span className="text-[#1c2a2b]/30">{defUnit}</span>
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Optimal Range</div>
+                              <div className={`text-[12px] tabular-nums ${unitMismatch ? 'text-amber-600' : 'text-[#0e393d]/70'}`}>
+                                {fmtRange(optLow, optHigh)} <span className="text-[#1c2a2b]/30">{defUnit}</span>
+                              </div>
+                            </div>
+                            {defUnit && (
+                              <div>
+                                <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Def. Unit</div>
+                                <div className={`text-[12px] ${unitMismatch ? 'text-amber-600 font-semibold' : 'text-[#1c2a2b]/50'}`}>{defUnit}</div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      {lr.measured_at && (
-                        <div>
-                          <div className="text-[9px] text-[#1c2a2b]/35 uppercase tracking-wider font-semibold mb-0.5">Date</div>
-                          <div className="text-[12px] text-[#1c2a2b]/50 tabular-nums">{fmtDate(lr.measured_at)}</div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Edit input */}
                   {isEditing && (
