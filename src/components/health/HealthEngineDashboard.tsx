@@ -53,6 +53,7 @@ interface Props {
   reports: Report[];
   results: LabResult[];
   definitions: BiomarkerDef[];
+  isSample?: boolean;
 }
 
 interface ProcessedMarker {
@@ -544,7 +545,7 @@ function MiniScoreRing({ score, size = 44 }: { score: number; size?: number }) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function HealthEngineDashboard({ lang, userId, profile, reports, results, definitions }: Props) {
+export default function HealthEngineDashboard({ lang, userId, profile, reports, results, definitions, isSample }: Props) {
   const t = T[lang];
 
   const dash = useMemo(() => {
@@ -973,7 +974,11 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
       <div className="bg-[#0e393d]">
         <div className="max-w-[1040px] mx-auto px-6 md:px-10 pt-28 pb-20">
           <p className="text-[10px] font-semibold tracking-[.2em] uppercase text-[#ceab84] mb-3">{t.tag}</p>
-          <h1 className="font-serif text-[clamp(2.2rem,4vw,3rem)] text-white leading-[1.1] mb-4">{t.title}</h1>
+          <h1 className="font-serif text-[clamp(2.2rem,4vw,3rem)] text-white leading-[1.1] mb-4">
+            {isSample && profile?.first_name
+              ? `${profile.first_name}'s Health Score`
+              : t.title}
+          </h1>
           <p className="text-[15px] text-white/50 max-w-2xl leading-relaxed font-light mb-8">{t.sub}</p>
           <div className="flex flex-wrap gap-8 text-[11px] text-white/40">
             <span className="flex items-center gap-1"><span className="text-white/30">•</span> {t.lastTested}: {fmtDateFull(lastDate, lang)}</span>

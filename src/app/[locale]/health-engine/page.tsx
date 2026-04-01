@@ -210,10 +210,11 @@ export default async function HealthEnginePage({
       return (
         <>
           <PublicNav />
-          <div className="bg-[#ceab84]/20 border-b border-[#ceab84]/40 py-3 text-center">
-            <p className="text-sm text-[#0e393d] font-medium">
+          {/* Floating sample-data pill — sits below the navbar, persists on scroll */}
+          <div className="fixed top-[76px] left-1/2 -translate-x-1/2 z-40">
+            <div className="px-6 py-2 rounded-full bg-[#ceab84] text-[#0e393d] text-xs font-semibold tracking-wide shadow-lg whitespace-nowrap">
               {isLoggedIn ? T.sampleBannerLoggedIn[lang] : T.sampleBanner[lang]}
-            </p>
+            </div>
           </div>
           <HealthEngineDashboard
             lang={lang}
@@ -222,6 +223,7 @@ export default async function HealthEnginePage({
             reports={sample.reports}
             results={sample.results}
             definitions={sample.definitions}
+            isSample
           />
           <PublicFooter />
         </>

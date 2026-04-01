@@ -35,6 +35,16 @@ export async function computeAndInsertCalculatedMarkers({
     .eq('lab_report_id', labReportId)
     .eq('source', 'calculated');
 
+  // 1b. If no testDate provided, read it from the lab_report itself
+  if (!testDate) {
+    const { data: report } = await supabase
+      .from('lab_reports')
+      .select('test_date')
+      .eq('id', labReportId)
+      .single();
+    if (report?.test_date) testDate = report.test_date;
+  }
+
   // 2. Fetch all remaining (measured) results for this report
   const { data: existingResults } = await supabase
     .from('lab_results')
