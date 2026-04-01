@@ -11,6 +11,7 @@ export interface IngestOptions {
   openaiApiKey: string;
   pubmedApiKey?: string;
   source?: string;
+  bookSlugs?: string[];       // Link ingested studies to these books (by slug)
   batchSize?: number;         // PubMed fetch batch size (max 200)
   embedBatchSize?: number;    // OpenAI embedding batch size (max 2048, keep low to avoid timeouts)
   pubmedDelayMs?: number;     // Delay between PubMed API calls
@@ -77,6 +78,107 @@ async function upsertStudies(
   }
 }
 
+// Link studies to books via the book_citations junction table
+async function linkStudiesToBooks(
+  pmids: string[],
+  bookSlugs: string[],
+  supabaseUrl: string,
+  supabaseServiceKey: string,
+  onProgress: (msg: string) => void
+): Promise<void> {
+  if (bookSlugs.length === 0 || pmids.length === 0) return;
+
+  const headers = {
+    'apikey': supabaseServiceKey,
+    'Authorization': `Bearer ${supabaseServiceKey}`,
+    'Content-Type': 'application/json',
+  };
+
+  // Fetch book IDs for the given slugs
+  const booksRes = await fetch(
+    `${supabaseUrl}/rest/v1/books?slug=in.(${bookSlugs.join(',')})&select=id,slug`,
+    { headers }
+  );
+  if (!booksRes.ok) {
+    onProgress(`  Warning: Could not fetch book IDs: ${booksRes.status}`);
+    return;
+  }
+  const books: { id: string; slug: string }[] = await booksRes.json();
+  if (books.length === 0) {
+    onProgress(`  Warning: No books found for slugs: ${bookSlugs.join(', ')}`);
+    return;
+  }
+
+  // Fetch study IDs for the PMIDs we just ingested
+  // Process in batches since there could be thousands
+  const batchSize = 500;
+  const allStudies: { id: string; pmid: string }[] = [];
+  for (let i = 0; i < pmids.length; i += batchSize) {
+    const batch = pmids.slice(i, i + batchSize);
+    const studiesRes = await fetch(
+      `${supabaseUrl}/rest/v1/studies?pmid=in.(${batch.join(',')})&select=id,pmid`,
+      { headers }
+    );
+    if (studiesRes.ok) {
+      const studies: { id: string; pmid: string }[] = await studiesRes.json();
+      allStudies.push(...studies);
+    }
+  }
+
+  if (allStudies.length === 0) return;
+
+  // Build junction rows (book_id, study_id) for each book × study combination
+  const rows: { book_id: string; study_id: string }[] = [];
+  for (const book of books) {
+    for (const study of allStudies) {
+      rows.push({ book_id: book.id, study_id: study.id });
+    }
+  }
+
+  // Upsert in batches (skip conflicts via ON CONFLICT DO NOTHING equivalent)
+  const insertBatchSize = 1000;
+  let linked = 0;
+  for (let i = 0; i < rows.length; i += insertBatchSize) {
+    const batch = rows.slice(i, i + insertBatchSize);
+    const res = await fetch(`${supabaseUrl}/rest/v1/book_citations`, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Prefer': 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify(batch),
+    });
+    if (res.ok) {
+      linked += batch.length;
+    } else {
+      const err = await res.text();
+      onProgress(`  Warning: book_citations insert error: ${err}`);
+    }
+  }
+
+  for (const book of books) {
+    onProgress(`  Linked ${allStudies.length} studies to book: ${book.slug}`);
+  }
+
+  // Update total_citations count on each book
+  for (const book of books) {
+    const countQuery = await fetch(
+      `${supabaseUrl}/rest/v1/book_citations?book_id=eq.${book.id}&select=id`,
+      { headers: { ...headers, 'Prefer': 'count=exact' } }
+    );
+    const countHeader = countQuery.headers.get('content-range');
+    const total = countHeader ? parseInt(countHeader.split('/')[1] || '0', 10) : 0;
+    if (total > 0) {
+      await fetch(`${supabaseUrl}/rest/v1/books?slug=eq.${book.slug}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ total_citations: total }),
+      });
+      onProgress(`  Updated ${book.slug} citation count: ${total}`);
+    }
+  }
+}
+
 // Main ingestion function
 export async function ingestPmids(
   pmids: string[],
@@ -88,6 +190,7 @@ export async function ingestPmids(
     openaiApiKey,
     pubmedApiKey,
     source = 'greger',
+    bookSlugs = [],
     batchSize = 100,
     embedBatchSize = 50,
     pubmedDelayMs = 110,    // ~9 req/sec — just under PubMed's 10/sec limit with API key
@@ -180,6 +283,16 @@ export async function ingestPmids(
     } else if (dryRun) {
       onProgress(`  [DRY RUN] Would insert ${rows.length} studies`);
       result.inserted += rows.length;
+    }
+  }
+
+  // Link studies to books if bookSlugs were provided
+  if (bookSlugs.length > 0 && !dryRun && result.inserted > 0) {
+    onProgress(`\nLinking studies to books: ${bookSlugs.join(', ')}...`);
+    try {
+      await linkStudiesToBooks(pmids, bookSlugs, supabaseUrl, supabaseServiceKey, onProgress);
+    } catch (e) {
+      onProgress(`  Warning: Book linking failed: ${e}`);
     }
   }
 

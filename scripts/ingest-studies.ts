@@ -6,8 +6,9 @@
 //   npx tsx scripts/ingest-studies.ts [options]
 //
 // Options:
-//   --source greger|pubmed_nutrition|pubmed_longevity  (default: greger)
+//   --source greger|greger_epub|greger_all|pubmed_nutrition|pubmed_longevity  (default: greger)
 //   --include-videos    Also scrape NutritionFacts.org video citations
+//   --epub-dir PATH     Directory containing Greger EPUB files (for greger_epub source)
 //   --dry-run           Fetch + embed but don't write to DB
 //   --limit N           Only process first N PMIDs (for testing)
 //   --pmids 1234,5678   Ingest specific PMIDs directly
@@ -19,7 +20,7 @@
 //   PUBMED_API_KEY (optional, but increases rate limit to 10 req/sec)
 
 import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { resolve, basename } from 'path';
 
 // Load .env.local manually (avoids dotenv dependency)
 try {
@@ -39,6 +40,7 @@ try {
 }
 
 import { collectGregerPmids } from '../src/lib/research/ingest-greger';
+import { collectEpubPmids, GREGER_EPUB_BOOKS } from '../src/lib/research/ingest-epub';
 import { searchPubMed } from '../src/lib/research/pubmed-api';
 import { ingestPmids } from '../src/lib/research/ingest-pipeline';
 
@@ -52,6 +54,7 @@ const hasFlag = (flag: string) => args.includes(flag);
 
 const source = getArg('--source') ?? 'greger';
 const includeVideos = hasFlag('--include-videos');
+const epubDir = getArg('--epub-dir');
 const dryRun = hasFlag('--dry-run');
 const limit = getArg('--limit') ? parseInt(getArg('--limit')!, 10) : undefined;
 const specificPmids = getArg('--pmids')?.split(',').map(p => p.trim());
@@ -116,17 +119,51 @@ async function main() {
   if (specificPmids?.length) {
     pmids = specificPmids;
     console.log(`Using ${pmids.length} directly specified PMIDs`);
-  } else if (source === 'greger') {
-    console.log('Collecting PMIDs from Greger/NutritionFacts.org sources...');
-    const { pmids: collected, stats } = await collectGregerPmids({
-      includeVideos,
-      maxVideoPages: 30,
+  } else if (source === 'greger' || source === 'greger_epub' || source === 'greger_all') {
+    // NOTE: nutritionfacts.org book citation pages no longer contain PubMed URLs.
+    // We extract citations from EPUBs and resolve them to PMIDs instead.
+
+    // Phase 1: Extract citations from EPUB books and resolve to PMIDs
+    console.log('Phase 1: Extracting citations from Greger EPUBs and resolving to PMIDs...');
+
+    const epubBase = epubDir ? resolve(epubDir) : resolve(process.cwd(), 'data/greger-books');
+    const epubConfigs = GREGER_EPUB_BOOKS.map(book => ({
+      ...book,
+      path: resolve(epubBase, basename(book.path)),
+    }));
+
+    console.log(`EPUB directory: ${epubBase}`);
+
+    const { pmids: epubPmids, stats: epubStats } = await collectEpubPmids({
+      epubPaths: epubConfigs,
+      pubmedApiKey: PUBMED_API_KEY,
+      delayMs: PUBMED_API_KEY ? 110 : 350,
+      onProgress: console.log,
     });
-    pmids = collected;
-    console.log('\nCollection stats:');
-    for (const [label, count] of Object.entries(stats)) {
-      console.log(`  ${label}: ${count} PMIDs found`);
+
+    for (const pmid of epubPmids) pmids.push(pmid);
+    console.log('\nEPUB collection stats:');
+    for (const [label, count] of Object.entries(epubStats)) {
+      console.log(`  ${label}: ${count} PMIDs resolved`);
     }
+
+    // Phase 2 (greger_all only): Also scrape NutritionFacts.org video citations
+    // Video source pages still contain PubMed URLs, unlike book citation pages
+    if ((source === 'greger_all' || includeVideos) && includeVideos) {
+      console.log('\nPhase 2: Scraping NutritionFacts.org video citations...');
+      const { pmids: videoPmids, stats: videoStats } = await collectGregerPmids({
+        includeVideos: true,
+        maxVideoPages: 30,
+      });
+      for (const pmid of videoPmids) pmids.push(pmid);
+      console.log('\nVideo collection stats:');
+      for (const [label, count] of Object.entries(videoStats)) {
+        console.log(`  ${label}: ${count} PMIDs found`);
+      }
+    }
+
+    pmids = [...new Set(pmids)]; // deduplicate
+
   } else if (source === 'pubmed_nutrition') {
     console.log('Searching PubMed for nutrition studies...');
     for (const query of PUBMED_NUTRITION_QUERIES) {
@@ -154,7 +191,7 @@ async function main() {
     }
     pmids = [...new Set(pmids)];
   } else {
-    console.error(`Unknown source: ${source}. Use greger, pubmed_nutrition, or pubmed_longevity`);
+    console.error(`Unknown source: ${source}. Use greger, greger_epub, greger_all, pubmed_nutrition, or pubmed_longevity`);
     process.exit(1);
   }
 
@@ -178,6 +215,19 @@ async function main() {
   console.log(`Estimated time: ~${Math.ceil(pmids.length / 100 * 2)} minutes`);
   console.log('');
 
+  // Determine which books to link studies to
+  const allGregerSlugs = ['how_not_to_die', 'how_not_to_age', 'how_not_to_diet', 'lower_ldl', 'ozempic', 'ultra_processed'];
+  const bookSlugsForSource: Record<string, string[]> = {
+    greger: allGregerSlugs,
+    greger_epub: allGregerSlugs,
+    greger_all: allGregerSlugs,
+  };
+  const bookSlugs = bookSlugsForSource[source] ?? [];
+
+  if (bookSlugs.length > 0) {
+    console.log(`Will link studies to books: ${bookSlugs.join(', ')}`);
+  }
+
   // Run ingestion
   const startTime = Date.now();
   const result = await ingestPmids(pmids, {
@@ -186,6 +236,7 @@ async function main() {
     openaiApiKey: OPENAI_API_KEY!,
     pubmedApiKey: PUBMED_API_KEY,
     source,
+    bookSlugs,
     batchSize: 100,
     embedBatchSize: 50,
     pubmedDelayMs: PUBMED_API_KEY ? 110 : 350, // 9/sec with key, ~3/sec without
