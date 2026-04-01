@@ -390,9 +390,11 @@ export const CALCULATED_MARKERS: Record<string, CalculatedMarkerFn> = {
 
   // eGFR — CKD-EPI 2021 race-free (Inker et al. NEJM 2021)
   // sex_code: 0=female, 1=male, 0.5/undefined=unknown → average of M+F
+  // NOTE: DB canonical unit for creatinine is µmol/L — convert to mg/dL first (÷88.42)
   egfr: (v, userAge) => {
-    const cr = get(v, 'creatinine'); // mg/dL canonical
-    if (cr === null || cr <= 0 || !userAge) return null;
+    const crUmol = get(v, 'creatinine'); // µmol/L canonical
+    if (crUmol === null || crUmol <= 0 || !userAge) return null;
+    const cr = crUmol / 88.42; // convert µmol/L → mg/dL for CKD-EPI
 
     const sexCode = get(v, 'sex_code'); // 0=female, 1=male, 0.5=unknown
 
@@ -468,46 +470,82 @@ export const CALCULATED_MARKERS: Record<string, CalculatedMarkerFn> = {
     return waist / height;
   },
 
+  // ── Hormones ─────────────────────────────────────────────────────────────────
+
+  // Free Testosterone — Vermeulen equation (ng/dL)
+  // Inputs: testosterone_total (ng/dL), shbg (nmol/L), albumin (g/dL)
+  // Based on Vermeulen et al. J Clin Endocrinol Metab 1999;84:3666–3672
+  testosterone_free: (v) => {
+    const totalT = get(v, 'testosterone_total'); // ng/dL
+    const shbg   = get(v, 'shbg');              // nmol/L
+    const albumin = get(v, 'albumin');           // g/dL
+
+    if (totalT === null || shbg === null || albumin === null) return null;
+    if (totalT <= 0 || shbg <= 0 || albumin <= 0) return null;
+
+    // Convert total T from ng/dL to nmol/L (÷28.842)
+    const totalT_nmol = totalT / 28.842;
+    // Albumin g/dL → mol/L (÷6.6 → ×10⁻⁴ effectively, but standard is g/L ÷66430)
+    const albumin_mol = (albumin * 10) / 66430; // g/dL → g/L → mol/L
+
+    // Association constants (Vermeulen)
+    const Ka_T_SHBG = 1.0e10;   // T–SHBG affinity (L/mol)
+    const Ka_T_Alb  = 3.6e4;    // T–albumin affinity (L/mol)
+
+    // Solve quadratic for free T concentration
+    // FT = [T_total] / (1 + Ka_Alb*[Alb] + Ka_SHBG*[SHBG]/(1 + Ka_SHBG*FT))
+    // Iterative approximation (Vermeulen's method)
+    const shbg_mol = shbg * 1e-9; // nmol/L → mol/L
+
+    // Initial estimate: FT = T / (1 + Ka_Alb*Alb + Ka_SHBG*SHBG)
+    let ft = totalT_nmol * 1e-9; // initial guess in mol/L
+    for (let i = 0; i < 20; i++) {
+      const denom = 1 + Ka_T_Alb * albumin_mol + Ka_T_SHBG * shbg_mol / (1 + Ka_T_SHBG * ft);
+      ft = (totalT_nmol * 1e-9) / denom;
+    }
+
+    // Convert back to ng/dL: mol/L → nmol/L (×10⁹) → ng/dL (×28.842)
+    const ft_ngdl = ft * 1e9 * 28.842;
+    return ft_ngdl > 0 ? Math.round(ft_ngdl * 100) / 100 : null;
+  },
+
   // ── Epigenetics ──────────────────────────────────────────────────────────────
 
   // PhenoAge — Levine 2018 biological age (years)
   //
-  // Inputs (canonical units → Levine units):
-  //   albumin        g/dL  → g/L       (×10)
-  //   creatinine     mg/dL → µmol/L    (×88.42)
-  //   fasting_glucose mg/dL → mmol/L   (÷18.0182)
-  //   hs_crp         mg/L  → mg/dL     (÷10) then ln()
-  //   lymphocytes    %     → as-is
-  //   mcv            fL    → as-is
-  //   rdw            %     → as-is
-  //   alp            U/L   → as-is
-  //   userAge        years → from profile (NOT a lab slug)
-  //
-  // Previous bugs fixed:
-  //   'alkaline_phosphatase' → 'alp'
-  //   'leukocytes'           → removed (wbc is NOT in Levine formula)
-  //   9th coefficient        → chronological age (was incorrectly wbc)
+  // DB canonical units → Levine formula units:
+  //   albumin        g/dL    → g/L       (×10)
+  //   creatinine     µmol/L  → µmol/L    (already correct)
+  //   fasting_glucose mg/dL  → mmol/L    (÷18.0182)
+  //   hs_crp         mg/L    → mg/dL     (÷10) then ln()
+  //   lymphocytes    x10^9/L → %         (÷ WBC × 100)
+  //   mcv            fL      → as-is
+  //   rdw            %       → as-is
+  //   alp            U/L     → as-is
+  //   userAge        years   → from profile (NOT a lab slug)
   pheno_age: (v, userAge) => {
     const albumin    = get(v, 'albumin');
-    const creatinine = get(v, 'creatinine');
+    const creatinine = get(v, 'creatinine'); // µmol/L canonical
     const glucose    = get(v, 'fasting_glucose');
     const crp        = get(v, 'hs_crp');
-    const lympho     = get(v, 'lymphocytes');
+    const lymphoAbs  = get(v, 'lymphocytes'); // x10^9/L absolute
+    const wbc        = get(v, 'wbc');         // x10^9/L for % conversion
     const mcv        = get(v, 'mcv');
     const rdw        = get(v, 'rdw');
     const alp        = get(v, 'alp');
 
     if (
       albumin === null || creatinine === null || glucose === null ||
-      crp === null || lympho === null || mcv === null ||
-      rdw === null || alp === null || !userAge
+      crp === null || lymphoAbs === null || wbc === null || wbc <= 0 ||
+      mcv === null || rdw === null || alp === null || !userAge
     ) return null;
 
     const albGL     = albumin * 10;
-    const creatUmol = creatinine * 88.42;
+    const creatUmol = creatinine; // already in µmol/L
     const glucMmol  = glucose / 18.0182;
     const crpMgDl   = crp / 10;
     const lnCrp     = Math.log(Math.max(crpMgDl, 0.001));
+    const lympho    = (lymphoAbs / wbc) * 100; // convert absolute → percentage
 
     const ms =
       -19.907

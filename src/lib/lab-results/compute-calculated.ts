@@ -27,7 +27,14 @@ export async function computeAndInsertCalculatedMarkers({
   labReportId,
   testDate,
 }: ComputeCalcOpts): Promise<number> {
-  // 1. Fetch all existing results for this report (measured + any already-calculated)
+  // 1. Delete any previously-calculated results for this report (so formulas re-run cleanly)
+  await supabase
+    .from('lab_results')
+    .delete()
+    .eq('lab_report_id', labReportId)
+    .eq('source', 'calculated');
+
+  // 2. Fetch all remaining (measured) results for this report
   const { data: existingResults } = await supabase
     .from('lab_results')
     .select('biomarker_definition_id, value_numeric, biomarkers:biomarker_definition_id(slug)')
@@ -36,7 +43,7 @@ export async function computeAndInsertCalculatedMarkers({
 
   if (!existingResults || existingResults.length === 0) return 0;
 
-  // Build slug→value map from existing results
+  // Build slug→value map from measured results only
   const measured: Record<string, number> = {};
   for (const r of existingResults) {
     const bio = r.biomarkers as unknown as { slug: string } | null;
@@ -45,7 +52,7 @@ export async function computeAndInsertCalculatedMarkers({
     }
   }
 
-  // 2. Get user profile for age, height, sex
+  // 3. Get user profile for age, height, sex
   const { data: profile } = await supabase
     .from('profiles')
     .select('date_of_birth, height_cm, sex')
@@ -60,10 +67,10 @@ export async function computeAndInsertCalculatedMarkers({
                 : profile?.sex === 'female' ? 'female' as const
                 : null;
 
-  // 3. Compute all derivable calculated markers
+  // 4. Compute all derivable calculated markers
   const withCalc = computeAllCalculatedMarkers(measured, userAge, heightCm, userSex);
 
-  // 4. Filter to only NEW calculated values (not already in measured)
+  // 5. Filter to only NEW calculated values (not already in measured)
   const newCalcEntries = Object.entries(withCalc).filter(
     ([slug]) =>
       !(slug in measured) &&
@@ -74,7 +81,7 @@ export async function computeAndInsertCalculatedMarkers({
 
   if (newCalcEntries.length === 0) return 0;
 
-  // 5. Look up biomarker IDs for calculated slugs
+  // 6. Look up biomarker IDs for calculated slugs
   const calcSlugs = newCalcEntries.map(([slug]) => slug);
   const { data: calcBiomarkers } = await supabase
     .from('biomarkers')
@@ -87,7 +94,7 @@ export async function computeAndInsertCalculatedMarkers({
     calcBiomarkers.map((b: any) => [b.slug, b]),
   );
 
-  // 6. Build insert rows with status_flag computation
+  // 7. Build insert rows with status_flag computation
   const measuredAt = testDate
     ? new Date(testDate).toISOString()
     : new Date().toISOString();
