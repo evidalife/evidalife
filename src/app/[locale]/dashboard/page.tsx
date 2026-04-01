@@ -14,8 +14,27 @@ const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 type Lang = typeof VALID_LANGS[number];
 type StatusFlag = 'optimal' | 'good' | 'moderate' | 'risk';
 
-// Bio-age biomarker slugs (stored in the biomarkers table)
-const BIOAGE_SLUGS = ['pheno_age', 'grim_age_v2', 'dunedin_pace'] as const;
+// Domain weights — same as health-engine
+const DOMAIN_WEIGHTS: Record<string, number> = {
+  heart_vessels:   0.20,
+  metabolism:      0.18,
+  inflammation:    0.15,
+  organ_function:  0.15,
+  nutrients:       0.12,
+  hormones:        0.10,
+  body_composition: 0.05,
+  fitness:         0.05,
+  epigenetics:     0.10,
+};
+
+function flagToScore(flag: StatusFlag): number {
+  switch (flag) {
+    case 'optimal': return 100;
+    case 'good':     return 75;
+    case 'moderate': return 50;
+    case 'risk':     return 25;
+  }
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -68,7 +87,7 @@ function fmtDate(iso: string | null, lang: Lang): string {
   });
 }
 
-// ─── SVG Gauge ────────────────────────────────────────────────────────────────
+// ─── SVG Gauge (matches health-engine style) ─────────────────────────────────
 
 const GAUGE_R = 52;
 const GAUGE_CX = 70;
@@ -76,7 +95,7 @@ const GAUGE_CIRC = 2 * Math.PI * GAUGE_R;
 const GAUGE_ARC  = GAUGE_CIRC * (270 / 360);
 const GAUGE_GAP  = GAUGE_CIRC - GAUGE_ARC;
 
-function ScoreGauge({ score, lang }: { score: number; lang: Lang }) {
+function ScoreGauge({ score, lang, sub }: { score: number; lang: Lang; sub?: string }) {
   const filled  = GAUGE_ARC * (score / 100);
   const color   = scoreColor(score);
   const label   = scoreLabel(score, lang);
@@ -101,20 +120,24 @@ function ScoreGauge({ score, lang }: { score: number; lang: Lang }) {
           fontSize="10" fill="#1c2a2b55" fontFamily="sans-serif">/ 100</text>
       </svg>
       <p className="text-sm font-semibold mt-1" style={{ color }}>{label}</p>
+      {sub && <p className="text-[11px] text-[#1c2a2b]/35 mt-0.5">{sub}</p>}
     </div>
   );
 }
 
-function EmptyGauge() {
+function EmptyGauge({ hint }: { hint: string }) {
   return (
-    <svg width="140" height="140" viewBox="0 0 140 140">
-      <circle cx={GAUGE_CX} cy={GAUGE_CX} r={GAUGE_R}
-        fill="none" stroke="#0e393d12" strokeWidth="9"
-        strokeDasharray={`${GAUGE_ARC} ${GAUGE_GAP}`}
-        strokeLinecap="round" transform={`rotate(135 ${GAUGE_CX} ${GAUGE_CX})`} />
-      <text x={GAUGE_CX} y={GAUGE_CX} textAnchor="middle" dominantBaseline="middle"
-        fontSize="13" fill="#1c2a2b40" fontFamily="sans-serif">—</text>
-    </svg>
+    <div className="flex flex-col items-center py-2 text-center">
+      <svg width="140" height="140" viewBox="0 0 140 140">
+        <circle cx={GAUGE_CX} cy={GAUGE_CX} r={GAUGE_R}
+          fill="none" stroke="#0e393d12" strokeWidth="9"
+          strokeDasharray={`${GAUGE_ARC} ${GAUGE_GAP}`}
+          strokeLinecap="round" transform={`rotate(135 ${GAUGE_CX} ${GAUGE_CX})`} />
+        <text x={GAUGE_CX} y={GAUGE_CX} textAnchor="middle" dominantBaseline="middle"
+          fontSize="13" fill="#1c2a2b40" fontFamily="sans-serif">—</text>
+      </svg>
+      <p className="text-xs text-[#1c2a2b]/35 mt-1 max-w-[180px]">{hint}</p>
+    </div>
   );
 }
 
@@ -169,101 +192,77 @@ export default async function DashboardPage() {
   // ── Parallel data fetches ─────────────────────────────────────────────────
 
   const [
-    heScoreRes,
     labResultsRes,
-    bioageRes,
+    profileRes,
     ddCategoriesRes,
     ddEntriesRes,
     ddStreakRes,
-    profileRes,
     checklistItemsRes,
     checklistEntriesRes,
     userSettingsRes,
     likedRecipesCountRes,
   ] = await Promise.allSettled([
-    // 0: Health Engine Score
-    supabase
-      .from('health_engine_scores')
-      .select('score, calculated_at')
-      .eq('user_id', user.id)
-      .order('calculated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-
-    // 1: Lab results (biomarkers)
+    // 0: Lab results with biomarker definitions
     supabase
       .from('lab_results')
       .select(`
-        id, biomarker_definition_id, value_numeric, status_flag, collected_at,
-        biomarker_definitions:biomarkers!inner( id, slug, name, unit, he_domain )
+        id, biomarker_definition_id, value_numeric, unit, status_flag, measured_at, test_date,
+        biomarkers!inner( id, slug, name, unit, he_domain )
       `)
       .eq('user_id', user.id)
       .is('deleted_at', null)
-      .order('collected_at', { ascending: false })
-      .limit(200),
+      .order('measured_at', { ascending: false })
+      .limit(300),
 
-    // 2: Bio-age biomarker results (pheno_age, grim_age_v2, dunedin_pace)
-    supabase
-      .from('lab_results')
-      .select(`
-        value_numeric, collected_at, status_flag,
-        biomarker_definitions:biomarkers!inner( slug, name, unit )
-      `)
-      .eq('user_id', user.id)
-      .is('deleted_at', null)
-      .in('biomarker_definitions.slug', [...BIOAGE_SLUGS])
-      .order('collected_at', { ascending: false })
-      .limit(10),
-
-    // 3: Daily Dozen categories
-    supabase
-      .from('daily_dozen_categories')
-      .select('id, target_servings')
-      .order('sort_order'),
-
-    // 4: Daily Dozen entries
-    supabase
-      .from('daily_dozen_entries')
-      .select('category_id, servings_completed')
-      .eq('user_id', user.id)
-      .eq('entry_date', today),
-
-    // 5: Daily Dozen streak
-    supabase
-      .from('daily_dozen_streaks')
-      .select('current_streak_days')
-      .eq('user_id', user.id)
-      .maybeSingle(),
-
-    // 6: Profile (birthday)
+    // 1: Profile (birthday for bio age calc)
     supabase
       .from('profiles')
       .select('date_of_birth')
       .eq('id', user.id)
       .single(),
 
-    // 7: Checklist items (21 Tweaks + Anti-Aging 8)
+    // 2: Daily Dozen categories
+    supabase
+      .from('daily_dozen_categories')
+      .select('id, target_servings')
+      .order('sort_order'),
+
+    // 3: Daily Dozen entries
+    supabase
+      .from('daily_dozen_entries')
+      .select('category_id, servings_completed')
+      .eq('user_id', user.id)
+      .eq('entry_date', today),
+
+    // 4: Daily Dozen streak
+    supabase
+      .from('daily_dozen_streaks')
+      .select('current_streak_days')
+      .eq('user_id', user.id)
+      .maybeSingle(),
+
+    // 5: Checklist items (21 Tweaks + Anti-Aging 8)
     supabase
       .from('daily_checklist_items')
       .select('id, framework, target_servings')
       .eq('is_active', true)
       .in('framework', ['21_tweaks', 'anti_aging']),
 
-    // 8: Checklist entries for today
+    // 6: Checklist entries for today
     supabase
       .from('daily_checklist_entries')
       .select('checklist_item_id, servings_completed, is_done')
       .eq('user_id', user.id)
       .eq('entry_date', today),
 
-    // 9: User settings (tweaks/anti-aging enabled)
+    // 7: User settings (tweaks/anti-aging enabled)
     supabase
       .from('user_settings')
       .select('tweaks_enabled, anti_aging_enabled')
       .eq('user_id', user.id)
       .single(),
 
-    // 10: Liked recipes count (rating >= 4)
+    // 8: Liked recipes count (rating >= 4)
     supabase
       .from('recipe_ratings')
       .select('id', { count: 'exact', head: true })
@@ -273,49 +272,100 @@ export default async function DashboardPage() {
 
   // ── Extract data safely ───────────────────────────────────────────────────
 
-  const heScore = heScoreRes.status === 'fulfilled' ? heScoreRes.value.data : null;
-
-  // Lab results
   const labRows = labResultsRes.status === 'fulfilled' ? (labResultsRes.value.data ?? []) : [];
+
+  type BmDef = { id: string; slug: string; name: unknown; unit: string | null; he_domain: string | null };
+
+  // Deduplicate: keep latest per biomarker
   const seenBiomarkers = new Set<string>();
   const latestResults = labRows.filter((r) => {
     if (seenBiomarkers.has(r.biomarker_definition_id)) return false;
     seenBiomarkers.add(r.biomarker_definition_id);
     return true;
   });
+
+  // ── Compute Longevity Score + Bio Age Score (same logic as health-engine) ──
+
+  // Group scores by he_domain
+  const domainScores: Record<string, number[]> = {};
+  for (const r of latestResults) {
+    const bd = r.biomarkers as unknown as BmDef | null;
+    const flag = r.status_flag as StatusFlag | null;
+    if (!bd?.he_domain || !flag) continue;
+    if (!domainScores[bd.he_domain]) domainScores[bd.he_domain] = [];
+    domainScores[bd.he_domain].push(flagToScore(flag));
+  }
+
+  // Weighted average per domain
+  const domainAvgs: Record<string, number> = {};
+  for (const [domain, scores] of Object.entries(domainScores)) {
+    domainAvgs[domain] = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  }
+
+  // Longevity Score = weighted avg of non-epigenetics domains
+  let longevityWSum = 0, longevityWUsed = 0;
+  for (const [domain, avg] of Object.entries(domainAvgs)) {
+    if (domain === 'epigenetics') continue;
+    const w = DOMAIN_WEIGHTS[domain] ?? 0.05;
+    longevityWSum += avg * w;
+    longevityWUsed += w;
+  }
+  const longevityScore = longevityWUsed > 0 ? Math.round(longevityWSum / longevityWUsed) : null;
+  const nonEpiDomainCount = Object.keys(domainAvgs).filter(d => d !== 'epigenetics').length;
+
+  // Bio Age Score = epigenetics domain average
+  const bioAgeScore = domainAvgs['epigenetics'] ?? null;
+
+  // Bio age clock values
+  type BioageClock = { slug: string; name: unknown; value: number; unit: string };
+  const bioageClocks: BioageClock[] = [];
+  const BIOAGE_SLUGS = ['pheno_age', 'grim_age_v2', 'dunedin_pace'];
+  for (const r of latestResults) {
+    const bd = r.biomarkers as unknown as BmDef | null;
+    if (!bd || !BIOAGE_SLUGS.includes(bd.slug) || r.value_numeric == null) continue;
+    bioageClocks.push({ slug: bd.slug, name: bd.name, value: Number(r.value_numeric), unit: bd.unit ?? '' });
+  }
+
+  // Compute average bio age & diff from chronological
+  const profileData = profileRes.status === 'fulfilled' ? profileRes.value.data : null;
+  const hasBirthday = !!profileData?.date_of_birth;
+
+  let chronoAge: number | null = null;
+  let avgBioAge: number | null = null;
+  let bioAgeDiff: number | null = null;
+
+  if (hasBirthday && bioageClocks.length > 0) {
+    const birthDate = new Date(profileData!.date_of_birth!);
+    chronoAge = +((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)).toFixed(1);
+
+    const ageValues: number[] = [];
+    const phenoAge = bioageClocks.find(c => c.slug === 'pheno_age');
+    const grimAge = bioageClocks.find(c => c.slug === 'grim_age_v2');
+    const paceRate = bioageClocks.find(c => c.slug === 'dunedin_pace');
+
+    if (phenoAge) ageValues.push(phenoAge.value);
+    if (grimAge) ageValues.push(grimAge.value);
+    if (paceRate && chronoAge) ageValues.push(+(paceRate.value * chronoAge).toFixed(1));
+
+    if (ageValues.length > 0) {
+      avgBioAge = +(ageValues.reduce((a, b) => a + b, 0) / ageValues.length).toFixed(1);
+      bioAgeDiff = +(avgBioAge - chronoAge).toFixed(1);
+    }
+  }
+
+  // Group results by he_domain for the biomarker listing
   const bySystem: Record<string, typeof latestResults> = {};
   for (const r of latestResults) {
-    const bd = r.biomarker_definitions as unknown as { id: string; slug: string; name: unknown; unit: string | null; he_domain: string | null } | null;
+    const bd = r.biomarkers as unknown as BmDef | null;
     const system = bd?.he_domain ?? 'other';
     if (!bySystem[system]) bySystem[system] = [];
     bySystem[system].push(r);
   }
 
-  // Biological age data
-  type BioageRow = { slug: string; name: unknown; unit: string; value: number; status_flag: string | null; collected_at: string | null };
-  const bioageRows: BioageRow[] = [];
-  if (bioageRes.status === 'fulfilled') {
-    const raw = bioageRes.value.data ?? [];
-    const seenSlugs = new Set<string>();
-    for (const r of raw) {
-      const bd = r.biomarker_definitions as unknown as { slug: string; name: unknown; unit: string } | null;
-      if (!bd || seenSlugs.has(bd.slug)) continue;
-      seenSlugs.add(bd.slug);
-      if (r.value_numeric != null) {
-        bioageRows.push({
-          slug: bd.slug,
-          name: bd.name,
-          unit: bd.unit,
-          value: Number(r.value_numeric),
-          status_flag: r.status_flag,
-          collected_at: r.collected_at,
-        });
-      }
-    }
-  }
-  const hasBioage = bioageRows.length > 0;
-  // Use GrimAge v2 or PhenoAge as the "headline" biological age (in years)
-  const headlineBioage = bioageRows.find(b => b.slug === 'grim_age_v2') ?? bioageRows.find(b => b.slug === 'pheno_age');
+  // Last test date
+  const lastTestDate = latestResults.length > 0
+    ? (latestResults[0].test_date || latestResults[0].measured_at?.split('T')[0] || null)
+    : null;
 
   // Daily Dozen
   const ddCategories = ddCategoriesRes.status === 'fulfilled' ? (ddCategoriesRes.value.data ?? []) : [];
@@ -354,13 +404,8 @@ export default async function DashboardPage() {
   const tweaksProgress = computeChecklistProgress(tweaksItems);
   const aaProgress     = computeChecklistProgress(aaItems);
 
-  // Profile & recipes
-  const profileData = profileRes.status === 'fulfilled' ? profileRes.value.data : null;
-  const hasBirthday = !!profileData?.date_of_birth;
-
   const likedRecipesCount = likedRecipesCountRes.status === 'fulfilled'
-    ? (likedRecipesCountRes.value.count ?? 0)
-    : 0;
+    ? (likedRecipesCountRes.value.count ?? 0) : 0;
 
   const hasLabResults = latestResults.length > 0;
   const systemKeys    = Object.keys(bySystem).sort();
@@ -390,30 +435,30 @@ export default async function DashboardPage() {
         <div className="max-w-5xl mx-auto">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.eyebrow}</p>
           <h1 className="font-serif text-3xl sm:text-4xl text-white leading-tight">{t.heading}</h1>
+          {lastTestDate && (
+            <p className="text-sm text-white/40 mt-2">{t.collected}: {fmtDate(lastTestDate, lang)}</p>
+          )}
         </div>
       </section>
 
       <main className="flex-1 w-full max-w-5xl mx-auto px-6 py-8 space-y-8">
 
-        {/* ── Score + Biological Age ─────────────────────────────────────── */}
+        {/* ── OVERALL SCORE: Longevity + Biological Age ──────────────────── */}
         <div className="grid gap-5 sm:grid-cols-2">
 
-          {/* Health Engine Score */}
-          <div className="rounded-2xl border border-[#0e393d]/10 bg-white p-6 flex flex-col items-center">
+          {/* Longevity Score */}
+          <Link href="/health-engine" className="rounded-2xl border border-[#0e393d]/10 bg-white p-6 flex flex-col items-center hover:border-[#0e393d]/25 hover:shadow-sm transition group">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84] mb-4">{t.score}</p>
-            {heScore ? (
-              <>
-                <ScoreGauge score={heScore.score} lang={lang} />
-                <p className="text-[11px] text-[#1c2a2b]/35 mt-2">
-                  {t.collected} {fmtDate(heScore.calculated_at, lang)}
-                </p>
-              </>
+            {longevityScore != null && longevityScore > 0 ? (
+              <ScoreGauge
+                score={longevityScore}
+                lang={lang}
+                sub={lang === 'de'
+                  ? `Basiert auf ${nonEpiDomainCount} Gesundheitsbereichen`
+                  : `Based on ${nonEpiDomainCount} health domains`}
+              />
             ) : (
-              <div className="flex flex-col items-center py-2 text-center">
-                <EmptyGauge />
-                <p className="text-sm font-medium text-[#1c2a2b]/50 mt-1">{t.scoreNone}</p>
-                <p className="text-xs text-[#1c2a2b]/35 mt-1 max-w-[180px]">{t.scoreNoneHint}</p>
-              </div>
+              <EmptyGauge hint={t.scoreNoneHint} />
             )}
             {hasLabResults && (
               <div className="flex gap-2 mt-4 flex-wrap justify-center">
@@ -439,58 +484,58 @@ export default async function DashboardPage() {
                 )}
               </div>
             )}
-          </div>
+            <span className="text-[11px] text-[#0e393d]/40 mt-3 group-hover:text-[#0e393d]/70 transition">
+              {lang === 'de' ? 'Details ansehen →' : 'View details →'}
+            </span>
+          </Link>
 
-          {/* Biological Age */}
-          <div className="rounded-2xl border border-[#0e393d]/10 bg-white p-6 flex flex-col items-center">
+          {/* Biological Age Score */}
+          <Link href="/health-engine" className="rounded-2xl border border-[#0e393d]/10 bg-white p-6 flex flex-col items-center hover:border-[#0e393d]/25 hover:shadow-sm transition group">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84] mb-4">{t.bioage}</p>
 
-            {hasBioage && headlineBioage ? (
-              <div className="flex flex-col items-center">
-                {/* Large age ring */}
-                <div className="w-[140px] h-[140px] rounded-full border-[9px] border-[#0e393d]/15 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-serif font-bold text-[#0e393d]">
-                    {headlineBioage.value.toFixed(1)}
-                  </span>
-                  <span className="text-[10px] text-[#1c2a2b]/40 mt-0.5">{t.bioageYears}</span>
-                </div>
-                <p className="text-xs font-medium text-[#0e393d] mt-3">
-                  {locName(headlineBioage.name, lang)}
-                </p>
-                {headlineBioage.collected_at && (
-                  <p className="text-[11px] text-[#1c2a2b]/35 mt-1">
-                    {t.collected} {fmtDate(headlineBioage.collected_at, lang)}
-                  </p>
-                )}
-                {/* Other clocks */}
-                {bioageRows.length > 1 && (
-                  <div className="flex gap-4 mt-4 pt-3 border-t border-[#0e393d]/6 w-full justify-center">
-                    {bioageRows.filter(b => b.slug !== headlineBioage.slug).map(b => (
-                      <div key={b.slug} className="text-center">
-                        <p className="text-lg font-serif font-bold text-[#0e393d]">
-                          {b.slug === 'dunedin_pace' ? b.value.toFixed(2) : b.value.toFixed(1)}
+            {bioAgeScore != null && bioAgeScore > 0 ? (
+              <>
+                <ScoreGauge
+                  score={bioAgeScore}
+                  lang={lang}
+                  sub={bioAgeDiff != null
+                    ? (bioAgeDiff < 0
+                      ? (lang === 'de'
+                        ? `↓ ${Math.abs(bioAgeDiff)} Jahre jünger als chronologisches Alter`
+                        : `↓ ${Math.abs(bioAgeDiff)} years younger than chronological age`)
+                      : (lang === 'de'
+                        ? `↑ ${bioAgeDiff} Jahre älter als chronologisches Alter`
+                        : `↑ ${bioAgeDiff} years older than chronological age`))
+                    : undefined}
+                />
+                {/* Clock values beneath the gauge */}
+                {bioageClocks.length > 0 && (
+                  <div className="flex gap-5 mt-4 pt-3 border-t border-[#0e393d]/6 w-full justify-center">
+                    {bioageClocks.map(c => (
+                      <div key={c.slug} className="text-center">
+                        <p className="text-base font-serif font-bold text-[#0e393d]">
+                          {c.slug === 'dunedin_pace' ? c.value.toFixed(2) : c.value.toFixed(1)}
                         </p>
-                        <p className="text-[10px] text-[#1c2a2b]/40">
-                          {locName(b.name, lang)}
+                        <p className="text-[10px] text-[#1c2a2b]/40 leading-tight mt-0.5">
+                          {c.slug === 'pheno_age' ? 'PhenoAge' : c.slug === 'grim_age_v2' ? 'GrimAge v2' : 'DunedinPACE'}
                         </p>
                       </div>
                     ))}
                   </div>
                 )}
-              </div>
+              </>
             ) : (
               <div className="flex flex-col items-center py-2 text-center">
-                <div className="w-[140px] h-[140px] rounded-full border-[9px] border-[#0e393d]/8 flex items-center justify-center">
-                  <span className="text-[13px] text-[#1c2a2b]/40">—</span>
-                </div>
-                <p className="text-sm font-medium text-[#1c2a2b]/50 mt-3">{t.bioageNone}</p>
-                <p className="text-xs text-[#1c2a2b]/35 mt-1 max-w-[200px]">{t.bioageHint}</p>
-                <Link href="/bioage" className="mt-3 text-xs font-semibold text-[#0e393d] hover:underline">
+                <EmptyGauge hint={t.bioageHint} />
+                <Link href="/bioage" className="mt-2 text-xs font-semibold text-[#0e393d] hover:underline">
                   {t.bioageOrder}
                 </Link>
               </div>
             )}
-          </div>
+            <span className="text-[11px] text-[#0e393d]/40 mt-3 group-hover:text-[#0e393d]/70 transition">
+              {lang === 'de' ? 'Details ansehen →' : 'View details →'}
+            </span>
+          </Link>
         </div>
 
         {/* ── Closed-loop mini ───────────────────────────────────────────── */}
@@ -516,66 +561,39 @@ export default async function DashboardPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84]">{t.dailyDozen}</p>
-            <div className="flex items-center gap-3">
-              {ddStreak?.current_streak_days ? (
-                <span className="text-xs font-medium text-[#0e393d]">{t.streak(ddStreak.current_streak_days)}</span>
-              ) : null}
-            </div>
+            {ddStreak?.current_streak_days ? (
+              <span className="text-xs font-medium text-[#0e393d]">{t.streak(ddStreak.current_streak_days)}</span>
+            ) : null}
           </div>
 
           <div className="rounded-2xl border border-[#0e393d]/10 bg-white p-5 space-y-5">
-            {/* Daily Dozen */}
             <MiniProgress
               label="Daily Dozen"
-              pct={ddPct}
-              done={ddDone}
-              total={ddTotalServings}
+              pct={ddPct} done={ddDone} total={ddTotalServings}
               suffix={lang === 'de' ? 'Portionen' : lang === 'fr' ? 'portions' : lang === 'es' ? 'porciones' : lang === 'it' ? 'porzioni' : 'servings'}
-              allDone={ddAllDone}
-              href="/daily-dozen"
+              allDone={ddAllDone} href="/daily-dozen"
             />
 
-            {/* 21 Tweaks */}
             {tweaksEnabled && tweaksItems.length > 0 && (
               <>
                 <div className="border-t border-[#0e393d]/6" />
-                <MiniProgress
-                  label="21 Tweaks"
-                  pct={tweaksProgress.pct}
-                  done={tweaksProgress.done}
-                  total={tweaksProgress.total}
-                  suffix={lang === 'de' ? 'erledigt' : lang === 'fr' ? 'complétés' : lang === 'es' ? 'completados' : lang === 'it' ? 'completati' : 'completed'}
-                  allDone={tweaksProgress.allDone}
-                  href="/daily-dozen"
-                />
+                <MiniProgress label="21 Tweaks" pct={tweaksProgress.pct} done={tweaksProgress.done} total={tweaksProgress.total}
+                  suffix={lang === 'de' ? 'erledigt' : 'completed'} allDone={tweaksProgress.allDone} href="/daily-dozen" />
               </>
             )}
 
-            {/* Anti-Aging 8 */}
             {antiAgingEnabled && aaItems.length > 0 && (
               <>
                 <div className="border-t border-[#0e393d]/6" />
-                <MiniProgress
-                  label="Anti-Aging 8"
-                  pct={aaProgress.pct}
-                  done={aaProgress.done}
-                  total={aaProgress.total}
-                  suffix={lang === 'de' ? 'erledigt' : lang === 'fr' ? 'complétés' : lang === 'es' ? 'completados' : lang === 'it' ? 'completati' : 'completed'}
-                  allDone={aaProgress.allDone}
-                  href="/daily-dozen"
-                />
+                <MiniProgress label="Anti-Aging 8" pct={aaProgress.pct} done={aaProgress.done} total={aaProgress.total}
+                  suffix={lang === 'de' ? 'erledigt' : 'completed'} allDone={aaProgress.allDone} href="/daily-dozen" />
               </>
             )}
 
-            {/* Enable hint */}
             {(!tweaksEnabled || !antiAgingEnabled) && (
               <p className="text-[11px] text-[#1c2a2b]/30 pt-2 border-t border-[#0e393d]/6">
                 {!tweaksEnabled && !antiAgingEnabled
-                  ? (lang === 'de' ? '21 Tweaks & Anti-Aging 8 in den Profil-Einstellungen freischalten →'
-                    : lang === 'fr' ? 'Débloquez 21 Tweaks & Anti-Aging 8 dans les paramètres du profil →'
-                    : lang === 'es' ? 'Desbloquea 21 Tweaks & Anti-Aging 8 en la configuración del perfil →'
-                    : lang === 'it' ? 'Sblocca 21 Tweaks & Anti-Aging 8 nelle impostazioni del profilo →'
-                    : 'Unlock 21 Tweaks & Anti-Aging 8 in your profile settings →')
+                  ? (lang === 'de' ? '21 Tweaks & Anti-Aging 8 in den Profil-Einstellungen freischalten →' : 'Unlock 21 Tweaks & Anti-Aging 8 in your profile settings →')
                   : !tweaksEnabled
                   ? (lang === 'de' ? '21 Tweaks in Profil-Einstellungen freischalten →' : 'Unlock 21 Tweaks in profile settings →')
                   : (lang === 'de' ? 'Anti-Aging 8 in Profil-Einstellungen freischalten →' : 'Unlock Anti-Aging 8 in profile settings →')}
@@ -586,8 +604,6 @@ export default async function DashboardPage() {
 
         {/* ── AI Research + Liked Recipes row ─────────────────────────────── */}
         <div className="grid gap-5 sm:grid-cols-2">
-
-          {/* AI Research */}
           <div className="rounded-2xl border border-[#0e393d]/10 bg-white p-5 flex flex-col">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84] mb-2">{t.research}</p>
             <p className="text-[13px] text-[#1c2a2b]/50 leading-relaxed mb-4">{t.researchDesc}</p>
@@ -599,7 +615,6 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Liked Recipes */}
           <div className="rounded-2xl border border-[#0e393d]/10 bg-white p-5 flex flex-col">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84] mb-2">{t.likedRecipes}</p>
             <p className="text-[13px] text-[#1c2a2b]/50 leading-relaxed mb-4">{t.likedRecipesDesc}</p>
@@ -610,7 +625,7 @@ export default async function DashboardPage() {
               </Link>
               {likedRecipesCount > 0 && (
                 <span className="text-xs font-medium text-[#0e393d]/50">
-                  {likedRecipesCount} {lang === 'de' ? 'Favoriten' : lang === 'fr' ? 'favoris' : lang === 'es' ? 'favoritos' : lang === 'it' ? 'preferiti' : 'favorites'}
+                  {likedRecipesCount} {lang === 'de' ? 'Favoriten' : 'favorites'}
                 </span>
               )}
             </div>
@@ -618,9 +633,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* ── Birthday nudge ──────────────────────────────────────────────── */}
-        {hasLabResults && !hasBirthday && (
-          <BirthdayNudgeBanner locale={locale} />
-        )}
+        {hasLabResults && !hasBirthday && <BirthdayNudgeBanner locale={locale} />}
 
         {/* ── Quick actions ──────────────────────────────────────────────── */}
         <section>
@@ -663,18 +676,19 @@ export default async function DashboardPage() {
                     </div>
                     <div className="divide-y divide-[#0e393d]/6">
                       {results.map((r) => {
-                        const bd = r.biomarker_definitions as unknown as { id: string; slug: string; name: unknown; unit: string | null; he_domain: string | null } | null;
+                        const bd = r.biomarkers as unknown as BmDef | null;
                         const name = locName(bd?.name, lang);
                         const flag = r.status_flag as StatusFlag | null;
                         const flagLabel = flag ? t.flagLabels[flag] : null;
+                        const dateStr = r.test_date || r.measured_at?.split('T')[0] || null;
 
                         return (
                           <div key={r.id} className="flex items-center px-5 py-3 gap-4">
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-[#1c2a2b] truncate">{name}</p>
-                              {r.collected_at && (
+                              {dateStr && (
                                 <p className="text-[11px] text-[#1c2a2b]/35">
-                                  {t.collected} {fmtDate(r.collected_at, lang)}
+                                  {t.collected} {fmtDate(dateStr, lang)}
                                 </p>
                               )}
                             </div>
