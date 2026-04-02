@@ -4,7 +4,19 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import type { Lang, BriefingSlide, BriefingV2Response } from '@/lib/health-engine-v2-types';
 import { buildBriefingContext } from '@/lib/briefing-context';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
+import dynamic from 'next/dynamic';
 import BriefingSlides from './BriefingSlides';
+
+// Lazy-load ResearchChat — only needed after briefing ends
+const ResearchChat = dynamic(() => import('@/components/research/ResearchChat'), { ssr: false });
+
+interface FlaggedMarker {
+  slug: string;
+  name: string;
+  value: number;
+  unit: string;
+  status: string;
+}
 
 interface Props {
   lang: Lang;
@@ -13,7 +25,7 @@ interface Props {
   isSample?: boolean;
 }
 
-type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused' | 'chatting' | 'done';
+type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused' | 'chatting' | 'done' | 'research_prompt' | 'researching';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -49,6 +61,13 @@ const T: Record<Lang, Record<string, string>> = {
     feat3Title: 'Ask Questions',
     feat3Desc: 'Pause anytime and ask about any value, score, or recommendation.',
     disclaimer: 'This briefing is for informational purposes only and does not replace professional medical advice.',
+    researchTitle: 'Want to dig deeper?',
+    researchSub: 'I can check what the latest peer-reviewed research says about your results. Your critical biomarker values will be matched against our database of 500,000+ studies.',
+    researchDisclaimer: 'This is for educational purposes only — always discuss findings with your doctor before making changes.',
+    researchConfirm: 'Yes, check the research',
+    researchSkip: 'No thanks, I\'m done',
+    researchLoading: 'Investigating your results…',
+    researchLoadingSub: 'Searching peer-reviewed studies for your biomarkers.',
   },
   de: {
     tag: 'HEALTH ENGINE 2.0',
@@ -78,6 +97,13 @@ const T: Record<Lang, Record<string, string>> = {
     feat3Title: 'Fragen stellen',
     feat3Desc: 'Pausiere jederzeit und frage zu Werten, Scores oder Empfehlungen.',
     disclaimer: 'Dieses Briefing dient nur zur Information und ersetzt keine ärztliche Beratung.',
+    researchTitle: 'Möchtest du tiefer einsteigen?',
+    researchSub: 'Ich kann prüfen, was die aktuelle Forschung zu deinen Ergebnissen sagt. Deine kritischen Biomarker werden mit über 500.000 Studien abgeglichen.',
+    researchDisclaimer: 'Dies dient nur der Information — besprich Ergebnisse immer mit deinem Arzt.',
+    researchConfirm: 'Ja, Forschung prüfen',
+    researchSkip: 'Nein danke, ich bin fertig',
+    researchLoading: 'Deine Ergebnisse werden untersucht…',
+    researchLoadingSub: 'Peer-reviewed Studien werden nach deinen Biomarkern durchsucht.',
   },
   fr: {
     tag: 'HEALTH ENGINE 2.0',
@@ -107,6 +133,13 @@ const T: Record<Lang, Record<string, string>> = {
     feat3Title: 'Posez des questions',
     feat3Desc: 'Mettez en pause à tout moment et posez vos questions sur les valeurs ou recommandations.',
     disclaimer: 'Ce briefing est à titre informatif uniquement et ne remplace pas un avis médical professionnel.',
+    researchTitle: 'Vous voulez approfondir ?',
+    researchSub: 'Je peux vérifier ce que la recherche récente dit de vos résultats. Vos biomarqueurs critiques seront comparés à plus de 500 000 études.',
+    researchDisclaimer: 'À titre informatif uniquement — discutez toujours des résultats avec votre médecin.',
+    researchConfirm: 'Oui, vérifier la recherche',
+    researchSkip: 'Non merci',
+    researchLoading: 'Analyse de vos résultats…',
+    researchLoadingSub: 'Recherche d\'études pour vos biomarqueurs.',
   },
   es: {
     tag: 'HEALTH ENGINE 2.0',
@@ -136,6 +169,13 @@ const T: Record<Lang, Record<string, string>> = {
     feat3Title: 'Haz preguntas',
     feat3Desc: 'Pausa en cualquier momento y pregunta sobre valores, puntuaciones o recomendaciones.',
     disclaimer: 'Este informe es solo informativo y no reemplaza el consejo médico profesional.',
+    researchTitle: '¿Quieres profundizar?',
+    researchSub: 'Puedo verificar lo que dice la investigación más reciente sobre tus resultados. Tus biomarcadores críticos se compararán con más de 500.000 estudios.',
+    researchDisclaimer: 'Solo con fines educativos — consulta siempre con tu médico.',
+    researchConfirm: 'Sí, revisar la investigación',
+    researchSkip: 'No gracias',
+    researchLoading: 'Investigando tus resultados…',
+    researchLoadingSub: 'Buscando estudios para tus biomarcadores.',
   },
   it: {
     tag: 'HEALTH ENGINE 2.0',
@@ -165,6 +205,13 @@ const T: Record<Lang, Record<string, string>> = {
     feat3Title: 'Fai domande',
     feat3Desc: 'Metti in pausa in qualsiasi momento e chiedi di valori, punteggi o raccomandazioni.',
     disclaimer: 'Questo briefing è solo a scopo informativo e non sostituisce il parere medico professionale.',
+    researchTitle: 'Vuoi approfondire?',
+    researchSub: 'Posso verificare cosa dice la ricerca più recente sui tuoi risultati. I tuoi biomarcatori critici verranno confrontati con oltre 500.000 studi.',
+    researchDisclaimer: 'Solo a scopo educativo — discuti sempre i risultati con il tuo medico.',
+    researchConfirm: 'Sì, verifica la ricerca',
+    researchSkip: 'No grazie',
+    researchLoading: 'Sto analizzando i tuoi risultati…',
+    researchLoadingSub: 'Ricerca di studi per i tuoi biomarcatori.',
   },
 };
 
@@ -246,6 +293,28 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
     }
   }, []);
 
+  // ── Extract flagged markers from briefing slides for research handoff ──
+  const extractFlaggedMarkers = useCallback((): FlaggedMarker[] => {
+    const markers: FlaggedMarker[] = [];
+    for (const slide of slidesRef.current) {
+      if (slide.type === 'domain_summary') {
+        const data = slide.data as import('@/lib/health-engine-v2-types').DomainSummaryData;
+        for (const m of data.criticalMarkers || []) {
+          markers.push({
+            slug: m.slug,
+            name: m.name,
+            value: m.value,
+            unit: m.unit,
+            status: m.status,
+          });
+        }
+      }
+    }
+    return markers;
+  }, []);
+
+  const [researchMarkers, setResearchMarkers] = useState<FlaggedMarker[]>([]);
+
   // ── Advance to next slide or finish ───────────────────────────
   const advanceSlide = useCallback((fromIndex: number) => {
     if (!isMounted.current) return;
@@ -253,9 +322,16 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
     if (fromIndex < total - 1) {
       setTimeout(() => { if (isMounted.current) setCurrentSlideIndex(fromIndex + 1); }, 800);
     } else {
-      setPlaybackState('done');
+      // Extract critical markers and show research prompt if any exist
+      const flagged = extractFlaggedMarkers();
+      setResearchMarkers(flagged);
+      if (flagged.length > 0) {
+        setPlaybackState('research_prompt');
+      } else {
+        setPlaybackState('done');
+      }
     }
-  }, []);
+  }, [extractFlaggedMarkers]);
 
   // ── TTS: Fetch audio for a slide (with retry + dedup) ─────────
   const fetchAudio = useCallback(async (stepIndex: number, narration: string): Promise<string | null> => {
@@ -1029,8 +1105,8 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
         </div>
       )}
 
-      {/* ── Active / Done: Teal header band + cream content ───── */}
-      {(isActive || playbackState === 'done' || (playbackState === 'idle' && error)) && (
+      {/* ── Active / Done / Research: Teal header band + cream content ───── */}
+      {(isActive || playbackState === 'done' || playbackState === 'research_prompt' || playbackState === 'researching' || (playbackState === 'idle' && error)) && (
         <>
           <div className="bg-[#0e393d]">
             <div className="max-w-[1040px] mx-auto px-6 md:px-10 pt-28 pb-6">
@@ -1050,6 +1126,11 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
               {playbackState === 'done' && (
                 <h1 className="font-serif text-[clamp(2.2rem,4vw,3rem)] text-white leading-[1.1]">{t.done}</h1>
               )}
+              {(playbackState === 'research_prompt' || playbackState === 'researching') && (
+                <h1 className="font-serif text-[clamp(2.2rem,4vw,3rem)] text-white leading-[1.1]">
+                  {playbackState === 'researching' ? t.researchLoading : t.researchTitle}
+                </h1>
+              )}
             </div>
             {/* Progress bar — full-width at bottom of teal band */}
             {isActive && (
@@ -1064,8 +1145,8 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
         </>
       )}
 
-      {/* Main Content — for active/done states */}
-      {(isActive || playbackState === 'done' || (playbackState === 'idle' && error)) && (
+      {/* Main Content — for active/done/research states */}
+      {(isActive || playbackState === 'done' || playbackState === 'research_prompt' || playbackState === 'researching' || (playbackState === 'idle' && error)) && (
         <div className="max-w-[1040px] mx-auto w-full px-6 md:px-10 py-16 flex-1 flex flex-col">
 
         {/* ── Briefing (Auto-play) ────────────────────────────── */}
@@ -1154,6 +1235,86 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
                 {t.play}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ── Research Prompt ─────────────────────────────────── */}
+        {playbackState === 'research_prompt' && (
+          <div className="flex items-center justify-center flex-1">
+            <div className="text-center max-w-lg">
+              {/* Research icon */}
+              <div className="w-16 h-16 rounded-2xl bg-[#0e393d]/10 flex items-center justify-center mx-auto mb-5">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0e393d" strokeWidth="1.5">
+                  <path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+
+              <h2 className="font-serif text-2xl text-[#0e393d] mb-3">{t.researchTitle}</h2>
+              <p className="text-sm text-[#1c2a2b]/60 mb-4 leading-relaxed">{t.researchSub}</p>
+
+              {/* Show flagged markers */}
+              {researchMarkers.length > 0 && (
+                <div className="flex flex-wrap justify-center gap-2 mb-6">
+                  {researchMarkers.map(m => (
+                    <span key={m.slug} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#E06B5B]/10 text-[#E06B5B]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#E06B5B]" />
+                      {m.name}: {m.value} {m.unit}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-xs text-[#1c2a2b]/40 mb-6 leading-relaxed">{t.researchDisclaimer}</p>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={async () => {
+                    setPlaybackState('researching');
+                    // Play a research bridge phrase
+                    const RESEARCH_BRIDGES: Record<string, string> = {
+                      en: 'Got your results. Let me search through our study database to see what the science says for your case.',
+                      de: 'Ich habe deine Ergebnisse. Lass mich unsere Studiendatenbank durchsuchen, was die Wissenschaft zu deinem Fall sagt.',
+                      fr: 'J\'ai vos résultats. Laissez-moi consulter notre base d\'études pour voir ce que la science dit pour votre cas.',
+                      es: 'Tengo tus resultados. Déjame buscar en nuestra base de estudios qué dice la ciencia para tu caso.',
+                      it: 'Ho i tuoi risultati. Lasciate che cerchi nel nostro database di studi cosa dice la scienza per il vostro caso.',
+                    };
+                    const text = RESEARCH_BRIDGES[lang] || RESEARCH_BRIDGES.en;
+                    try {
+                      const res = await fetch('/api/ai/tts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text, lang }),
+                      });
+                      if (res.ok) {
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        const audio = new Audio(url);
+                        audio.addEventListener('ended', () => URL.revokeObjectURL(url), { once: true });
+                        await audio.play();
+                      }
+                    } catch { /* ignore — research proceeds regardless */ }
+                  }}
+                  className="w-full px-6 py-3 rounded-lg text-sm font-semibold text-[#0e393d] bg-[#ceab84] hover:bg-[#ceab84]/90 transition-all shadow-sm"
+                >
+                  {t.researchConfirm}
+                </button>
+                <button
+                  onClick={() => setPlaybackState('done')}
+                  className="w-full px-6 py-2.5 rounded-lg text-sm font-medium text-[#1c2a2b]/50 hover:text-[#1c2a2b]/70 transition-all"
+                >
+                  {t.researchSkip}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Researching — embedded research chat ────────────── */}
+        {playbackState === 'researching' && (
+          <div className="flex-1 flex flex-col" style={{ minHeight: 'calc(100vh - 250px)' }}>
+            <ResearchChat
+              flaggedMarkers={researchMarkers}
+            />
           </div>
         )}
 
