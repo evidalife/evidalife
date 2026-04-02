@@ -68,6 +68,8 @@ const T: Record<Lang, Record<string, string>> = {
     researchSkip: 'No thanks, I\'m done',
     researchLoading: 'Investigating your results…',
     researchLoadingSub: 'Searching peer-reviewed studies for your biomarkers.',
+    downloadPdf: 'Download Doctor Report (PDF)',
+    downloadingPdf: 'Generating PDF…',
   },
   de: {
     tag: 'HEALTH ENGINE 2.0',
@@ -104,6 +106,8 @@ const T: Record<Lang, Record<string, string>> = {
     researchSkip: 'Nein danke, ich bin fertig',
     researchLoading: 'Deine Ergebnisse werden untersucht…',
     researchLoadingSub: 'Peer-reviewed Studien werden nach deinen Biomarkern durchsucht.',
+    downloadPdf: 'Arztbericht herunterladen (PDF)',
+    downloadingPdf: 'PDF wird erstellt…',
   },
   fr: {
     tag: 'HEALTH ENGINE 2.0',
@@ -140,6 +144,8 @@ const T: Record<Lang, Record<string, string>> = {
     researchSkip: 'Non merci',
     researchLoading: 'Analyse de vos résultats…',
     researchLoadingSub: 'Recherche d\'études pour vos biomarqueurs.',
+    downloadPdf: 'Télécharger le rapport médecin (PDF)',
+    downloadingPdf: 'Génération du PDF…',
   },
   es: {
     tag: 'HEALTH ENGINE 2.0',
@@ -176,6 +182,8 @@ const T: Record<Lang, Record<string, string>> = {
     researchSkip: 'No gracias',
     researchLoading: 'Investigando tus resultados…',
     researchLoadingSub: 'Buscando estudios para tus biomarcadores.',
+    downloadPdf: 'Descargar informe médico (PDF)',
+    downloadingPdf: 'Generando PDF…',
   },
   it: {
     tag: 'HEALTH ENGINE 2.0',
@@ -212,6 +220,8 @@ const T: Record<Lang, Record<string, string>> = {
     researchSkip: 'No grazie',
     researchLoading: 'Sto analizzando i tuoi risultati…',
     researchLoadingSub: 'Ricerca di studi per i tuoi biomarcatori.',
+    downloadPdf: 'Scarica rapporto medico (PDF)',
+    downloadingPdf: 'Generazione PDF…',
   },
 };
 
@@ -314,6 +324,33 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
   }, []);
 
   const [researchMarkers, setResearchMarkers] = useState<FlaggedMarker[]>([]);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  // ── Download doctor-ready PDF report ──────────────────────────
+  const downloadPdfReport = useCallback(async () => {
+    setPdfLoading(true);
+    try {
+      const res = await fetch('/api/ai/briefing-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lang }),
+      });
+      if (!res.ok) throw new Error('PDF generation failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 'Health-Report.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('[PDF]', err);
+    } finally {
+      setPdfLoading(false);
+    }
+  }, [lang]);
 
   // ── Advance to next slide or finish ───────────────────────────
   const advanceSlide = useCallback((fromIndex: number) => {
@@ -1228,12 +1265,41 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
               <p className="text-sm text-[#1c2a2b]/60 mb-6">
                 Your personalized health briefing has been completed.
               </p>
-              <button
-                onClick={() => { setIsCached(true); setPlaybackState('idle'); }}
-                className="w-full px-6 py-2.5 rounded-lg text-sm font-semibold text-[#0e393d] bg-[#ceab84] hover:bg-[#ceab84]/90 transition-all"
-              >
-                {t.play}
-              </button>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={downloadPdfReport}
+                  disabled={pdfLoading}
+                  className="w-full px-6 py-2.5 rounded-lg text-sm font-semibold text-[#0e393d] bg-[#ceab84] hover:bg-[#ceab84]/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {pdfLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-[#0e393d]/30 border-t-[#0e393d] rounded-full animate-spin" />
+                      {t.downloadingPdf}
+                    </>
+                  ) : (
+                    <>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                      </svg>
+                      {t.downloadPdf}
+                    </>
+                  )}
+                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setIsCached(true); setPlaybackState('idle'); }}
+                    className="flex-1 px-6 py-2.5 rounded-lg text-sm font-medium text-[#1c2a2b]/50 hover:text-[#1c2a2b]/70 transition-all"
+                  >
+                    {t.play}
+                  </button>
+                  <a
+                    href={`/${lang}/research`}
+                    className="flex-1 px-6 py-2.5 rounded-lg text-sm font-medium text-[#0e393d] border border-[#0e393d]/15 hover:bg-[#0e393d]/5 transition-all text-center"
+                  >
+                    {lang === 'de' ? 'Freie Recherche starten' : 'Open Research Session'}
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1299,6 +1365,25 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
                   {t.researchConfirm}
                 </button>
                 <button
+                  onClick={downloadPdfReport}
+                  disabled={pdfLoading}
+                  className="w-full px-6 py-2.5 rounded-lg text-sm font-medium text-[#0e393d] border border-[#0e393d]/20 hover:bg-[#0e393d]/5 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {pdfLoading ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-[#0e393d]/30 border-t-[#0e393d] rounded-full animate-spin" />
+                      {t.downloadingPdf}
+                    </>
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                      </svg>
+                      {t.downloadPdf}
+                    </>
+                  )}
+                </button>
+                <button
                   onClick={() => setPlaybackState('done')}
                   className="w-full px-6 py-2.5 rounded-lg text-sm font-medium text-[#1c2a2b]/50 hover:text-[#1c2a2b]/70 transition-all"
                 >
@@ -1315,6 +1400,18 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
             <ResearchChat
               flaggedMarkers={researchMarkers}
             />
+            {/* Link to full standalone research session */}
+            <div className="text-center py-4 border-t border-[#0e393d]/10">
+              <a
+                href={`/${lang}/research`}
+                className="inline-flex items-center gap-2 text-sm font-medium text-[#0e393d]/60 hover:text-[#0e393d] transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+                </svg>
+                {lang === 'de' ? 'Vollständige Forschungssitzung öffnen' : 'Open full research session'}
+              </a>
+            </div>
           </div>
         )}
 
