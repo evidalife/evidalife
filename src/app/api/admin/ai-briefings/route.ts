@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { TTS_BUCKET, ttsCacheKey } from '@/lib/tts-cache';
 
 async function requireAdmin() {
   const userClient = await createClient();
@@ -84,10 +85,27 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  return NextResponse.json(data);
+
+  // Enrich steps with audio cache info
+  const steps = Array.isArray(data.steps) ? data.steps : [];
+  const enrichedSteps = await Promise.all(
+    steps.map(async (step: { narration?: string; [key: string]: unknown }) => {
+      if (!step.narration) return { ...step, audioCacheKey: null, audioCached: false };
+      const key = ttsCacheKey(step.narration, data.lang);
+      // Check if file exists in storage
+      const { data: files } = await admin.storage.from(TTS_BUCKET).list(
+        key.split('/')[0], // language folder
+        { limit: 1, search: key.split('/')[1] } // filename
+      );
+      const cached = (files ?? []).some(f => f.name === key.split('/')[1]);
+      return { ...step, audioCacheKey: key, audioCached: cached };
+    })
+  );
+
+  return NextResponse.json({ ...data, steps: enrichedSteps });
 }
 
-// DELETE a briefing
+// DELETE a briefing (+ cascade-delete its TTS cache files)
 export async function DELETE(req: NextRequest) {
   const auth = await requireAdmin();
   if (!auth) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -96,6 +114,31 @@ export async function DELETE(req: NextRequest) {
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
+  // 1. Fetch the briefing first to get steps + lang for TTS cleanup
+  const { data: briefing } = await admin
+    .from('health_briefings')
+    .select('lang, steps')
+    .eq('id', id)
+    .single();
+
+  // 2. Delete TTS cache files for each step (fire-and-forget)
+  if (briefing?.steps && Array.isArray(briefing.steps)) {
+    const filesToDelete: string[] = [];
+    for (const step of briefing.steps) {
+      const s = step as { narration?: string };
+      if (s.narration) {
+        filesToDelete.push(ttsCacheKey(s.narration, briefing.lang));
+      }
+    }
+    if (filesToDelete.length > 0) {
+      admin.storage.from(TTS_BUCKET).remove(filesToDelete).then(({ error: storageErr }) => {
+        if (storageErr) console.error('[admin/ai-briefings] TTS cache cleanup error:', storageErr.message);
+        else console.log(`[admin/ai-briefings] Cleaned up ${filesToDelete.length} TTS cache files`);
+      });
+    }
+  }
+
+  // 3. Delete the briefing row
   const { error, count } = await admin.from('health_briefings').delete({ count: 'exact' }).eq('id', id);
   if (error) {
     console.error('[admin/ai-briefings] DELETE error:', error.message, error.code, error.details);

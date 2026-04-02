@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { logAIUsage } from '@/lib/ai/usage-logger';
 
 export const maxDuration = 30;
@@ -39,6 +40,16 @@ export async function POST(req: NextRequest) {
     en: 'English', de: 'German', fr: 'French', es: 'Spanish', it: 'Italian',
   };
 
+  // ── Load AI settings for chat model ────────────────────────────
+  const adminDb = createAdminClient();
+  const { data: settingsRows } = await adminDb
+    .from('ai_settings')
+    .select('key, value')
+    .in('key', ['chat_model']);
+
+  const settingsMap = new Map((settingsRows ?? []).map(r => [r.key, r.value]));
+
+  // ── Build system prompt ────────────────────────────────────────
   const systemPrompt = mode === 'coach'
     ? `You are Evida's WFPB health coach — a friendly, knowledgeable assistant specializing in whole-food plant-based nutrition and longevity science.
 
@@ -55,7 +66,8 @@ LANGUAGE: Respond in ${LANG_NAMES[lang] ?? 'English'}.
 RESPONSE LENGTH: Conversational, 2-4 sentences. Be helpful and actionable.
 
 ${context ? `USER CONTEXT:\n${context}` : ''}`
-    : `You are Evida Life's health data assistant — helping users understand their biomarker results during their personalized health briefing.
+
+    : `You are Evida Life's health data assistant. The user is viewing their personalized health briefing — an AI-narrated walkthrough of their biomarker results across 9 health domains. You have access to their FULL briefing data below.
 
 STRICT GUARDRAILS (mandatory):
 - Explain what biomarkers measure, what reference ranges mean, and general lifestyle factors that influence them
@@ -63,19 +75,42 @@ STRICT GUARDRAILS (mandatory):
 - NEVER recommend specific medications or clinical treatments
 - NEVER predict disease outcomes or prognosis
 - ALWAYS encourage consulting a healthcare provider for clinical decisions
-- You operate in the wellness/informational category
+- You operate in the wellness/informational category under EU MDR 2017/745
+
+CAPABILITIES:
+- Answer questions about ANY biomarker in the briefing, not just the current slide
+- Compare values across domains and over time (trends, deltas, previous values)
+- Explain what scores mean and what factors influence specific biomarkers
+- Highlight connections between markers (e.g., insulin and glucose, LDL and ApoB)
+- Reference specific slides by name when relevant (e.g., "As shown in your Heart & Vessels domain...")
+
+CONTEXT AWARENESS:
+- The slide marked ">>> CURRENT SLIDE <<<" is what the user is looking at right now
+- But the user may ask about ANY slide or marker in the briefing
+- Use the full data below to give accurate, data-grounded answers
+
+SLIDE NAVIGATION:
+- When your answer relates to a specific slide, include [[SLIDE:N]] at the END of your response (N = slide number from the data, e.g. [[SLIDE:4]]).
+- Only include ONE slide reference, and only when it would help the user — e.g. if they ask about a domain that isn't the current slide.
+- Do NOT include a slide reference if the answer is about the slide the user is already viewing.
+- The marker must appear on its own line at the very end of your response.
 
 TONE: Clear, educational, reassuring. Explain complex concepts in plain language.
 LANGUAGE: Respond in ${LANG_NAMES[lang] ?? 'English'}.
-RESPONSE LENGTH: Concise, 2-5 sentences. Answer the specific question without overwhelming.
+RESPONSE LENGTH: Focused and conversational. 2-6 sentences for simple questions, more for complex comparisons. Always cite the actual values from the data.
 
-${context ? `USER'S BIOMARKER CONTEXT:\n${context}` : ''}`;
+${context ? `FULL BRIEFING DATA:\n${context}` : ''}`;
 
   const client = new Anthropic({ apiKey });
-
   const encoder = new TextEncoder();
 
-  const chatModel = 'claude-haiku-4-5-20251001';
+  // Use configured model for briefing mode, Haiku for coach mode (fast)
+  const chatModel: string = mode === 'briefing'
+    ? (settingsMap.get('chat_model') as string) ?? 'claude-sonnet-4-6'
+    : 'claude-haiku-4-5-20251001';
+
+  const maxTokens = mode === 'briefing' ? 1024 : 512;
+
   const chatStartMs = Date.now();
 
   const stream = new ReadableStream({
@@ -83,7 +118,7 @@ ${context ? `USER'S BIOMARKER CONTEXT:\n${context}` : ''}`;
       try {
         const anthropicStream = await client.messages.stream({
           model: chatModel,
-          max_tokens: 512,
+          max_tokens: maxTokens,
           system: systemPrompt,
           messages: messages.map(m => ({ role: m.role, content: m.content })),
         });

@@ -167,10 +167,21 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Auth check ─────────────────────────────────────────────────────────
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Auth: support both session auth and service-level pre-generation
+  const pregenerateUserId = req.headers.get('X-Pregenerate-User-Id');
+  const pregenerateSecret = req.headers.get('X-Pregenerate-Secret');
+  let userId: string;
+
+  if (pregenerateUserId && pregenerateSecret === process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    // Service-level call from briefing-pregenerate utility
+    userId = pregenerateUserId;
+  } else {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    userId = user.id;
   }
 
   // ── Parse request ──────────────────────────────────────────────────────
@@ -202,15 +213,15 @@ export async function POST(req: NextRequest) {
 
   const briefingModel: string = (settingsMap.get('briefing_model') as string) ?? 'claude-sonnet-4-6';
 
-  // ── Fetch user data ────────────────────────────────────────────────────
+  // ── Fetch user data (use adminDb to support both auth modes) ────────────
   const [profileRes, reportsRes, resultsRes, defsRes] = await Promise.all([
-    supabase.from('profiles').select('first_name, date_of_birth, sex').eq('id', user.id).single(),
-    supabase.from('lab_reports').select('id, test_date').eq('user_id', user.id)
+    adminDb.from('profiles').select('first_name, date_of_birth, sex').eq('id', userId).single(),
+    adminDb.from('lab_reports').select('id, test_date').eq('user_id', userId)
       .in('status', ['confirmed', 'completed']).order('test_date', { ascending: true }),
-    supabase.from('lab_results')
+    adminDb.from('lab_results')
       .select('biomarker_definition_id, value_numeric, status_flag, measured_at, test_date, lab_report_id')
-      .eq('user_id', user.id).is('deleted_at', null),
-    supabase.from('biomarkers')
+      .eq('user_id', userId).is('deleted_at', null),
+    adminDb.from('biomarkers')
       .select('id, slug, name, unit, he_domain, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, is_calculated, sort_order, scoring_type')
       .eq('is_active', true),
   ]);
@@ -229,7 +240,7 @@ export async function POST(req: NextRequest) {
   const { data: cachedRows } = await adminDb
     .from('health_briefings')
     .select('id, steps, summary_context, created_at')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .eq('lang', lang)
     .order('created_at', { ascending: false })
     .limit(5);
@@ -246,13 +257,13 @@ export async function POST(req: NextRequest) {
       adminDb
         .from('lab_results')
         .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .is('deleted_at', null)
         .gt('created_at', briefingTime),
       adminDb
         .from('lab_reports')
         .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .in('status', ['confirmed', 'completed'])
         .gt('created_at', briefingTime),
     ]);
@@ -690,9 +701,25 @@ Include narrations only for slides that exist in the data provided. Skip bio_age
       const durationMs = Date.now() - startMs;
       const tokensUsed = (message.usage?.input_tokens ?? 0) + (message.usage?.output_tokens ?? 0);
 
+      // Clean up old v2 briefing TTS cache before inserting new one
+      if (cachedBriefing?.steps && Array.isArray(cachedBriefing.steps)) {
+        const { ttsCacheKey: makeCacheKey } = await import('@/lib/tts-cache');
+        const oldFiles: string[] = [];
+        for (const step of cachedBriefing.steps) {
+          const s = step as { narration?: string };
+          if (s.narration) oldFiles.push(makeCacheKey(s.narration, lang));
+        }
+        if (oldFiles.length > 0) {
+          adminDb.storage.from('tts-cache').remove(oldFiles).then(({ error: cleanupErr }) => {
+            if (cleanupErr) console.error('[briefing-v2] TTS cache cleanup error:', cleanupErr.message);
+            else console.log(`[briefing-v2] Cleaned up ${oldFiles.length} old TTS cache files`);
+          });
+        }
+      }
+
       // Log to health_briefings (fire-and-forget — same table as v1)
       adminDb.from('health_briefings').insert({
-        user_id: user.id,
+        user_id: userId,
         lang,
         steps: slides,
         summary_context: { version: 'v2' },
@@ -705,7 +732,7 @@ Include narrations only for slides that exist in the data provided. Skip bio_age
 
       // Log to ai_usage_log for cost tracking
       logAIUsage({
-        userId: user.id,
+        userId,
         provider: 'anthropic',
         endpoint: 'briefing-v2',
         model: briefingModel,

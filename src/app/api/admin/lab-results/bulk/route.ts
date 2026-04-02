@@ -9,6 +9,7 @@ import { transitionOrder } from '@/lib/order-fulfilment';
 import { computeStatusFlag, checkPlausibility } from '@/lib/lab-results/flagging';
 import { generateReportNumber } from '@/lib/lab-results/report-number';
 import { computeAllCalculatedMarkers } from '@/lib/health-score';
+import { pregenerateBriefing } from '@/lib/briefing-pregenerate';
 
 function adminClient() {
   return createClient(
@@ -298,6 +299,13 @@ export async function POST(req: NextRequest) {
           console.error('Failed to transition order:', e);
         }
       }
+    }
+
+    // ── Pre-generate briefing if enabled (fire-and-forget) ─────────────────
+    if (savedUserId && labReportId) {
+      pregenerateBriefing(savedUserId).catch(e =>
+        console.error('[bulk] Briefing pre-generation error:', e)
+      );
     }
 
     return NextResponse.json({ success: true, created, warnings, orderCompleted, labReportId });

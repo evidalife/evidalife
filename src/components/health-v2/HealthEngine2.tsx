@@ -2,6 +2,8 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import type { Lang, BriefingSlide, BriefingV2Response } from '@/lib/health-engine-v2-types';
+import { buildBriefingContext } from '@/lib/briefing-context';
+import { useVoiceInput } from '@/hooks/useVoiceInput';
 import BriefingSlides from './BriefingSlides';
 
 interface Props {
@@ -177,13 +179,16 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
   const [chatLoading, setChatLoading] = useState(false);
   const [isCached, setIsCached] = useState(false);
   const [checkingCache, setCheckingCache] = useState(hasData);
+  const [audioLoading, setAudioLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioBlobUrls = useRef<Record<number, string>>({});
-  const ttsAvailable = useRef<boolean | null>(null); // null=unknown, true=ElevenLabs, false=browser fallback
+  const audioFetchPromises = useRef<Record<number, Promise<string | null>>>({});
+  const ttsAvailable = useRef<boolean | null>(null); // null=unknown, true=server TTS, false=browser fallback
   const usingBrowserTTS = useRef(false);
   const isMounted = useRef(true);
   const playPromiseRef = useRef<Promise<void> | null>(null);
   const slidesRef = useRef<BriefingSlide[]>([]);
+  const prefetchedUpTo = useRef(-1); // tracks how far ahead we've pre-fetched
 
   // Keep slidesRef in sync so callbacks can read current slides without stale closures
   slidesRef.current = slides;
@@ -252,31 +257,72 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
     }
   }, []);
 
-  // ── TTS: Fetch audio for a slide ──────────────────────────────
+  // ── TTS: Fetch audio for a slide (with retry + dedup) ─────────
   const fetchAudio = useCallback(async (stepIndex: number, narration: string): Promise<string | null> => {
+    // Already cached
     if (audioBlobUrls.current[stepIndex]) return audioBlobUrls.current[stepIndex];
     if (ttsAvailable.current === false) return null;
 
-    try {
-      const res = await fetch('/api/ai/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: narration, lang }),
-      });
-      if (!res.ok) {
-        ttsAvailable.current = false;
-        return null;
-      }
-      ttsAvailable.current = true;
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      audioBlobUrls.current[stepIndex] = url;
-      return url;
-    } catch {
-      ttsAvailable.current = false;
-      return null;
+    // Deduplicate: if already fetching this slide, return existing promise
+    if (stepIndex in audioFetchPromises.current) {
+      return audioFetchPromises.current[stepIndex];
     }
+
+    const doFetch = async (): Promise<string | null> => {
+      const MAX_RETRIES = 2;
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const res = await fetch('/api/ai/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: narration, lang }),
+          });
+          if (!res.ok) {
+            // If all TTS providers failed (502), try once more then give up
+            if (res.status === 502 && attempt < MAX_RETRIES) {
+              await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+              continue;
+            }
+            ttsAvailable.current = false;
+            return null;
+          }
+          ttsAvailable.current = true;
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          audioBlobUrls.current[stepIndex] = url;
+          return url;
+        } catch {
+          if (attempt < MAX_RETRIES) {
+            await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+            continue;
+          }
+          ttsAvailable.current = false;
+          return null;
+        }
+      }
+      return null;
+    };
+
+    const promise = doFetch();
+    audioFetchPromises.current[stepIndex] = promise;
+    const result = await promise;
+    delete audioFetchPromises.current[stepIndex];
+    return result;
   }, [lang]);
+
+  // ── Pre-fetch batch: fetch audio for multiple upcoming slides ──
+  const prefetchBatch = useCallback((fromIndex: number, count: number) => {
+    const allSlides = slidesRef.current;
+    const end = Math.min(fromIndex + count, allSlides.length);
+    for (let i = fromIndex; i < end; i++) {
+      if (i <= prefetchedUpTo.current) continue;
+      const s = allSlides[i];
+      if (s?.narration && !audioBlobUrls.current[i]) {
+        fetchAudio(i, s.narration); // fire-and-forget
+      }
+    }
+    prefetchedUpTo.current = Math.max(prefetchedUpTo.current, end - 1);
+  }, [fetchAudio]);
 
   // ── Browser TTS fallback ──────────────────────────────────────
   const playBrowserTTS = useCallback((text: string, slideIndex: number) => {
@@ -305,11 +351,13 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
 
     // Stop anything currently playing
     await stopCurrentAudio();
+    setAudioLoading(true);
 
     const audioUrl = await fetchAudio(slideIndex, slide.narration);
 
     if (audioUrl) {
       usingBrowserTTS.current = false;
+      setAudioLoading(false);
 
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
@@ -328,15 +376,15 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
       }
       playPromiseRef.current = null;
 
-      // Pre-fetch next slide audio
-      const nextSlide = slidesRef.current[slideIndex + 1];
-      if (nextSlide?.narration) fetchAudio(slideIndex + 1, nextSlide.narration);
+      // Rolling pre-fetch: fetch the next 3 slides' audio
+      prefetchBatch(slideIndex + 1, 3);
     } else {
+      setAudioLoading(false);
       // Browser SpeechSynthesis fallback
       usingBrowserTTS.current = true;
       playBrowserTTS(slide.narration, slideIndex);
     }
-  }, [fetchAudio, playBrowserTTS, stopCurrentAudio, advanceSlide]);
+  }, [fetchAudio, playBrowserTTS, stopCurrentAudio, advanceSlide, prefetchBatch]);
 
   // ── Auto-play: when slide changes and playing, start audio ────
   useEffect(() => {
@@ -351,6 +399,8 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
 
     // If we already pre-loaded cached slides, skip the API call entirely
     if (isCached && slides.length > 0) {
+      // Kick off pre-fetch for first 3 slides before playback starts
+      prefetchBatch(0, 3);
       setPlaybackState('playing');
       return;
     }
@@ -371,14 +421,17 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
 
       const data: BriefingV2Response = await res.json();
       setSlides(data.slides);
+      slidesRef.current = data.slides; // sync immediately for prefetch
       setIsCached(data.cached);
       setCurrentSlideIndex(0);
+      // Pre-fetch first 3 slides immediately
+      prefetchBatch(0, 3);
       setPlaybackState('playing');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
       setPlaybackState('idle');
     }
-  }, [lang, isCached, slides.length]);
+  }, [lang, isCached, slides.length, prefetchBatch]);
 
   const handlePlayPause = useCallback(async () => {
     if (playbackState === 'playing') {
@@ -430,9 +483,9 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
     setChatLoading(true);
 
     try {
-      // Build context from current slide
-      const slideContext = currentSlide
-        ? `Current slide: ${currentSlide.type}. Narration: ${currentSlide.narration || 'N/A'}`
+      // Build full briefing context with all slides + highlight current
+      const slideContext = slides.length > 0
+        ? buildBriefingContext(slides, currentSlideIndex)
         : '';
 
       // The chat API expects { messages, context, lang, mode } and returns an SSE stream
@@ -521,6 +574,331 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
       playSlideAudio(currentSlideIndex);
     }
   }, [currentSlideIndex, playSlideAudio]);
+
+  // ── Navigate to a specific slide (from chat suggestion) ──────
+  const goToSlide = useCallback(async (slideIndex: number) => {
+    if (slideIndex < 0 || slideIndex >= slidesRef.current.length) return;
+    await stopCurrentAudio();
+    setCurrentSlideIndex(slideIndex);
+    setPlaybackState('playing');
+  }, [stopCurrentAudio]);
+
+  // ── Voice conversation: speak a question, get a spoken answer ──
+  const [voiceResponseLoading, setVoiceResponseLoading] = useState(false);
+  const voiceAudioRef = useRef<HTMLAudioElement | null>(null);
+  const bridgeAudioCache = useRef<Record<string, string>>({}); // pre-fetched bridge phrase blob URLs
+  // Track the playback state we should return to after voice Q&A
+  const preVoiceStateRef = useRef<PlaybackState>('playing');
+
+  // ── Bridge phrases — short filler audio to play while answer loads ──
+  const BRIDGE_PHRASES: Record<string, string[]> = {
+    en: [
+      'Great question — let me pull that up for you.',
+      'Sure, let me check those values.',
+      'Good one — give me just a moment.',
+      'Let me take a closer look at that.',
+    ],
+    de: [
+      'Gute Frage — ich schaue mir das mal an.',
+      'Einen Moment, ich prüfe die Werte.',
+      'Guter Punkt — lass mich kurz nachsehen.',
+      'Moment, ich schaue mir das genauer an.',
+    ],
+    fr: [
+      'Bonne question — laissez-moi vérifier.',
+      'Un instant, je regarde les valeurs.',
+      'Bonne remarque — un moment s\'il vous plaît.',
+    ],
+    es: [
+      'Buena pregunta — déjame revisar eso.',
+      'Un momento, reviso los valores.',
+      'Buen punto — déjame verificar.',
+    ],
+    it: [
+      'Buona domanda — lasciate che controlli.',
+      'Un momento, verifico i valori.',
+      'Buon punto — un attimo per favore.',
+    ],
+  };
+
+  // Pre-fetch bridge phrases for the current language when briefing loads
+  useEffect(() => {
+    if (!slides.length) return;
+    const phrases = BRIDGE_PHRASES[lang] || BRIDGE_PHRASES.en;
+    // Pre-fetch all bridge phrases in sequence (low priority, staggered)
+    let cancelled = false;
+    (async () => {
+      for (let i = 0; i < phrases.length; i++) {
+        if (cancelled) break;
+        const text = phrases[i];
+        if (bridgeAudioCache.current[text]) continue;
+        try {
+          // Stagger requests to avoid overwhelming TTS API
+          if (i > 0) await new Promise(r => setTimeout(r, 1000));
+          if (cancelled) break;
+          const res = await fetch('/api/ai/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, lang }),
+          });
+          if (res.ok) {
+            const blob = await res.blob();
+            bridgeAudioCache.current[text] = URL.createObjectURL(blob);
+          }
+        } catch { /* ignore */ }
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slides.length, lang]);
+
+  /** Play a short bridge phrase while the real answer is loading */
+  const playBridgePhrase = useCallback(async (): Promise<void> => {
+    const phrases = BRIDGE_PHRASES[lang] || BRIDGE_PHRASES.en;
+    const text = phrases[Math.floor(Math.random() * phrases.length)];
+
+    // Try cached audio first
+    let url = bridgeAudioCache.current[text];
+    if (!url) {
+      // Try to fetch quickly — but don't block for too long
+      try {
+        const res = await Promise.race([
+          fetch('/api/ai/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, lang }),
+          }),
+          new Promise<null>(resolve => setTimeout(() => resolve(null), 2000)),
+        ]);
+        if (res && (res as Response).ok) {
+          const blob = await (res as Response).blob();
+          url = URL.createObjectURL(blob);
+          bridgeAudioCache.current[text] = url;
+        }
+      } catch { /* ignore — will fall back to browser TTS */ }
+    }
+
+    if (url) {
+      const audio = new Audio(url);
+      voiceAudioRef.current = audio;
+      return new Promise<void>((resolve) => {
+        audio.addEventListener('ended', () => resolve(), { once: true });
+        audio.addEventListener('error', () => resolve(), { once: true });
+        audio.play().catch(() => resolve());
+      });
+    } else if ('speechSynthesis' in window) {
+      // Instant fallback: browser TTS for the bridge phrase
+      return new Promise<void>((resolve) => {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = lang === 'de' ? 'de-DE' : lang === 'fr' ? 'fr-FR' : lang === 'es' ? 'es-ES' : lang === 'it' ? 'it-IT' : 'en-US';
+        utterance.rate = 1.0;
+        utterance.onend = () => resolve();
+        utterance.onerror = () => resolve();
+        window.speechSynthesis.speak(utterance);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
+
+  const handleVoiceQuestion = useCallback(async (transcript: string) => {
+    if (!transcript.trim()) return;
+
+    // Remember what state to resume after the voice answer
+    preVoiceStateRef.current = playbackState === 'playing' ? 'playing' : 'paused';
+
+    // Pause narration
+    if (usingBrowserTTS.current) {
+      window.speechSynthesis?.pause();
+    } else {
+      if (playPromiseRef.current) {
+        try { await playPromiseRef.current; } catch { /* ignore */ }
+        playPromiseRef.current = null;
+      }
+      audioRef.current?.pause();
+    }
+
+    // Add user message to chat
+    const userMessage: ChatMessage = { role: 'user', text: transcript };
+    setChatMessages((prev) => [...prev, userMessage]);
+    setPlaybackState('chatting');
+    setChatLoading(true);
+    setVoiceResponseLoading(true);
+
+    // Play a bridge phrase while we fetch the real answer
+    const bridgePromise = playBridgePhrase();
+
+    try {
+      // Build context
+      const slideContext = slides.length > 0
+        ? buildBriefingContext(slides, currentSlideIndex)
+        : '';
+
+      const allMessages = [
+        ...chatMessages.map(m => ({ role: m.role, content: m.text })),
+        { role: 'user' as const, content: transcript },
+      ];
+
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: allMessages,
+          context: slideContext,
+          lang,
+          mode: 'briefing',
+        }),
+      });
+
+      if (!res.ok) throw new Error('Chat failed');
+
+      // Stream the text response
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No response body');
+
+      const decoder = new TextDecoder();
+      let assistantText = '';
+      setChatMessages((prev) => [...prev, { role: 'assistant', text: '' }]);
+
+      let done = false;
+      while (!done) {
+        const { value, done: streamDone } = await reader.read();
+        done = streamDone;
+        if (value) {
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') { done = true; break; }
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.text) {
+                  assistantText += parsed.text;
+                  setChatMessages((prev) => {
+                    const updated = [...prev];
+                    updated[updated.length - 1] = { role: 'assistant', text: assistantText };
+                    return updated;
+                  });
+                }
+                if (parsed.error) throw new Error(parsed.error);
+              } catch { /* skip malformed lines */ }
+            }
+          }
+        }
+      }
+
+      // Strip [[SLIDE:N]] markers before speaking
+      const cleanText = assistantText.replace(/\s*\[\[SLIDE:\d+\]\]\s*/g, '').trim();
+
+      // Handle slide navigation if present
+      const slideMatch = assistantText.match(/\[\[SLIDE:(\d+)\]\]/);
+      if (slideMatch) {
+        const target = parseInt(slideMatch[1], 10) - 1;
+        if (target >= 0 && target < slides.length && target !== currentSlideIndex) {
+          await stopCurrentAudio();
+          setCurrentSlideIndex(target);
+        }
+      }
+
+      // Wait for bridge phrase to finish before speaking the answer
+      await bridgePromise;
+
+      // Now speak the response via TTS
+      if (cleanText) {
+        try {
+          const ttsRes = await fetch('/api/ai/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: cleanText, lang }),
+          });
+
+          if (ttsRes.ok) {
+            const blob = await ttsRes.blob();
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            voiceAudioRef.current = audio;
+
+            // When the voice response finishes, resume briefing
+            audio.addEventListener('ended', () => {
+              URL.revokeObjectURL(url);
+              voiceAudioRef.current = null;
+              setVoiceResponseLoading(false);
+              // Auto-resume the briefing narration
+              if (preVoiceStateRef.current === 'playing') {
+                setPlaybackState('playing');
+                if (usingBrowserTTS.current) {
+                  window.speechSynthesis?.resume();
+                } else if (audioRef.current && audioRef.current.src) {
+                  playPromiseRef.current = audioRef.current.play();
+                  playPromiseRef.current?.catch(() => { /* ignore */ });
+                } else {
+                  playSlideAudio(currentSlideIndex);
+                }
+              } else {
+                setPlaybackState('paused');
+              }
+            }, { once: true });
+
+            setVoiceResponseLoading(false);
+            setChatLoading(false);
+            await audio.play();
+            return; // the 'ended' handler takes care of resuming
+          }
+        } catch {
+          // TTS failed — fall through to text-only mode
+        }
+      }
+
+      // If TTS failed or no text, just stay in chatting mode
+      setVoiceResponseLoading(false);
+    } catch (err) {
+      const errorMessage: ChatMessage = {
+        role: 'assistant',
+        text: err instanceof Error ? err.message : 'Failed to process question',
+      };
+      setChatMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === 'assistant' && !last.text) {
+          return [...prev.slice(0, -1), errorMessage];
+        }
+        return [...prev, errorMessage];
+      });
+      setVoiceResponseLoading(false);
+    } finally {
+      setChatLoading(false);
+    }
+  }, [slides, currentSlideIndex, chatMessages, lang, playbackState, stopCurrentAudio, playSlideAudio, playBridgePhrase]);
+
+  // Initialize voice input hook
+  const {
+    supported: voiceSupported,
+    isListening,
+    interimTranscript,
+    toggleListening: rawToggleListening,
+  } = useVoiceInput({
+    lang,
+    onResult: handleVoiceQuestion,
+  });
+
+  // Wrap toggle to also pause narration when mic activates
+  const toggleVoiceMic = useCallback(async () => {
+    if (!isListening) {
+      // About to start listening — pause narration
+      if (playbackState === 'playing') {
+        if (usingBrowserTTS.current) {
+          window.speechSynthesis?.pause();
+        } else {
+          if (playPromiseRef.current) {
+            try { await playPromiseRef.current; } catch { /* ignore */ }
+            playPromiseRef.current = null;
+          }
+          audioRef.current?.pause();
+        }
+      }
+    }
+    rawToggleListening();
+  }, [isListening, playbackState, rawToggleListening]);
 
   // ── No data state ─────────────────────────────────────────────
   if (!hasData) {
@@ -699,27 +1077,48 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
               lang={lang}
               narrationText={currentSlide.narration || ''}
               isPlaying={playbackState === 'playing'}
+              audioLoading={audioLoading}
             />
 
             {/* Chat Messages */}
             {chatMessages.length > 0 && (
               <div className="space-y-4 max-h-48 overflow-y-auto bg-[#fafaf8] p-4 rounded-lg border border-[#0e393d]/10">
-                {chatMessages.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
+                {chatMessages.map((msg, idx) => {
+                  // Parse [[SLIDE:N]] markers from assistant messages
+                  const slideMatch = msg.role === 'assistant' ? msg.text.match(/\[\[SLIDE:(\d+)\]\]/) : null;
+                  const slideTarget = slideMatch ? parseInt(slideMatch[1], 10) - 1 : null; // convert 1-based to 0-based
+                  const displayText = slideMatch ? msg.text.replace(/\s*\[\[SLIDE:\d+\]\]\s*/, '').trim() : msg.text;
+                  const targetSlide = slideTarget !== null && slideTarget >= 0 && slideTarget < slides.length
+                    ? slides[slideTarget] : null;
+
+                  return (
                     <div
-                      className={`max-w-xs px-4 py-2 rounded-lg ${
-                        msg.role === 'user'
-                          ? 'bg-[#ceab84] text-[#0e393d]'
-                          : 'bg-[#0e393d]/10 text-[#1c2a2b]'
-                      }`}
+                      key={idx}
+                      className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <p className="text-sm">{msg.text}</p>
+                      <div
+                        className={`max-w-xs px-4 py-2 rounded-lg ${
+                          msg.role === 'user'
+                            ? 'bg-[#ceab84] text-[#0e393d]'
+                            : 'bg-[#0e393d]/10 text-[#1c2a2b]'
+                        }`}
+                      >
+                        <p className="text-sm">{displayText}</p>
+                        {targetSlide && slideTarget != null && slideTarget !== currentSlideIndex && (
+                          <button
+                            onClick={() => goToSlide(slideTarget!)}
+                            className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#0e393d]/70 hover:text-[#0e393d] transition-colors"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <path d="M5 12h14M12 5l7 7-7 7" />
+                            </svg>
+                            Go to: {targetSlide.title}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -785,47 +1184,99 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
       {/* Sticky Bottom Controls */}
       {isActive && (
         <div className="sticky bottom-0 left-0 right-0 bg-[#fafaf8] border-t border-[#0e393d]/10 p-4 shadow-lg">
-          <div className="max-w-[1040px] mx-auto flex gap-3">
-            {/* Chat Input */}
-            <div className="flex-1 flex gap-2">
-              <input
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendQuestion()}
-                placeholder={t.typeQuestion}
-                className="flex-1 px-4 py-2.5 rounded-lg text-sm border border-[#0e393d]/10 bg-white text-[#1c2a2b] placeholder-[#1c2a2b]/40 focus:outline-none focus:border-[#ceab84] focus:ring-1 focus:ring-[#ceab84]"
-              />
+          <div className="max-w-[1040px] mx-auto">
+            {/* Voice listening indicator / interim transcript */}
+            {(isListening || voiceResponseLoading) && (
+              <div className="mb-3 px-3 py-2 rounded-lg bg-[#0e393d]/5 flex items-center gap-3">
+                {isListening && (
+                  <>
+                    <div className="flex gap-0.5 items-end h-5">
+                      <div className="w-1 bg-[#E06B5B] rounded-full animate-pulse" style={{ height: '60%' }} />
+                      <div className="w-1 bg-[#E06B5B] rounded-full animate-pulse" style={{ height: '100%', animationDelay: '0.1s' }} />
+                      <div className="w-1 bg-[#E06B5B] rounded-full animate-pulse" style={{ height: '40%', animationDelay: '0.2s' }} />
+                      <div className="w-1 bg-[#E06B5B] rounded-full animate-pulse" style={{ height: '80%', animationDelay: '0.15s' }} />
+                    </div>
+                    <span className="text-sm text-[#1c2a2b]/70 italic flex-1">
+                      {interimTranscript || (lang === 'de' ? 'Ich höre zu…' : 'Listening…')}
+                    </span>
+                  </>
+                )}
+                {voiceResponseLoading && !isListening && (
+                  <>
+                    <div className="w-4 h-4 border-2 border-[#ceab84] border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm text-[#1c2a2b]/70">
+                      {lang === 'de' ? 'Antwort wird vorbereitet…' : 'Preparing response…'}
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              {/* Chat Input */}
+              <div className="flex-1 flex gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendQuestion()}
+                  placeholder={t.typeQuestion}
+                  disabled={isListening || voiceResponseLoading}
+                  className="flex-1 px-4 py-2.5 rounded-lg text-sm border border-[#0e393d]/10 bg-white text-[#1c2a2b] placeholder-[#1c2a2b]/40 focus:outline-none focus:border-[#ceab84] focus:ring-1 focus:ring-[#ceab84] disabled:opacity-50"
+                />
+                <button
+                  onClick={handleSendQuestion}
+                  disabled={!chatInput.trim() || chatLoading || isListening || voiceResponseLoading}
+                  className="px-4 py-2.5 rounded-lg text-sm font-medium text-[#0e393d] bg-[#ceab84] hover:bg-[#ceab84]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {chatLoading ? '…' : t.send}
+                </button>
+              </div>
+
+              {/* Voice Mic Button (push-to-talk) */}
+              {voiceSupported && (
+                <button
+                  onClick={toggleVoiceMic}
+                  disabled={voiceResponseLoading || chatLoading}
+                  className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                    isListening
+                      ? 'bg-[#E06B5B] text-white animate-pulse'
+                      : 'bg-[#0e393d]/10 text-[#0e393d] hover:bg-[#0e393d]/20'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  title={isListening ? 'Stop recording' : 'Ask by voice'}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                    <path d="M19 10v2a7 7 0 01-14 0v-2" />
+                    <line x1="12" y1="19" x2="12" y2="23" />
+                    <line x1="8" y1="23" x2="16" y2="23" />
+                  </svg>
+                </button>
+              )}
+
+              {/* Play/Pause Button */}
               <button
-                onClick={handleSendQuestion}
-                disabled={!chatInput.trim() || chatLoading}
-                className="px-4 py-2.5 rounded-lg text-sm font-medium text-[#0e393d] bg-[#ceab84] hover:bg-[#ceab84]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                onClick={handlePlayPause}
+                disabled={voiceResponseLoading}
+                className="px-4 py-2.5 rounded-lg text-sm font-medium text-[#fafaf8] bg-[#0e393d] hover:bg-[#0e393d]/90 transition-all flex items-center gap-2 disabled:opacity-50"
               >
-                {chatLoading ? '…' : t.send}
+                {playbackState === 'playing' ? (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                    </svg>
+                    {t.pause}
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                    {t.play}
+                  </>
+                )}
               </button>
             </div>
-
-            {/* Play/Pause Button */}
-            <button
-              onClick={handlePlayPause}
-              className="px-4 py-2.5 rounded-lg text-sm font-medium text-[#fafaf8] bg-[#0e393d] hover:bg-[#0e393d]/90 transition-all flex items-center gap-2"
-            >
-              {playbackState === 'playing' ? (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                  </svg>
-                  {t.pause}
-                </>
-              ) : (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                  {t.play}
-                </>
-              )}
-            </button>
           </div>
         </div>
       )}

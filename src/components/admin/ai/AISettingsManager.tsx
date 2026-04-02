@@ -84,6 +84,9 @@ export default function AISettingsManager({
   const [companionEnabled, setCompanionEnabled] = useState<boolean>(() =>
     settingValue(initialSettings, 'companion_enabled', true)
   );
+  const [briefingPregenerate, setBriefingPregenerate] = useState<string>(() =>
+    settingValue(initialSettings, 'briefing_pregenerate', 'off')
+  );
   const [domainWeights, setDomainWeights] = useState<Record<string, number>>(() =>
     settingValue(initialSettings, 'domain_weights', {
       heart_vessels: 0.18, metabolism: 0.16, inflammation: 0.14,
@@ -111,6 +114,7 @@ export default function AISettingsManager({
         tts_provider: ttsProvider,
         briefing_enabled: briefingEnabled,
         companion_enabled: companionEnabled,
+        briefing_pregenerate: briefingPregenerate,
         domain_weights: domainWeights,
       }),
     });
@@ -239,6 +243,37 @@ export default function AISettingsManager({
                 </button>
               </div>
             ))}
+
+            {/* Briefing Pre-generation */}
+            <div className="pt-3 border-t border-[#0e393d]/[.05]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[13px] font-medium text-[#0e393d]">Pre-generate Briefing</div>
+                  <div className="text-[11px] text-[#1c2a2b]/40">
+                    Automatically generate narration text + cache TTS audio so the user&apos;s briefing is instant.
+                  </div>
+                </div>
+                <select
+                  value={briefingPregenerate}
+                  onChange={e => { setBriefingPregenerate(e.target.value); markDirty(); }}
+                  className="rounded-lg border border-[#0e393d]/[.12] px-3 py-1.5 text-[12px] text-[#0e393d] bg-[#fafaf8] outline-none focus:border-[#0e393d]/30 transition-colors"
+                >
+                  <option value="off">Off — on demand only</option>
+                  <option value="on_confirm">Auto — after report confirmation</option>
+                </select>
+              </div>
+              {briefingPregenerate === 'on_confirm' && (
+                <div className="mt-2 flex items-start gap-2 text-[10px] text-[#0e393d]/50 bg-[#0e393d]/[.03] rounded-lg px-3 py-2">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0">
+                    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <span>
+                    When a lab report is confirmed in the admin review, the system will generate the full briefing
+                    and pre-cache all slide audio in the background. Costs ~28k tokens + 12 TTS calls per briefing.
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

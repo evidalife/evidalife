@@ -9,17 +9,26 @@ interface Props {
   lang: Lang;
   narrationText: string;
   isPlaying: boolean;
+  audioLoading?: boolean;
 }
 
-export default function BriefingSlides({ slide, lang, narrationText, isPlaying }: Props) {
+export default function BriefingSlides({ slide, lang, narrationText, isPlaying, audioLoading }: Props) {
   return (
     <div className="w-full space-y-6 fade-in">
       {/* Slide Card — each slide provides its own card styling */}
       <SlideCard slide={slide} lang={lang} />
 
-      {/* Narration Text with Listening Indicator */}
+      {/* Narration Text with Listening / Loading Indicator */}
       <div className="space-y-4">
-        {isPlaying && (
+        {audioLoading && (
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-[#ceab84] border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs text-[#1c2a2b]/50 font-medium uppercase tracking-wide">
+              Loading audio…
+            </span>
+          </div>
+        )}
+        {isPlaying && !audioLoading && (
           <div className="flex items-center gap-2">
             <div className="flex gap-1">
               <div className="w-1 h-4 bg-[#ceab84] rounded-full animate-pulse" />

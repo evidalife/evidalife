@@ -9,6 +9,14 @@ interface BriefingStep {
   title: string;
   narration: string;
   highlight: string;
+  audioCacheKey?: string | null;
+  audioCached?: boolean;
+}
+
+interface TTSCacheStats {
+  totalFiles: number;
+  totalSize: number;
+  byLang: Record<string, { files: number; size: number }>;
 }
 
 interface BriefingRow {
@@ -141,6 +149,20 @@ export default function AICoachManager() {
   const [expandedSteps, setExpandedSteps] = useState<Record<string, BriefingStep[]>>({});
   const [loadingSteps, setLoadingSteps] = useState<string | null>(null);
 
+  // TTS cache state
+  const [cacheStats, setCacheStats] = useState<TTSCacheStats | null>(null);
+  const [cacheLoading, setCacheLoading] = useState(false);
+  const [purging, setPurging] = useState(false);
+
+  const loadCacheStats = useCallback(async () => {
+    setCacheLoading(true);
+    try {
+      const res = await fetch('/api/admin/tts-cache');
+      if (res.ok) setCacheStats(await res.json());
+    } catch { /* silent */ }
+    setCacheLoading(false);
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch('/api/admin/ai-briefings?limit=100');
@@ -152,7 +174,7 @@ export default function AICoachManager() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); loadCacheStats(); }, [load, loadCacheStats]);
 
   const deleteBriefing = async (id: string) => {
     if (!(await confirm({ title: 'Delete Briefing', message: 'Delete this briefing log entry?', variant: 'danger' }))) return;
@@ -226,6 +248,94 @@ export default function AICoachManager() {
           ))}
         </div>
       )}
+
+      {/* TTS Audio Cache */}
+      <div className="bg-white rounded-xl border border-[#0e393d]/[.07] overflow-hidden mb-8">
+        <div className="px-6 py-4 border-b border-[#0e393d]/[.06] flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-[#0e393d]">TTS Audio Cache</h2>
+            <p className="text-[10px] text-[#1c2a2b]/40 mt-0.5">Cached audio files in Supabase Storage — never expires unless purged.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={loadCacheStats}
+              disabled={cacheLoading}
+              className="text-[11px] text-[#0e393d]/50 hover:text-[#0e393d] transition-colors flex items-center gap-1.5 disabled:opacity-30"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+              Refresh
+            </button>
+            <button
+              onClick={async () => {
+                if (!(await confirm({ title: 'Purge TTS Cache', message: 'Delete all cached audio files? They will be re-generated on next playback.', variant: 'danger' }))) return;
+                setPurging(true);
+                try {
+                  const res = await fetch('/api/admin/tts-cache', { method: 'DELETE' });
+                  if (res.ok) {
+                    const data = await res.json();
+                    console.log(`Purged ${data.deleted} files`);
+                    loadCacheStats();
+                  }
+                } catch { /* silent */ }
+                setPurging(false);
+              }}
+              disabled={purging || !cacheStats?.totalFiles}
+              className="text-[11px] text-red-400 hover:text-red-600 transition-colors flex items-center gap-1.5 disabled:opacity-30"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
+              </svg>
+              {purging ? 'Purging…' : 'Purge All'}
+            </button>
+          </div>
+        </div>
+        <div className="px-6 py-5">
+          {cacheLoading && !cacheStats ? (
+            <div className="text-[12px] text-[#1c2a2b]/40 text-center py-4">Loading cache stats…</div>
+          ) : cacheStats ? (
+            <div className="flex items-start gap-8">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-1">Total Files</div>
+                <div className="text-xl font-semibold text-[#0e393d]">{cacheStats.totalFiles}</div>
+              </div>
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-1">Total Size</div>
+                <div className="text-xl font-semibold text-[#0e393d]">
+                  {cacheStats.totalSize > 1024 * 1024
+                    ? `${(cacheStats.totalSize / (1024 * 1024)).toFixed(1)} MB`
+                    : cacheStats.totalSize > 0
+                    ? `${(cacheStats.totalSize / 1024).toFixed(0)} KB`
+                    : '0'}
+                </div>
+              </div>
+              {Object.keys(cacheStats.byLang).length > 0 && (
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-1">By Language</div>
+                  <div className="flex gap-3">
+                    {Object.entries(cacheStats.byLang).map(([lang, { files, size }]) => (
+                      <div key={lang} className="text-[12px] text-[#1c2a2b]/60">
+                        <span className="mr-1">{LANG_FLAGS[lang] ?? lang}</span>
+                        <span className="font-medium text-[#0e393d]">{files}</span>
+                        <span className="text-[10px] text-[#1c2a2b]/30 ml-1">
+                          ({size > 1024 * 1024
+                            ? `${(size / (1024 * 1024)).toFixed(1)}MB`
+                            : `${(size / 1024).toFixed(0)}KB`})
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-[12px] text-[#1c2a2b]/30 text-center py-4">No cache data</div>
+          )}
+        </div>
+      </div>
 
       {/* Briefing log table */}
       <div className="bg-white rounded-xl border border-[#0e393d]/[.07] overflow-hidden">
@@ -327,6 +437,23 @@ export default function AICoachManager() {
                               <p className="text-[12px] text-[#1c2a2b]/60 leading-relaxed pl-8">
                                 {step.narration}
                               </p>
+                              {step.audioCacheKey && (
+                                <div className="flex items-center gap-2 mt-2 pl-8">
+                                  {step.audioCached ? (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-medium text-[#0C9C6C] bg-[#0C9C6C]/8 px-2 py-0.5 rounded-full">
+                                      <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
+                                      cached
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-medium text-[#1c2a2b]/30 bg-[#1c2a2b]/5 px-2 py-0.5 rounded-full">
+                                      not cached
+                                    </span>
+                                  )}
+                                  <span className="text-[9px] font-mono text-[#1c2a2b]/20" title={step.audioCacheKey}>
+                                    {step.audioCacheKey}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
