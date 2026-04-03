@@ -37,11 +37,20 @@ function scoreColorRGB(score: number): readonly [number, number, number] {
   return RED;
 }
 
-function statusLabel(score: number): string {
-  if (score >= 90) return 'Optimal';
-  if (score >= 75) return 'Good';
-  if (score >= 55) return 'Borderline';
-  return 'At Risk';
+const STATUS_LABELS: Record<string, [string, string, string, string]> = {
+  en: ['Optimal', 'Good', 'Borderline', 'At Risk'],
+  de: ['Optimal', 'Gut', 'Grenzwertig', 'Risiko'],
+  fr: ['Optimal', 'Bon', 'Limite', 'A Risque'],
+  es: ['Optimo', 'Bueno', 'Limite', 'En Riesgo'],
+  it: ['Ottimale', 'Buono', 'Limite', 'A Rischio'],
+};
+
+function statusLabel(score: number, lang = 'en'): string {
+  const labels = STATUS_LABELS[lang] || STATUS_LABELS.en;
+  if (score >= 90) return labels[0];
+  if (score >= 75) return labels[1];
+  if (score >= 55) return labels[2];
+  return labels[3];
 }
 
 // ── Translations ────────────────────────────────────────────────────────────
@@ -101,6 +110,90 @@ const PDF_T: Record<string, Record<string, string>> = {
     poweredBy: 'Powered by Evida Life Health Engine',
     noData: 'k.A.',
     years: 'Jahre',
+  },
+  fr: {
+    title: 'Rapport de Bilan de Sante',
+    subtitle: 'Analyse Personnelle des Biomarqueurs',
+    generated: 'Genere le',
+    patient: 'Patient',
+    testDate: 'Date du Test',
+    markers: 'Marqueurs Analyses',
+    longevityScore: 'Score de Longevite',
+    prevScore: 'Precedent',
+    bioAge: 'Evaluation de l\'Age Biologique',
+    chronAge: 'Age Chronologique',
+    phenoAge: 'PhenoAge',
+    grimAge: 'GrimAge v2',
+    dunedinPace: 'DunedinPACE',
+    domainBreakdown: 'Repartition par Domaine',
+    marker: 'Marqueur',
+    value: 'Valeur',
+    refRange: 'Plage Ref.',
+    optRange: 'Optimal',
+    score: 'Score',
+    status: 'Statut',
+    improvements: 'Ameliorations Cles',
+    nextSteps: 'Prochaines Etapes Recommandees',
+    disclaimer: 'Ce rapport est fourni a titre informatif uniquement et ne constitue pas un avis medical. Veuillez consulter votre medecin pour toute decision clinique.',
+    poweredBy: 'Powered by Evida Life Health Engine',
+    noData: 'N/D',
+    years: 'ans',
+  },
+  es: {
+    title: 'Informe de Salud',
+    subtitle: 'Analisis Personal de Biomarcadores',
+    generated: 'Generado el',
+    patient: 'Paciente',
+    testDate: 'Fecha del Analisis',
+    markers: 'Marcadores Analizados',
+    longevityScore: 'Puntuacion de Longevidad',
+    prevScore: 'Anterior',
+    bioAge: 'Evaluacion de Edad Biologica',
+    chronAge: 'Edad Cronologica',
+    phenoAge: 'PhenoAge',
+    grimAge: 'GrimAge v2',
+    dunedinPace: 'DunedinPACE',
+    domainBreakdown: 'Desglose por Dominio',
+    marker: 'Marcador',
+    value: 'Valor',
+    refRange: 'Rango Ref.',
+    optRange: 'Optimo',
+    score: 'Puntuacion',
+    status: 'Estado',
+    improvements: 'Mejoras Clave',
+    nextSteps: 'Proximos Pasos Recomendados',
+    disclaimer: 'Este informe tiene fines informativos unicamente y no constituye asesoramiento medico. Consulte a su medico para decisiones clinicas.',
+    poweredBy: 'Powered by Evida Life Health Engine',
+    noData: 'N/D',
+    years: 'anos',
+  },
+  it: {
+    title: 'Rapporto sulla Salute',
+    subtitle: 'Analisi Personale dei Biomarcatori',
+    generated: 'Generato il',
+    patient: 'Paziente',
+    testDate: 'Data del Test',
+    markers: 'Marcatori Analizzati',
+    longevityScore: 'Punteggio di Longevita',
+    prevScore: 'Precedente',
+    bioAge: 'Valutazione dell\'Eta Biologica',
+    chronAge: 'Eta Cronologica',
+    phenoAge: 'PhenoAge',
+    grimAge: 'GrimAge v2',
+    dunedinPace: 'DunedinPACE',
+    domainBreakdown: 'Ripartizione per Dominio',
+    marker: 'Marcatore',
+    value: 'Valore',
+    refRange: 'Rif. Range',
+    optRange: 'Ottimale',
+    score: 'Punteggio',
+    status: 'Stato',
+    improvements: 'Miglioramenti Chiave',
+    nextSteps: 'Prossimi Passi Consigliati',
+    disclaimer: 'Questo rapporto e fornito solo a scopo informativo e non costituisce consulenza medica. Si prega di consultare il proprio medico per decisioni cliniche.',
+    poweredBy: 'Powered by Evida Life Health Engine',
+    noData: 'N/D',
+    years: 'anni',
   },
 };
 
@@ -207,8 +300,9 @@ export async function POST(req: NextRequest) {
   // Date
   doc.setFontSize(9);
   doc.setTextColor(206, 171, 132);
+  const DATE_LOCALES: Record<string, string> = { en: 'en-GB', de: 'de-CH', fr: 'fr-CH', es: 'es-ES', it: 'it-CH' };
   const dateStr = new Date(briefingRow.created_at).toLocaleDateString(
-    lang === 'de' ? 'de-CH' : 'en-GB',
+    DATE_LOCALES[lang] || 'en-GB',
     { day: 'numeric', month: 'long', year: 'numeric' }
   );
   doc.text(`${t.generated}: ${dateStr}`, margin, 44);
@@ -262,7 +356,7 @@ export async function POST(req: NextRequest) {
     doc.setTextColor(...TEAL);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`/ 100   ${statusLabel(longevityData.score)}`, margin + 34, y + 12);
+    doc.text(`/ 100   ${statusLabel(longevityData.score, lang)}`, margin + 34, y + 12);
 
     if (longevityData.prevScore != null) {
       const delta = longevityData.score - longevityData.prevScore;
@@ -384,7 +478,7 @@ export async function POST(req: NextRequest) {
       // Status
       doc.setTextColor(...mColor);
       doc.setFontSize(7);
-      doc.text(statusLabel(marker.score), cols[4], y);
+      doc.text(statusLabel(marker.score, lang), cols[4], y);
       doc.setFontSize(8);
 
       y += 5;
