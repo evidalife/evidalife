@@ -330,7 +330,7 @@ export async function POST(req: NextRequest) {
   let prevLongevityScore: number | null = null;
   let prevTotalWeight = 0;
 
-  for (const [key, weight] of Object.entries(DEFAULT_WEIGHTS)) {
+  for (const [key, weight] of Object.entries(dbWeights)) {
     if (key === 'epigenetics') continue; // handled separately in bio_age_score
 
     const domDefs = definitions.filter(d => d.he_domain === key && markerData.has(d.id) && !d.is_calculated && !EXCLUDED_SLUGS.has(d.slug));

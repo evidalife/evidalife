@@ -7,6 +7,17 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { Link } from '@/i18n/navigation';
 
+/** Fetch domain weights from ai_settings table */
+async function getDomainWeights(): Promise<Record<string, number> | null> {
+  const adminDb = createAdminClient();
+  const { data } = await adminDb
+    .from('ai_settings')
+    .select('value')
+    .eq('key', 'domain_weights')
+    .single();
+  return (data?.value as Record<string, number>) ?? null;
+}
+
 export const metadata = { title: 'Health Engine – Evida Life' };
 
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
@@ -196,6 +207,7 @@ export default async function HealthEnginePage({
     : 'en';
   const params = await searchParams;
   const supabase = await createClient();
+  const domainWeights = await getDomainWeights();
 
   // ── Auth check ──────────────────────────────────────────────────
   const {
@@ -230,6 +242,7 @@ export default async function HealthEnginePage({
             results={sample.results}
             definitions={sample.definitions}
             isSample
+            domainWeights={domainWeights}
           />
           <PublicFooter />
         </>
@@ -393,6 +406,7 @@ export default async function HealthEnginePage({
         reports={data.reports}
         results={data.results}
         definitions={data.definitions}
+        domainWeights={domainWeights}
       />
       <PublicFooter />
     </>

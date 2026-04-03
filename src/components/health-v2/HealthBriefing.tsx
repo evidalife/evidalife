@@ -1567,8 +1567,8 @@ export default function HealthBriefing({ lang, userId, hasData, isSample, studyC
                 </button>
               </div>
 
-              {/* Voice Mic Button (push-to-talk) */}
-              {voiceSupported && (
+              {/* Voice Mic Button (push-to-talk) — hidden for sample/public */}
+              {voiceSupported && !isSample && (
                 <button
                   onClick={toggleVoiceMic}
                   disabled={voiceResponseLoading || chatLoading}

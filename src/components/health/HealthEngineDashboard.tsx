@@ -54,6 +54,8 @@ interface Props {
   results: LabResult[];
   definitions: BiomarkerDef[];
   isSample?: boolean;
+  /** Domain weights from admin ai_settings — overrides DOMAIN_META defaults */
+  domainWeights?: Record<string, number> | null;
 }
 
 interface ProcessedMarker {
@@ -71,7 +73,8 @@ interface ProcessedMarker {
 interface ProcessedDomain {
   key: string; icon: string; color: string; weight: number; weightLabel: string;
   name: Record<string, string>;
-  scores: number[];
+  scores: number[];       // rounded for display
+  rawScores: number[];    // unrounded for accurate weighted computation
   markers: ProcessedMarker[];
 }
 
@@ -550,7 +553,7 @@ function MiniScoreRing({ score, size = 44 }: { score: number; size?: number }) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function HealthEngineDashboard({ lang, userId, profile, reports, results, definitions, isSample }: Props) {
+export default function HealthEngineDashboard({ lang, userId, profile, reports, results, definitions, isSample, domainWeights }: Props) {
   const t = T[lang];
 
   const dash = useMemo(() => {
@@ -594,9 +597,13 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
       return continuousScore(ratio, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high);
     };
 
-    // Build domains
+    // Build domains — use admin-configured weights when available
     const domains: ProcessedDomain[] = DOMAIN_ORDER.map(key => {
-      const meta = DOMAIN_META[key];
+      const baseMeta = DOMAIN_META[key];
+      const dbWeight = domainWeights?.[key];
+      const weight = dbWeight ?? baseMeta.weight;
+      const weightLabel = `${Math.round(weight * 100)}%`;
+      const meta = { ...baseMeta, weight, weightLabel };
       const domDefs = definitions
         .filter(d => d.he_domain === key && mData.has(d.id))
         .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
@@ -645,7 +652,7 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
         };
       });
 
-      // Domain scores per display date
+      // Domain scores per display date (unrounded for accurate weighted computation)
       const scores = displayDates.map(date => {
         const mScores = markers
           .map(m => {
@@ -658,22 +665,24 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
             return continuousScore(entry.value, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high);
           })
           .filter((s): s is number => s !== null);
-        return mScores.length > 0 ? Math.round(mScores.reduce((a, b) => a + b, 0) / mScores.length) : 0;
+        return mScores.length > 0 ? mScores.reduce((a, b) => a + b, 0) / mScores.length : 0;
       });
 
       return {
         key, ...meta,
         name: CATEGORY_DISPLAY[key] || {},
-        scores, markers,
+        scores: scores.map(s => Math.round(s)),
+        rawScores: scores,
+        markers,
       };
     }).filter(d => d.markers.length > 0);
 
-    // Overall scores per date (weighted)
+    // Overall scores per date (weighted, using raw unrounded domain scores)
     const overallScores = displayDates.map((_, di) => {
       let wSum = 0, wUsed = 0;
       for (const d of domains) {
-        if (d.scores[di] > 0) {
-          wSum += d.scores[di] * d.weight;
+        if (d.rawScores[di] > 0) {
+          wSum += d.rawScores[di] * d.weight;
           wUsed += d.weight;
         }
       }
@@ -778,8 +787,8 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
     const longevityScores = displayDates.map((_, di) => {
       let wSum = 0, wUsed = 0;
       for (const d of nonEpiDomains) {
-        if (d.scores[di] > 0) {
-          wSum += d.scores[di] * d.weight;
+        if (d.rawScores[di] > 0) {
+          wSum += d.rawScores[di] * d.weight;
           wUsed += d.weight;
         }
       }
