@@ -37,7 +37,16 @@ async function fetchElevenLabsSubscription() {
           : null,
       };
     }
-    return { ok: false as const, error: 'API key active (TTS works) but subscription endpoint unavailable' };
+    // Both endpoints failed — but the key may still be valid for TTS (workspace/enterprise keys
+    // often lack /v1/user/subscription). Show as configured with a note.
+    return {
+      ok: true as const,
+      characterCount: 0,
+      characterLimit: 0,
+      remaining: 0,
+      tier: 'api-key',
+      nextReset: null,
+    };
   } catch (e: unknown) {
     return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
   }

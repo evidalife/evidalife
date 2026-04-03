@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import PageShell from '@/components/admin/PageShell';
-import { ELEVENLABS_VOICES, OPENAI_VOICES } from '@/lib/voice/types';
+import { ELEVENLABS_VOICES, OPENAI_VOICES, VOICE_ROLES } from '@/lib/voice/types';
+import type { VoiceRole } from '@/lib/voice/types';
 
 interface Setting {
   key: string;
@@ -88,12 +89,21 @@ export default function AISettingsManager({
   const [sttProvider, setSttProvider] = useState<string>(() =>
     settingValue(initialSettings, 'stt_provider', 'web_speech_api')
   );
-  const [elevenlabsVoiceId, setElevenlabsVoiceId] = useState<string>(() =>
-    settingValue(initialSettings, 'elevenlabs_voice_id', '21m00Tcm4TlvDq8ikWAM')
+  // Per-role voice assignments (ElevenLabs)
+  const defaultRoleVoices = { briefing: '21m00Tcm4TlvDq8ikWAM', coach: 'EXAVITQu4vr4xnSDxMaL', research: 'onwK4e9ZLuTAKqWW03F9' };
+  const [roleVoicesEL, setRoleVoicesEL] = useState<Record<string, string>>(() =>
+    settingValue(initialSettings, 'voice_roles_elevenlabs', defaultRoleVoices)
   );
-  const [openaiTtsVoice, setOpenaiTtsVoice] = useState<string>(() =>
-    settingValue(initialSettings, 'openai_tts_voice', 'nova')
+  // Per-role voice assignments (OpenAI)
+  const defaultRoleVoicesOAI = { briefing: 'nova', coach: 'shimmer', research: 'echo' };
+  const [roleVoicesOAI, setRoleVoicesOAI] = useState<Record<string, string>>(() =>
+    settingValue(initialSettings, 'voice_roles_openai', defaultRoleVoicesOAI)
   );
+  // Active role tab for voice selection
+  const [activeVoiceRole, setActiveVoiceRole] = useState<VoiceRole>('briefing');
+  // Audio preview
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [previewPlaying, setPreviewPlaying] = useState<string | null>(null);
   const [briefingEnabled, setBriefingEnabled] = useState<boolean>(() =>
     settingValue(initialSettings, 'briefing_enabled', true)
   );
@@ -129,8 +139,8 @@ export default function AISettingsManager({
         chat_model: chatModel,
         tts_provider: ttsProvider,
         stt_provider: sttProvider,
-        elevenlabs_voice_id: elevenlabsVoiceId,
-        openai_tts_voice: openaiTtsVoice,
+        voice_roles_elevenlabs: roleVoicesEL,
+        voice_roles_openai: roleVoicesOAI,
         briefing_enabled: briefingEnabled,
         companion_enabled: companionEnabled,
         briefing_pregenerate: briefingPregenerate,
@@ -167,6 +177,65 @@ export default function AISettingsManager({
     });
     markDirty();
   };
+
+  // Voice preview playback
+  const playPreview = useCallback(async (voiceId: string, provider: 'elevenlabs' | 'openai') => {
+    // Stop any playing preview
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current = null;
+    }
+
+    // If clicking same voice, just stop
+    if (previewPlaying === `${provider}:${voiceId}`) {
+      setPreviewPlaying(null);
+      return;
+    }
+
+    setPreviewPlaying(`${provider}:${voiceId}`);
+
+    try {
+      // Generate a short TTS sample via our API
+      const res = await fetch('/api/ai/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: 'Hello, I am your Evida health companion. How are you feeling today?',
+          lang: 'en',
+          // Pass specific voice override for preview
+          _preview_voice: voiceId,
+          _preview_provider: provider,
+        }),
+      });
+
+      if (!res.ok) throw new Error('TTS failed');
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      previewAudioRef.current = audio;
+
+      audio.onended = () => {
+        setPreviewPlaying(null);
+        URL.revokeObjectURL(url);
+        previewAudioRef.current = null;
+      };
+
+      await audio.play();
+    } catch {
+      setPreviewPlaying(null);
+    }
+  }, [previewPlaying]);
+
+  // Cleanup preview on unmount
+  useEffect(() => {
+    return () => {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+        previewAudioRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <PageShell
@@ -326,7 +395,7 @@ export default function AISettingsManager({
         <div className="bg-white rounded-xl border border-[#0e393d]/[.07] p-6">
           <h2 className="text-[13px] font-semibold text-[#0e393d] mb-1">Voice Configuration</h2>
           <p className="text-[11px] text-[#1c2a2b]/40 mb-4">
-            Configure speech-to-text input and text-to-speech output for voice features.
+            Configure speech-to-text input and text-to-speech output. Assign different voices to different AI roles.
           </p>
 
           <div className="space-y-5">
@@ -343,7 +412,7 @@ export default function AISettingsManager({
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
-              {sttProvider === 'deepgram' && !keyStatus.openai && (
+              {sttProvider === 'deepgram' && !keyStatus.deepgram && (
                 <div className="mt-2 flex items-start gap-2 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0">
                     <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
@@ -369,58 +438,168 @@ export default function AISettingsManager({
               </select>
             </div>
 
-            {/* ElevenLabs Voice Selector */}
-            <div className={ttsProvider !== 'elevenlabs' ? 'opacity-40 pointer-events-none' : ''}>
-              <label className="block text-[12px] font-medium text-[#0e393d] mb-1">ElevenLabs Voice</label>
-              <p className="text-[11px] text-[#1c2a2b]/40 mb-2">The voice character used for narration and spoken responses.</p>
-              <div className="grid grid-cols-2 gap-2">
-                {ELEVENLABS_VOICES.map(voice => (
+            {/* Voice Role Tabs */}
+            <div>
+              <label className="block text-[12px] font-medium text-[#0e393d] mb-1">Voice Assignments by Role</label>
+              <p className="text-[11px] text-[#1c2a2b]/40 mb-3">Each AI feature can have its own voice personality. Select a role, then pick the voice for each TTS provider.</p>
+              <div className="flex gap-1 mb-4">
+                {VOICE_ROLES.map(role => (
                   <button
-                    key={voice.id}
-                    onClick={() => { setElevenlabsVoiceId(voice.id); markDirty(); }}
-                    className={`text-left rounded-lg border p-3 transition-all ${
-                      elevenlabsVoiceId === voice.id
-                        ? 'border-[#0e393d] bg-[#0e393d]/[.04] ring-1 ring-[#0e393d]/20'
-                        : 'border-[#0e393d]/[.08] hover:border-[#0e393d]/20'
+                    key={role.key}
+                    onClick={() => setActiveVoiceRole(role.key)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all ${
+                      activeVoiceRole === role.key
+                        ? 'bg-[#0e393d] text-white shadow-sm'
+                        : 'bg-[#0e393d]/[.04] text-[#0e393d]/60 hover:bg-[#0e393d]/[.08]'
                     }`}
                   >
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-[12px] font-semibold text-[#0e393d]">{voice.name}</span>
-                      <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${
-                        voice.gender === 'female' ? 'bg-pink-50 text-pink-600' : 'bg-blue-50 text-blue-600'
-                      }`}>
-                        {voice.gender}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-[#1c2a2b]/40">{voice.description}</div>
-                    <div className="text-[9px] text-[#1c2a2b]/25 mt-0.5">{voice.accent} · {voice.use_case}</div>
+                    <span>{role.icon}</span>
+                    <span>{role.label}</span>
                   </button>
                 ))}
               </div>
+              <div className="text-[10px] text-[#1c2a2b]/35 mb-4 bg-[#0e393d]/[.02] rounded-lg px-3 py-2">
+                {VOICE_ROLES.find(r => r.key === activeVoiceRole)?.description}
+              </div>
             </div>
 
-            {/* OpenAI Voice Selector — always visible since OpenAI is the fallback */}
-            <div>
-              <label className="block text-[12px] font-medium text-[#0e393d] mb-1">
-                OpenAI TTS Voice
-                {ttsProvider !== 'openai' && (
-                  <span className="ml-2 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-[#0e393d]/[.06] text-[#0e393d]/40">FALLBACK</span>
+            {/* ElevenLabs Voice Grid for selected role */}
+            <div className={ttsProvider !== 'elevenlabs' ? 'opacity-50' : ''}>
+              <div className="flex items-center gap-2 mb-2">
+                <label className="block text-[12px] font-medium text-[#0e393d]">ElevenLabs Voice</label>
+                {ttsProvider !== 'elevenlabs' && (
+                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-[#0e393d]/[.06] text-[#0e393d]/40">NOT PRIMARY</span>
                 )}
-              </label>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {ELEVENLABS_VOICES.map(voice => {
+                  const isSelected = roleVoicesEL[activeVoiceRole] === voice.id;
+                  const isPlaying = previewPlaying === `elevenlabs:${voice.id}`;
+                  return (
+                    <div
+                      key={voice.id}
+                      className={`relative text-left rounded-lg border p-3 transition-all ${
+                        isSelected
+                          ? 'border-[#0e393d] bg-[#0e393d]/[.04] ring-1 ring-[#0e393d]/20'
+                          : 'border-[#0e393d]/[.08] hover:border-[#0e393d]/20'
+                      }`}
+                    >
+                      <button
+                        onClick={() => { setRoleVoicesEL(prev => ({ ...prev, [activeVoiceRole]: voice.id })); markDirty(); }}
+                        className="w-full text-left"
+                      >
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-[12px] font-semibold text-[#0e393d]">{voice.name}</span>
+                          <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${
+                            voice.gender === 'female' ? 'bg-pink-50 text-pink-600' : 'bg-blue-50 text-blue-600'
+                          }`}>
+                            {voice.gender}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-[#1c2a2b]/40">{voice.description}</div>
+                        <div className="text-[9px] text-[#1c2a2b]/25 mt-0.5">{voice.accent} · {voice.use_case}</div>
+                      </button>
+                      {/* Selected checkmark — bottom-left */}
+                      {isSelected && (
+                        <div className="absolute bottom-2.5 left-2.5 w-5 h-5 rounded-full bg-[#0C9C6C] flex items-center justify-center">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </div>
+                      )}
+                      {/* Preview button — top-right */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); playPreview(voice.id, 'elevenlabs'); }}
+                        className={`absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                          isPlaying
+                            ? 'bg-[#0e393d] text-white'
+                            : 'bg-[#0e393d]/[.06] text-[#0e393d]/40 hover:bg-[#0e393d]/[.12] hover:text-[#0e393d]/60'
+                        }`}
+                        title={isPlaying ? 'Stop preview' : 'Play preview'}
+                      >
+                        {isPlaying ? (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                        ) : (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* OpenAI Voice Grid for selected role — always visible (fallback) */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <label className="block text-[12px] font-medium text-[#0e393d]">OpenAI TTS Voice</label>
+                {ttsProvider !== 'openai' && (
+                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-[#0e393d]/[.06] text-[#0e393d]/40">FALLBACK</span>
+                )}
+              </div>
               <p className="text-[11px] text-[#1c2a2b]/40 mb-2">
                 {ttsProvider === 'openai'
                   ? 'Primary voice for all TTS output.'
-                  : 'Used automatically when ElevenLabs is unavailable. Always configure this as a backup.'}
+                  : 'Used automatically when ElevenLabs is unavailable. Always configure as backup.'}
               </p>
-              <select
-                value={openaiTtsVoice}
-                onChange={e => { setOpenaiTtsVoice(e.target.value); markDirty(); }}
-                className="w-full rounded-lg border border-[#0e393d]/[.12] px-3 py-2 text-[12px] text-[#0e393d] bg-[#fafaf8] outline-none focus:border-[#0e393d]/30 transition-colors"
-              >
-                {OPENAI_VOICES.map(v => (
-                  <option key={v.value} value={v.value}>{v.label}</option>
-                ))}
-              </select>
+              <div className="grid grid-cols-3 gap-2">
+                {OPENAI_VOICES.map(voice => {
+                  const isSelected = roleVoicesOAI[activeVoiceRole] === voice.value;
+                  const isPlaying = previewPlaying === `openai:${voice.value}`;
+                  return (
+                    <div
+                      key={voice.value}
+                      className={`relative text-left rounded-lg border p-3 transition-all ${
+                        isSelected
+                          ? 'border-[#0e393d] bg-[#0e393d]/[.04] ring-1 ring-[#0e393d]/20'
+                          : 'border-[#0e393d]/[.08] hover:border-[#0e393d]/20'
+                      }`}
+                    >
+                      <button
+                        onClick={() => { setRoleVoicesOAI(prev => ({ ...prev, [activeVoiceRole]: voice.value })); markDirty(); }}
+                        className="w-full text-left"
+                      >
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-[12px] font-semibold text-[#0e393d]">{voice.name}</span>
+                          <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${
+                            voice.gender === 'female' ? 'bg-pink-50 text-pink-600' :
+                            voice.gender === 'male' ? 'bg-blue-50 text-blue-600' :
+                            'bg-gray-50 text-gray-500'
+                          }`}>
+                            {voice.gender}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-[#1c2a2b]/40">{voice.description}</div>
+                        <div className="text-[9px] text-[#1c2a2b]/25 mt-0.5">{voice.use_case}</div>
+                      </button>
+                      {/* Selected checkmark — bottom-left */}
+                      {isSelected && (
+                        <div className="absolute bottom-2.5 left-2.5 w-5 h-5 rounded-full bg-[#0C9C6C] flex items-center justify-center">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </div>
+                      )}
+                      {/* Preview button — top-right */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); playPreview(voice.value, 'openai'); }}
+                        className={`absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                          isPlaying
+                            ? 'bg-[#0e393d] text-white'
+                            : 'bg-[#0e393d]/[.06] text-[#0e393d]/40 hover:bg-[#0e393d]/[.12] hover:text-[#0e393d]/60'
+                        }`}
+                        title={isPlaying ? 'Stop preview' : 'Play preview'}
+                      >
+                        {isPlaying ? (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                        ) : (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Future: Claude Realtime Voice */}

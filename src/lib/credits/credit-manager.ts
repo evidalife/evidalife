@@ -149,9 +149,28 @@ export async function initializeUserCredits(userId: string): Promise<boolean> {
 }
 
 /**
+ * Check if a user is an admin (admins bypass all credit limits)
+ */
+async function isAdmin(userId: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', userId)
+    .single();
+  return !!data?.is_admin;
+}
+
+/**
  * Check if user has enough credits for a feature (does NOT debit)
+ * Admins always pass — they are exempt from credit limits.
  */
 export async function checkCredits(userId: string, feature: CreditFeature, amount?: number): Promise<CreditCheckResult> {
+  // Admins bypass all credit checks
+  if (await isAdmin(userId)) {
+    return { allowed: true, remainingCredits: Infinity, requiredCredits: 0 };
+  }
+
   const balance = await getUserCreditBalance(userId);
   if (!balance) {
     return { allowed: false, remainingCredits: 0, requiredCredits: 0, reason: 'No credit balance found' };
@@ -190,6 +209,11 @@ export async function debitCredits(
   usageLogId?: string,
 ): Promise<{ success: boolean; remaining: number; error?: string }> {
   const cost = amount ?? CREDIT_COSTS[feature] ?? 0;
+
+  // Admins are exempt — no debit
+  if (await isAdmin(userId)) {
+    return { success: true, remaining: Infinity };
+  }
 
   // Free features — no debit needed
   if (cost === 0) {

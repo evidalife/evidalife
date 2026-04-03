@@ -100,67 +100,94 @@ export async function POST(req: NextRequest) {
     authUserId = user.id;
   }
 
-  let body: { text?: string; lang?: string };
+  let body: { text?: string; lang?: string; role?: string; _preview_voice?: string; _preview_provider?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { text, lang = 'en' } = body;
+  const { text, lang = 'en', role, _preview_voice, _preview_provider } = body;
   if (!text?.trim()) {
     return NextResponse.json({ error: 'text is required' }, { status: 400 });
   }
 
+  const isPreview = !!_preview_voice && !!_preview_provider;
   const adminDb = createAdminClient();
-  const key = ttsCacheKey(text, lang);
 
-  // ── 1. Check Supabase Storage cache ────────────────────────────
-  try {
-    const { data: cached } = await adminDb.storage.from(TTS_BUCKET).download(key);
-    if (cached) {
-      const audioBuffer = new Uint8Array(await cached.arrayBuffer());
-      return new NextResponse(audioBuffer, {
-        headers: {
-          'Content-Type': 'audio/mpeg',
-          'Content-Length': String(audioBuffer.length),
-          'Cache-Control': `private, max-age=${CACHE_MAX_AGE}`,
-          'X-TTS-Source': 'cache',
-        },
-      });
+  // ── 1. Check Supabase Storage cache (skip for previews) ────────
+  if (!isPreview) {
+    const key = ttsCacheKey(text, lang);
+    try {
+      const { data: cached } = await adminDb.storage.from(TTS_BUCKET).download(key);
+      if (cached) {
+        const audioBuffer = new Uint8Array(await cached.arrayBuffer());
+        return new NextResponse(audioBuffer, {
+          headers: {
+            'Content-Type': 'audio/mpeg',
+            'Content-Length': String(audioBuffer.length),
+            'Cache-Control': `private, max-age=${CACHE_MAX_AGE}`,
+            'X-TTS-Source': 'cache',
+          },
+        });
+      }
+    } catch {
+      // Cache miss — proceed to generate
     }
-  } catch {
-    // Cache miss — proceed to generate
   }
 
-  // ── 2. Load admin voice config ──────────────────────────────────
-  let voiceConfig;
-  try {
-    voiceConfig = await getVoiceConfig();
-  } catch {
-    voiceConfig = null;
+  // ── 2. Determine voice to use ──────────────────────────────────
+  let elVoiceId = DEFAULT_ELEVENLABS_VOICE_ID;
+  let oaiVoice = DEFAULT_OPENAI_VOICE;
+  let forcedProvider: 'elevenlabs' | 'openai' | null = null;
+
+  if (isPreview) {
+    // Preview mode: use the exact voice/provider requested
+    forcedProvider = _preview_provider as 'elevenlabs' | 'openai';
+    if (_preview_provider === 'elevenlabs') {
+      elVoiceId = _preview_voice!;
+    } else {
+      oaiVoice = _preview_voice!;
+    }
+  } else {
+    // Normal mode: load admin config, optionally with role
+    let voiceConfig;
+    try {
+      voiceConfig = await getVoiceConfig(role);
+    } catch {
+      voiceConfig = null;
+    }
+    elVoiceId = voiceConfig?.tts.elevenlabs_voice_id || DEFAULT_ELEVENLABS_VOICE_ID;
+    oaiVoice = voiceConfig?.tts.openai_voice || DEFAULT_OPENAI_VOICE;
   }
-  const elVoiceId = voiceConfig?.tts.elevenlabs_voice_id || DEFAULT_ELEVENLABS_VOICE_ID;
-  const oaiVoice = voiceConfig?.tts.openai_voice || DEFAULT_OPENAI_VOICE;
 
   // ── 3. Generate audio with fallback chain ──────────────────────
   const ttsStartMs = Date.now();
   let audioBuffer: Buffer | null = null;
   let provider: 'elevenlabs' | 'openai' = 'elevenlabs';
 
-  // Tier 1: ElevenLabs
-  const elKey = process.env.ELEVENLABS_API_KEY;
-  if (elKey) {
-    audioBuffer = await elevenLabsTTS(text, elKey, elVoiceId);
-    if (audioBuffer) provider = 'elevenlabs';
-  }
-
-  // Tier 2: OpenAI TTS
-  if (!audioBuffer) {
+  if (forcedProvider === 'openai') {
+    // Preview: force OpenAI
     const openaiKey = process.env.OPENAI_API_KEY;
     if (openaiKey) {
       audioBuffer = await openaiTTS(text, openaiKey, oaiVoice);
       if (audioBuffer) provider = 'openai';
+    }
+  } else {
+    // Tier 1: ElevenLabs (or forced ElevenLabs preview)
+    const elKey = process.env.ELEVENLABS_API_KEY;
+    if (elKey) {
+      audioBuffer = await elevenLabsTTS(text, elKey, elVoiceId);
+      if (audioBuffer) provider = 'elevenlabs';
+    }
+
+    // Tier 2: OpenAI TTS (fallback, skip if forced elevenlabs preview)
+    if (!audioBuffer && !forcedProvider) {
+      const openaiKey = process.env.OPENAI_API_KEY;
+      if (openaiKey) {
+        audioBuffer = await openaiTTS(text, openaiKey, oaiVoice);
+        if (audioBuffer) provider = 'openai';
+      }
     }
   }
 
@@ -174,16 +201,19 @@ export async function POST(req: NextRequest) {
 
   const durationMs = Date.now() - ttsStartMs;
 
-  // ── 4. Store in cache (fire-and-forget) ────────────────────────
-  adminDb.storage
-    .from(TTS_BUCKET)
-    .upload(key, audioBuffer, {
-      contentType: 'audio/mpeg',
-      upsert: true,
-    })
-    .then(({ error: uploadErr }) => {
-      if (uploadErr) console.error('[TTS] Cache upload error:', uploadErr.message);
-    });
+  // ── 4. Store in cache (fire-and-forget, skip for previews) ─────
+  if (!isPreview) {
+    const cacheKey = ttsCacheKey(text, lang);
+    adminDb.storage
+      .from(TTS_BUCKET)
+      .upload(cacheKey, audioBuffer, {
+        contentType: 'audio/mpeg',
+        upsert: true,
+      })
+      .then(({ error: uploadErr }) => {
+        if (uploadErr) console.error('[TTS] Cache upload error:', uploadErr.message);
+      });
+  }
 
   // ── 5. Log usage ───────────────────────────────────────────────
   logAIUsage({
