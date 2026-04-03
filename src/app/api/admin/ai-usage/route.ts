@@ -91,6 +91,7 @@ export async function GET(req: NextRequest) {
         anthropic: { ok: !!process.env.ANTHROPIC_API_KEY },
         openai:    { ok: !!process.env.OPENAI_API_KEY },
         elevenlabs,
+        deepgram:  { ok: !!process.env.DEEPGRAM_API_KEY },
       },
       byProvider: providerRes.data ?? [],
       byEndpoint: endpointRes.data ?? [],

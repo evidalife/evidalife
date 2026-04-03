@@ -3,7 +3,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 
-export type AIProvider = 'anthropic' | 'openai' | 'elevenlabs';
+export type AIProvider = 'anthropic' | 'openai' | 'elevenlabs' | 'deepgram';
 
 export type UsageLogEntry = {
   userId?: string | null;
@@ -36,6 +36,10 @@ const OPENAI_PRICING: Record<string, { input: number; output: number }> = {
 // ElevenLabs: ~$0.30 per 1K characters (Pro plan)
 const ELEVENLABS_COST_PER_1K_CHARS = 0.30;
 
+// Deepgram: ~$0.0043 per minute (Nova-2 Pay-as-you-go)
+// We track in seconds via durationMs, convert to minutes for cost
+const DEEPGRAM_COST_PER_MINUTE = 0.0043;
+
 export function estimateCost(entry: UsageLogEntry): number {
   const { provider, model, inputTokens = 0, outputTokens = 0, characters = 0 } = entry;
 
@@ -58,6 +62,13 @@ export function estimateCost(entry: UsageLogEntry): number {
 
   if (provider === 'elevenlabs') {
     return (characters / 1000) * ELEVENLABS_COST_PER_1K_CHARS;
+  }
+
+  if (provider === 'deepgram') {
+    // Cost based on audio duration (durationMs field)
+    const { durationMs = 0 } = entry;
+    const minutes = (durationMs || 0) / 60_000;
+    return minutes * DEEPGRAM_COST_PER_MINUTE;
   }
 
   return 0;

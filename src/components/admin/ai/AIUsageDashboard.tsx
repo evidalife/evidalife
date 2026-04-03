@@ -71,6 +71,7 @@ type UsageData = {
     anthropic: { ok: boolean };
     openai: { ok: boolean };
     elevenlabs: ElevenLabsBalance;
+    deepgram: { ok: boolean; remainingCredits?: number; error?: string };
   };
   byProvider: ProviderRow[];
   byEndpoint: EndpointRow[];
@@ -104,6 +105,7 @@ function providerColor(p: string): string {
     case 'anthropic': return '#d97706';
     case 'elevenlabs': return '#7c3aed';
     case 'openai': return '#059669';
+    case 'deepgram': return '#0ea5e9';
     default: return '#6b7280';
   }
 }
@@ -113,6 +115,7 @@ function providerLabel(p: string): string {
     case 'anthropic': return 'Anthropic (Claude)';
     case 'elevenlabs': return 'ElevenLabs';
     case 'openai': return 'OpenAI';
+    case 'deepgram': return 'Deepgram';
     default: return p;
   }
 }
@@ -203,7 +206,7 @@ export default function AIUsageDashboard() {
           {/* ── API Key Status + Credit Balances ────────────────────── */}
           <div className="bg-white rounded-xl border border-[#0e393d]/[.07] p-6">
             <h2 className="text-[13px] font-semibold text-[#0e393d] mb-4">API Provider Status</h2>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               {/* Anthropic */}
               <StatusCard
                 label="Anthropic (Claude)"
@@ -216,9 +219,16 @@ export default function AIUsageDashboard() {
               {/* OpenAI */}
               <StatusCard
                 label="OpenAI"
-                note="Fallback TTS (tts-1-hd)"
+                note="Fallback TTS + embeddings"
                 color="#059669"
                 configured={data.balances.openai.ok}
+              />
+              {/* Deepgram */}
+              <StatusCard
+                label="Deepgram"
+                note="Cross-browser STT (Nova-2)"
+                color="#0ea5e9"
+                configured={data.balances.deepgram?.ok ?? false}
               />
             </div>
           </div>
@@ -486,12 +496,15 @@ function ElevenLabsCard({ data }: { data: ElevenLabsBalance }) {
 }
 
 function DailyChart({ data }: { data: DailyRow[] }) {
-  const byDay = new Map<string, { anthropic: number; elevenlabs: number; openai: number; total: number }>();
+  const byDay = new Map<string, { anthropic: number; elevenlabs: number; openai: number; deepgram: number; total: number }>();
   for (const r of data) {
     const d = r.day.slice(0, 10);
-    const existing = byDay.get(d) ?? { anthropic: 0, elevenlabs: 0, openai: 0, total: 0 };
+    const existing = byDay.get(d) ?? { anthropic: 0, elevenlabs: 0, openai: 0, deepgram: 0, total: 0 };
     const cost = Number(r.total_cost);
-    existing[r.provider as 'anthropic' | 'elevenlabs' | 'openai'] = (existing[r.provider as 'anthropic' | 'elevenlabs' | 'openai'] ?? 0) + cost;
+    const key = r.provider as keyof typeof existing;
+    if (key in existing && key !== 'total') {
+      existing[key] = (existing[key] ?? 0) + cost;
+    }
     existing.total += cost;
     byDay.set(d, existing);
   }
@@ -514,6 +527,9 @@ function DailyChart({ data }: { data: DailyRow[] }) {
             {costs.openai > 0 && (
               <div className="h-full bg-emerald-400" style={{ width: `${(costs.openai / maxCost) * 100}%` }} title={`OpenAI: ${formatCost(costs.openai)}`} />
             )}
+            {costs.deepgram > 0 && (
+              <div className="h-full bg-sky-400" style={{ width: `${(costs.deepgram / maxCost) * 100}%` }} title={`Deepgram: ${formatCost(costs.deepgram)}`} />
+            )}
           </div>
           <span className="w-14 text-right text-[#0e393d] font-medium shrink-0">{formatCost(costs.total)}</span>
         </div>
@@ -523,6 +539,7 @@ function DailyChart({ data }: { data: DailyRow[] }) {
           <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-amber-400" />Anthropic</span>
           <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-purple-400" />ElevenLabs</span>
           <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-emerald-400" />OpenAI</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-sky-400" />Deepgram</span>
         </div>
       )}
     </div>
