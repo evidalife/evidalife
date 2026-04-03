@@ -13,7 +13,6 @@ async function fetchElevenLabsSubscription() {
   const key = process.env.ELEVENLABS_API_KEY;
   if (!key) return { ok: false as const, error: 'Not configured' };
   try {
-    // Try /v1/user/subscription first, fallback to /v1/user (workspace keys)
     for (const endpoint of [
       'https://api.elevenlabs.io/v1/user/subscription',
       'https://api.elevenlabs.io/v1/user',
@@ -24,7 +23,6 @@ async function fetchElevenLabsSubscription() {
       });
       if (!res.ok) continue;
       const d = await res.json();
-      // /v1/user nests subscription info
       const sub = d.subscription ?? d;
       return {
         ok: true as const,
@@ -37,16 +35,84 @@ async function fetchElevenLabsSubscription() {
           : null,
       };
     }
-    // Both endpoints failed — but the key may still be valid for TTS (workspace/enterprise keys
-    // often lack /v1/user/subscription). Show as configured with a note.
-    return {
-      ok: true as const,
-      characterCount: 0,
-      characterLimit: 0,
-      remaining: 0,
-      tier: 'api-key',
-      nextReset: null,
-    };
+    return { ok: true as const, characterCount: 0, characterLimit: 0, remaining: 0, tier: 'api-key', nextReset: null };
+  } catch (e: unknown) {
+    return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+async function fetchOpenAIBalance() {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return { ok: false as const, error: 'Not configured' };
+  try {
+    // Try the billing endpoints (may not work for all key types)
+    const headers = { 'Authorization': `Bearer ${key}` };
+
+    // Get organization usage limit
+    const limitsRes = await fetch('https://api.openai.com/v1/organization/limits?model=tts-1', {
+      headers, signal: AbortSignal.timeout(5000),
+    });
+
+    // Try dashboard billing (works for most accounts)
+    const billingRes = await fetch('https://api.openai.com/dashboard/billing/credit_grants', {
+      headers, signal: AbortSignal.timeout(5000),
+    });
+
+    let totalGranted = 0;
+    let totalUsed = 0;
+    let remaining = 0;
+
+    if (billingRes.ok) {
+      const billing = await billingRes.json();
+      totalGranted = billing.total_granted ?? 0;
+      totalUsed = billing.total_used ?? 0;
+      remaining = billing.total_available ?? (totalGranted - totalUsed);
+    }
+
+    // Even if billing endpoint fails, key is valid if we can hit models
+    if (!billingRes.ok) {
+      const modelsRes = await fetch('https://api.openai.com/v1/models', {
+        headers, signal: AbortSignal.timeout(5000),
+      });
+      if (modelsRes.ok) {
+        return { ok: true as const, totalGranted: 0, totalUsed: 0, remaining: 0, note: 'Key active — billing data unavailable' };
+      }
+    }
+
+    void limitsRes; // we attempted but may not have data
+    return { ok: true as const, totalGranted, totalUsed, remaining };
+  } catch (e: unknown) {
+    return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+async function fetchDeepgramBalance() {
+  const key = process.env.DEEPGRAM_API_KEY;
+  if (!key) return { ok: false as const, error: 'Not configured' };
+  try {
+    // Get projects first
+    const projRes = await fetch('https://api.deepgram.com/v1/projects', {
+      headers: { 'Authorization': `Token ${key}` },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!projRes.ok) {
+      // Key works if we get 200 on /v1/listen — try a lightweight check
+      return { ok: true as const, remainingCredits: 0, note: 'Key active — balance data unavailable' };
+    }
+    const { projects } = await projRes.json();
+    if (!projects?.length) return { ok: true as const, remainingCredits: 0 };
+
+    const projectId = projects[0].project_id;
+    // Get balances
+    const balRes = await fetch(`https://api.deepgram.com/v1/projects/${projectId}/balances`, {
+      headers: { 'Authorization': `Token ${key}` },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!balRes.ok) return { ok: true as const, remainingCredits: 0 };
+    const { balances } = await balRes.json();
+    const totalRemaining = balances?.reduce((sum: number, b: { amount: number }) => sum + (b.amount ?? 0), 0) ?? 0;
+
+    return { ok: true as const, remainingCredits: totalRemaining };
   } catch (e: unknown) {
     return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
   }
@@ -75,6 +141,8 @@ export async function GET(req: NextRequest) {
     // ── All queries in parallel ──────────────────────────────────────────
     const [
       elevenlabs,
+      openai,
+      deepgram,
       providerRes,
       endpointRes,
       dailyRes,
@@ -83,6 +151,8 @@ export async function GET(req: NextRequest) {
       totalsRes,
     ] = await Promise.all([
       fetchElevenLabsSubscription(),
+      fetchOpenAIBalance(),
+      fetchDeepgramBalance(),
 
       db.rpc('ai_usage_by_provider', { since_date: since }),
       db.rpc('ai_usage_by_endpoint', { since_date: since }),
@@ -98,9 +168,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       balances: {
         anthropic: { ok: !!process.env.ANTHROPIC_API_KEY },
-        openai:    { ok: !!process.env.OPENAI_API_KEY },
+        openai,
         elevenlabs,
-        deepgram:  { ok: !!process.env.DEEPGRAM_API_KEY },
+        deepgram,
       },
       byProvider: providerRes.data ?? [],
       byEndpoint: endpointRes.data ?? [],

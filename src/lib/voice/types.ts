@@ -66,6 +66,7 @@ export interface STTConfig {
 // TTS interface — configuration for any TTS provider
 export interface TTSConfig {
   provider: TTSProvider;
+  backup_provider?: TTSProvider;
   elevenlabs_voice_id?: string;
   elevenlabs_model?: string;
   openai_voice?: OpenAIVoice;

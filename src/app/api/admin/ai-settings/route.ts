@@ -49,7 +49,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const ALLOWED_KEYS = [
-    'briefing_model', 'chat_model', 'tts_provider', 'stt_provider',
+    'briefing_model', 'chat_model', 'tts_provider', 'tts_backup_provider', 'stt_provider',
     'elevenlabs_voice_id', 'openai_tts_voice',
     'voice_roles_elevenlabs', 'voice_roles_openai',
     'briefing_enabled', 'companion_enabled', 'briefing_pregenerate',

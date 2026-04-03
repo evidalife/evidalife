@@ -66,12 +66,28 @@ type Totals = {
   total_characters: number;
 };
 
+type OpenAIBalance = {
+  ok: boolean;
+  totalGranted?: number;
+  totalUsed?: number;
+  remaining?: number;
+  note?: string;
+  error?: string;
+};
+
+type DeepgramBalance = {
+  ok: boolean;
+  remainingCredits?: number;
+  note?: string;
+  error?: string;
+};
+
 type UsageData = {
   balances: {
     anthropic: { ok: boolean };
-    openai: { ok: boolean };
+    openai: OpenAIBalance;
     elevenlabs: ElevenLabsBalance;
-    deepgram: { ok: boolean; remainingCredits?: number; error?: string };
+    deepgram: DeepgramBalance;
   };
   byProvider: ProviderRow[];
   byEndpoint: EndpointRow[];
@@ -213,23 +229,14 @@ export default function AIUsageDashboard() {
                 note="Briefings, chat, email assist"
                 color="#d97706"
                 configured={data.balances.anthropic.ok}
+                rechargeUrl="https://console.anthropic.com/settings/billing"
               />
               {/* ElevenLabs */}
               <ElevenLabsCard data={data.balances.elevenlabs} />
               {/* OpenAI */}
-              <StatusCard
-                label="OpenAI"
-                note="Fallback TTS + embeddings"
-                color="#059669"
-                configured={data.balances.openai.ok}
-              />
+              <OpenAICard data={data.balances.openai} />
               {/* Deepgram */}
-              <StatusCard
-                label="Deepgram"
-                note="Cross-browser STT (Nova-2)"
-                color="#0ea5e9"
-                configured={data.balances.deepgram?.ok ?? false}
-              />
+              <DeepgramCard data={data.balances.deepgram} />
             </div>
           </div>
 
@@ -408,8 +415,8 @@ function KPI({ label, value }: { label: string; value: string }) {
   );
 }
 
-function StatusCard({ label, note, color, configured }: {
-  label: string; note: string; color: string; configured: boolean;
+function StatusCard({ label, note, color, configured, rechargeUrl }: {
+  label: string; note: string; color: string; configured: boolean; rechargeUrl?: string;
 }) {
   return (
     <div className={`rounded-lg border p-4 ${configured ? 'border-[#0C9C6C]/20 bg-[#0C9C6C]/[.03]' : 'border-amber-200 bg-amber-50'}`}>
@@ -421,6 +428,13 @@ function StatusCard({ label, note, color, configured }: {
         {configured ? 'Configured ✓' : 'Not set'}
       </div>
       <div className="text-[10px] text-[#1c2a2b]/35 mt-1">{note}</div>
+      {configured && rechargeUrl && (
+        <a href={rechargeUrl} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 mt-2 text-[10px] font-medium text-[#0e393d]/40 hover:text-[#0e393d] transition-colors">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Billing →
+        </a>
+      )}
     </div>
   );
 }
@@ -491,6 +505,84 @@ function ElevenLabsCard({ data }: { data: ElevenLabsBalance }) {
           Character limit almost reached — consider upgrading
         </div>
       )}
+      <a href="https://elevenlabs.io/subscription" target="_blank" rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 mt-2 text-[10px] font-medium text-purple-500/60 hover:text-purple-700 transition-colors">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Manage subscription →
+      </a>
+    </div>
+  );
+}
+
+function OpenAICard({ data }: { data: OpenAIBalance }) {
+  if (!data.ok) {
+    return (
+      <StatusCard label="OpenAI" note="TTS + embeddings" color="#059669" configured={false} />
+    );
+  }
+
+  const hasBalance = (data.remaining ?? 0) > 0 || (data.totalGranted ?? 0) > 0;
+
+  return (
+    <div className="rounded-lg border border-[#0C9C6C]/20 bg-[#0C9C6C]/[.03] p-4">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+        <span className="text-[12px] font-semibold text-[#0e393d]">OpenAI</span>
+      </div>
+      <div className="text-[10px] font-medium text-[#0C9C6C]">Configured ✓</div>
+      {hasBalance ? (
+        <div className="mt-1.5">
+          <div className="flex justify-between text-[10px] text-[#1c2a2b]/40">
+            <span>${(data.totalUsed ?? 0).toFixed(2)} used</span>
+            <span>${(data.remaining ?? 0).toFixed(2)} remaining</span>
+          </div>
+        </div>
+      ) : (
+        <div className="text-[10px] text-[#1c2a2b]/35 mt-1">
+          {data.note ?? 'TTS + embeddings'}
+        </div>
+      )}
+      <a href="https://platform.openai.com/settings/organization/billing/overview" target="_blank" rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 mt-2 text-[10px] font-medium text-emerald-500/60 hover:text-emerald-700 transition-colors">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Billing →
+      </a>
+    </div>
+  );
+}
+
+function DeepgramCard({ data }: { data: DeepgramBalance }) {
+  if (!data.ok) {
+    return (
+      <StatusCard label="Deepgram" note="Cross-browser STT (Nova-2)" color="#0ea5e9" configured={false} />
+    );
+  }
+
+  const hasBalance = (data.remainingCredits ?? 0) > 0;
+
+  return (
+    <div className="rounded-lg border border-[#0C9C6C]/20 bg-[#0C9C6C]/[.03] p-4">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-2 h-2 rounded-full bg-sky-500" />
+        <span className="text-[12px] font-semibold text-[#0e393d]">Deepgram</span>
+      </div>
+      <div className="text-[10px] font-medium text-[#0C9C6C]">Configured ✓</div>
+      {hasBalance ? (
+        <div className="mt-1.5">
+          <div className="text-[10px] text-[#1c2a2b]/40">
+            ${(data.remainingCredits ?? 0).toFixed(2)} credit remaining
+          </div>
+        </div>
+      ) : (
+        <div className="text-[10px] text-[#1c2a2b]/35 mt-1">
+          {data.note ?? 'Cross-browser STT (Nova-2)'}
+        </div>
+      )}
+      <a href="https://console.deepgram.com/project/settings/billing" target="_blank" rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 mt-2 text-[10px] font-medium text-sky-500/60 hover:text-sky-700 transition-colors">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Billing →
+      </a>
     </div>
   );
 }

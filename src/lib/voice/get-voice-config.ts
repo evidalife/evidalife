@@ -26,6 +26,7 @@ export async function getVoiceConfig(role?: string): Promise<VoiceSessionConfig>
     .select('key, value')
     .in('key', [
       'tts_provider',
+      'tts_backup_provider',
       'stt_provider',
       'elevenlabs_voice_id',
       'openai_tts_voice',
@@ -66,6 +67,7 @@ export async function getVoiceConfig(role?: string): Promise<VoiceSessionConfig>
     },
     tts: {
       provider: get('tts_provider', 'elevenlabs') as TTSProvider,
+      backup_provider: get('tts_backup_provider', 'openai') as TTSProvider,
       elevenlabs_voice_id: resolvedELVoice,
       elevenlabs_model: 'eleven_multilingual_v2',
       openai_voice: resolvedOAIVoice as OpenAIVoice,

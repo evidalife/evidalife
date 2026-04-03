@@ -47,9 +47,9 @@ const CHAT_MODELS = [
 ];
 
 const TTS_PROVIDERS = [
-  { value: 'elevenlabs', label: 'ElevenLabs (recommended — natural voice)' },
-  { value: 'openai', label: 'OpenAI TTS-1 (fallback — cheaper)' },
-  { value: 'browser', label: 'Browser SpeechSynthesis (free, lower quality)' },
+  { value: 'elevenlabs', label: 'ElevenLabs — natural, multilingual' },
+  { value: 'openai', label: 'OpenAI TTS-1 — fast, reliable' },
+  { value: 'browser', label: 'Browser SpeechSynthesis — free, lower quality' },
 ];
 
 const STT_PROVIDERS = [
@@ -88,6 +88,9 @@ export default function AISettingsManager({
   );
   const [sttProvider, setSttProvider] = useState<string>(() =>
     settingValue(initialSettings, 'stt_provider', 'web_speech_api')
+  );
+  const [ttsBackupProvider, setTtsBackupProvider] = useState<string>(() =>
+    settingValue(initialSettings, 'tts_backup_provider', 'openai')
   );
   // Per-role voice assignments (ElevenLabs)
   const defaultRoleVoices = { briefing: '21m00Tcm4TlvDq8ikWAM', coach: 'EXAVITQu4vr4xnSDxMaL', research: 'onwK4e9ZLuTAKqWW03F9' };
@@ -138,6 +141,7 @@ export default function AISettingsManager({
         briefing_model: briefingModel,
         chat_model: chatModel,
         tts_provider: ttsProvider,
+        tts_backup_provider: ttsBackupProvider,
         stt_provider: sttProvider,
         voice_roles_elevenlabs: roleVoicesEL,
         voice_roles_openai: roleVoicesOAI,
@@ -423,19 +427,57 @@ export default function AISettingsManager({
               )}
             </div>
 
-            {/* TTS Provider */}
+            {/* TTS Provider — Primary + Backup */}
             <div>
-              <label className="block text-[12px] font-medium text-[#0e393d] mb-1">Text-to-Speech (TTS) Provider</label>
-              <p className="text-[11px] text-[#1c2a2b]/40 mb-2">Primary voice output. ElevenLabs → OpenAI → Browser fallback chain is always active regardless of selection.</p>
-              <select
-                value={ttsProvider}
-                onChange={e => { setTtsProvider(e.target.value); markDirty(); }}
-                className="w-full rounded-lg border border-[#0e393d]/[.12] px-3 py-2 text-[12px] text-[#0e393d] bg-[#fafaf8] outline-none focus:border-[#0e393d]/30 transition-colors"
-              >
-                {TTS_PROVIDERS.map(o => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
+              <label className="block text-[12px] font-medium text-[#0e393d] mb-1">Text-to-Speech (TTS) Providers</label>
+              <p className="text-[11px] text-[#1c2a2b]/40 mb-3">Primary provider is tried first. If it fails, the backup kicks in automatically. Browser SpeechSynthesis is always the last resort.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40 mb-1.5">Primary</label>
+                  <select
+                    value={ttsProvider}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setTtsProvider(val);
+                      // Auto-swap backup if same
+                      if (val === ttsBackupProvider) {
+                        setTtsBackupProvider(val === 'elevenlabs' ? 'openai' : 'elevenlabs');
+                      }
+                      markDirty();
+                    }}
+                    className="w-full rounded-lg border border-[#0e393d]/[.12] px-3 py-2 text-[12px] text-[#0e393d] bg-[#fafaf8] outline-none focus:border-[#0e393d]/30 transition-colors"
+                  >
+                    {TTS_PROVIDERS.filter(o => o.value !== 'browser').map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40 mb-1.5">Backup</label>
+                  <select
+                    value={ttsBackupProvider}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setTtsBackupProvider(val);
+                      if (val === ttsProvider && val !== 'browser') {
+                        setTtsProvider(val === 'elevenlabs' ? 'openai' : 'elevenlabs');
+                      }
+                      markDirty();
+                    }}
+                    className="w-full rounded-lg border border-[#0e393d]/[.12] px-3 py-2 text-[12px] text-[#0e393d] bg-[#fafaf8] outline-none focus:border-[#0e393d]/30 transition-colors"
+                  >
+                    {TTS_PROVIDERS.map(o => (
+                      <option key={o.value} value={o.value} disabled={o.value === ttsProvider}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="mt-2 text-[10px] text-[#1c2a2b]/30">
+                Fallback chain: <span className="font-medium text-[#0e393d]/50">{TTS_PROVIDERS.find(p => p.value === ttsProvider)?.label.split(' — ')[0]}</span>
+                {' → '}
+                <span className="font-medium text-[#0e393d]/50">{TTS_PROVIDERS.find(p => p.value === ttsBackupProvider)?.label.split(' — ')[0]}</span>
+                {ttsBackupProvider !== 'browser' && <>{' → '}<span className="font-medium text-[#0e393d]/50">Browser SpeechSynthesis</span></>}
+              </div>
             </div>
 
             {/* Voice Role Tabs */}
@@ -464,12 +506,18 @@ export default function AISettingsManager({
             </div>
 
             {/* ElevenLabs Voice Grid for selected role */}
-            <div className={ttsProvider !== 'elevenlabs' ? 'opacity-50' : ''}>
+            <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="block text-[12px] font-medium text-[#0e393d]">ElevenLabs Voice</label>
-                {ttsProvider !== 'elevenlabs' && (
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-[#0e393d]/[.06] text-[#0e393d]/40">NOT PRIMARY</span>
-                )}
+                <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${
+                  ttsProvider === 'elevenlabs'
+                    ? 'bg-[#0C9C6C]/10 text-[#0C9C6C]'
+                    : ttsBackupProvider === 'elevenlabs'
+                      ? 'bg-amber-100 text-amber-600'
+                      : 'bg-[#0e393d]/[.06] text-[#0e393d]/40'
+                }`}>
+                  {ttsProvider === 'elevenlabs' ? 'PRIMARY' : ttsBackupProvider === 'elevenlabs' ? 'BACKUP' : 'INACTIVE'}
+                </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {ELEVENLABS_VOICES.map(voice => {
@@ -529,18 +577,26 @@ export default function AISettingsManager({
               </div>
             </div>
 
-            {/* OpenAI Voice Grid for selected role — always visible (fallback) */}
+            {/* OpenAI Voice Grid for selected role */}
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="block text-[12px] font-medium text-[#0e393d]">OpenAI TTS Voice</label>
-                {ttsProvider !== 'openai' && (
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-[#0e393d]/[.06] text-[#0e393d]/40">FALLBACK</span>
-                )}
+                <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${
+                  ttsProvider === 'openai'
+                    ? 'bg-[#0C9C6C]/10 text-[#0C9C6C]'
+                    : ttsBackupProvider === 'openai'
+                      ? 'bg-amber-100 text-amber-600'
+                      : 'bg-[#0e393d]/[.06] text-[#0e393d]/40'
+                }`}>
+                  {ttsProvider === 'openai' ? 'PRIMARY' : ttsBackupProvider === 'openai' ? 'BACKUP' : 'INACTIVE'}
+                </span>
               </div>
               <p className="text-[11px] text-[#1c2a2b]/40 mb-2">
                 {ttsProvider === 'openai'
                   ? 'Primary voice for all TTS output.'
-                  : 'Used automatically when ElevenLabs is unavailable. Always configure as backup.'}
+                  : ttsBackupProvider === 'openai'
+                    ? 'Used automatically if the primary provider fails.'
+                    : 'Currently inactive. Set as primary or backup above to use.'}
               </p>
               <div className="grid grid-cols-3 gap-2">
                 {OPENAI_VOICES.map(voice => {

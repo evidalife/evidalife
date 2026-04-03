@@ -136,10 +136,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── 2. Determine voice to use ──────────────────────────────────
+  // ── 2. Determine voice + provider chain to use ─────────────────
   let elVoiceId = DEFAULT_ELEVENLABS_VOICE_ID;
   let oaiVoice = DEFAULT_OPENAI_VOICE;
   let forcedProvider: 'elevenlabs' | 'openai' | null = null;
+  let primaryProvider: 'elevenlabs' | 'openai' = 'elevenlabs';
+  let backupProvider: 'elevenlabs' | 'openai' | 'browser' = 'openai';
 
   if (isPreview) {
     // Preview mode: use the exact voice/provider requested
@@ -159,35 +161,51 @@ export async function POST(req: NextRequest) {
     }
     elVoiceId = voiceConfig?.tts.elevenlabs_voice_id || DEFAULT_ELEVENLABS_VOICE_ID;
     oaiVoice = voiceConfig?.tts.openai_voice || DEFAULT_OPENAI_VOICE;
+    // Read primary/backup from admin settings
+    primaryProvider = (voiceConfig?.tts.provider as 'elevenlabs' | 'openai') || 'elevenlabs';
+    backupProvider = voiceConfig?.tts.backup_provider || (primaryProvider === 'elevenlabs' ? 'openai' : 'elevenlabs');
   }
 
-  // ── 3. Generate audio with fallback chain ──────────────────────
+  // Helper to try a single provider
+  const tryProvider = async (p: string): Promise<{ buf: Buffer | null; name: 'elevenlabs' | 'openai' }> => {
+    if (p === 'elevenlabs') {
+      const elKey = process.env.ELEVENLABS_API_KEY;
+      if (elKey) {
+        const buf = await elevenLabsTTS(text, elKey, elVoiceId);
+        return { buf, name: 'elevenlabs' };
+      }
+    }
+    if (p === 'openai') {
+      const openaiKey = process.env.OPENAI_API_KEY;
+      if (openaiKey) {
+        const buf = await openaiTTS(text, openaiKey, oaiVoice);
+        return { buf, name: 'openai' };
+      }
+    }
+    return { buf: null, name: p as 'elevenlabs' | 'openai' };
+  };
+
+  // ── 3. Generate audio with configurable fallback chain ─────────
   const ttsStartMs = Date.now();
   let audioBuffer: Buffer | null = null;
   let provider: 'elevenlabs' | 'openai' = 'elevenlabs';
 
-  if (forcedProvider === 'openai') {
-    // Preview: force OpenAI
-    const openaiKey = process.env.OPENAI_API_KEY;
-    if (openaiKey) {
-      audioBuffer = await openaiTTS(text, openaiKey, oaiVoice);
-      if (audioBuffer) provider = 'openai';
-    }
+  if (forcedProvider) {
+    // Preview: force specific provider
+    const result = await tryProvider(forcedProvider);
+    audioBuffer = result.buf;
+    if (audioBuffer) provider = result.name;
   } else {
-    // Tier 1: ElevenLabs (or forced ElevenLabs preview)
-    const elKey = process.env.ELEVENLABS_API_KEY;
-    if (elKey) {
-      audioBuffer = await elevenLabsTTS(text, elKey, elVoiceId);
-      if (audioBuffer) provider = 'elevenlabs';
-    }
+    // Tier 1: Primary provider
+    const primary = await tryProvider(primaryProvider);
+    audioBuffer = primary.buf;
+    if (audioBuffer) provider = primary.name;
 
-    // Tier 2: OpenAI TTS (fallback, skip if forced elevenlabs preview)
-    if (!audioBuffer && !forcedProvider) {
-      const openaiKey = process.env.OPENAI_API_KEY;
-      if (openaiKey) {
-        audioBuffer = await openaiTTS(text, openaiKey, oaiVoice);
-        if (audioBuffer) provider = 'openai';
-      }
+    // Tier 2: Backup provider
+    if (!audioBuffer && backupProvider !== 'browser') {
+      const backup = await tryProvider(backupProvider);
+      audioBuffer = backup.buf;
+      if (audioBuffer) provider = backup.name;
     }
   }
 
