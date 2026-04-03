@@ -547,13 +547,11 @@ export default function AISettingsManager({
                         <div className="text-[10px] text-[#1c2a2b]/40">{voice.description}</div>
                         <div className="text-[9px] text-[#1c2a2b]/25 mt-0.5">{voice.accent} · {voice.use_case}</div>
                       </button>
-                      {/* Selected checkmark — bottom-left */}
+                      {/* Selected checkmark — bottom-right */}
                       {isSelected && (
-                        <div className="absolute bottom-2.5 left-2.5 w-5 h-5 rounded-full bg-[#0C9C6C] flex items-center justify-center">
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0C9C6C" strokeWidth="2.5" className="absolute bottom-2.5 right-2.5">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
                       )}
                       {/* Preview button — top-right */}
                       <button
@@ -628,13 +626,11 @@ export default function AISettingsManager({
                         <div className="text-[10px] text-[#1c2a2b]/40">{voice.description}</div>
                         <div className="text-[9px] text-[#1c2a2b]/25 mt-0.5">{voice.use_case}</div>
                       </button>
-                      {/* Selected checkmark — bottom-left */}
+                      {/* Selected checkmark — bottom-right */}
                       {isSelected && (
-                        <div className="absolute bottom-2.5 left-2.5 w-5 h-5 rounded-full bg-[#0C9C6C] flex items-center justify-center">
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0C9C6C" strokeWidth="2.5" className="absolute bottom-2.5 right-2.5">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
                       )}
                       {/* Preview button — top-right */}
                       <button
