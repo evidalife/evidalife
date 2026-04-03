@@ -33,11 +33,9 @@ const OPENAI_PRICING: Record<string, { input: number; output: number }> = {
   'tts-1-hd':    { input: 30.0, output: 0 },
 };
 
-// ElevenLabs: subscription-based pricing. Characters included in plan are "free",
-// so we estimate marginal cost only. Starter ($5/30K) ≈ $0.167/1K chars effective,
-// Creator ($22/100K) ≈ $0.22/1K. Overage on Creator+ is $0.30/1K.
-// We use the effective Starter rate for cost estimation since included chars have cost.
-const ELEVENLABS_COST_PER_1K_CHARS = 0.18; // ~$5.40 per 30K (Starter effective rate)
+// ElevenLabs: subscription-based pricing (Creator plan $22/100K credits).
+// Effective rate: $22/100K = $0.22/1K chars. Overage on Creator+ is $0.30/1K.
+const ELEVENLABS_COST_PER_1K_CHARS = 0.22; // Creator plan effective rate
 
 // Deepgram: ~$0.0043 per minute (Nova-2 Pay-as-you-go)
 // We track in seconds via durationMs, convert to minutes for cost
