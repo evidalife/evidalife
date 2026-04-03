@@ -2,6 +2,47 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 
+// ── Medical term corrections for common STT misrecognitions ────────────────
+// Web Speech API often misrecognises medical/biomarker terms.
+const MEDICAL_CORRECTIONS: [RegExp, string][] = [
+  [/\bapril\b/gi, 'Apo B'],
+  [/\bapo\s*be\b/gi, 'Apo B'],
+  [/\bapob\b/gi, 'Apo B'],
+  [/\bhba1c\b/gi, 'HbA1c'],
+  [/\bh\s*b\s*a\s*1\s*c\b/gi, 'HbA1c'],
+  [/\bhemoglobin a1c\b/gi, 'HbA1c'],
+  [/\bh\s*s\s*crp\b/gi, 'hsCRP'],
+  [/\bhigh sensitivity c-reactive protein\b/gi, 'hsCRP'],
+  [/\bhs crp\b/gi, 'hsCRP'],
+  [/\bldl\b/gi, 'LDL'],
+  [/\bhdl\b/gi, 'HDL'],
+  [/\btsh\b/gi, 'TSH'],
+  [/\bvitamin d\b/gi, 'Vitamin D'],
+  [/\bomega 3\b/gi, 'Omega-3'],
+  [/\bomega three\b/gi, 'Omega-3'],
+  [/\bfenno age\b/gi, 'PhenoAge'],
+  [/\bpheno age\b/gi, 'PhenoAge'],
+  [/\bgrim age\b/gi, 'GrimAge'],
+  [/\bduneddin pace\b/gi, 'DunedinPACE'],
+  [/\bdune?din\s*pace\b/gi, 'DunedinPACE'],
+  [/\btriglycerides?\b/gi, 'triglycerides'],
+  [/\binsulin resistance\b/gi, 'insulin resistance'],
+  [/\bferritin\b/gi, 'ferritin'],
+  [/\bhomocysteine\b/gi, 'homocysteine'],
+  [/\blp little a\b/gi, 'Lp(a)'],
+  [/\blipoprotein a\b/gi, 'Lp(a)'],
+];
+
+function correctMedicalTerms(text: string): string {
+  let corrected = text;
+  for (const [pattern, replacement] of MEDICAL_CORRECTIONS) {
+    corrected = corrected.replace(pattern, replacement);
+  }
+  return corrected;
+}
+
+export type STTMode = 'web_speech_api' | 'deepgram';
+
 export interface UseVoiceInputOptions {
   /** BCP-47 language code, e.g. 'en-US', 'de-DE' */
   lang?: string;
@@ -9,21 +50,25 @@ export interface UseVoiceInputOptions {
   onResult?: (transcript: string) => void;
   /** Called when an error occurs */
   onError?: (error: string) => void;
+  /** Override STT provider (if not set, auto-detected from admin settings) */
+  sttProvider?: STTMode;
 }
 
 export interface UseVoiceInputReturn {
-  /** Whether the browser supports Web Speech API */
+  /** Whether voice input is available (either Web Speech or Deepgram) */
   supported: boolean;
   /** Whether the mic is currently listening */
   isListening: boolean;
   /** Interim (in-progress) transcript while the user is speaking */
   interimTranscript: string;
-  /** Start listening (push-to-talk: call this on button press) */
+  /** Start listening */
   startListening: () => void;
-  /** Stop listening (push-to-talk: call this on button release) */
+  /** Stop listening */
   stopListening: () => void;
   /** Toggle listening on/off */
   toggleListening: () => void;
+  /** Active STT provider */
+  activeProvider: STTMode;
 }
 
 // Map our Lang codes to BCP-47
@@ -36,23 +81,31 @@ const LANG_MAP: Record<string, string> = {
 };
 
 /**
- * Hook for push-to-talk voice input using the Web Speech API.
+ * Hook for voice input supporting both Web Speech API and Deepgram.
  *
- * Usage:
- *   const { supported, isListening, interimTranscript, toggleListening } = useVoiceInput({
- *     lang: 'en',
- *     onResult: (text) => sendQuestion(text),
- *   });
+ * On mount, fetches the admin-configured STT provider. If Deepgram is selected,
+ * uses MediaRecorder to capture audio and sends it to /api/ai/speech-to-text.
+ * Otherwise falls back to the browser's Web Speech API.
  */
 export function useVoiceInput({
   lang = 'en',
   onResult,
   onError,
+  sttProvider: overrideProvider,
 }: UseVoiceInputOptions = {}): UseVoiceInputReturn {
   const [supported, setSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
+  const [activeProvider, setActiveProvider] = useState<STTMode>('web_speech_api');
+
+  // Web Speech API refs
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  // Deepgram refs
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+
   const onResultRef = useRef(onResult);
   const onErrorRef = useRef(onError);
 
@@ -60,25 +113,170 @@ export function useVoiceInput({
   onResultRef.current = onResult;
   onErrorRef.current = onError;
 
-  // Check browser support on mount
+  // ── Fetch STT config on mount ──────────────────────────────────────
   useEffect(() => {
-    const SR = typeof window !== 'undefined'
-      ? window.SpeechRecognition || window.webkitSpeechRecognition
-      : null;
-    setSupported(!!SR);
-  }, []);
+    let cancelled = false;
 
-  // Cleanup on unmount
+    async function detectProvider() {
+      // If override is set, use it directly
+      if (overrideProvider) {
+        setActiveProvider(overrideProvider);
+        setSupported(true);
+        return;
+      }
+
+      // Check Web Speech API support first (as fallback)
+      const hasSR = typeof window !== 'undefined' &&
+        !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+      try {
+        const res = await fetch('/api/ai/speech-to-text');
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled) {
+            if (data.sttProvider === 'deepgram' && data.deepgramAvailable) {
+              setActiveProvider('deepgram');
+              setSupported(true); // Deepgram works on all browsers
+            } else {
+              setActiveProvider('web_speech_api');
+              setSupported(hasSR);
+            }
+          }
+        } else {
+          if (!cancelled) {
+            setActiveProvider('web_speech_api');
+            setSupported(hasSR);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setActiveProvider('web_speech_api');
+          setSupported(hasSR);
+        }
+      }
+    }
+
+    detectProvider();
+    return () => { cancelled = true; };
+  }, [overrideProvider]);
+
+  // ── Cleanup on unmount ──────────────────────────────────────────────
   useEffect(() => {
     return () => {
       if (recognitionRef.current) {
         try { recognitionRef.current.abort(); } catch { /* ignore */ }
         recognitionRef.current = null;
       }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try { mediaRecorderRef.current.stop(); } catch { /* ignore */ }
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
     };
   }, []);
 
-  const startListening = useCallback(() => {
+  // ── Deepgram: capture audio via MediaRecorder → send to server ────
+  const startDeepgram = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      audioChunksRef.current = [];
+
+      // Find supported MIME type
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+            ? 'audio/ogg;codecs=opus'
+            : 'audio/webm';
+
+      const recorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        // Stop mic stream
+        stream.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+
+        setIsListening(false);
+        setInterimTranscript('');
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        if (audioBlob.size < 100) {
+          // Too small — no speech detected
+          return;
+        }
+
+        // Show "Transcribing..." while waiting for server
+        setInterimTranscript('...');
+
+        try {
+          // Convert blob to base64
+          const arrayBuffer = await audioBlob.arrayBuffer();
+          const base64 = btoa(
+            new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+          );
+
+          const res = await fetch('/api/ai/speech-to-text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              audioBase64: base64,
+              lang,
+              mimeType,
+            }),
+          });
+
+          setInterimTranscript('');
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            onErrorRef.current?.(`Deepgram error: ${errData.error || res.statusText}`);
+            return;
+          }
+
+          const data = await res.json();
+          const text = correctMedicalTerms((data.transcript || '').trim());
+          if (text) {
+            onResultRef.current?.(text);
+          }
+        } catch (err) {
+          setInterimTranscript('');
+          onErrorRef.current?.(`Transcription failed: ${err}`);
+        }
+      };
+
+      recorder.onerror = () => {
+        setIsListening(false);
+        setInterimTranscript('');
+        onErrorRef.current?.('MediaRecorder error');
+      };
+
+      recorder.start(250); // Collect in 250ms chunks
+      setIsListening(true);
+      setInterimTranscript('');
+    } catch (err) {
+      onErrorRef.current?.(`Microphone access denied: ${err}`);
+    }
+  }, [lang]);
+
+  const stopDeepgram = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop(); // triggers onstop → sends to server
+    }
+  }, []);
+
+  // ── Web Speech API: browser-native STT ────────────────────────────
+  const startWebSpeech = useCallback(() => {
     const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognitionCtor) {
       onErrorRef.current?.('Speech recognition not supported in this browser');
@@ -93,7 +291,7 @@ export function useVoiceInput({
     const recognition = new SpeechRecognitionCtor();
     recognition.lang = LANG_MAP[lang] || lang;
     recognition.interimResults = true;
-    recognition.continuous = true; // keep listening until we stop
+    recognition.continuous = true;
     recognition.maxAlternatives = 1;
 
     let finalTranscript = '';
@@ -114,8 +312,7 @@ export function useVoiceInput({
     recognition.onend = () => {
       setIsListening(false);
       setInterimTranscript('');
-      // Deliver the final transcript
-      const text = finalTranscript.trim();
+      const text = correctMedicalTerms(finalTranscript.trim());
       if (text) {
         onResultRef.current?.(text);
       }
@@ -123,7 +320,6 @@ export function useVoiceInput({
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      // 'no-speech' and 'aborted' are expected when user doesn't say anything
       if (event.error !== 'no-speech' && event.error !== 'aborted') {
         onErrorRef.current?.(event.error);
       }
@@ -138,13 +334,28 @@ export function useVoiceInput({
     setInterimTranscript('');
   }, [lang]);
 
-  const stopListening = useCallback(() => {
+  const stopWebSpeech = useCallback(() => {
     if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop(); // triggers onend → delivers final transcript
-      } catch { /* ignore */ }
+      try { recognitionRef.current.stop(); } catch { /* ignore */ }
     }
   }, []);
+
+  // ── Unified start/stop/toggle ─────────────────────────────────────
+  const startListening = useCallback(() => {
+    if (activeProvider === 'deepgram') {
+      startDeepgram();
+    } else {
+      startWebSpeech();
+    }
+  }, [activeProvider, startDeepgram, startWebSpeech]);
+
+  const stopListening = useCallback(() => {
+    if (activeProvider === 'deepgram') {
+      stopDeepgram();
+    } else {
+      stopWebSpeech();
+    }
+  }, [activeProvider, stopDeepgram, stopWebSpeech]);
 
   const toggleListening = useCallback(() => {
     if (isListening) {
@@ -161,5 +372,6 @@ export function useVoiceInput({
     startListening,
     stopListening,
     toggleListening,
+    activeProvider,
   };
 }

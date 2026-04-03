@@ -102,7 +102,14 @@ export async function POST(req: NextRequest) {
     })
   );
 
-  return NextResponse.json({ ...data, steps: enrichedSteps });
+  // Fetch Q&A messages for this briefing
+  const { data: qaMessages } = await admin
+    .from('briefing_qa_messages')
+    .select('id, role, content, slide_index, tokens_used, created_at')
+    .eq('briefing_id', id)
+    .order('created_at', { ascending: true });
+
+  return NextResponse.json({ ...data, steps: enrichedSteps, qaMessages: qaMessages ?? [] });
 }
 
 // DELETE a briefing (+ cascade-delete its TTS cache files)

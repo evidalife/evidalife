@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useLocale } from 'next-intl';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -224,6 +225,7 @@ export default function ResearchChat({
   suggestions = DEFAULT_SUGGESTIONS,
   placeholder = 'Ask a research question, e.g. "Does reducing saturated fat lower cardiovascular risk?"',
 }: ResearchChatProps) {
+  const locale = useLocale();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -323,7 +325,7 @@ export default function ResearchChat({
       setBriefingHandoffDone(true);
       const markerNames = flaggedMarkers.map(m => `${m.name} (${m.value} ${m.unit})`).join(', ');
       streamResponse(
-        { flaggedMarkers },
+        { flaggedMarkers, locale },
         `Research my flagged biomarkers: ${markerNames}`
       );
     }
@@ -333,7 +335,7 @@ export default function ResearchChat({
     if (!question.trim() || isLoading) return;
     setInput('');
     await streamResponse(
-      { question: question.trim(), biomarkerContext },
+      { question: question.trim(), biomarkerContext, locale },
       question.trim()
     );
   }, [isLoading, biomarkerContext, streamResponse]);

@@ -235,6 +235,7 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [isCached, setIsCached] = useState(false);
+  const [briefingId, setBriefingId] = useState<string | null>(null);
   const [checkingCache, setCheckingCache] = useState(hasData);
   const [audioLoading, setAudioLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -267,6 +268,7 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
         if (data.cached && data.slides?.length > 0) {
           setIsCached(true);
           setSlides(data.slides);
+          if (data.briefingId) setBriefingId(data.briefingId);
         }
       } catch { /* ignore — will just show Start Briefing */ }
       finally { if (!cancelled) setCheckingCache(false); }
@@ -304,19 +306,34 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
   }, []);
 
   // ── Extract flagged markers from briefing slides for research handoff ──
+  // Include both critical (score <55) and borderline (score <70) markers
   const extractFlaggedMarkers = useCallback((): FlaggedMarker[] => {
     const markers: FlaggedMarker[] = [];
     for (const slide of slidesRef.current) {
       if (slide.type === 'domain_summary') {
         const data = slide.data as import('@/lib/health-engine-v2-types').DomainSummaryData;
+        // First add critical markers (score < 55)
         for (const m of data.criticalMarkers || []) {
           markers.push({
             slug: m.slug,
-            name: m.name,
+            name: typeof m.name === 'string' ? m.name : String(m.name),
             value: m.value,
             unit: m.unit,
             status: m.status,
           });
+        }
+        // Also include borderline markers (score 55-69) that aren't already added
+        const addedSlugs = new Set(markers.map(m => m.slug));
+        for (const m of data.markers || []) {
+          if (m.score < 70 && m.score >= 55 && !addedSlugs.has(m.slug)) {
+            markers.push({
+              slug: m.slug,
+              name: typeof m.name === 'string' ? m.name : String(m.name),
+              value: m.value,
+              unit: m.unit,
+              status: m.status,
+            });
+          }
         }
       }
     }
@@ -335,7 +352,15 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lang }),
       });
-      if (!res.ok) throw new Error('PDF generation failed');
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({ error: 'Unknown error' }));
+        const msg = errBody.error || `HTTP ${res.status}`;
+        console.error('[PDF] Server returned', res.status, msg);
+        alert(res.status === 404
+          ? 'No briefing found — please complete a Health Engine briefing first before downloading the PDF.'
+          : `PDF generation failed: ${msg}`);
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -347,6 +372,7 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('[PDF]', err);
+      alert('PDF generation failed — please try again.');
     } finally {
       setPdfLoading(false);
     }
@@ -536,6 +562,7 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
       setSlides(data.slides);
       slidesRef.current = data.slides; // sync immediately for prefetch
       setIsCached(data.cached);
+      if (data.briefingId) setBriefingId(data.briefingId);
       setCurrentSlideIndex(0);
       // Pre-fetch first 3 slides immediately
       prefetchBatch(0, 3);
@@ -615,6 +642,8 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
           context: slideContext,
           lang,
           mode: 'briefing',
+          briefingId: briefingId ?? undefined,
+          slideIndex: currentSlideIndex,
         }),
       });
 
@@ -860,6 +889,8 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
           context: slideContext,
           lang,
           mode: 'briefing',
+          briefingId: briefingId ?? undefined,
+          slideIndex: currentSlideIndex,
         }),
       });
 

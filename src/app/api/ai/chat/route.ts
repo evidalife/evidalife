@@ -25,6 +25,8 @@ export async function POST(req: NextRequest) {
     context?: string;
     lang?: string;
     mode?: 'briefing' | 'coach';
+    briefingId?: string;     // for Q&A tracking
+    slideIndex?: number;     // which slide user was on
   };
   try {
     body = await req.json();
@@ -32,7 +34,7 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400 });
   }
 
-  const { messages, context = '', lang = 'en', mode = 'briefing' } = body;
+  const { messages, context = '', lang = 'en', mode = 'briefing', briefingId, slideIndex } = body;
   if (!messages?.length) {
     return new Response(JSON.stringify({ error: 'messages array is required' }), { status: 400 });
   }
@@ -149,16 +151,48 @@ ${context ? `FULL BRIEFING DATA:\n${context}` : ''}`;
 
         // Log usage after stream completes
         const finalMessage = await anthropicStream.finalMessage();
+        const outputTokens = finalMessage.usage?.output_tokens ?? 0;
         logAIUsage({
           userId: user.id,
           provider: 'anthropic',
           endpoint: 'chat',
           model: chatModel,
           inputTokens: finalMessage.usage?.input_tokens ?? 0,
-          outputTokens: finalMessage.usage?.output_tokens ?? 0,
+          outputTokens,
           durationMs: Date.now() - chatStartMs,
           metadata: { lang, mode },
         });
+
+        // ── Persist Q&A to briefing_qa_messages (fire-and-forget) ──
+        if (mode === 'briefing' && briefingId) {
+          const lastUserMsg = messages[messages.length - 1];
+          // Extract full assistant text from the final message
+          const assistantText = finalMessage.content
+            .filter((b) => b.type === 'text')
+            .map((b) => ('text' in b ? (b as { text: string }).text : ''))
+            .join('');
+
+          adminDb.from('briefing_qa_messages').insert([
+            {
+              briefing_id: briefingId,
+              user_id: user.id,
+              role: 'user',
+              content: lastUserMsg?.content ?? '',
+              slide_index: slideIndex ?? null,
+              tokens_used: null,
+            },
+            {
+              briefing_id: briefingId,
+              user_id: user.id,
+              role: 'assistant',
+              content: assistantText,
+              slide_index: slideIndex ?? null,
+              tokens_used: outputTokens,
+            },
+          ]).then(({ error: qaErr }) => {
+            if (qaErr) console.error('[chat] Q&A persistence error:', qaErr.message);
+          });
+        }
 
         controller.enqueue(encoder.encode('data: [DONE]\n\n'));
         controller.close();

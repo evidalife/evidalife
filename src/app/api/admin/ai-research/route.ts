@@ -84,6 +84,48 @@ export async function GET() {
     .select('*', { count: 'exact', head: true })
     .not('disease_tags', 'eq', '{}');
 
+  // Book content chunks stats (per-book)
+  const { data: bookChunkRows } = await supabase
+    .from('book_chunks')
+    .select('book_id, content_length');
+
+  // Aggregate book chunk stats manually
+  const bookChunkMap = new Map<string, { chunks: number; total_chars: number }>();
+  if (bookChunkRows) {
+    for (const row of bookChunkRows as any[]) {
+      const entry = bookChunkMap.get(row.book_id) ?? { chunks: 0, total_chars: 0 };
+      entry.chunks++;
+      entry.total_chars += row.content_length ?? 0;
+      bookChunkMap.set(row.book_id, entry);
+    }
+  }
+
+  // Get book titles for chunk stats
+  const { data: allBooks } = await supabase
+    .from('books')
+    .select('id, title, slug')
+    .order('title');
+
+  const bookContentStats = (allBooks ?? []).map((book: any) => {
+    const chunkInfo = bookChunkMap.get(book.id);
+    return {
+      book_id: book.id,
+      title: book.title,
+      slug: book.slug,
+      chunks: chunkInfo?.chunks ?? 0,
+      total_chars: chunkInfo?.total_chars ?? 0,
+    };
+  });
+
+  const totalBookChunks = bookContentStats.reduce((sum: number, b: any) => sum + b.chunks, 0);
+  const totalBookChars = bookContentStats.reduce((sum: number, b: any) => sum + b.total_chars, 0);
+
+  // Add Tier 0 (book content) to tier counts if book chunks exist
+  const tierCountsWithBookContent = [...(tierRows ?? [])];
+  if (totalBookChunks > 0) {
+    tierCountsWithBookContent.unshift({ tier: 0, count: totalBookChunks });
+  }
+
   // Estimated cost
   const avgAbstractTokens = 300;
   const costPer1M = 0.02;
@@ -94,9 +136,12 @@ export async function GET() {
     withEmbeddings: withEmbeddings ?? 0,
     withoutEmbeddings: withoutEmbeddings ?? 0,
     sourceCounts: sourceCounts ?? [],
-    tierCounts: tierRows ?? [],
+    tierCounts: tierCountsWithBookContent,
     diseaseCounts: diseaseRows ?? [],
     bookStats: bookStats ?? [],
+    bookContentStats,
+    totalBookChunks,
+    totalBookChars,
     withBiomarkers: withBiomarkers ?? 0,
     withDiseaseTags: withDiseaseTags ?? 0,
     recentJobs: recentJobs ?? [],

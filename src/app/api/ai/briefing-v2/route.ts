@@ -272,6 +272,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         slides: cachedBriefing.steps,
         cached: true,
+        briefingId: cachedBriefing.id,
       });
     }
   }
@@ -717,18 +718,27 @@ Include narrations only for slides that exist in the data provided. Skip bio_age
         }
       }
 
-      // Log to health_briefings (fire-and-forget — same table as v1)
-      adminDb.from('health_briefings').insert({
-        user_id: userId,
-        lang,
-        steps: slides,
-        summary_context: { version: 'v2' },
-        model_used: briefingModel,
-        tokens_used: tokensUsed,
-        duration_ms: durationMs,
-      }).then(({ error: insertErr }) => {
-        if (insertErr) console.error('[briefing-v2] log error:', insertErr.message);
-      });
+      // Log to health_briefings and capture the ID for Q&A tracking
+      let newBriefingId: string | undefined;
+      const { data: insertedRow, error: insertErr } = await adminDb
+        .from('health_briefings')
+        .insert({
+          user_id: userId,
+          lang,
+          steps: slides,
+          summary_context: { version: 'v2' },
+          model_used: briefingModel,
+          tokens_used: tokensUsed,
+          duration_ms: durationMs,
+        })
+        .select('id')
+        .single();
+
+      if (insertErr) {
+        console.error('[briefing-v2] log error:', insertErr.message);
+      } else {
+        newBriefingId = insertedRow?.id;
+      }
 
       // Log to ai_usage_log for cost tracking
       logAIUsage({
@@ -745,6 +755,7 @@ Include narrations only for slides that exist in the data provided. Skip bio_age
       return NextResponse.json({
         slides,
         cached: false,
+        briefingId: newBriefingId,
       });
     } catch (e: unknown) {
       lastError = e;

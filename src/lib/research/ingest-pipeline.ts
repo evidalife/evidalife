@@ -33,11 +33,13 @@ export interface IngestOptions {
   pubmedApiKey?: string;
   source?: string;
   bookSlugs?: string[];       // Link ingested studies to these books (by slug)
+  pmidsByBook?: Record<string, string[]>;  // Per-book PMID mapping (key=book slug, value=PMIDs from that book)
   batchSize?: number;         // PubMed fetch batch size (max 200)
   embedBatchSize?: number;    // OpenAI embedding batch size (max 2048, keep low to avoid timeouts)
   pubmedDelayMs?: number;     // Delay between PubMed API calls
   embedDelayMs?: number;      // Delay between embedding API calls
   dryRun?: boolean;           // Skip DB insert, just log
+  linkOnly?: boolean;         // Skip PubMed fetch + embedding, only run book_citations linking
   onProgress?: (msg: string) => void;
 }
 
@@ -48,21 +50,30 @@ export interface IngestResult {
   errors: number;
 }
 
-// Fetch existing PMIDs from Supabase to skip duplicates
+// Fetch existing PMIDs from Supabase to skip duplicates (paginated)
 async function fetchExistingPmids(
   supabaseUrl: string,
   supabaseServiceKey: string
 ): Promise<Set<string>> {
-  const res = await fetch(`${supabaseUrl}/rest/v1/studies?select=pmid`, {
-    headers: {
-      'apikey': supabaseServiceKey,
-      'Authorization': `Bearer ${supabaseServiceKey}`,
-    },
-  });
-
-  if (!res.ok) throw new Error(`Failed to fetch existing PMIDs: ${res.status}`);
-  const rows: { pmid: string }[] = await res.json();
-  return new Set(rows.map(r => r.pmid));
+  const headers = {
+    'apikey': supabaseServiceKey,
+    'Authorization': `Bearer ${supabaseServiceKey}`,
+  };
+  const pageSize = 1000;
+  const existing = new Set<string>();
+  let offset = 0;
+  while (true) {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/studies?select=pmid&offset=${offset}&limit=${pageSize}`,
+      { headers }
+    );
+    if (!res.ok) throw new Error(`Failed to fetch existing PMIDs: ${res.status}`);
+    const rows: { pmid: string }[] = await res.json();
+    for (const r of rows) existing.add(r.pmid);
+    if (rows.length < pageSize) break;
+    offset += pageSize;
+  }
+  return existing;
 }
 
 // Insert studies into Supabase (upsert by pmid)
@@ -100,12 +111,15 @@ async function upsertStudies(
 }
 
 // Link studies to books via the book_citations junction table
+// When pmidsByBook is provided, each study is linked only to its source book(s).
+// Fallback: if pmidsByBook is empty, links all PMIDs to all bookSlugs (legacy behavior).
 async function linkStudiesToBooks(
   pmids: string[],
   bookSlugs: string[],
   supabaseUrl: string,
   supabaseServiceKey: string,
-  onProgress: (msg: string) => void
+  onProgress: (msg: string) => void,
+  pmidsByBook?: Record<string, string[]>
 ): Promise<void> {
   if (bookSlugs.length === 0 || pmids.length === 0) return;
 
@@ -130,10 +144,9 @@ async function linkStudiesToBooks(
     return;
   }
 
-  // Fetch study IDs for the PMIDs we just ingested
-  // Process in batches since there could be thousands
+  // Build a PMID→study_id lookup from the DB
   const batchSize = 500;
-  const allStudies: { id: string; pmid: string }[] = [];
+  const pmidToStudyId = new Map<string, string>();
   for (let i = 0; i < pmids.length; i += batchSize) {
     const batch = pmids.slice(i, i + batchSize);
     const studiesRes = await fetch(
@@ -142,17 +155,37 @@ async function linkStudiesToBooks(
     );
     if (studiesRes.ok) {
       const studies: { id: string; pmid: string }[] = await studiesRes.json();
-      allStudies.push(...studies);
+      for (const s of studies) pmidToStudyId.set(s.pmid, s.id);
     }
   }
 
-  if (allStudies.length === 0) return;
+  if (pmidToStudyId.size === 0) return;
 
-  // Build junction rows (book_id, study_id) for each book × study combination
+  // Build junction rows using per-book mapping when available
   const rows: { book_id: string; study_id: string }[] = [];
-  for (const book of books) {
-    for (const study of allStudies) {
-      rows.push({ book_id: book.id, study_id: study.id });
+  const hasPerBookMapping = pmidsByBook && Object.keys(pmidsByBook).length > 0;
+
+  if (hasPerBookMapping) {
+    // Correct per-book linking: each study linked only to its source book(s)
+    for (const book of books) {
+      const bookPmids = pmidsByBook[book.slug] ?? [];
+      let linked = 0;
+      for (const pmid of bookPmids) {
+        const studyId = pmidToStudyId.get(pmid);
+        if (studyId) {
+          rows.push({ book_id: book.id, study_id: studyId });
+          linked++;
+        }
+      }
+      onProgress(`  ${book.slug}: ${linked} studies to link`);
+    }
+  } else {
+    // Legacy fallback: link all PMIDs to all books (not ideal)
+    onProgress(`  Warning: No per-book PMID mapping — linking all studies to all books`);
+    for (const book of books) {
+      pmidToStudyId.forEach((studyId) => {
+        rows.push({ book_id: book.id, study_id: studyId });
+      });
     }
   }
 
@@ -177,27 +210,10 @@ async function linkStudiesToBooks(
     }
   }
 
-  for (const book of books) {
-    onProgress(`  Linked ${allStudies.length} studies to book: ${book.slug}`);
-  }
+  onProgress(`  Linked ${linked} total book_citation rows`);
 
-  // Update total_citations count on each book
-  for (const book of books) {
-    const countQuery = await fetch(
-      `${supabaseUrl}/rest/v1/book_citations?book_id=eq.${book.id}&select=id`,
-      { headers: { ...headers, 'Prefer': 'count=exact' } }
-    );
-    const countHeader = countQuery.headers.get('content-range');
-    const total = countHeader ? parseInt(countHeader.split('/')[1] || '0', 10) : 0;
-    if (total > 0) {
-      await fetch(`${supabaseUrl}/rest/v1/books?slug=eq.${book.slug}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ total_citations: total }),
-      });
-      onProgress(`  Updated ${book.slug} citation count: ${total}`);
-    }
-  }
+  // Note: total_citations on books table is set from EPUB endnote counts,
+  // not from book_citations count (which only includes resolved PMIDs).
 }
 
 // Main ingestion function
@@ -212,15 +228,26 @@ export async function ingestPmids(
     pubmedApiKey,
     source = 'greger',
     bookSlugs = [],
+    pmidsByBook = {},
     batchSize = 100,
     embedBatchSize = 50,
     pubmedDelayMs = 110,    // ~9 req/sec — just under PubMed's 10/sec limit with API key
     embedDelayMs = 200,
     dryRun = false,
+    linkOnly = false,
     onProgress = console.log,
   } = options;
 
   const result: IngestResult = { total: pmids.length, inserted: 0, skipped: 0, errors: 0 };
+
+  if (linkOnly) {
+    // Skip ingestion entirely — just run book_citations linking
+    if (bookSlugs.length > 0) {
+      onProgress(`\nLink-only mode: linking ${pmids.length} PMIDs to books: ${bookSlugs.join(', ')}...`);
+      await linkStudiesToBooks(pmids, bookSlugs, supabaseUrl, supabaseServiceKey, onProgress, pmidsByBook);
+    }
+    return result;
+  }
 
   // Check which PMIDs are already in the DB
   onProgress(`Checking ${pmids.length} PMIDs against existing DB...`);
@@ -321,10 +348,10 @@ export async function ingestPmids(
   }
 
   // Link studies to books if bookSlugs were provided
-  if (bookSlugs.length > 0 && !dryRun && result.inserted > 0) {
+  if (bookSlugs.length > 0 && !dryRun) {
     onProgress(`\nLinking studies to books: ${bookSlugs.join(', ')}...`);
     try {
-      await linkStudiesToBooks(pmids, bookSlugs, supabaseUrl, supabaseServiceKey, onProgress);
+      await linkStudiesToBooks(pmids, bookSlugs, supabaseUrl, supabaseServiceKey, onProgress, pmidsByBook);
     } catch (e) {
       onProgress(`  Warning: Book linking failed: ${e}`);
     }

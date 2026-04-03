@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logAIUsage } from '@/lib/ai/usage-logger';
-import { TTS_BUCKET, ttsCacheKey } from '@/lib/tts-cache';
+import { TTS_BUCKET, ttsCacheKey, registerTTSCacheFile } from '@/lib/tts-cache';
 
 export const maxDuration = 30;
 
@@ -100,14 +100,14 @@ export async function POST(req: NextRequest) {
     authUserId = user.id;
   }
 
-  let body: { text?: string; lang?: string; role?: string; _preview_voice?: string; _preview_provider?: string };
+  let body: { text?: string; lang?: string; role?: string; briefingId?: string; source?: string; _preview_voice?: string; _preview_provider?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { text, lang = 'en', role, _preview_voice, _preview_provider } = body;
+  const { text, lang = 'en', role, briefingId, source = 'briefing', _preview_voice, _preview_provider } = body;
   if (!text?.trim()) {
     return NextResponse.json({ error: 'text is required' }, { status: 400 });
   }
@@ -219,7 +219,7 @@ export async function POST(req: NextRequest) {
 
   const durationMs = Date.now() - ttsStartMs;
 
-  // ── 4. Store in cache (fire-and-forget, skip for previews) ─────
+  // ── 4. Store in cache + register in tracking table (skip for previews) ─
   if (!isPreview) {
     const cacheKey = ttsCacheKey(text, lang);
     adminDb.storage
@@ -230,6 +230,15 @@ export async function POST(req: NextRequest) {
       })
       .then(({ error: uploadErr }) => {
         if (uploadErr) console.error('[TTS] Cache upload error:', uploadErr.message);
+        // Register file in tracking table for cascade delete
+        registerTTSCacheFile({
+          userId: authUserId,
+          storagePath: cacheKey,
+          lang,
+          source: (source as 'briefing' | 'chat' | 'voice_turn') || 'briefing',
+          briefingId: briefingId || null,
+          sizeBytes: audioBuffer.length,
+        });
       });
   }
 

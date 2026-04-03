@@ -56,6 +56,7 @@ const source = getArg('--source') ?? 'greger';
 const includeVideos = hasFlag('--include-videos');
 const epubDir = getArg('--epub-dir');
 const dryRun = hasFlag('--dry-run');
+const linkOnly = hasFlag('--link-only');
 const limit = getArg('--limit') ? parseInt(getArg('--limit')!, 10) : undefined;
 const specificPmids = getArg('--pmids')?.split(',').map(p => p.trim());
 
@@ -109,11 +110,13 @@ async function main() {
   console.log(`Source:         ${source}`);
   console.log(`Include videos: ${includeVideos}`);
   console.log(`Dry run:        ${dryRun}`);
+  if (linkOnly) console.log(`Mode:           link-only (skip ingestion, re-link book_citations)`);
   console.log(`PubMed API key: ${PUBMED_API_KEY ? 'yes' : 'no (rate limited to 3/sec)'}`);
   if (limit) console.log(`Limit:          ${limit} PMIDs`);
   console.log('');
 
   let pmids: string[] = [];
+  let pmidsByBook: Record<string, string[]> = {};
 
   // Collect PMIDs from the appropriate source
   if (specificPmids?.length) {
@@ -134,12 +137,15 @@ async function main() {
 
     console.log(`EPUB directory: ${epubBase}`);
 
-    const { pmids: epubPmids, stats: epubStats } = await collectEpubPmids({
+    const { pmids: epubPmids, pmidsByBook: epubPmidsByBook, stats: epubStats } = await collectEpubPmids({
       epubPaths: epubConfigs,
       pubmedApiKey: PUBMED_API_KEY,
       delayMs: PUBMED_API_KEY ? 110 : 350,
       onProgress: console.log,
     });
+
+    // Store per-book PMID mapping for correct book_citations linking
+    pmidsByBook = epubPmidsByBook;
 
     for (const pmid of epubPmids) pmids.push(pmid);
     console.log('\nEPUB collection stats:');
@@ -237,11 +243,13 @@ async function main() {
     pubmedApiKey: PUBMED_API_KEY,
     source,
     bookSlugs,
+    pmidsByBook,
     batchSize: 100,
     embedBatchSize: 50,
     pubmedDelayMs: PUBMED_API_KEY ? 110 : 350, // 9/sec with key, ~3/sec without
     embedDelayMs: 200,
     dryRun,
+    linkOnly,
     onProgress: console.log,
   });
 

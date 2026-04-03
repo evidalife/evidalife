@@ -139,6 +139,7 @@ export interface BriefingV2Request {
 export interface BriefingV2Response {
   slides: BriefingSlide[];
   cached: boolean;
+  briefingId?: string;   // health_briefings.id — used for Q&A tracking
 }
 
 // ── Domain configuration ────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ interface TierCount { tier: number; count: number }
 interface DiseaseCount { tag: string; count: number }
 
 interface BookStat { book_id: string; title: string; total_citations: number; resolved_studies: number }
+interface BookContentStat { book_id: string; title: string; slug: string; chunks: number; total_chars: number }
 
 interface StatsData {
   totalStudies: number;
@@ -19,6 +20,9 @@ interface StatsData {
   tierCounts: TierCount[];
   diseaseCounts: DiseaseCount[];
   bookStats: BookStat[];
+  bookContentStats: BookContentStat[];
+  totalBookChunks: number;
+  totalBookChars: number;
   withBiomarkers: number;
   withDiseaseTags: number;
   recentJobs: IngestionJob[];
@@ -71,6 +75,7 @@ const SOURCE_LABELS: Record<string, string> = {
 };
 
 const TIER_LABELS: Record<number, { label: string; color: string }> = {
+  0: { label: 'Tier 0 — Book Content (Author Analysis)', color: 'bg-purple-600' },
   1: { label: 'Tier 1 — Greger-cited', color: 'bg-emerald-500' },
   2: { label: 'Tier 2 — Systematic Review / Meta-analysis', color: 'bg-teal-500' },
   3: { label: 'Tier 3 — RCT', color: 'bg-blue-500' },
@@ -142,6 +147,8 @@ interface RoadmapSource {
 }
 
 const INGESTION_ROADMAP: RoadmapSource[] = [
+  // Tier 0 — Book content (Greger's prose, analysis, conclusions)
+  { key: 'book_content', label: 'Book Content (Prose & Analysis)', tier: 0, target: 2400, description: "Greger's synthesized conclusions from 6 books" },
   // Tier 1 — Greger-cited (all citations from books + videos)
   { key: 'greger_epub', label: 'Greger Books (EPUB)', tier: 1, target: 22000, description: '6 books: How Not to Age/Die/Diet, Lower LDL, Ozempic, Ultra-Processed' },
   { key: 'greger_videos', label: 'NutritionFacts.org Videos', tier: 1, target: 5000, description: 'Video citations from nutritionfacts.org' },
@@ -164,13 +171,14 @@ const INGESTION_ROADMAP: RoadmapSource[] = [
 const TOTAL_TARGET = INGESTION_ROADMAP.reduce((sum, s) => sum + s.target, 0);
 
 function RoadmapSection({ stats }: { stats: StatsData }) {
-  // Map actual study counts by source key
+  // Map actual study counts by source key — include book_content from chunk stats
   const sourceMap = new Map(stats.sourceCounts.map(s => [s.source, s.count]));
-  const totalIngested = stats.totalStudies;
+  sourceMap.set('book_content', stats.totalBookChunks ?? 0);
+  const totalIngested = stats.totalStudies + (stats.totalBookChunks ?? 0);
   const overallPct = TOTAL_TARGET > 0 ? Math.round((totalIngested / TOTAL_TARGET) * 100) : 0;
 
   // Group by tier
-  const tiers = [1, 2, 3, 4, 5];
+  const tiers = [0, 1, 2, 3, 4, 5];
 
   return (
     <div className="rounded-xl border border-[#0e393d]/8 bg-white overflow-hidden">
@@ -184,7 +192,7 @@ function RoadmapSection({ stats }: { stats: StatsData }) {
           </div>
           <div className="text-right">
             <p className="text-2xl font-semibold text-[#0e393d] tabular-nums">{overallPct}%</p>
-            <p className="text-[11px] text-[#1c2a2b]/35">{totalIngested.toLocaleString()} / {TOTAL_TARGET.toLocaleString()}</p>
+            <p className="text-[11px] text-[#1c2a2b]/35">{totalIngested.toLocaleString()} / {TOTAL_TARGET.toLocaleString()} items</p>
           </div>
         </div>
         {/* Overall progress bar */}
@@ -208,7 +216,7 @@ function RoadmapSection({ stats }: { stats: StatsData }) {
                 <span className={`w-2.5 h-2.5 rounded-full ${tierInfo.color} shrink-0`} />
                 <p className="text-[13px] font-semibold text-[#0e393d] flex-1">{tierInfo.label}</p>
                 <span className="text-[12px] font-semibold text-[#1c2a2b]/50 tabular-nums">
-                  {tierActual.toLocaleString()} / {tierTarget.toLocaleString()}
+                  {tierActual.toLocaleString()} / {tierTarget.toLocaleString()} {tier === 0 ? 'chunks' : 'studies'}
                 </span>
                 <span className={`text-[11px] font-bold tabular-nums rounded-full px-2 py-0.5 ${
                   tierPct === 0 ? 'bg-gray-100 text-gray-400' :
@@ -257,6 +265,26 @@ function RoadmapSection({ stats }: { stats: StatsData }) {
                           {actual > 0 ? `${actual.toLocaleString()} / ` : ''}{src.target.toLocaleString()}
                         </p>
                       </div>
+
+                      {/* Per-book breakdown for Book Content (Tier 0) */}
+                      {src.key === 'book_content' && (stats.bookContentStats ?? []).some((b: BookContentStat) => b.chunks > 0) && (
+                        <div className="ml-6 mt-2 space-y-1.5 pb-1">
+                          {(stats.bookContentStats ?? []).filter((b: BookContentStat) => b.chunks > 0).map((book: BookContentStat) => (
+                            <div key={book.book_id} className="flex items-center gap-2.5">
+                              <span className="w-1 h-1 rounded-full shrink-0 bg-purple-400" />
+                              <p className="text-[11px] text-[#1c2a2b]/60 flex-1 truncate">{book.title}</p>
+                              <div className="w-16 h-1 rounded-full bg-purple-100 overflow-hidden shrink-0">
+                                <div className="h-full rounded-full bg-purple-400" style={{
+                                  width: `${stats.totalBookChunks > 0 ? Math.round((book.chunks / stats.totalBookChunks) * 100) : 0}%`
+                                }} />
+                              </div>
+                              <p className="text-[10px] text-[#1c2a2b]/35 tabular-nums shrink-0 w-28 text-right">
+                                {book.chunks} chunks · {Math.round(book.total_chars / 1000)}k chars
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       {/* Per-book breakdown for Greger EPUB source */}
                       {src.key === 'greger_epub' && stats.bookStats.length > 0 && (
@@ -338,8 +366,9 @@ function OverviewTab({ stats }: { stats: StatsData }) {
       <RoadmapSection stats={stats} />
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard label="Total Studies" value={stats.totalStudies} />
+        <StatCard label="Book Content Chunks" value={stats.totalBookChunks ?? 0} sub="Tier 0 — highest evidence" />
         <StatCard label="With Embeddings" value={stats.withEmbeddings} sub={`${embPct}% of total`} />
         <StatCard label="Biomarker-tagged" value={stats.withBiomarkers} sub={`${biomarkerPct}% of total`} />
         <StatCard label="Disease-tagged" value={stats.withDiseaseTags} sub={`${diseasePct}% of total`} />
@@ -362,17 +391,19 @@ function OverviewTab({ stats }: { stats: StatsData }) {
       <div className="rounded-xl border border-[#0e393d]/8 bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-[#0e393d]/8">
           <p className="text-sm font-semibold text-[#0e393d]">Evidence Quality Tiers</p>
-          <p className="text-[11px] text-[#1c2a2b]/35 mt-0.5">Studies ranked by evidence strength</p>
+          <p className="text-[11px] text-[#1c2a2b]/35 mt-0.5">All research ranked by evidence strength (studies + book content)</p>
         </div>
         {stats.tierCounts.length === 0 ? (
           <div className="px-5 py-8 text-center text-sm text-[#1c2a2b]/35">No quality tiers assigned yet.</div>
         ) : (
           <div className="divide-y divide-[#0e393d]/[.04]">
             {stats.tierCounts.map(({ tier, count }) => {
-              const pct = stats.totalStudies > 0 ? (count / stats.totalStudies) * 100 : 0;
+              const totalAll = stats.totalStudies + stats.totalBookChunks;
+              const pct = totalAll > 0 ? (count / totalAll) * 100 : 0;
               const info = TIER_LABELS[tier] ?? { label: `Tier ${tier}`, color: 'bg-gray-400' };
+              const unitLabel = tier === 0 ? 'chunks' : 'studies';
               return (
-                <div key={tier} className="px-5 py-3.5 flex items-center gap-4">
+                <div key={tier} className={`px-5 py-3.5 flex items-center gap-4 ${tier === 0 ? 'bg-purple-50/30' : ''}`}>
                   <span className={`w-2.5 h-2.5 rounded-full ${info.color} shrink-0`} />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-[#0e393d]">{info.label}</p>
@@ -380,8 +411,8 @@ function OverviewTab({ stats }: { stats: StatsData }) {
                       <div className={`h-full rounded-full ${info.color}`} style={{ width: `${Math.max(pct, 1)}%` }} />
                     </div>
                   </div>
-                  <p className="text-sm font-semibold text-[#1c2a2b]/60 tabular-nums w-20 text-right">
-                    {count.toLocaleString()} <span className="text-[11px] font-normal text-[#1c2a2b]/30">({pct.toFixed(1)}%)</span>
+                  <p className="text-sm font-semibold text-[#1c2a2b]/60 tabular-nums w-28 text-right">
+                    {count.toLocaleString()} <span className="text-[11px] font-normal text-[#1c2a2b]/30">{unitLabel} ({pct.toFixed(1)}%)</span>
                   </p>
                 </div>
               );

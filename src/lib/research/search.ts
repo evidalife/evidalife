@@ -1,5 +1,5 @@
 // src/lib/research/search.ts
-// pgvector cosine similarity search against the studies table
+// pgvector cosine similarity search against studies + book_chunks tables
 
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -21,6 +21,23 @@ export interface StudyResult {
   disease_tags: string[] | null;
   quality_tier: number | null;
   similarity: number;
+}
+
+export interface BookChunkResult {
+  id: string;
+  book_id: string;
+  chapter_title: string;
+  section_title: string | null;
+  chunk_index: number;
+  content: string;
+  content_length: number;
+  quality_tier: number;
+  disease_tags: string[] | null;
+  biomarker_slugs: string[] | null;
+  similarity: number;
+  // Joined from books table (added client-side)
+  book_title?: string;
+  book_slug?: string;
 }
 
 export interface SearchOptions {
@@ -113,4 +130,72 @@ export function formatCitation(study: StudyResult): string {
 // Build PubMed URL for a study
 export function pubmedUrl(pmid: string): string {
   return `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`;
+}
+
+// ── Book chunk search ───────────────────────────────────────────────────────
+
+export interface BookChunkSearchOptions {
+  limit?: number;
+  minSimilarity?: number;
+  bookId?: string;
+  biomarkerSlug?: string;
+  diseaseTag?: string;
+}
+
+// Search book content chunks by vector similarity (admin client, for API routes)
+export async function searchBookChunksAdmin(
+  query: string,
+  openaiApiKey: string,
+  options: BookChunkSearchOptions = {}
+): Promise<BookChunkResult[]> {
+  const {
+    limit = 5,
+    minSimilarity = 0.3,
+    bookId,
+    biomarkerSlug,
+    diseaseTag,
+  } = options;
+
+  const queryEmbedding = await embedText(query, openaiApiKey);
+  const embeddingStr = `[${queryEmbedding.join(',')}]`;
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.rpc('match_book_chunks', {
+    query_embedding: embeddingStr,
+    match_threshold: minSimilarity,
+    match_count: limit,
+    filter_book_id: bookId ?? null,
+    filter_disease_tag: diseaseTag ?? null,
+    filter_biomarker_slug: biomarkerSlug ?? null,
+  });
+
+  if (error) throw new Error(`Book chunk search failed: ${error.message}`);
+  return (data ?? []) as BookChunkResult[];
+}
+
+// Enrich book chunk results with book title/slug
+export async function enrichBookChunks(
+  chunks: BookChunkResult[]
+): Promise<BookChunkResult[]> {
+  if (chunks.length === 0) return chunks;
+
+  const supabase = createAdminClient();
+  const bookIds = [...new Set(chunks.map(c => c.book_id))];
+  const { data: books } = await supabase
+    .from('books')
+    .select('id, title, slug')
+    .in('id', bookIds);
+
+  if (books) {
+    const bookMap = new Map(books.map((b: any) => [b.id, b]));
+    for (const chunk of chunks) {
+      const book = bookMap.get(chunk.book_id);
+      if (book) {
+        chunk.book_title = book.title;
+        chunk.book_slug = book.slug;
+      }
+    }
+  }
+
+  return chunks;
 }

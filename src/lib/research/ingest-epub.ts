@@ -499,7 +499,7 @@ export interface CollectEpubPmidsOptions {
  */
 export async function collectEpubPmids(
   options: CollectEpubPmidsOptions
-): Promise<{ pmids: string[]; stats: Record<string, number> }> {
+): Promise<{ pmids: string[]; pmidsByBook: Record<string, string[]>; stats: Record<string, number> }> {
   const {
     epubPaths,
     pubmedApiKey,
@@ -508,11 +508,14 @@ export async function collectEpubPmids(
   } = options;
 
   const allPmids = new Set<string>();
+  const pmidsByBook: Record<string, Set<string>> = {};
   const stats: Record<string, number> = {};
 
   for (const book of epubPaths) {
     onProgress(`\nProcessing EPUB: ${book.label}`);
     onProgress(`  Path: ${book.path}`);
+    const bookKey = book.key;
+    if (!pmidsByBook[bookKey]) pmidsByBook[bookKey] = new Set<string>();
 
     // Step 1: Extract XHTML from EPUB
     let xhtmlFiles: Map<string, string>;
@@ -557,6 +560,7 @@ export async function collectEpubPmids(
         if (pmid) {
           citation.resolvedPmid = pmid;
           allPmids.add(pmid);
+          pmidsByBook[bookKey].add(pmid);
           doiResolved++;
         }
       }
@@ -580,6 +584,7 @@ export async function collectEpubPmids(
         if (pmid) {
           citation.resolvedPmid = pmid;
           allPmids.add(pmid);
+          pmidsByBook[bookKey].add(pmid);
         }
       }
     }
@@ -602,6 +607,7 @@ export async function collectEpubPmids(
         if (pmid) {
           citation.resolvedPmid = pmid;
           allPmids.add(pmid);
+          pmidsByBook[bookKey].add(pmid);
           titleResolved++;
         }
 
@@ -618,5 +624,11 @@ export async function collectEpubPmids(
     onProgress(`  Total PMIDs for ${book.label}: ${bookPmids}`);
   }
 
-  return { pmids: Array.from(allPmids), stats };
+  // Convert per-book Sets to arrays
+  const pmidsByBookArrays: Record<string, string[]> = {};
+  for (const [key, set] of Object.entries(pmidsByBook)) {
+    pmidsByBookArrays[key] = Array.from(set);
+  }
+
+  return { pmids: Array.from(allPmids), pmidsByBook: pmidsByBookArrays, stats };
 }

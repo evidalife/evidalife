@@ -129,20 +129,21 @@ export async function POST(req: NextRequest) {
   const adminDb = createAdminClient();
 
   // ── Fetch the cached briefing ─────────────────────────────────────────
+  // Table is health_briefings; v2 briefings store slides in the "steps" column
   const { data: briefingRow } = await adminDb
-    .from('ai_briefings')
-    .select('slides, created_at')
+    .from('health_briefings')
+    .select('steps, summary_context, created_at')
     .eq('user_id', user.id)
     .eq('lang', lang)
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
 
-  if (!briefingRow?.slides) {
+  if (!briefingRow?.steps) {
     return NextResponse.json({ error: 'No briefing found. Generate a briefing first.' }, { status: 404 });
   }
 
-  const slides: BriefingSlide[] = briefingRow.slides;
+  const slides: BriefingSlide[] = briefingRow.steps;
 
   // ── Fetch user profile ────────────────────────────────────────────────
   const { data: profile } = await adminDb

@@ -12,7 +12,7 @@ type Locale = 'de' | 'en' | 'fr' | 'es' | 'it';
 
 // URL slugs for each section's dropdown items, matching nav.dropdowns.* order in translations
 const NAV_SLUG_MAP: Record<string, (string | null)[]> = {
-  Kitchen: ['/recipes', '/daily-dozen', '/blog', '/shopping-list'],
+  Kitchen: ['/recipes', '/daily-dozen', '/blog'],
   Health:  ['/health-engine', '/biomarkers', '/bioage', '/partner-labs'],
   Lifestyle: ['/lifestyle'],
   Shop:    ['/shop'],
@@ -22,7 +22,6 @@ const NAV_SECTIONS = ['Kitchen', 'Health', 'Lifestyle', 'Shop'] as const;
 
 // Sections with exactly one slug get a direct link instead of a dropdown
 const DIRECT_LINK_MAP: Record<string, string> = {
-  Lifestyle: '/lifestyle',
   Shop: '/shop',
 };
 
@@ -32,46 +31,58 @@ type AuthDropdownItem = { label: string; href: string };
 const AUTH_DROPDOWN_ITEMS: Partial<Record<string, Record<Locale, AuthDropdownItem[]>>> = {
   Health: {
     de: [
-      { label: 'Meine Health Engine',  href: '/health-engine' },
-      { label: 'Mein Dashboard',       href: '/dashboard' },
+      { label: 'Health Engine v2',      href: '/health-engine-v2' },
+      { label: 'Forschung',            href: '/research' },
     ],
     en: [
-      { label: 'My Health Engine',     href: '/health-engine' },
-      { label: 'My Dashboard',         href: '/dashboard' },
+      { label: 'Health Engine v2',      href: '/health-engine-v2' },
+      { label: 'Research',             href: '/research' },
     ],
     fr: [
-      { label: 'Mon Health Engine',    href: '/health-engine' },
-      { label: 'Mon tableau de bord',  href: '/dashboard' },
+      { label: 'Health Engine v2',      href: '/health-engine-v2' },
+      { label: 'Recherche',            href: '/research' },
     ],
     es: [
-      { label: 'Mi Health Engine',     href: '/health-engine' },
-      { label: 'Mi panel',             href: '/dashboard' },
+      { label: 'Health Engine v2',      href: '/health-engine-v2' },
+      { label: 'Investigación',        href: '/research' },
     ],
     it: [
-      { label: 'Il mio Health Engine', href: '/health-engine' },
-      { label: 'La mia dashboard',     href: '/dashboard' },
+      { label: 'Health Engine v2',      href: '/health-engine-v2' },
+      { label: 'Ricerca',              href: '/research' },
     ],
   },
   Kitchen: {
     de: [
-      { label: 'Mein Daily Dozen',    href: '/daily-dozen' },
-      { label: 'Meine Einkaufsliste', href: '/shopping-list' },
+      { label: 'Einkaufsliste', href: '/shopping-list' },
     ],
     en: [
-      { label: 'My Daily Dozen',   href: '/daily-dozen' },
-      { label: 'My Shopping List', href: '/shopping-list' },
+      { label: 'Shopping List', href: '/shopping-list' },
     ],
     fr: [
-      { label: 'Mon Daily Dozen',     href: '/daily-dozen' },
-      { label: 'Ma liste de courses', href: '/shopping-list' },
+      { label: 'Liste de courses', href: '/shopping-list' },
     ],
     es: [
-      { label: 'Mi Daily Dozen',        href: '/daily-dozen' },
-      { label: 'Mi lista de la compra', href: '/shopping-list' },
+      { label: 'Lista de compras', href: '/shopping-list' },
     ],
     it: [
-      { label: 'Il mio Daily Dozen',       href: '/daily-dozen' },
-      { label: 'La mia lista della spesa', href: '/shopping-list' },
+      { label: 'Lista della spesa', href: '/shopping-list' },
+    ],
+  },
+  Lifestyle: {
+    de: [
+      { label: 'Coach',   href: '/coach' },
+    ],
+    en: [
+      { label: 'Coach',   href: '/coach' },
+    ],
+    fr: [
+      { label: 'Coach',   href: '/coach' },
+    ],
+    es: [
+      { label: 'Coach',   href: '/coach' },
+    ],
+    it: [
+      { label: 'Coach',   href: '/coach' },
     ],
   },
 };
@@ -84,6 +95,8 @@ const PROFILE_MENU: Record<Locale, MenuItem[]> = {
   de: [
     { label: 'Admin Panel',  href: '/admin', admin: true },
     'divider',
+    { label: 'Coach',        href: '/coach' },
+    'divider',
     { label: 'Profil',       href: '/profile' },
     { label: 'Bestellungen', href: '/profile?tab=orders' },
     { label: 'Laborwerte',   href: '/profile?tab=results' },
@@ -93,6 +106,8 @@ const PROFILE_MENU: Record<Locale, MenuItem[]> = {
   ],
   en: [
     { label: 'Admin Panel', href: '/admin', admin: true },
+    'divider',
+    { label: 'Coach',       href: '/coach' },
     'divider',
     { label: 'Profile',     href: '/profile' },
     { label: 'Orders',      href: '/profile?tab=orders' },
@@ -104,6 +119,8 @@ const PROFILE_MENU: Record<Locale, MenuItem[]> = {
   fr: [
     { label: 'Admin Panel', href: '/admin', admin: true },
     'divider',
+    { label: 'Coach',           href: '/coach' },
+    'divider',
     { label: 'Profil',      href: '/profile' },
     { label: 'Commandes',   href: '/profile?tab=orders' },
     { label: 'Résultats',   href: '/profile?tab=results' },
@@ -114,6 +131,8 @@ const PROFILE_MENU: Record<Locale, MenuItem[]> = {
   es: [
     { label: 'Admin Panel', href: '/admin', admin: true },
     'divider',
+    { label: 'Coach',       href: '/coach' },
+    'divider',
     { label: 'Perfil',      href: '/profile' },
     { label: 'Pedidos',     href: '/profile?tab=orders' },
     { label: 'Resultados',  href: '/profile?tab=results' },
@@ -123,6 +142,8 @@ const PROFILE_MENU: Record<Locale, MenuItem[]> = {
   ],
   it: [
     { label: 'Admin Panel', href: '/admin', admin: true },
+    'divider',
+    { label: 'Coach',       href: '/coach' },
     'divider',
     { label: 'Profilo',    href: '/profile' },
     { label: 'Ordini',     href: '/profile?tab=orders' },

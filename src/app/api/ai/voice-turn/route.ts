@@ -6,6 +6,7 @@ import { logAIUsage } from '@/lib/ai/usage-logger';
 import { buildCoachContext } from '@/lib/ai/coach-context';
 import { getVoiceConfig } from '@/lib/voice/get-voice-config';
 import { CONVERSATION_SYSTEM_PROMPTS, type ConversationMode } from '@/lib/voice/conversation-types';
+import { TTS_BUCKET, ttsCacheKey, registerTTSCacheFile } from '@/lib/tts-cache';
 
 export const maxDuration = 30;
 
@@ -192,6 +193,25 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     console.error('[voice-turn] TTS error:', e);
     // Non-fatal: return text without audio
+  }
+
+  // ── Cache voice-turn TTS + register in tracking table ─────────────
+  if (audioBase64) {
+    const cacheKey = ttsCacheKey(assistantText, lang);
+    const audioBuffer = Buffer.from(audioBase64, 'base64');
+    adminDb.storage
+      .from(TTS_BUCKET)
+      .upload(cacheKey, audioBuffer, { contentType: 'audio/mpeg', upsert: true })
+      .then(({ error: uploadErr }) => {
+        if (uploadErr) console.error('[voice-turn] TTS cache upload error:', uploadErr.message);
+        registerTTSCacheFile({
+          userId: user.id,
+          storagePath: cacheKey,
+          lang,
+          source: 'voice_turn',
+          sizeBytes: audioBuffer.length,
+        });
+      });
   }
 
   // ── Log usage ─────────────────────────────────────────────────────
