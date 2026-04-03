@@ -320,7 +320,7 @@ export default function ResearchChat({
     // Strip markdown bold markers, citation numbers, disclaimer
     let clean = text.replace(/\*\*/g, '').replace(/\[\d+\]/g, '');
     // Remove the standard disclaimer suffix
-    clean = clean.replace(/For educational purposes only[.].*/s, '').trim();
+    clean = clean.replace(/For educational purposes only[.][\s\S]*/, '').trim();
     // Collapse multiple newlines
     clean = clean.replace(/\n{2,}/g, '\n').trim();
     // Take first ~250 chars, break at sentence boundary for a quick summary
