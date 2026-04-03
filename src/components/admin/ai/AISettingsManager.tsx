@@ -18,23 +18,6 @@ interface KeyStatus {
   deepgram: boolean;
 }
 
-const DOMAIN_LABELS: Record<string, string> = {
-  heart_vessels:    'Heart & Vessels',
-  metabolism:       'Metabolism',
-  inflammation:     'Inflammation',
-  organ_function:   'Organ Function',
-  nutrients:        'Nutrients',
-  hormones:         'Hormones',
-  epigenetics:      'Epigenetics',
-  body_composition: 'Body Composition',
-  fitness:          'Fitness',
-};
-
-const DOMAIN_ICONS: Record<string, string> = {
-  heart_vessels: '❤️', metabolism: '⚡', inflammation: '🛡️',
-  organ_function: '🫁', nutrients: '🥗', hormones: '🧬',
-  epigenetics: '🧪', body_composition: '🏋️', fitness: '🏃',
-};
 
 const BRIEFING_MODELS = [
   { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (recommended)' },
@@ -116,16 +99,6 @@ export default function AISettingsManager({
   const [briefingPregenerate, setBriefingPregenerate] = useState<string>(() =>
     settingValue(initialSettings, 'briefing_pregenerate', 'off')
   );
-  const [domainWeights, setDomainWeights] = useState<Record<string, number>>(() =>
-    settingValue(initialSettings, 'domain_weights', {
-      heart_vessels: 0.18, metabolism: 0.16, inflammation: 0.14,
-      organ_function: 0.13, nutrients: 0.10, hormones: 0.09,
-      epigenetics: 0.10, body_composition: 0.05, fitness: 0.05,
-    })
-  );
-
-  const totalWeight = Object.values(domainWeights).reduce((a, b) => a + b, 0);
-  const weightOk = Math.abs(totalWeight - 1.0) < 0.001;
 
   const markDirty = useCallback(() => setDirty(true), []);
 
@@ -148,7 +121,6 @@ export default function AISettingsManager({
         briefing_enabled: briefingEnabled,
         companion_enabled: companionEnabled,
         briefing_pregenerate: briefingPregenerate,
-        domain_weights: domainWeights,
       }),
     });
     setSaving(false);
@@ -159,28 +131,6 @@ export default function AISettingsManager({
     }
   };
 
-  const updateWeight = (domain: string, val: number) => {
-    setDomainWeights(prev => ({ ...prev, [domain]: Math.round(val * 100) / 100 }));
-    markDirty();
-  };
-
-  const normalizeWeights = () => {
-    const total = Object.values(domainWeights).reduce((a, b) => a + b, 0);
-    if (total === 0) return;
-    setDomainWeights(prev =>
-      Object.fromEntries(Object.entries(prev).map(([k, v]) => [k, Math.round((v / total) * 100) / 100]))
-    );
-    markDirty();
-  };
-
-  const resetWeights = () => {
-    setDomainWeights({
-      heart_vessels: 0.18, metabolism: 0.16, inflammation: 0.14,
-      organ_function: 0.13, nutrients: 0.10, hormones: 0.09,
-      epigenetics: 0.10, body_composition: 0.05, fitness: 0.05,
-    });
-    markDirty();
-  };
 
   // Voice preview playback
   const playPreview = useCallback(async (voiceId: string, provider: 'elevenlabs' | 'openai') => {
@@ -244,7 +194,7 @@ export default function AISettingsManager({
   return (
     <PageShell
       title="AI Settings"
-      description="Configure AI models, TTS providers, domain weights, and feature flags."
+      description="Configure AI models, TTS providers, voice roles, and feature flags."
       action={
         <button
           onClick={save}
@@ -671,73 +621,28 @@ export default function AISettingsManager({
           </div>
         </div>
 
-        {/* Domain Weights */}
+        {/* Health Engine Settings Link */}
         <div className="bg-white rounded-xl border border-[#0e393d]/[.07] p-6">
-          <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-[13px] font-semibold text-[#0e393d]">Domain Weights</h2>
+              <h2 className="text-[13px] font-semibold text-[#0e393d]">Health Engine Configuration</h2>
               <p className="text-[11px] text-[#1c2a2b]/40 mt-0.5">
-                How much each health domain contributes to the Longevity Score. Must sum to 100%.
+                Domain weights, bio age scoring, biomarker registry, and presentation rules have moved to their own page.
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${weightOk ? 'bg-[#0C9C6C]/10 text-[#0C9C6C]' : 'bg-amber-100 text-amber-700'}`}>
-                {(totalWeight * 100).toFixed(0)}% total
-              </span>
-              <button onClick={normalizeWeights} className="text-[11px] text-[#0e393d]/50 hover:text-[#0e393d] transition-colors border border-[#0e393d]/[.12] px-2.5 py-1 rounded-lg">
-                Normalize
-              </button>
-              <button onClick={resetWeights} className="text-[11px] text-[#0e393d]/50 hover:text-[#0e393d] transition-colors border border-[#0e393d]/[.12] px-2.5 py-1 rounded-lg">
-                Reset
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {Object.entries(domainWeights)
-              .sort((a, b) => b[1] - a[1])
-              .map(([domain, weight]) => (
-                <div key={domain} className="flex items-center gap-4">
-                  <div className="w-36 shrink-0">
-                    <span className="mr-1.5 text-sm">{DOMAIN_ICONS[domain]}</span>
-                    <span className="text-[12px] text-[#0e393d]">{DOMAIN_LABELS[domain] ?? domain}</span>
-                  </div>
-                  <div className="flex-1">
-                    <input
-                      type="range"
-                      min={0}
-                      max={50}
-                      step={1}
-                      value={Math.round(weight * 100)}
-                      onChange={e => updateWeight(domain, parseInt(e.target.value) / 100)}
-                      className="w-full h-1.5 appearance-none rounded-full bg-[#0e393d]/10 accent-[#0e393d]"
-                    />
-                  </div>
-                  <div className="w-12 text-right">
-                    <input
-                      type="number"
-                      min={0}
-                      max={50}
-                      step={1}
-                      value={Math.round(weight * 100)}
-                      onChange={e => updateWeight(domain, parseInt(e.target.value) / 100)}
-                      className="w-full text-right text-[12px] font-semibold text-[#0e393d] border-b border-[#0e393d]/[.15] bg-transparent outline-none"
-                    />
-                  </div>
-                  <span className="text-[11px] text-[#1c2a2b]/30 w-4">%</span>
-                </div>
-              ))}
-          </div>
-
-          {!weightOk && (
-            <div className="mt-4 flex items-center gap-2 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+            <a
+              href="/en/admin/health-engine"
+              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#0e393d] border border-[#0e393d]/[.15] hover:border-[#0e393d]/30 px-4 py-2 rounded-lg transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
               </svg>
-              Weights sum to {(totalWeight * 100).toFixed(0)}% — click Normalize to fix
-            </div>
-          )}
+              Health Engine Settings
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </a>
+          </div>
         </div>
 
         {/* Disclaimer */}

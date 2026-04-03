@@ -53,7 +53,7 @@ export async function PATCH(req: NextRequest) {
     'elevenlabs_voice_id', 'openai_tts_voice',
     'voice_roles_elevenlabs', 'voice_roles_openai',
     'briefing_enabled', 'companion_enabled', 'briefing_pregenerate',
-    'domain_weights',
+    'domain_weights', 'bio_age_weights', 'he_presentation_rules',
   ];
 
   const updates = Object.entries(body).filter(([k]) => ALLOWED_KEYS.includes(k));
