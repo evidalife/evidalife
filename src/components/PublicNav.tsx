@@ -12,7 +12,7 @@ type Locale = 'de' | 'en' | 'fr' | 'es' | 'it';
 
 // URL slugs for each section's dropdown items, matching nav.dropdowns.* order in translations
 const NAV_SLUG_MAP: Record<string, (string | null)[]> = {
-  Kitchen: ['/recipes', '/daily-dozen', '/blog'],
+  Kitchen: ['/blog', '/recipes', '/daily-dozen'],
   Health:  ['/health-engine', '/biomarkers', '/bioage', '/partner-labs', '/science'],
   Lifestyle: ['/lifestyle'],
   Shop:    ['/shop'],
@@ -25,30 +25,26 @@ const DIRECT_LINK_MAP: Record<string, string> = {
   Shop: '/shop',
 };
 
-// Auth-only items appended to each section dropdown (with a separator) when the user is logged in
-type AuthDropdownItem = { label: string; href: string };
+// Auth-only items merged into each section dropdown when the user is logged in
+// `insertAt` controls position: 0 = first, 1 = after first public item, etc. Default = end.
+type AuthDropdownItem = { label: string; href: string; insertAt?: number };
 
 const AUTH_DROPDOWN_ITEMS: Partial<Record<string, Record<Locale, AuthDropdownItem[]>>> = {
   Health: {
     de: [
-      { label: 'Health Engine v2',      href: '/health-briefing' },
-      { label: 'Forschung',            href: '/research' },
+      { label: 'Forschung',            href: '/research', insertAt: 1 },
     ],
     en: [
-      { label: 'Health Engine v2',      href: '/health-briefing' },
-      { label: 'Research',             href: '/research' },
+      { label: 'Research',             href: '/research', insertAt: 1 },
     ],
     fr: [
-      { label: 'Health Engine v2',      href: '/health-briefing' },
-      { label: 'Recherche',            href: '/research' },
+      { label: 'Recherche',            href: '/research', insertAt: 1 },
     ],
     es: [
-      { label: 'Health Engine v2',      href: '/health-briefing' },
-      { label: 'Investigación',        href: '/research' },
+      { label: 'Investigación',        href: '/research', insertAt: 1 },
     ],
     it: [
-      { label: 'Health Engine v2',      href: '/health-briefing' },
-      { label: 'Ricerca',              href: '/research' },
+      { label: 'Ricerca',              href: '/research', insertAt: 1 },
     ],
   },
   Kitchen: {
@@ -70,19 +66,19 @@ const AUTH_DROPDOWN_ITEMS: Partial<Record<string, Record<Locale, AuthDropdownIte
   },
   Lifestyle: {
     de: [
-      { label: 'Coach',   href: '/coach' },
+      { label: 'Coach',   href: '/coach', insertAt: 0 },
     ],
     en: [
-      { label: 'Coach',   href: '/coach' },
+      { label: 'Coach',   href: '/coach', insertAt: 0 },
     ],
     fr: [
-      { label: 'Coach',   href: '/coach' },
+      { label: 'Coach',   href: '/coach', insertAt: 0 },
     ],
     es: [
-      { label: 'Coach',   href: '/coach' },
+      { label: 'Coach',   href: '/coach', insertAt: 0 },
     ],
     it: [
-      { label: 'Coach',   href: '/coach' },
+      { label: 'Coach',   href: '/coach', insertAt: 0 },
     ],
   },
 };
@@ -254,47 +250,37 @@ export default function PublicNav() {
                   </svg>
                 </button>
 
-                {isOpen && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50">
-                    <div
-                      className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.14)] border border-[#0e393d]/8 py-1.5 min-w-[210px]"
-                      style={{ animation: 'dropdownIn 0.15s ease-out' }}
-                    >
-                      {/* Public items */}
-                      {items.map((label, i) => {
-                        const href = slugs[i];
-                        if (label === null || href === null) {
-                          return <div key={i} className="h-px bg-[#0e393d]/10 mx-4 my-1.5" />;
-                        }
-                        return (
+                {isOpen && (() => {
+                  // Build merged list: public items with auth items inserted at specified positions
+                  const merged: { label: string; href: string; key: string }[] = [];
+                  items.forEach((label, i) => {
+                    const href = slugs[i];
+                    if (label != null && href != null) merged.push({ label, href, key: `pub-${i}` });
+                  });
+                  // Insert auth items at their specified positions (or append)
+                  for (const ai of authItems) {
+                    const pos = ai.insertAt ?? merged.length;
+                    merged.splice(pos, 0, { label: ai.label, href: ai.href, key: `auth-${ai.href}` });
+                  }
+                  return (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50">
+                      <div
+                        className="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(14,57,61,0.14)] border border-[#0e393d]/8 py-1.5 min-w-[210px]"
+                        style={{ animation: 'dropdownIn 0.15s ease-out' }}
+                      >
+                        {merged.map((item) => (
                           <Link
-                            key={i}
-                            href={href}
+                            key={item.key}
+                            href={item.href}
                             className="block w-full text-left px-5 py-2.5 text-[13px] font-light text-[#1c2a2b] hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
                           >
-                            {label}
+                            {item.label}
                           </Link>
-                        );
-                      })}
-
-                      {/* Auth-only items — shown below a separator when logged in */}
-                      {authItems.length > 0 && (
-                        <>
-                          <div className="h-px bg-[#0e393d]/10 mx-4 my-1.5" />
-                          {authItems.map((item, i) => (
-                            <Link
-                              key={`auth-${i}`}
-                              href={item.href}
-                              className="block w-full text-left px-5 py-2.5 text-[13px] font-light text-[#0e393d]/70 hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
-                            >
-                              {item.label}
-                            </Link>
-                          ))}
-                        </>
-                      )}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             );
           })}
@@ -512,38 +498,26 @@ export default function PublicNav() {
                   }}
                 >
                   <div className="pb-1.5">
-                    {/* Public items */}
-                    {items.map((label, i) => {
-                      const href = slugs[i];
-                      if (label === null || href === null) {
-                        return <div key={i} className="h-px bg-[#0e393d]/8 mx-5 my-1" />;
+                    {(() => {
+                      const merged: { label: string; href: string; key: string }[] = [];
+                      items.forEach((label, i) => {
+                        const href = slugs[i];
+                        if (label != null && href != null) merged.push({ label, href, key: `pub-${i}` });
+                      });
+                      for (const ai of authItems) {
+                        const pos = ai.insertAt ?? merged.length;
+                        merged.splice(pos, 0, { label: ai.label, href: ai.href, key: `auth-${ai.href}` });
                       }
-                      return (
+                      return merged.map((item) => (
                         <Link
-                          key={i}
-                          href={href}
+                          key={item.key}
+                          href={item.href}
                           className="block px-8 py-2.5 text-[13px] font-light text-[#1c2a2b] hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
                         >
-                          {label}
+                          {item.label}
                         </Link>
-                      );
-                    })}
-
-                    {/* Auth-only items */}
-                    {authItems.length > 0 && (
-                      <>
-                        <div className="h-px bg-[#0e393d]/8 mx-5 my-1" />
-                        {authItems.map((item, i) => (
-                          <Link
-                            key={`auth-${i}`}
-                            href={item.href}
-                            className="block px-8 py-2.5 text-[13px] font-light text-[#0e393d]/70 hover:bg-[#f5f4f0] hover:text-[#0e393d] transition-colors"
-                          >
-                            {item.label}
-                          </Link>
-                        ))}
-                      </>
-                    )}
+                      ));
+                    })()}
                   </div>
                 </div>
               </div>

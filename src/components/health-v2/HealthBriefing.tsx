@@ -24,6 +24,9 @@ interface Props {
   hasData: boolean;
   isSample?: boolean;
   studyCountLabel?: string;
+  /** Pre-loaded slides for sample/public view (fetched server-side) */
+  initialSlides?: BriefingSlide[];
+  initialBriefingId?: string;
 }
 
 type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused' | 'chatting' | 'done' | 'research_prompt' | 'researching';
@@ -226,20 +229,20 @@ const T: Record<Lang, Record<string, string>> = {
   },
 };
 
-export default function HealthEngine2({ lang, userId, hasData, isSample, studyCountLabel }: Props) {
+export default function HealthBriefing({ lang, userId, hasData, isSample, studyCountLabel, initialSlides, initialBriefingId }: Props) {
   const t = T[lang];
   const researchSubText = studyCountLabel
     ? t.researchSub.replace(/500[,. ]?000\+?/g, studyCountLabel)
     : t.researchSub;
   const [playbackState, setPlaybackState] = useState<PlaybackState>(hasData ? 'idle' : 'done');
-  const [slides, setSlides] = useState<BriefingSlide[]>([]);
+  const [slides, setSlides] = useState<BriefingSlide[]>(initialSlides ?? []);
   const [error, setError] = useState<string | null>(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [isCached, setIsCached] = useState(false);
-  const [briefingId, setBriefingId] = useState<string | null>(null);
+  const [isCached, setIsCached] = useState(!!(initialSlides && initialSlides.length > 0));
+  const [briefingId, setBriefingId] = useState<string | null>(initialBriefingId ?? null);
   const [checkingCache, setCheckingCache] = useState(hasData);
   const [audioLoading, setAudioLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -257,7 +260,9 @@ export default function HealthEngine2({ lang, userId, hasData, isSample, studyCo
 
   // ── Check on mount if a cached briefing exists ────────────────
   useEffect(() => {
-    if (!hasData || isSample) { setCheckingCache(false); return; }
+    if (!hasData || (isSample && (!initialSlides || initialSlides.length === 0))) { setCheckingCache(false); return; }
+    // If we already have initial slides (sample pre-loaded), mark cache ready and skip fetch
+    if (initialSlides && initialSlides.length > 0) { setCheckingCache(false); return; }
     let cancelled = false;
     (async () => {
       try {
@@ -389,6 +394,11 @@ export default function HealthEngine2({ lang, userId, hasData, isSample, studyCo
     if (fromIndex < total - 1) {
       setTimeout(() => { if (isMounted.current) setCurrentSlideIndex(fromIndex + 1); }, 800);
     } else {
+      // Sample mode — skip research prompt, just finish
+      if (isSample) {
+        setPlaybackState('done');
+        return;
+      }
       // Extract critical markers and show research prompt if any exist
       const flagged = extractFlaggedMarkers();
       setResearchMarkers(flagged);
@@ -398,7 +408,7 @@ export default function HealthEngine2({ lang, userId, hasData, isSample, studyCo
         setPlaybackState('done');
       }
     }
-  }, [extractFlaggedMarkers]);
+  }, [extractFlaggedMarkers, isSample]);
 
   // ── TTS: Fetch audio for a slide (with retry + dedup) ─────────
   const fetchAudio = useCallback(async (stepIndex: number, narration: string): Promise<string | null> => {
@@ -536,8 +546,8 @@ export default function HealthEngine2({ lang, userId, hasData, isSample, studyCo
   }, [currentSlideIndex, playbackState, currentSlide, playSlideAudio]);
 
   const startBriefing = useCallback(async () => {
-    // Sample/public view — redirect to login instead of calling the API
-    if (isSample) {
+    // Sample/public view with no pre-loaded data — redirect to login
+    if (isSample && !(isCached && slides.length > 0)) {
       window.location.href = `/${lang}/login`;
       return;
     }
@@ -611,7 +621,7 @@ export default function HealthEngine2({ lang, userId, hasData, isSample, studyCo
   }, [playbackState, currentSlideIndex, playSlideAudio]);
 
   const handleSendQuestion = async () => {
-    if (!chatInput.trim() || chatLoading) return;
+    if (isSample || !chatInput.trim() || chatLoading) return;
     const questionText = chatInput;
 
     // Pause audio when user asks a question
@@ -1113,7 +1123,7 @@ export default function HealthEngine2({ lang, userId, hasData, isSample, studyCo
                       {checkingCache ? '…' : isCached ? t.play : t.start}
                     </button>
 
-                    {isCached && (
+                    {isCached && !isSample && (
                       <button
                         onClick={() => { setIsCached(false); setSlides([]); }}
                         className="block mx-auto mt-3 text-xs text-white/30 hover:text-white/50 underline underline-offset-2 transition-colors"
@@ -1302,44 +1312,70 @@ export default function HealthEngine2({ lang, userId, hasData, isSample, studyCo
                 </svg>
               </div>
               <h2 className="font-serif text-2xl text-[#0e393d] mb-3">{t.done}</h2>
-              <p className="text-sm text-[#1c2a2b]/60 mb-6">
-                Your personalized health briefing has been completed.
-              </p>
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={downloadPdfReport}
-                  disabled={pdfLoading}
-                  className="w-full px-6 py-2.5 rounded-lg text-sm font-semibold text-[#0e393d] bg-[#ceab84] hover:bg-[#ceab84]/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {pdfLoading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-[#0e393d]/30 border-t-[#0e393d] rounded-full animate-spin" />
-                      {t.downloadingPdf}
-                    </>
-                  ) : (
-                    <>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-                      </svg>
-                      {t.downloadPdf}
-                    </>
-                  )}
-                </button>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => { setIsCached(true); setPlaybackState('idle'); }}
-                    className="flex-1 px-6 py-2.5 rounded-lg text-sm font-medium text-[#1c2a2b]/50 hover:text-[#1c2a2b]/70 transition-all"
-                  >
-                    {t.play}
-                  </button>
-                  <a
-                    href={`/${lang}/research`}
-                    className="flex-1 px-6 py-2.5 rounded-lg text-sm font-medium text-[#0e393d] border border-[#0e393d]/15 hover:bg-[#0e393d]/5 transition-all text-center"
-                  >
-                    {lang === 'de' ? 'Freie Recherche starten' : 'Open Research Session'}
-                  </a>
-                </div>
-              </div>
+              {isSample ? (
+                <>
+                  <p className="text-sm text-[#1c2a2b]/60 mb-6">
+                    {lang === 'de'
+                      ? 'Das war ein Beispiel-Briefing. Melde dich an, um dein eigenes zu erhalten.'
+                      : 'That was a sample briefing. Sign in to get your own personalized health briefing.'}
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    <a
+                      href={`/${lang}/login`}
+                      className="w-full px-6 py-2.5 rounded-lg text-sm font-semibold text-[#0e393d] bg-[#ceab84] hover:bg-[#ceab84]/90 transition-all text-center"
+                    >
+                      {lang === 'de' ? 'Jetzt anmelden' : 'Sign In'}
+                    </a>
+                    <button
+                      onClick={() => { setPlaybackState('idle'); }}
+                      className="px-6 py-2.5 rounded-lg text-sm font-medium text-[#1c2a2b]/50 hover:text-[#1c2a2b]/70 transition-all"
+                    >
+                      {lang === 'de' ? 'Erneut abspielen' : 'Replay'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-[#1c2a2b]/60 mb-6">
+                    Your personalized health briefing has been completed.
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={downloadPdfReport}
+                      disabled={pdfLoading}
+                      className="w-full px-6 py-2.5 rounded-lg text-sm font-semibold text-[#0e393d] bg-[#ceab84] hover:bg-[#ceab84]/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {pdfLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-[#0e393d]/30 border-t-[#0e393d] rounded-full animate-spin" />
+                          {t.downloadingPdf}
+                        </>
+                      ) : (
+                        <>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                          </svg>
+                          {t.downloadPdf}
+                        </>
+                      )}
+                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => { setIsCached(true); setPlaybackState('idle'); }}
+                        className="flex-1 px-6 py-2.5 rounded-lg text-sm font-medium text-[#1c2a2b]/50 hover:text-[#1c2a2b]/70 transition-all"
+                      >
+                        {t.play}
+                      </button>
+                      <a
+                        href={`/${lang}/research`}
+                        className="flex-1 px-6 py-2.5 rounded-lg text-sm font-medium text-[#0e393d] border border-[#0e393d]/15 hover:bg-[#0e393d]/5 transition-all text-center"
+                      >
+                        {lang === 'de' ? 'Freie Recherche starten' : 'Open Research Session'}
+                      </a>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -1515,16 +1551,16 @@ export default function HealthEngine2({ lang, userId, hasData, isSample, studyCo
               <div className="flex-1 flex gap-2">
                 <input
                   type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendQuestion()}
-                  placeholder={t.typeQuestion}
-                  disabled={isListening || voiceResponseLoading}
+                  value={isSample ? '' : chatInput}
+                  onChange={(e) => !isSample && setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !isSample && handleSendQuestion()}
+                  placeholder={isSample ? (lang === 'de' ? 'Melde dich an, um Fragen zu stellen…' : 'Sign in to ask questions…') : t.typeQuestion}
+                  disabled={isSample || isListening || voiceResponseLoading}
                   className="flex-1 px-4 py-2.5 rounded-lg text-sm border border-[#0e393d]/10 bg-white text-[#1c2a2b] placeholder-[#1c2a2b]/40 focus:outline-none focus:border-[#ceab84] focus:ring-1 focus:ring-[#ceab84] disabled:opacity-50"
                 />
                 <button
                   onClick={handleSendQuestion}
-                  disabled={!chatInput.trim() || chatLoading || isListening || voiceResponseLoading}
+                  disabled={isSample || !chatInput.trim() || chatLoading || isListening || voiceResponseLoading}
                   className="px-4 py-2.5 rounded-lg text-sm font-medium text-[#0e393d] bg-[#ceab84] hover:bg-[#ceab84]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {chatLoading ? '…' : t.send}

@@ -5,9 +5,9 @@
     "login": "Login",
     "dropdowns": {
       "Kitchen": [
+        "Blog",
         "Recipes",
-        "Daily Dozen",
-        "Blog"
+        "Daily Dozen"
       ],
       "Health": [
         "Health Engine",

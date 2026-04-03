@@ -19,6 +19,7 @@ export const T = {
     featured: 'Empfohlen',
     goals: 'Gesundheitsziele',
     daily_dozen: 'Daily Dozen',
+    add_to_dd: 'Zum Tracker',
     print: 'Drucken',
   },
   en: {
@@ -41,6 +42,7 @@ export const T = {
     featured: 'Featured',
     goals: 'Health Goals',
     daily_dozen: 'Daily Dozen',
+    add_to_dd: 'Add to Tracker',
     print: 'Print',
   },
   fr: {
@@ -63,6 +65,7 @@ export const T = {
     featured: 'À la une',
     goals: 'Objectifs santé',
     daily_dozen: 'Daily Dozen',
+    add_to_dd: 'Ajouter au suivi',
     print: 'Imprimer',
   },
   es: {
@@ -85,6 +88,7 @@ export const T = {
     featured: 'Destacado',
     goals: 'Objetivos de salud',
     daily_dozen: 'Daily Dozen',
+    add_to_dd: 'Añadir al seguimiento',
     print: 'Imprimir',
   },
   it: {
@@ -107,6 +111,7 @@ export const T = {
     featured: 'In evidenza',
     goals: 'Obiettivi di salute',
     daily_dozen: 'Daily Dozen',
+    add_to_dd: 'Aggiungi al tracker',
     print: 'Stampa',
   },
 };

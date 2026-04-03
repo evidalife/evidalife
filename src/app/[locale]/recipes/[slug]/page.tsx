@@ -9,6 +9,7 @@ import RecipeRating from '@/components/RecipeRating';
 import PrintButton from '@/components/PrintButton';
 import FavouriteButton from '@/components/FavouriteButton';
 import RecipeGallery, { type GalleryPhoto } from '@/components/RecipeGallery';
+import AddToDailyDozenButton from '@/components/AddToDailyDozenButton';
 import { createClient } from '@/lib/supabase/server';
 import { T } from './translations';
 
@@ -515,7 +516,13 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ s
 
             {ddTags.length > 0 && (
               <div className="rounded-2xl border border-[#0e393d]/10 bg-white p-5">
-                <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84] mb-3">{t.daily_dozen}</p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84]">{t.daily_dozen}</p>
+                  <AddToDailyDozenButton
+                    categorySlugs={ddTags.map((tag) => tag.category_slug)}
+                    label={t.add_to_dd}
+                  />
+                </div>
                 <div className="flex flex-wrap gap-1.5">
                   {ddTags.map((tag) => (
                     <span

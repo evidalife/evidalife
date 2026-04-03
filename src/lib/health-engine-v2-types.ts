@@ -46,8 +46,18 @@ export interface LongevityScoreData {
   trend: 'up' | 'down' | 'stable';
   history: { date: string; score: number }[];
   domainCount: number;
-  bestDomain: { name: string; score: number } | null;
+  bestDomain: { name: string; score: number; markerCount?: number } | null;
   worstDomain: { name: string; score: number } | null;
+  // Progress data (matches health engine dashboard)
+  borderlineMarkers: string[];   // names of borderline/risk markers
+  improvedMarkers: string[];     // names of improved markers
+  totalMarkers: number;
+  // Summary cards
+  firstScore: number | null;     // earliest meaningful longevity score
+  progressLabel: string;         // e.g. "44-Month"
+  // Bio age progress (for summary card)
+  firstBioAgeDiff: number | null;  // earliest avg bio age diff from chrono
+  latestBioAgeDiff: number | null; // latest avg bio age diff from chrono
 }
 
 export interface BioAgeScoreData {
@@ -57,7 +67,12 @@ export interface BioAgeScoreData {
   phenoAge: number | null;
   grimAge: number | null;
   dunedinPace: number | null;
-  ageDiff: number;             // phenoAge - chronAge (negative = younger)
+  ageDiff: number;             // avg bio age - chronAge (negative = younger)
+  avgBioAge: number | null;    // average bio age across clocks
+  clockCount: number;          // number of active clocks
+  bestClock: { label: string; age: number } | null;
+  focusClock: { label: string; age: number } | null;
+  chartData: { date: string; avg: number | null; chron: number }[];
 }
 
 

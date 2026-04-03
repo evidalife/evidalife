@@ -54,9 +54,10 @@ interface Props {
   size?: 'sm' | 'md' | 'lg';
   label?: string;
   subLabel?: string;
+  delta?: number | null;
 }
 
-export default function HealthGauge({ score, size = 'lg', label, subLabel }: Props) {
+export default function HealthGauge({ score, size = 'lg', label, subLabel, delta }: Props) {
   const ratio = Math.min(Math.max(score, 0), 100) / 100;
   const filledCount = Math.round(ratio * SEGS);
   const color = tierColor(ratio);
@@ -125,6 +126,21 @@ export default function HealthGauge({ score, size = 'lg', label, subLabel }: Pro
         >
           {score}
         </text>
+
+        {delta != null && delta !== 0 && (
+          <g>
+            <text
+              x={CX}
+              y={CY + 78}
+              textAnchor="middle"
+              fontSize={size === 'sm' ? 11 : 13}
+              fontWeight={600}
+              fill={delta > 0 ? '#0C9C6C' : '#E06B5B'}
+            >
+              {delta > 0 ? '▲' : '▼'} {delta > 0 ? '+' : ''}{delta.toFixed(1)}
+            </text>
+          </g>
+        )}
 
         <text
           x={l0x.toFixed(1)}

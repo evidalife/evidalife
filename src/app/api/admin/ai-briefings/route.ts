@@ -88,19 +88,45 @@ export async function POST(req: NextRequest) {
 
   // Enrich steps with audio cache info
   const steps = Array.isArray(data.steps) ? data.steps : [];
-  const enrichedSteps = await Promise.all(
-    steps.map(async (step: { narration?: string; [key: string]: unknown }) => {
-      if (!step.narration) return { ...step, audioCacheKey: null, audioCached: false };
+
+  // Build all cache keys first
+  const keyMap = new Map<string, number[]>(); // key → step indices
+  steps.forEach((step: { narration?: string }, i: number) => {
+    if (step.narration) {
       const key = ttsCacheKey(step.narration, data.lang);
-      // Check if file exists in storage
-      const { data: files } = await admin.storage.from(TTS_BUCKET).list(
-        key.split('/')[0], // language folder
-        { limit: 1, search: key.split('/')[1] } // filename
-      );
-      const cached = (files ?? []).some(f => f.name === key.split('/')[1]);
-      return { ...step, audioCacheKey: key, audioCached: cached };
-    })
-  );
+      const arr = keyMap.get(key) ?? [];
+      arr.push(i);
+      keyMap.set(key, arr);
+    }
+  });
+
+  // Batch-check: query tracking table for all keys at once
+  const allKeys = [...keyMap.keys()];
+  const cachedSet = new Set<string>();
+  if (allKeys.length > 0) {
+    const { data: tracked } = await admin
+      .from('tts_cache_files')
+      .select('storage_path')
+      .in('storage_path', allKeys);
+    for (const t of tracked ?? []) cachedSet.add(t.storage_path);
+
+    // Fallback: check storage directly for any keys not in tracking table
+    const untrackedKeys = allKeys.filter(k => !cachedSet.has(k));
+    if (untrackedKeys.length > 0) {
+      const langFolder = data.lang;
+      const { data: storageFiles } = await admin.storage.from(TTS_BUCKET).list(langFolder, { limit: 10000 });
+      const storageSet = new Set((storageFiles ?? []).map(f => `${langFolder}/${f.name}`));
+      for (const k of untrackedKeys) {
+        if (storageSet.has(k)) cachedSet.add(k);
+      }
+    }
+  }
+
+  const enrichedSteps = steps.map((step: { narration?: string; [key: string]: unknown }) => {
+    if (!step.narration) return { ...step, audioCacheKey: null, audioCached: false };
+    const key = ttsCacheKey(step.narration, data.lang);
+    return { ...step, audioCacheKey: key, audioCached: cachedSet.has(key) };
+  });
 
   // Fetch Q&A messages for this briefing
   const { data: qaMessages } = await admin

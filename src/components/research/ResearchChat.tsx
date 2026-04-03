@@ -41,16 +41,118 @@ interface ResearchChatProps {
   placeholder?: string;
 }
 
-// ── Suggestion chips ──────────────────────────────────────────────────────────
+// ── i18n ─────────────────────────────────────────────────────────────────────
 
-const DEFAULT_SUGGESTIONS = [
-  'Which dietary interventions reduce hsCRP?',
-  'Does plant-based diet lower LDL cholesterol?',
-  'What does research say about Vitamin D and mortality?',
-  'Best evidence for reducing insulin resistance?',
-  'Omega-3 dosing and cardiovascular outcomes?',
-  'How does exercise affect biological age?',
-];
+type Lang = 'en' | 'de' | 'fr' | 'es' | 'it';
+
+const I18N: Record<Lang, {
+  heading: string;
+  subtitle: string;
+  personalized: string;
+  personalizedShort: string;
+  popularLabel: string;
+  placeholder: string;
+  listening: string;
+  stopListening: string;
+  askByVoice: string;
+  suggestions: string[];
+}> = {
+  en: {
+    heading: 'What would you like to research?',
+    subtitle: 'Ask any health or nutrition question. Every answer is synthesized from peer-reviewed studies with full citations you can verify.',
+    personalized: 'Personalized to your biomarker data',
+    personalizedShort: 'Answers personalized by your biomarker data',
+    popularLabel: 'Popular questions',
+    placeholder: 'Ask a research question, e.g. "Does reducing saturated fat lower cardiovascular risk?"',
+    listening: 'Listening...',
+    stopListening: 'Stop listening',
+    askByVoice: 'Ask by voice',
+    suggestions: [
+      'Which dietary interventions reduce hsCRP?',
+      'Does plant-based diet lower LDL cholesterol?',
+      'What does research say about Vitamin D and mortality?',
+      'Best evidence for reducing insulin resistance?',
+      'Omega-3 dosing and cardiovascular outcomes?',
+      'How does exercise affect biological age?',
+    ],
+  },
+  de: {
+    heading: 'Was möchtest du erforschen?',
+    subtitle: 'Stelle jede Gesundheits- oder Ernährungsfrage. Jede Antwort wird aus begutachteten Studien mit vollständigen Quellenangaben zusammengefasst.',
+    personalized: 'Personalisiert anhand deiner Biomarker-Daten',
+    personalizedShort: 'Antworten personalisiert durch deine Biomarker-Daten',
+    popularLabel: 'Beliebte Fragen',
+    placeholder: 'Stelle eine Forschungsfrage, z. B. „Senkt eine Reduktion gesättigter Fette das Herz-Kreislauf-Risiko?"',
+    listening: 'Hört zu...',
+    stopListening: 'Aufnahme stoppen',
+    askByVoice: 'Per Stimme fragen',
+    suggestions: [
+      'Welche Ernährungsmaßnahmen senken hsCRP?',
+      'Senkt eine pflanzliche Ernährung das LDL-Cholesterin?',
+      'Was sagt die Forschung zu Vitamin D und Sterblichkeit?',
+      'Beste Evidenz zur Senkung der Insulinresistenz?',
+      'Omega-3-Dosierung und kardiovaskuläre Ergebnisse?',
+      'Wie beeinflusst Bewegung das biologische Alter?',
+    ],
+  },
+  fr: {
+    heading: 'Que souhaitez-vous rechercher ?',
+    subtitle: 'Posez n\'importe quelle question sur la santé ou la nutrition. Chaque réponse est synthétisée à partir d\'études évaluées par des pairs avec des citations complètes.',
+    personalized: 'Personnalisé selon vos données de biomarqueurs',
+    personalizedShort: 'Réponses personnalisées selon vos biomarqueurs',
+    popularLabel: 'Questions populaires',
+    placeholder: 'Posez une question de recherche, par ex. « La réduction des graisses saturées diminue-t-elle le risque cardiovasculaire ? »',
+    listening: 'Écoute en cours...',
+    stopListening: 'Arrêter l\'écoute',
+    askByVoice: 'Poser par la voix',
+    suggestions: [
+      'Quelles interventions diététiques réduisent la hsCRP ?',
+      'Le régime végétal réduit-il le cholestérol LDL ?',
+      'Que dit la recherche sur la vitamine D et la mortalité ?',
+      'Meilleures preuves pour réduire la résistance à l\'insuline ?',
+      'Dosage d\'oméga-3 et résultats cardiovasculaires ?',
+      'Comment l\'exercice affecte-t-il l\'âge biologique ?',
+    ],
+  },
+  es: {
+    heading: '¿Qué te gustaría investigar?',
+    subtitle: 'Haz cualquier pregunta sobre salud o nutrición. Cada respuesta se sintetiza a partir de estudios revisados por pares con citas completas.',
+    personalized: 'Personalizado según tus datos de biomarcadores',
+    personalizedShort: 'Respuestas personalizadas con tus datos de biomarcadores',
+    popularLabel: 'Preguntas populares',
+    placeholder: 'Haz una pregunta de investigación, p. ej. "¿Reducir las grasas saturadas disminuye el riesgo cardiovascular?"',
+    listening: 'Escuchando...',
+    stopListening: 'Dejar de escuchar',
+    askByVoice: 'Preguntar por voz',
+    suggestions: [
+      '¿Qué intervenciones dietéticas reducen la hsCRP?',
+      '¿La dieta basada en plantas reduce el colesterol LDL?',
+      '¿Qué dice la investigación sobre la vitamina D y la mortalidad?',
+      '¿Mejor evidencia para reducir la resistencia a la insulina?',
+      '¿Dosis de omega-3 y resultados cardiovasculares?',
+      '¿Cómo afecta el ejercicio a la edad biológica?',
+    ],
+  },
+  it: {
+    heading: 'Cosa vorresti ricercare?',
+    subtitle: 'Fai qualsiasi domanda su salute o nutrizione. Ogni risposta è sintetizzata da studi sottoposti a revisione paritaria con citazioni complete.',
+    personalized: 'Personalizzato in base ai tuoi dati sui biomarcatori',
+    personalizedShort: 'Risposte personalizzate in base ai tuoi biomarcatori',
+    popularLabel: 'Domande popolari',
+    placeholder: 'Fai una domanda di ricerca, es. "La riduzione dei grassi saturi abbassa il rischio cardiovascolare?"',
+    listening: 'In ascolto...',
+    stopListening: 'Interrompi ascolto',
+    askByVoice: 'Chiedi a voce',
+    suggestions: [
+      'Quali interventi dietetici riducono la hsCRP?',
+      'La dieta vegetale riduce il colesterolo LDL?',
+      'Cosa dice la ricerca sulla vitamina D e la mortalità?',
+      'Migliori evidenze per ridurre la resistenza all\'insulina?',
+      'Dosaggio di omega-3 e risultati cardiovascolari?',
+      'Come influisce l\'esercizio sull\'età biologica?',
+    ],
+  },
+};
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -267,10 +369,14 @@ function AssistantMessage({ message, isSpeaking, onPlayTTS, onStopTTS }: {
 export default function ResearchChat({
   biomarkerContext,
   flaggedMarkers,
-  suggestions = DEFAULT_SUGGESTIONS,
-  placeholder = 'Ask a research question, e.g. "Does reducing saturated fat lower cardiovascular risk?"',
+  suggestions,
+  placeholder,
 }: ResearchChatProps) {
   const locale = useLocale();
+  const lang = (['en','de','fr','es','it'] as Lang[]).includes(locale as Lang) ? (locale as Lang) : 'en';
+  const t = I18N[lang];
+  const activeSuggestions = suggestions ?? t.suggestions;
+  const activePlaceholder = placeholder ?? t.placeholder;
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -572,29 +678,29 @@ export default function ResearchChat({
             </div>
 
             <h2 className="font-serif text-2xl sm:text-3xl text-[#0e393d] mb-3">
-              What would you like to research?
+              {t.heading}
             </h2>
             <p className="text-sm text-[#1c2a2b]/45 max-w-md mb-10 leading-relaxed">
-              Ask any health or nutrition question. Every answer is synthesized from peer-reviewed studies with full citations you can verify.
+              {t.subtitle}
             </p>
 
             {biomarkerContext && (
               <div className="flex items-center gap-2 mb-6 bg-emerald-50 rounded-full px-4 py-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 <span className="text-xs font-medium text-emerald-700">
-                  Personalized to your biomarker data
+                  {t.personalized}
                 </span>
               </div>
             )}
 
             {/* Suggestion grid */}
-            {suggestions.length > 0 && (
+            {activeSuggestions.length > 0 && (
               <div className="w-full max-w-2xl">
                 <p className="text-[11px] font-semibold text-[#ceab84] uppercase tracking-widest mb-4">
-                  Popular questions
+                  {t.popularLabel}
                 </p>
                 <div className="grid sm:grid-cols-2 gap-2.5">
-                  {suggestions.map(s => (
+                  {activeSuggestions.map(s => (
                     <button
                       key={s}
                       onClick={() => sendQuestion(s)}
@@ -641,7 +747,7 @@ export default function ResearchChat({
             <div className="flex items-center gap-1.5 mb-2.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               <span className="text-[11px] text-[#1c2a2b]/35">
-                Answers personalized by your biomarker data
+                {t.personalizedShort}
               </span>
             </div>
           )}
@@ -660,7 +766,7 @@ export default function ResearchChat({
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={voice.isListening ? 'Listening...' : placeholder}
+              placeholder={voice.isListening ? t.listening : activePlaceholder}
               rows={1}
               disabled={isLoading || voice.isListening}
               className="flex-1 resize-none rounded-xl border border-[#0e393d]/15 bg-[#fafaf8] px-4 py-3 text-[14px] text-[#1c2a2b] placeholder-[#1c2a2b]/25 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/20 focus:border-[#0e393d]/30 transition disabled:opacity-50 max-h-32 overflow-y-auto"
@@ -681,7 +787,7 @@ export default function ResearchChat({
                     ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse'
                     : 'bg-[#0e393d]/10 text-[#0e393d] hover:bg-[#0e393d]/20'
                 } disabled:opacity-30 disabled:cursor-not-allowed`}
-                title={voice.isListening ? 'Stop listening' : 'Ask by voice'}
+                title={voice.isListening ? t.stopListening : t.askByVoice}
               >
                 {voice.isListening ? <StopIcon /> : <MicIcon />}
               </button>

@@ -1,13 +1,13 @@
 import { getLocale } from 'next-intl/server';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
-import HealthEngine2 from '@/components/health-v2/HealthEngine2';
+import HealthBriefing from '@/components/health-v2/HealthBriefing';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { Link } from '@/i18n/navigation';
 import { getStudyCount, formatStudyCount } from '@/lib/research/study-count';
 
-export const metadata = { title: 'Health Engine 2.0 – Evida Life' };
+export const metadata = { title: 'Health Briefing – Evida Life' };
 
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 type Lang = (typeof VALID_LANGS)[number];
@@ -24,11 +24,11 @@ const T = {
     it: 'Dati di esempio — Accedi per vedere i tuoi risultati',
   },
   sampleBannerLoggedIn: {
-    en: 'Sample Data — This is what your Health Engine will look like',
-    de: 'Beispieldaten — So wird deine Health Engine aussehen',
-    fr: 'Données d\'exemple — Voici à quoi ressemblera votre Health Engine',
-    es: 'Datos de ejemplo — Así se verá tu Health Engine',
-    it: 'Dati di esempio — Ecco come apparirà il tuo Health Engine',
+    en: 'Sample Data — This is what your Health Briefing will look like',
+    de: 'Beispieldaten — So wird dein Gesundheitsbriefing aussehen',
+    fr: 'Données d\'exemple — Voici à quoi ressemblera votre Briefing Santé',
+    es: 'Datos de ejemplo — Así se verá tu Briefing de Salud',
+    it: 'Dati di esempio — Ecco come apparirà il tuo Briefing Salute',
   },
   noDataTitle: {
     en: 'No lab data yet',
@@ -38,11 +38,11 @@ const T = {
     it: 'Nessun dato di laboratorio',
   },
   noDataDesc: {
-    en: 'Upload your first lab report to activate the Health Engine.',
-    de: 'Lade deinen ersten Laborbericht hoch, um die Health Engine zu aktivieren.',
-    fr: 'Téléchargez votre premier rapport pour activer le Health Engine.',
-    es: 'Sube tu primer informe para activar el Health Engine.',
-    it: 'Carica il tuo primo referto per attivare l\'Health Engine.',
+    en: 'Upload your first lab report to activate your Health Briefing.',
+    de: 'Lade deinen ersten Laborbericht hoch, um dein Gesundheitsbriefing zu aktivieren.',
+    fr: 'Téléchargez votre premier rapport pour activer votre Briefing Santé.',
+    es: 'Sube tu primer informe para activar tu Briefing de Salud.',
+    it: 'Carica il tuo primo referto per attivare il tuo Briefing Salute.',
   },
   uploadBtn: {
     en: 'Upload Lab Report',
@@ -88,6 +88,28 @@ export default async function HealthEngineV2Page({
 
     if (hasSampleData) {
       const isLoggedIn = !!user;
+
+      // Fetch cached v2 briefing for sample user (so logged-out visitors can watch it)
+      let sampleSlides: import('@/lib/health-engine-v2-types').BriefingSlide[] = [];
+      let sampleBriefingId: string | undefined;
+      {
+        const { data: cachedRows } = await adminDb
+          .from('health_briefings')
+          .select('id, steps, summary_context')
+          .eq('user_id', SAMPLE_USER_ID)
+          .eq('lang', lang)
+          .order('created_at', { ascending: false })
+          .limit(5);
+        const cached = (cachedRows ?? []).find(row => {
+          const ctx = row.summary_context as Record<string, unknown> | null;
+          return ctx?.version === 'v2';
+        });
+        if (cached?.steps && Array.isArray(cached.steps) && cached.steps.length > 0) {
+          sampleSlides = cached.steps;
+          sampleBriefingId = cached.id;
+        }
+      }
+
       return (
         <>
           <PublicNav />
@@ -96,12 +118,14 @@ export default async function HealthEngineV2Page({
               {isLoggedIn ? T.sampleBannerLoggedIn[lang] : T.sampleBanner[lang]}
             </div>
           </div>
-          <HealthEngine2
+          <HealthBriefing
             lang={lang}
             userId={SAMPLE_USER_ID}
             hasData={true}
             isSample
             studyCountLabel={studyCountLabel}
+            initialSlides={sampleSlides}
+            initialBriefingId={sampleBriefingId}
           />
           <PublicFooter />
         </>
@@ -165,7 +189,7 @@ export default async function HealthEngineV2Page({
   return (
     <>
       <PublicNav />
-      <HealthEngine2
+      <HealthBriefing
         lang={lang}
         userId={user.id}
         hasData={true}

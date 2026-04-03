@@ -124,9 +124,95 @@ export function SectionTag({ children }: { children: React.ReactNode }) {
   );
 }
 
+// ── TrendChart — marker value over time with reference/optimal bands ────────
+
+function TrendChart({ m, height = 80 }: { m: MarkerDetail; height?: number }) {
+  const { dates, values } = m.trend;
+  if (!dates || values.length < 2) return null;
+
+  const W = 200, H = height, padX = 6, padY = 8;
+
+  // Determine Y-axis range including reference bounds
+  const allVals = [...values];
+  if (m.refLow != null) allVals.push(m.refLow);
+  if (m.refHigh != null) allVals.push(m.refHigh);
+  if (m.optLow != null) allVals.push(m.optLow);
+  if (m.optHigh != null) allVals.push(m.optHigh);
+  const mn = Math.min(...allVals);
+  const mx = Math.max(...allVals);
+  const rng = mx - mn || 1;
+  const yPad = rng * 0.12;
+  const yMin = mn - yPad;
+  const yMax = mx + yPad;
+  const yRange = yMax - yMin;
+
+  const toY = (v: number) => H - padY - ((v - yMin) / yRange) * (H - padY * 2);
+  const toX = (i: number) => padX + (i / (values.length - 1)) * (W - padX * 2);
+
+  // Build data points
+  const pts = values.map((v, i) => ({ x: toX(i), y: toY(v) }));
+
+  // Smooth path
+  let d = `M${pts[0].x},${pts[0].y}`;
+  for (let i = 1; i < pts.length; i++) {
+    const mx2 = (pts[i - 1].x + pts[i].x) / 2;
+    d += ` C${mx2},${pts[i - 1].y} ${mx2},${pts[i].y} ${pts[i].x},${pts[i].y}`;
+  }
+
+  // Reference and optimal range band Y-coordinates
+  const refLowY = m.refLow != null ? toY(m.refLow) : null;
+  const refHighY = m.refHigh != null ? toY(m.refHigh) : null;
+  const optLowY = m.optLow != null ? toY(m.optLow) : null;
+  const optHighY = m.optHigh != null ? toY(m.optHigh) : null;
+
+  // Date labels
+  const fmtDate = (d: string) => {
+    const p = d.split('-');
+    return p.length >= 2 ? `${p[2]}.${p[1]}.${p[0]?.slice(2)}` : d;
+  };
+
+  const last = pts[pts.length - 1];
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ display: 'block' }}>
+      {/* Optimal range band */}
+      {optLowY != null && optHighY != null && (
+        <rect x={padX} y={optHighY} width={W - padX * 2} height={optLowY - optHighY}
+          fill="#0C9C6C" opacity={0.06} rx={2} />
+      )}
+      {/* Reference range dashed lines */}
+      {refHighY != null && (
+        <line x1={padX} y1={refHighY} x2={W - padX} y2={refHighY}
+          stroke="#0C9C6C" strokeWidth={0.5} strokeDasharray="3,3" opacity={0.35} />
+      )}
+      {refLowY != null && (
+        <line x1={padX} y1={refLowY} x2={W - padX} y2={refLowY}
+          stroke="#0C9C6C" strokeWidth={0.5} strokeDasharray="3,3" opacity={0.35} />
+      )}
+      {/* Trend line */}
+      <path d={d} fill="none" stroke="#0e393d" strokeWidth={1.5} />
+      {/* Data points */}
+      {pts.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r={2.5} fill="#0e393d" />
+      ))}
+      {/* Highlight last point */}
+      <circle cx={last.x} cy={last.y} r={3.5} fill="#0C9C6C" />
+      {/* Date labels — first and last only */}
+      {dates.length >= 2 && (
+        <>
+          <text x={pts[0].x} y={H - 1} fontSize="6" fill="#1c2a2b" opacity={0.3} textAnchor="start">{fmtDate(dates[0])}</text>
+          <text x={last.x} y={H - 1} fontSize="6" fill="#1c2a2b" opacity={0.3} textAnchor="end">{fmtDate(dates[dates.length - 1])}</text>
+        </>
+      )}
+    </svg>
+  );
+}
+
 // ── MarkerCard — individual biomarker card (matches v1 key markers) ─────────
 
 export function MarkerCard({ m, compact = false }: { m: MarkerDetail; compact?: boolean }) {
+  const hasTrend = m.trend?.values?.length >= 2;
+
   return (
     <div
       className="bg-white rounded-xl border border-[#1c2a2b]/[.06] shadow-sm transition-all hover:shadow-md"
@@ -138,14 +224,14 @@ export function MarkerCard({ m, compact = false }: { m: MarkerDetail; compact?: 
           <StatusBadge status={m.status} />
         </div>
         {m.value != null && (
-          <div className="flex items-baseline gap-1 mt-1.5">
-            <span className={`font-serif ${compact ? 'text-[1.4rem]' : 'text-[1.7rem]'} leading-none text-[#1c2a2b]`}>
+          <div className="flex items-baseline gap-1 mt-1">
+            <span className={`font-serif ${compact ? 'text-[1.15rem]' : 'text-[1.4rem]'} leading-none text-[#1c2a2b]`}>
               {m.value.toLocaleString('de-CH', { maximumFractionDigits: 2 })}
             </span>
             <span className="text-[10px] text-[#1c2a2b]/40">{m.unit}</span>
           </div>
         )}
-        <div className="mt-2 mb-1.5">
+        <div className="mt-1.5 mb-1">
           <MiniRangeBar value={m.value ?? 0} refLow={m.refLow} refHigh={m.refHigh}
             optLow={m.optLow} optHigh={m.optHigh} status={m.status} />
         </div>
@@ -159,6 +245,13 @@ export function MarkerCard({ m, compact = false }: { m: MarkerDetail; compact?: 
             </span>
           )}
         </div>
+        {/* Trend chart */}
+        {hasTrend && (
+          <div className="mt-2 pt-2 border-t border-[#0e393d]/[.04]">
+            <p className="text-[8px] font-semibold tracking-[.12em] uppercase text-[#ceab84] mb-1">Trend</p>
+            <TrendChart m={m} height={compact ? 55 : 70} />
+          </div>
+        )}
       </div>
     </div>
   );

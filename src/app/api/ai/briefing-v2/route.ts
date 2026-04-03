@@ -483,8 +483,33 @@ export async function POST(req: NextRequest) {
   }
 
   const sortedDomains = Object.entries(domainScores)
-    .map(([key, data]) => ({ key, name: DOMAIN_META[key].name[lang] || DOMAIN_META[key].name['en'], score: data.score }))
+    .map(([key, data]) => ({ key, name: DOMAIN_META[key].name[lang] || DOMAIN_META[key].name['en'], score: data.score, markerCount: data.markers.length }))
     .sort((a, b) => b.score - a.score);
+
+  // Compute borderline/improved markers for progress section
+  const borderlineNames: string[] = [];
+  const improvedNames: string[] = [];
+  for (const [, domData] of Object.entries(domainScores)) {
+    for (const m of domData.markers) {
+      const name = m.def.name && typeof m.def.name === 'object' ? (m.def.name[lang] ?? m.def.name['en'] ?? m.def.slug) : m.def.slug;
+      if (m.score < 55 || (m.score >= 55 && m.score < 75)) borderlineNames.push(name);
+      if (m.prevScore != null && m.score > m.prevScore + 2) improvedNames.push(name);
+    }
+  }
+
+  // First meaningful longevity score & progress label
+  const firstLongevity = longevityTrend.length >= 2 ? longevityTrend[0].score : null;
+  let progressLabel = '';
+  if (longevityTrend.length >= 2) {
+    const d1 = new Date(longevityTrend[0].date + 'T00:00:00');
+    const d2 = new Date(longevityTrend[longevityTrend.length - 1].date + 'T00:00:00');
+    const diffDays = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 45) progressLabel = `${diffDays}-Day`;
+    else {
+      const months = Math.round(diffDays / 30.44);
+      progressLabel = months === 1 ? '1-Month' : `${months}-Month`;
+    }
+  }
 
   slides.push({
     id: 'longevity_score',
@@ -498,8 +523,15 @@ export async function POST(req: NextRequest) {
       trend: longevityScore > (prevLongevityScore ?? longevityScore) ? 'up' : longevityScore < (prevLongevityScore ?? longevityScore) ? 'down' : 'stable',
       history: longevityTrend,
       domainCount: Object.keys(domainScores).length,
-      bestDomain: sortedDomains.length > 0 ? { name: sortedDomains[0].name, score: Math.round(sortedDomains[0].score) } : null,
+      bestDomain: sortedDomains.length > 0 ? { name: sortedDomains[0].name, score: Math.round(sortedDomains[0].score), markerCount: sortedDomains[0].markerCount } : null,
       worstDomain: sortedDomains.length > 0 ? { name: sortedDomains[sortedDomains.length - 1].name, score: Math.round(sortedDomains[sortedDomains.length - 1].score) } : null,
+      borderlineMarkers: borderlineNames.slice(0, 6),
+      improvedMarkers: improvedNames.slice(0, 6),
+      totalMarkers: allMarkersByScore.length,
+      firstScore: firstLongevity,
+      progressLabel,
+      firstBioAgeDiff: null,  // filled after bio age computation below
+      latestBioAgeDiff: null,
     } as LongevityScoreData,
   });
 
@@ -507,9 +539,69 @@ export async function POST(req: NextRequest) {
   const phenoAge = bioClocksData.phenoage.value || null;
   const grimAge = bioClocksData.grimage_v2.value || null;
   const dunedinPace = bioClocksData.dunedinpace.value || null;
-  const ageDiff = phenoAge ? Math.round(phenoAge - chronAge) : 0;
 
   if (epiDefs.length > 0) {
+    // Compute average bio age across clocks
+    const paceProjected = dunedinPace != null && chronAge > 0 ? +(dunedinPace * chronAge).toFixed(1) : null;
+    const bioAgeValues: number[] = [];
+    if (phenoAge != null) bioAgeValues.push(phenoAge);
+    if (grimAge != null) bioAgeValues.push(grimAge);
+    if (paceProjected != null) bioAgeValues.push(paceProjected);
+    const avgBioAge = bioAgeValues.length > 0 ? +(bioAgeValues.reduce((a, b) => a + b, 0) / bioAgeValues.length).toFixed(1) : null;
+    const avgDiff = avgBioAge != null ? +(avgBioAge - chronAge).toFixed(1) : 0;
+
+    // Best / focus clock
+    const clockEntries: { label: string; age: number; diff: number }[] = [];
+    if (phenoAge) clockEntries.push({ label: 'PhenoAge', age: +(phenoAge).toFixed(1), diff: phenoAge - chronAge });
+    if (grimAge) clockEntries.push({ label: 'GrimAge v2', age: +(grimAge).toFixed(1), diff: grimAge - chronAge });
+    if (paceProjected) clockEntries.push({ label: 'DunedinPACE', age: paceProjected, diff: paceProjected - chronAge });
+
+    const bestClock = clockEntries.length > 0 ? clockEntries.reduce((a, b) => a.diff < b.diff ? a : b) : null;
+    const focusClock = clockEntries.length > 1 ? clockEntries.reduce((a, b) => a.diff > b.diff ? a : b) : null;
+
+    // Build chart data: avg bio age vs chronological across all dates
+    const birthDate = profile.date_of_birth ? new Date(profile.date_of_birth) : null;
+    const bioChartData: { date: string; avg: number | null; chron: number }[] = [];
+    if (birthDate) {
+      for (const date of allDates) {
+        const testDate = new Date(date + 'T00:00:00');
+        const chronAtDate = +((testDate.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)).toFixed(2);
+        const ages: number[] = [];
+        for (const { slug, isDunedin } of [
+          { slug: 'phenoage', isDunedin: false },
+          { slug: 'grimage_v2', isDunedin: false },
+          { slug: 'dunedinpace', isDunedin: true },
+        ] as const) {
+          const bioClockType = slug;
+          const clockDef = definitions.find(d => normalizeBioClock(d.slug) === bioClockType);
+          if (!clockDef) continue;
+          const entry = markerData.get(clockDef.id)?.get(date);
+          if (!entry) continue;
+          ages.push(isDunedin ? entry.value * chronAtDate : entry.value);
+        }
+        const avg = ages.length > 0 ? +(ages.reduce((a, b) => a + b, 0) / ages.length).toFixed(2) : null;
+        bioChartData.push({
+          date: new Date(date + 'T00:00:00').toLocaleDateString(lang === 'de' ? 'de-CH' : 'en-GB', { month: 'short', year: 'numeric' }),
+          avg,
+          chron: +chronAtDate.toFixed(2),
+        });
+      }
+    }
+
+    // Compute first/latest bio age diff for longevity slide progress cards
+    const bioAvgsByDate = bioChartData.filter(d => d.avg != null);
+    if (bioAvgsByDate.length >= 2) {
+      const firstBio = bioAvgsByDate[0];
+      const lastBio = bioAvgsByDate[bioAvgsByDate.length - 1];
+      // Backfill into longevity slide data
+      const longevitySlide = slides.find(s => s.type === 'longevity_score');
+      if (longevitySlide) {
+        const ld = longevitySlide.data as LongevityScoreData;
+        ld.firstBioAgeDiff = +(firstBio.avg! - firstBio.chron).toFixed(1);
+        ld.latestBioAgeDiff = +(lastBio.avg! - lastBio.chron).toFixed(1);
+      }
+    }
+
     slides.push({
       id: 'bio_age_score',
       type: 'bio_age_score',
@@ -522,7 +614,12 @@ export async function POST(req: NextRequest) {
         phenoAge: phenoAge ? Math.round(phenoAge * 10) / 10 : null,
         grimAge: grimAge ? Math.round(grimAge * 10) / 10 : null,
         dunedinPace: dunedinPace ? Math.round(dunedinPace * 100) / 100 : null,
-        ageDiff,
+        ageDiff: avgDiff,
+        avgBioAge,
+        clockCount: bioAgeValues.length,
+        bestClock: bestClock ? { label: bestClock.label, age: bestClock.age } : null,
+        focusClock: focusClock && focusClock.label !== bestClock?.label ? { label: focusClock.label, age: focusClock.age } : null,
+        chartData: bioChartData,
       } as BioAgeScoreData,
     });
   }
