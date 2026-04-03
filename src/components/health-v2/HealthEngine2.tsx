@@ -1512,6 +1512,18 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
                 </button>
               )}
 
+              {/* Previous Chapter */}
+              <button
+                onClick={() => goToSlide(currentSlideIndex - 1)}
+                disabled={voiceResponseLoading || currentSlideIndex <= 0}
+                className="px-2.5 py-2.5 rounded-lg text-sm font-medium bg-[#0e393d]/10 text-[#0e393d] hover:bg-[#0e393d]/20 transition-all flex items-center disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Previous chapter"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+                </svg>
+              </button>
+
               {/* Play/Pause Button */}
               <button
                 onClick={handlePlayPause}
@@ -1533,6 +1545,18 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
                     {t.play}
                   </>
                 )}
+              </button>
+
+              {/* Next Chapter */}
+              <button
+                onClick={() => goToSlide(currentSlideIndex + 1)}
+                disabled={voiceResponseLoading || currentSlideIndex >= slides.length - 1}
+                className="px-2.5 py-2.5 rounded-lg text-sm font-medium bg-[#0e393d]/10 text-[#0e393d] hover:bg-[#0e393d]/20 transition-all flex items-center disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Next chapter"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M6 18l8.5-6L6 6v12zm10-12v12h2V6z" />
+                </svg>
               </button>
             </div>
           </div>
