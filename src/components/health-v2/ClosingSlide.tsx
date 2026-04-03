@@ -10,7 +10,7 @@ export default function ClosingSlide({ data, lang }: { data: ClosingData; lang: 
         {/* Left: Score recap on dark teal */}
         <div className="bg-[#0e393d] p-8 flex flex-col items-center justify-center text-center">
           <p className="text-[10px] font-semibold tracking-[.2em] uppercase text-[#ceab84] mb-4">Your Longevity Score</p>
-          <HealthGauge score={data.score} size="lg" />
+          <HealthGauge score={data.score} size="lg" dark />
           <span className="font-serif text-5xl font-bold text-white mt-3">{data.score}</span>
           <div className="flex gap-3 mt-5">
             <span className="text-[11px] px-3 py-1.5 rounded-full bg-white/[.08] text-white/60 border border-white/[.06]">
@@ -54,15 +54,6 @@ export default function ClosingSlide({ data, lang }: { data: ClosingData; lang: 
             </div>
           )}
 
-          {/* CTAs */}
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <button className="px-5 py-3 rounded-xl text-[13px] font-semibold text-white bg-[#0e393d] hover:bg-[#0e393d]/90 transition-all">
-              Download Report
-            </button>
-            <button className="px-5 py-3 rounded-xl text-[13px] font-semibold text-[#0e393d] bg-[#ceab84]/20 hover:bg-[#ceab84]/30 border border-[#ceab84]/30 transition-all">
-              Research Session
-            </button>
-          </div>
         </div>
       </div>
     </div>

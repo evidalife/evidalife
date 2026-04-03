@@ -82,7 +82,7 @@ export default function BioAgeSlide({ data, lang }: { data: BioAgeScoreData; lan
             <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-[#ceab84] mb-2 self-start">
               {t.bioAgeScore}
             </div>
-            <div className="mt-2 mb-1"><HealthGauge score={data.bioAgeScore} size="md" /></div>
+            <div className="mt-2 mb-1"><HealthGauge score={data.bioAgeScore} size="md" dark /></div>
             {avgBioAge != null && (
               <>
                 <div className="text-[11px] text-white/30 text-center">

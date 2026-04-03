@@ -38,7 +38,7 @@ interface ChatMessage {
 
 const T: Record<Lang, Record<string, string>> = {
   en: {
-    tag: 'HEALTH ENGINE 2.0',
+    tag: 'HEALTH BRIEFING',
     title: 'Your Personal Health Briefing',
     sub: 'An AI-led, auto-playing walkthrough of your health insights — powered by your latest lab results.',
     loading: 'Preparing your briefing…',
@@ -48,7 +48,7 @@ const T: Record<Lang, Record<string, string>> = {
     errorSub: 'We couldn\'t generate your briefing. Please try again.',
     retry: 'Try Again',
     noData: 'No lab data yet',
-    noDataSub: 'Upload your first lab report to activate the Health Engine.',
+    noDataSub: 'Upload your first lab report to activate your Health Briefing.',
     pause: 'Pause',
     play: 'Play',
     resumeBriefing: 'Continue Briefing',
@@ -76,7 +76,7 @@ const T: Record<Lang, Record<string, string>> = {
     downloadingPdf: 'Generating PDF…',
   },
   de: {
-    tag: 'HEALTH ENGINE 2.0',
+    tag: 'HEALTH BRIEFING',
     title: 'Dein persönliches Gesundheitsbriefing',
     sub: 'Ein KI-geführter, automatisch ablaufender Durchgang deiner Gesundheitserkenntnisse.',
     loading: 'Briefing wird vorbereitet…',
@@ -114,7 +114,7 @@ const T: Record<Lang, Record<string, string>> = {
     downloadingPdf: 'PDF wird erstellt…',
   },
   fr: {
-    tag: 'HEALTH ENGINE 2.0',
+    tag: 'HEALTH BRIEFING',
     title: 'Votre Briefing Santé Personnel',
     sub: 'Un parcours automatique guidé par l\'IA de vos insights de santé.',
     loading: 'Préparation du briefing…',
@@ -152,7 +152,7 @@ const T: Record<Lang, Record<string, string>> = {
     downloadingPdf: 'Génération du PDF…',
   },
   es: {
-    tag: 'HEALTH ENGINE 2.0',
+    tag: 'HEALTH BRIEFING',
     title: 'Tu Informe de Salud Personal',
     sub: 'Un recorrido automático guiado por IA de tus insights de salud.',
     loading: 'Preparando tu informe…',
@@ -190,7 +190,7 @@ const T: Record<Lang, Record<string, string>> = {
     downloadingPdf: 'Generando PDF…',
   },
   it: {
-    tag: 'HEALTH ENGINE 2.0',
+    tag: 'HEALTH BRIEFING',
     title: 'Il Tuo Briefing Salute Personale',
     sub: 'Un percorso automatico guidato dall\'IA dei tuoi insight di salute.',
     loading: 'Preparazione del briefing…',

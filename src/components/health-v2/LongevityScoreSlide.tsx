@@ -71,7 +71,7 @@ export default function LongevityScoreSlide({ data, lang }: { data: LongevitySco
             <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-[#ceab84] mb-2 self-start">
               {t.longevityScore}
             </div>
-            <div className="mt-2 mb-1"><HealthGauge score={data.score} size="lg" /></div>
+            <div className="mt-2 mb-1"><HealthGauge score={data.score} size="lg" dark /></div>
             <div className="text-[11px] text-white/30 text-center">
               {t.basedOn.replace('{n}', String(data.domainCount || 8))}
             </div>

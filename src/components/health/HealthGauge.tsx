@@ -55,9 +55,11 @@ interface Props {
   label?: string;
   subLabel?: string;
   delta?: number | null;
+  /** When true, renders for dark backgrounds (white text, lighter unfilled segments) */
+  dark?: boolean;
 }
 
-export default function HealthGauge({ score, size = 'lg', label, subLabel, delta }: Props) {
+export default function HealthGauge({ score, size = 'lg', label, subLabel, delta, dark }: Props) {
   const ratio = Math.min(Math.max(score, 0), 100) / 100;
   const filledCount = Math.round(ratio * SEGS);
   const color = tierColor(ratio);
@@ -111,7 +113,7 @@ export default function HealthGauge({ score, size = 'lg', label, subLabel, delta
           <path
             key={i}
             d={segPath(i)}
-            fill={i < filledCount ? color : 'rgba(14,57,61,0.06)'}
+            fill={i < filledCount ? color : dark ? 'rgba(255,255,255,0.08)' : 'rgba(14,57,61,0.06)'}
           />
         ))}
 
@@ -121,7 +123,7 @@ export default function HealthGauge({ score, size = 'lg', label, subLabel, delta
           textAnchor="middle"
           fontSize={fontSize}
           fontWeight={700}
-          fill={isPerfect ? '#0C9C6C' : '#0e393d'}
+          fill={isPerfect ? '#0C9C6C' : dark ? '#ffffff' : '#0e393d'}
           style={{ fontFamily: '-apple-system, system-ui, sans-serif' }}
         >
           {score}
@@ -148,7 +150,7 @@ export default function HealthGauge({ score, size = 'lg', label, subLabel, delta
           textAnchor="middle"
           dominantBaseline="middle"
           fontSize={10}
-          fill="#aaa"
+          fill={dark ? 'rgba(255,255,255,0.35)' : '#aaa'}
         >
           0
         </text>
@@ -158,14 +160,14 @@ export default function HealthGauge({ score, size = 'lg', label, subLabel, delta
           textAnchor="middle"
           dominantBaseline="middle"
           fontSize={10}
-          fill="#aaa"
+          fill={dark ? 'rgba(255,255,255,0.35)' : '#aaa'}
         >
           100
         </text>
 
-        <path d={needlePath} fill="#1c2a2b" opacity={0.65} />
-        <circle cx={CX} cy={CY} r={6} fill="#1c2a2b" opacity={0.15} />
-        <circle cx={CX} cy={CY} r={3.5} fill="white" stroke="#1c2a2b" strokeWidth={1} opacity={0.8} />
+        <path d={needlePath} fill={dark ? '#ffffff' : '#1c2a2b'} opacity={dark ? 0.5 : 0.65} />
+        <circle cx={CX} cy={CY} r={6} fill={dark ? '#ffffff' : '#1c2a2b'} opacity={0.15} />
+        <circle cx={CX} cy={CY} r={3.5} fill="white" stroke={dark ? 'rgba(255,255,255,0.4)' : '#1c2a2b'} strokeWidth={1} opacity={0.8} />
       </svg>
 
       {label && (
