@@ -399,10 +399,19 @@ export default function AISettingsManager({
               </div>
             </div>
 
-            {/* OpenAI Voice Selector */}
-            <div className={ttsProvider !== 'openai' ? 'opacity-40 pointer-events-none' : ''}>
-              <label className="block text-[12px] font-medium text-[#0e393d] mb-1">OpenAI TTS Voice</label>
-              <p className="text-[11px] text-[#1c2a2b]/40 mb-2">Voice used when OpenAI is the primary TTS or fallback provider.</p>
+            {/* OpenAI Voice Selector — always visible since OpenAI is the fallback */}
+            <div>
+              <label className="block text-[12px] font-medium text-[#0e393d] mb-1">
+                OpenAI TTS Voice
+                {ttsProvider !== 'openai' && (
+                  <span className="ml-2 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-[#0e393d]/[.06] text-[#0e393d]/40">FALLBACK</span>
+                )}
+              </label>
+              <p className="text-[11px] text-[#1c2a2b]/40 mb-2">
+                {ttsProvider === 'openai'
+                  ? 'Primary voice for all TTS output.'
+                  : 'Used automatically when ElevenLabs is unavailable. Always configure this as a backup.'}
+              </p>
               <select
                 value={openaiTtsVoice}
                 onChange={e => { setOpenaiTtsVoice(e.target.value); markDirty(); }}
