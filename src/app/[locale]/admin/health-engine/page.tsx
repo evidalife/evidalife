@@ -24,7 +24,7 @@ export default async function HealthEnginePage() {
   // Fetch biomarkers with categories
   const { data: biomarkers } = await admin
     .from('biomarkers')
-    .select('id, slug, name, category, unit, reference_range_low, reference_range_high, optimal_range_low, optimal_range_high, age_stratified, has_sex_specific_ranges')
+    .select('id, slug, name, category, unit, reference_range_low, reference_range_high, optimal_range_low, optimal_range_high, age_stratified, has_sex_specific_ranges, is_calculated')
     .order('category')
     .order('slug');
 
