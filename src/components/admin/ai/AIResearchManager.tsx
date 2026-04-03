@@ -148,7 +148,7 @@ interface RoadmapSource {
 
 const INGESTION_ROADMAP: RoadmapSource[] = [
   // Tier 0 — Book content (Greger's prose, analysis, conclusions)
-  { key: 'book_content', label: 'Book Content (Prose & Analysis)', tier: 0, target: 2400, description: "Greger's synthesized conclusions from 6 books" },
+  { key: 'book_content', label: 'Book Content (Prose & Analysis)', tier: 0, target: 2353, description: "Greger's synthesized conclusions from 6 books" },
   // Tier 1 — Greger-cited (all citations from books + videos)
   { key: 'greger_epub', label: 'Greger Books (EPUB)', tier: 1, target: 22000, description: '6 books: How Not to Age/Die/Diet, Lower LDL, Ozempic, Ultra-Processed' },
   { key: 'greger_videos', label: 'NutritionFacts.org Videos', tier: 1, target: 5000, description: 'Video citations from nutritionfacts.org' },
@@ -271,12 +271,10 @@ function RoadmapSection({ stats }: { stats: StatsData }) {
                         <div className="ml-6 mt-2 space-y-1.5 pb-1">
                           {(stats.bookContentStats ?? []).filter((b: BookContentStat) => b.chunks > 0).map((book: BookContentStat) => (
                             <div key={book.book_id} className="flex items-center gap-2.5">
-                              <span className="w-1 h-1 rounded-full shrink-0 bg-purple-400" />
+                              <span className="w-1 h-1 rounded-full shrink-0 bg-purple-500" />
                               <p className="text-[11px] text-[#1c2a2b]/60 flex-1 truncate">{book.title}</p>
                               <div className="w-16 h-1 rounded-full bg-purple-100 overflow-hidden shrink-0">
-                                <div className="h-full rounded-full bg-purple-400" style={{
-                                  width: `${stats.totalBookChunks > 0 ? Math.round((book.chunks / stats.totalBookChunks) * 100) : 0}%`
-                                }} />
+                                <div className="h-full rounded-full bg-purple-500" style={{ width: '100%' }} />
                               </div>
                               <p className="text-[10px] text-[#1c2a2b]/35 tabular-nums shrink-0 w-28 text-right">
                                 {book.chunks} chunks · {Math.round(book.total_chars / 1000)}k chars

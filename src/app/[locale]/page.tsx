@@ -4,6 +4,7 @@ import { Link } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import { createClient } from '@/lib/supabase/server';
+import { getStudyCount, formatStudyCount } from '@/lib/research/study-count';
 
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 type Lang = (typeof VALID_LANGS)[number];
@@ -615,6 +616,12 @@ export default async function HomePage() {
   const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const t = T[lang];
 
+  const studyCount = await getStudyCount();
+  const sc = formatStudyCount(studyCount, lang);
+
+  const heroSub = t.hero.sub.replace(/500[,. ]?000\+?/g, sc);
+  const aiSub = t.ai.sub.replace(/500[,. ]?000\+?/g, sc);
+
   // ─── Fetch real product data ───────────────────────────────────────────────
   const supabase = await createClient();
 
@@ -650,7 +657,7 @@ export default async function HomePage() {
               {t.hero.h1}<br />
               <em className="italic font-normal text-white/70">{t.hero.h1em}</em>
             </h1>
-            <p className="text-[1rem] font-light text-white/70 leading-relaxed max-w-[480px] mb-10">{t.hero.sub}</p>
+            <p className="text-[1rem] font-light text-white/70 leading-relaxed max-w-[480px] mb-10">{heroSub}</p>
             <div className="flex gap-3 flex-wrap">
               <Link
                 href="/login"
@@ -716,7 +723,7 @@ export default async function HomePage() {
             {t.ai.heading}<br />
             <em className="italic font-normal text-[#0e393d]/60">{t.ai.headingEm}</em>
           </h2>
-          <p className="text-[0.95rem] font-light text-[#5a6e6f] leading-relaxed max-w-[560px]">{t.ai.sub}</p>
+          <p className="text-[0.95rem] font-light text-[#5a6e6f] leading-relaxed max-w-[560px]">{aiSub}</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {t.ai.features.map((feat, i) => (

@@ -208,7 +208,7 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           storagePath: cacheKey,
           lang,
-          source: 'voice_turn',
+          source: `voice_${sessionMode}`,
           sizeBytes: audioBuffer.length,
         });
       });

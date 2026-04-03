@@ -52,6 +52,12 @@ export interface UseVoiceInputOptions {
   onError?: (error: string) => void;
   /** Override STT provider (if not set, auto-detected from admin settings) */
   sttProvider?: STTMode;
+  /**
+   * If true, keeps listening until manually stopped (for conversations).
+   * If false (default), auto-stops after the user pauses speaking (for single questions).
+   * For Deepgram, auto-stop uses a silence timer.
+   */
+  continuous?: boolean;
 }
 
 export interface UseVoiceInputReturn {
@@ -92,10 +98,14 @@ export function useVoiceInput({
   onResult,
   onError,
   sttProvider: overrideProvider,
+  continuous = false,
 }: UseVoiceInputOptions = {}): UseVoiceInputReturn {
   const [supported, setSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
+
+  // Silence timer for auto-stop in Deepgram non-continuous mode
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeProvider, setActiveProvider] = useState<STTMode>('web_speech_api');
 
   // Web Speech API refs
@@ -163,6 +173,7 @@ export function useVoiceInput({
   // ── Cleanup on unmount ──────────────────────────────────────────────
   useEffect(() => {
     return () => {
+      if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
       if (recognitionRef.current) {
         try { recognitionRef.current.abort(); } catch { /* ignore */ }
         recognitionRef.current = null;
@@ -199,10 +210,23 @@ export function useVoiceInput({
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           audioChunksRef.current.push(e.data);
+
+          // In non-continuous mode, reset silence timer on each chunk
+          // Auto-stop after 2s of silence (small chunks = ambient noise only)
+          if (!continuous) {
+            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+            silenceTimerRef.current = setTimeout(() => {
+              if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
+              }
+            }, 2000);
+          }
         }
       };
 
       recorder.onstop = async () => {
+        // Clear silence timer
+        if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
         // Stop mic stream
         stream.getTracks().forEach(t => t.stop());
         streamRef.current = null;
@@ -267,7 +291,7 @@ export function useVoiceInput({
     } catch (err) {
       onErrorRef.current?.(`Microphone access denied: ${err}`);
     }
-  }, [lang]);
+  }, [lang, continuous]);
 
   const stopDeepgram = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -291,7 +315,7 @@ export function useVoiceInput({
     const recognition = new SpeechRecognitionCtor();
     recognition.lang = LANG_MAP[lang] || lang;
     recognition.interimResults = true;
-    recognition.continuous = true;
+    recognition.continuous = continuous;
     recognition.maxAlternatives = 1;
 
     let finalTranscript = '';
@@ -332,7 +356,7 @@ export function useVoiceInput({
     recognition.start();
     setIsListening(true);
     setInterimTranscript('');
-  }, [lang]);
+  }, [lang, continuous]);
 
   const stopWebSpeech = useCallback(() => {
     if (recognitionRef.current) {

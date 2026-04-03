@@ -95,6 +95,25 @@ export async function GET() {
     console.error('[tts-cache] Error querying tracking table:', e);
   }
 
+  // ── Map sources to the 5 feature categories ────────────────────
+  const FEATURE_MAP: Record<string, string> = {
+    briefing: 'Health Briefing',
+    chat: 'Research Voice',        // legacy source value
+    research: 'Research Voice',
+    voice_turn: 'Voice Coaching',  // legacy (unmapped mode)
+    voice_daily_checkin: 'Daily Check-in',
+    voice_coaching: 'Voice Coaching',
+    voice_freeform: 'Open Conversation',
+  };
+
+  const byFeature: Record<string, { count: number; sources: string[] }> = {};
+  for (const [src, count] of Object.entries(bySource)) {
+    const feature = FEATURE_MAP[src] || src;
+    if (!byFeature[feature]) byFeature[feature] = { count: 0, sources: [] };
+    byFeature[feature].count += count;
+    if (!byFeature[feature].sources.includes(src)) byFeature[feature].sources.push(src);
+  }
+
   return NextResponse.json({
     totalFiles: storageTotalFiles,
     totalSize: storageTotalSize,
@@ -104,19 +123,61 @@ export async function GET() {
     orphanedFiles,
     briefingCount,
     bySource,
+    byFeature,
     userStats,
   });
 }
 
-/** DELETE — purge cache (optionally by language) + clean up tracking rows */
+/** DELETE — purge cache by source/feature, language, or all + clean up tracking rows */
 export async function DELETE(req: NextRequest) {
   const auth = await requireAdmin();
   if (!auth) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { admin } = auth;
-  let body: { lang?: string } = {};
+  let body: { lang?: string; source?: string } = {};
   try { body = await req.json(); } catch { /* empty body = purge all */ }
 
+  // ── Source-based delete (delete by feature) ─────────────────────
+  if (body.source) {
+    // Find all tracked files matching this source pattern
+    // source can be exact like "briefing" or a prefix like "voice_" to match voice_daily_checkin, voice_coaching, voice_freeform
+    let query = admin.from('tts_cache_files').select('storage_path');
+    if (body.source.endsWith('_')) {
+      // Prefix match: voice_ → voice_daily_checkin, voice_coaching, voice_freeform
+      query = query.like('source', `${body.source}%`);
+    } else {
+      query = query.eq('source', body.source);
+    }
+    const { data: rows } = await query;
+    const paths = (rows ?? []).map(r => r.storage_path);
+
+    let deletedCount = 0;
+    let trackingDeleted = 0;
+
+    if (paths.length > 0) {
+      // Delete from storage in batches of 100
+      for (let i = 0; i < paths.length; i += 100) {
+        const batch = paths.slice(i, i + 100);
+        const { error } = await admin.storage.from(TTS_BUCKET).remove(batch);
+        if (!error) deletedCount += batch.length;
+        else console.error('[tts-cache] Error purging source batch:', error.message);
+      }
+
+      // Delete tracking rows
+      let deleteQuery = admin.from('tts_cache_files').delete({ count: 'exact' });
+      if (body.source.endsWith('_')) {
+        deleteQuery = deleteQuery.like('source', `${body.source}%`);
+      } else {
+        deleteQuery = deleteQuery.eq('source', body.source);
+      }
+      const { count } = await deleteQuery;
+      trackingDeleted = count ?? 0;
+    }
+
+    return NextResponse.json({ ok: true, deleted: deletedCount, trackingDeleted });
+  }
+
+  // ── Language-based or full purge ────────────────────────────────
   const languages = body.lang ? [body.lang] : ['en', 'de', 'fr', 'es', 'it'];
   let deletedCount = 0;
   const allDeletedPaths: string[] = [];

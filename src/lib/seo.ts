@@ -93,8 +93,8 @@ export const PAGE_META = {
     en: { title: 'Shopping List', description: 'Your personal shopping list — add ingredients from recipes directly.' },
   },
   about: {
-    de: { title: 'Über uns', description: 'Evida Life AG – Mission, Vision und die Geschichte hinter unserer evidenzbasierten Gesundheitsplattform aus Zürich.' },
-    en: { title: 'About us', description: 'Evida Life AG – Mission, vision, and the story behind our evidence-based health platform from Zurich.' },
+    de: { title: 'Über uns', description: 'Evida Life AG – Mission, Vision und die Geschichte hinter unserer evidenzbasierten Gesundheitsplattform aus Wollerau.' },
+    en: { title: 'About us', description: 'Evida Life AG – Mission, vision, and the story behind our evidence-based health platform from Switzerland.' },
   },
   team: {
     de: { title: 'Team', description: 'Das interdisziplinäre Team hinter Evida Life – Medizin, Datenwissenschaft, Ernährung und Produktentwicklung.' },
@@ -117,8 +117,8 @@ export const PAGE_META = {
     en: { title: 'Terms & Conditions', description: 'Terms and conditions of Evida Life AG.' },
   },
   legal: {
-    de: { title: 'Impressum', description: 'Rechtliche Angaben und Impressum von Evida Life AG, Zürich.' },
-    en: { title: 'Legal Notice', description: 'Legal information and imprint of Evida Life AG, Zurich.' },
+    de: { title: 'Impressum', description: 'Rechtliche Angaben und Impressum von Evida Life AG, Wollerau.' },
+    en: { title: 'Legal Notice', description: 'Legal information and imprint of Evida Life AG, Wollerau.' },
   },
   partnerLabs: {
     de: { title: 'Partnerlabore', description: 'Unsere ISO-akkreditierten Partnerlabore in der Schweiz und Deutschland. Präzise Biomarker-Analysen für deine Gesundheit.' },

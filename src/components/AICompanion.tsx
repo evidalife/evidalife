@@ -191,7 +191,7 @@ export default function AICompanion() {
   }, []);
 
   // Health Engine v2 has its own built-in chat — hide global companion
-  if (pathname.includes('health-engine-v2')) return null;
+  if (pathname.includes('health-briefing')) return null;
 
   return (
     <>

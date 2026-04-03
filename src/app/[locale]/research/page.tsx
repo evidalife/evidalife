@@ -2,14 +2,15 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { getLocale } from 'next-intl/server';
 import PublicNav from '@/components/PublicNav';
-import PublicFooter from '@/components/PublicFooter';
+import PageHero from '@/components/PageHero';
 import ResearchChat from '@/components/research/ResearchChat';
+import { getStudyCount, formatStudyCount } from '@/lib/research/study-count';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Research Engine | Evida Life',
-  description: 'Ask health and nutrition questions answered by AI synthesis of 500,000+ peer-reviewed studies.',
+  description: 'Ask health and nutrition questions answered by AI synthesis of peer-reviewed studies.',
 };
 
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
@@ -53,6 +54,12 @@ export default async function ResearchPage() {
   const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const t = T[lang];
 
+  const studyCount = await getStudyCount();
+  const formattedCount = formatStudyCount(studyCount, lang);
+
+  const badgeText = t.badge.replace(/500[,.]?000\+|500K\+/g, `${Math.floor(studyCount / 1000)}K+`);
+  const subText = t.sub.replace(/500[,.]?000\+?|500 000\+?/g, formattedCount);
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
@@ -81,34 +88,24 @@ export default async function ResearchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fafaf8] flex flex-col">
+    <div className="h-screen bg-[#fafaf8] flex flex-col overflow-hidden">
       <PublicNav />
 
-      {/* ── Dark teal hero ─────────────────────────────────────────────── */}
-      <section className="w-full bg-[#0e393d] px-6 pt-28 pb-14">
-        <div className="max-w-[1060px] mx-auto">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.eyebrow}</p>
-              <h1 className="font-serif text-3xl sm:text-4xl text-white leading-tight mb-3">{t.heading}</h1>
-              <p className="text-sm font-light text-white/50 max-w-xl leading-relaxed">{t.sub}</p>
-            </div>
-            <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-white/40 bg-white/[.06] rounded-full px-3.5 py-1.5 shrink-0 mt-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              {t.badge}
-            </div>
+      <PageHero variant="teal" eyebrow={t.eyebrow} title={t.heading} subtitle={subText}>
+        <div className="hidden sm:inline-flex items-center gap-1.5 text-[11px] text-white/40 bg-white/[.06] rounded-full px-3.5 py-1.5 mt-4">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          {badgeText}
+        </div>
+      </PageHero>
+
+      {/* ── Chat area — fixed viewport box ─────────────────────────── */}
+      <main className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-0 max-w-[1060px] mx-auto w-full px-8 md:px-12 flex flex-col py-6">
+          <div className="flex-1 min-h-0 bg-white rounded-2xl border border-[#0e393d]/8 shadow-sm flex flex-col overflow-hidden">
+            <ResearchChat biomarkerContext={biomarkerContext} />
           </div>
         </div>
-      </section>
-
-      {/* ── Chat area ──────────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col" style={{ height: 'calc(100vh - 170px)' }}>
-        <div className="flex-1 max-w-[1060px] mx-auto w-full px-0 md:px-4 flex flex-col">
-          <ResearchChat biomarkerContext={biomarkerContext} />
-        </div>
       </main>
-
-      <PublicFooter />
     </div>
   );
 }

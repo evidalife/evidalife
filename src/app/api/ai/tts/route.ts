@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
           userId: authUserId,
           storagePath: cacheKey,
           lang,
-          source: (source as 'briefing' | 'chat' | 'voice_turn') || 'briefing',
+          source: source || 'briefing',
           briefingId: briefingId || null,
           sizeBytes: audioBuffer.length,
         });

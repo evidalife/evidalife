@@ -3,6 +3,7 @@ import { getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import PageHero from '@/components/PageHero';
 import DailyDozenTracker, { type DDCategory, type DDEntry, type DDStreak, type HistoricalEntry } from '@/components/DailyDozenTracker';
 import DailyChecklistTabs from '@/components/DailyChecklistTabs';
 import { type ChecklistItem, type ChecklistEntry } from '@/components/ChecklistTracker';
@@ -591,14 +592,8 @@ export default async function DailyDozenPage({ searchParams }: { searchParams: P
     return (
       <div className="min-h-screen bg-[#fafaf8] flex flex-col">
         <PublicNav />
-        <section className="w-full bg-[#0e393d] px-6 pt-28 pb-14">
-          <div className="max-w-5xl mx-auto">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.eyebrow}</p>
-            <h1 className="font-serif text-4xl sm:text-5xl text-white leading-tight mb-4">{t.heading}</h1>
-            <p className="text-white/60 text-base leading-relaxed max-w-xl">{t.sub}</p>
-          </div>
-        </section>
-        <main className="flex-1 w-full max-w-5xl mx-auto px-6 py-8">
+        <PageHero variant="teal" eyebrow={t.eyebrow} title={t.heading} subtitle={t.sub} />
+        <main className="flex-1 w-full max-w-[1060px] mx-auto px-8 md:px-12 py-8">
 
           {categories.length === 0 ? (
             <div className="rounded-2xl border border-[#ceab84]/30 bg-[#ceab84]/8 px-6 py-10 text-center">
@@ -642,16 +637,7 @@ export default async function DailyDozenPage({ searchParams }: { searchParams: P
     <div className="font-sans bg-[#fafaf8] text-[#1c2a2b] overflow-x-hidden">
       <PublicNav />
 
-      {/* ── 1. HERO ─────────────────────────────────────────────────────────────── */}
-      <section className="w-full bg-[#0e393d] px-8 md:px-12 pt-28 pb-16">
-        <div className="max-w-[1060px] mx-auto">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.tag}</p>
-          <h1 className="font-serif font-normal text-4xl md:text-5xl text-white leading-tight mb-5 max-w-[640px]">
-            {t.title}
-          </h1>
-          <p className="text-white/60 text-base leading-relaxed max-w-[580px]">{t.sub}</p>
-        </div>
-      </section>
+      <PageHero variant="teal" eyebrow={t.tag} title={t.title} subtitle={t.sub} />
 
       {/* ── 2. DR. GREGER PROFILE ───────────────────────────────────────────────── */}
       <section className="border-t border-[#0e393d]/10">

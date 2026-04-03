@@ -6,7 +6,7 @@ import {
   ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis,
 } from 'recharts';
 import BiomarkerTrendChart from './BiomarkerTrendChart';
-import BriefingPlayer from './BriefingPlayer';
+// BriefingPlayer removed — briefing now lives at /health-briefing
 import { CATEGORY_DISPLAY } from '@/lib/health-score';
 import { createClient } from '@/lib/supabase/client';
 // ResearchChat removed — moving to Health Engine v2
@@ -997,14 +997,14 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
 
       {/* HERO SECTION */}
       <div className="bg-[#0e393d]">
-        <div className="max-w-[1040px] mx-auto px-6 md:px-10 pt-28 pb-20">
-          <p className="text-[10px] font-semibold tracking-[.2em] uppercase text-[#ceab84] mb-3">{t.tag}</p>
-          <h1 className="font-serif text-[clamp(2.2rem,4vw,3rem)] text-white leading-[1.1] mb-4">
+        <div className="max-w-[1060px] mx-auto px-8 md:px-12 pt-28 pb-20">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.tag}</p>
+          <h1 className="font-serif font-normal text-4xl md:text-5xl text-white leading-tight mb-3">
             {isSample && profile?.first_name
               ? `${profile.first_name}'s Health Score`
               : t.title}
           </h1>
-          <p className="text-[15px] text-white/50 max-w-2xl leading-relaxed font-light mb-8">{t.sub}</p>
+          <p className="text-white/60 text-base leading-relaxed max-w-xl mb-8">{t.sub}</p>
           <div className="flex flex-wrap gap-8 text-[11px] text-white/40">
             <span className="flex items-center gap-1"><span className="text-white/30">•</span> {t.lastTested}: {fmtDateFull(lastDate, lang)}</span>
             <span className="flex items-center gap-1"><span className="text-white/30">•</span> {reports.length} {t.testsCompleted}</span>
@@ -1015,13 +1015,32 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
 
       <div className="max-w-[1040px] mx-auto px-6 md:px-10 py-16">
 
-        {/* ── AUDIO HEALTH BRIEFING ── */}
+        {/* ── AUDIO HEALTH BRIEFING — links to /health-briefing ── */}
         <section className="mb-8">
-          <BriefingPlayer
-            lang={lang}
-            firstName={profile?.first_name ?? ''}
-            onHighlight={setHighlightedSection}
-          />
+          <a href={`/${lang}/health-briefing`} className="block bg-gradient-to-r from-[#0e393d] to-[#13474c] rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+            <div className="p-6 flex items-center gap-5">
+              <div className="w-14 h-14 rounded-full bg-[#0C9C6C] flex items-center justify-center shrink-0 shadow-lg shadow-[#0C9C6C]/20">
+                <svg width="18" height="20" viewBox="0 0 18 20" fill="none">
+                  <path d="M1 1.5v17l16-8.5L1 1.5z" fill="white" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-[13px] font-semibold text-white">{t.healthBriefing}</h3>
+                  <span className="text-[9px] font-semibold tracking-[.08em] uppercase px-2 py-0.5 rounded-full bg-[#0C9C6C]/20 text-[#0C9C6C]">AI</span>
+                </div>
+                <p className="text-[11px] text-white/40 mb-3">{t.briefingSub}</p>
+                <div className="flex items-center gap-[2px] h-5">
+                  {Array.from({ length: 60 }, (_, i) => (
+                    <div key={i} className="w-[3px] rounded-full bg-white/10" style={{ height: `${Math.round((6 + Math.sin(i * 0.5) * 6 + Math.sin(i * 1.3 + 2) * 2 + 2) * 100) / 100}px` }} />
+                  ))}
+                </div>
+              </div>
+              <span className="shrink-0 px-4 py-2 rounded-xl bg-white/[.08] border border-white/[.08] text-[11px] font-semibold text-white/60">
+                {t.listenNow}
+              </span>
+            </div>
+          </a>
         </section>
 
         {/* ── TWO GAUGES: LONGEVITY SCORE + BIOLOGICAL AGE CLOCKS ── */}

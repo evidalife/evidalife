@@ -2,6 +2,7 @@ import { getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import PageHero from '@/components/PageHero';
 import ShoppingListView, { type ShoppingList, type ShoppingListItem } from '@/components/ShoppingListView';
 import { createClient } from '@/lib/supabase/server';
 import { buildMeta, PAGE_META } from '@/lib/seo';
@@ -32,9 +33,9 @@ const T: Record<Lang, {
   ctaLogin: string;
 }> = {
   de: {
-    tag: 'EINKAUFSLISTE',
-    h1: 'Plane deinen pflanzlichen Wocheneinkauf',
-    sub: 'Füge Rezeptzutaten mit einem Klick hinzu, ergänze eigene Artikel und hake alles im Supermarkt ab — deine persönliche Einkaufsliste, synchronisiert über alle Geräte.',
+    tag: 'Küche',
+    h1: 'Einkaufsliste',
+    sub: 'Plane deinen pflanzlichen Wocheneinkauf. Füge Rezeptzutaten mit einem Klick hinzu, ergänze eigene Artikel und hake alles im Supermarkt ab.',
     featuresHeading: 'Was du bekommst',
     features: [
       { emoji: '🍽️', title: 'Aus Rezepten befüllen', desc: 'Klicke auf einem Rezept auf "Zur Einkaufsliste" — alle Zutaten werden sofort übernommen, Mengen skaliert.' },
@@ -48,9 +49,9 @@ const T: Record<Lang, {
     ctaLogin: 'Bereits Mitglied? Anmelden',
   },
   en: {
-    tag: 'SHOPPING LIST',
-    h1: 'Plan your plant-based week',
-    sub: 'Add recipe ingredients with one click, add your own items, and check everything off at the supermarket — your personal shopping list, synced across all devices.',
+    tag: 'Kitchen',
+    h1: 'Shopping List',
+    sub: 'Plan your plant-based week. Add recipe ingredients with one click, add your own items, and check everything off at the supermarket.',
     featuresHeading: 'What you get',
     features: [
       { emoji: '🍽️', title: 'Fill from recipes', desc: 'Click "Add to shopping list" on any recipe — all ingredients are instantly added, quantities scaled.' },
@@ -64,9 +65,9 @@ const T: Record<Lang, {
     ctaLogin: 'Already a member? Sign in',
   },
   fr: {
-    tag: 'LISTE DE COURSES',
-    h1: 'Planifiez votre semaine végétale',
-    sub: 'Ajoutez des ingrédients de recettes en un clic, ajoutez vos propres articles et cochez tout au supermarché — votre liste de courses personnelle, synchronisée sur tous vos appareils.',
+    tag: 'Cuisine',
+    h1: 'Liste de courses',
+    sub: 'Planifiez votre semaine végétale. Ajoutez des ingrédients de recettes en un clic, ajoutez vos propres articles et cochez tout au supermarché.',
     featuresHeading: 'Ce que vous obtenez',
     features: [
       { emoji: '🍽️', title: 'Remplir depuis les recettes', desc: 'Cliquez sur "Ajouter à la liste" sur n\'importe quelle recette — tous les ingrédients sont instantanément ajoutés.' },
@@ -80,9 +81,9 @@ const T: Record<Lang, {
     ctaLogin: 'Déjà membre? Se connecter',
   },
   es: {
-    tag: 'LISTA DE COMPRAS',
-    h1: 'Planifica tu semana plant-based',
-    sub: 'Agrega ingredientes de recetas con un clic, añade tus propios artículos y marca todo en el supermercado — tu lista de compras personal, sincronizada en todos los dispositivos.',
+    tag: 'Cocina',
+    h1: 'Lista de compras',
+    sub: 'Planifica tu semana plant-based. Agrega ingredientes de recetas con un clic, añade tus propios artículos y marca todo en el supermercado.',
     featuresHeading: 'Qué obtienes',
     features: [
       { emoji: '🍽️', title: 'Llenar desde recetas', desc: 'Haz clic en "Agregar a la lista" en cualquier receta — todos los ingredientes se agregan instantáneamente.' },
@@ -96,9 +97,9 @@ const T: Record<Lang, {
     ctaLogin: '¿Ya eres miembro? Iniciar sesión',
   },
   it: {
-    tag: 'LISTA DELLA SPESA',
-    h1: 'Pianifica la tua settimana plant-based',
-    sub: 'Aggiungi ingredienti di ricette con un clic, aggiungi i tuoi articoli e spunta tutto al supermercato — la tua lista della spesa personale, sincronizzata su tutti i dispositivi.',
+    tag: 'Cucina',
+    h1: 'Lista della spesa',
+    sub: 'Pianifica la tua settimana plant-based. Aggiungi ingredienti di ricette con un clic, aggiungi i tuoi articoli e spunta tutto al supermercato.',
     featuresHeading: 'Cosa ottieni',
     features: [
       { emoji: '🍽️', title: 'Riempire dalle ricette', desc: 'Clicca su "Aggiungi alla lista" su qualsiasi ricetta — tutti gli ingredienti vengono aggiunti istantaneamente.' },
@@ -117,17 +118,10 @@ function PublicIntro({ lang }: { lang: Lang }) {
   const t = T[lang];
   return (
     <div className="flex-1 flex flex-col">
-      {/* Hero */}
-      <section className="w-full bg-[#0e393d] px-6 pt-28 pb-16">
-        <div className="max-w-3xl mx-auto">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.tag}</p>
-          <h1 className="font-serif text-4xl sm:text-5xl text-white leading-tight mb-4">{t.h1}</h1>
-          <p className="text-white/60 text-base leading-relaxed max-w-xl">{t.sub}</p>
-        </div>
-      </section>
+      <PageHero variant="teal" eyebrow={t.tag} title={t.h1} subtitle={t.sub} />
 
       {/* Features */}
-      <section className="max-w-4xl mx-auto px-6 py-16 w-full">
+      <section className="max-w-[1060px] mx-auto px-8 md:px-12 py-16 w-full">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-8">{t.featuresHeading}</p>
         <div className="grid sm:grid-cols-2 gap-5">
           {t.features.map((f) => (
@@ -144,7 +138,7 @@ function PublicIntro({ lang }: { lang: Lang }) {
 
       {/* CTA */}
       <section className="bg-[#0e393d] py-20 mt-auto">
-        <div className="max-w-2xl mx-auto px-6 text-center">
+        <div className="max-w-[1060px] mx-auto px-8 md:px-12 text-center">
           <h2 className="font-serif text-3xl text-white mb-3">{t.ctaHeading}</h2>
           <p className="text-white/70 text-sm leading-relaxed mb-7">{t.ctaBody}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">

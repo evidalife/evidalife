@@ -339,8 +339,8 @@ export default function CoachPage({
   return (
     <div className="bg-[#fafaf8]">
       {/* Hero header */}
-      <section className="w-full bg-[#0e393d] px-6 md:px-12 pt-28 pb-14">
-        <div className="max-w-[1060px] mx-auto">
+      <section className="w-full bg-[#0e393d] pt-28 pb-14">
+        <div className="max-w-[1060px] mx-auto px-8 md:px-12">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">Evida Coach</p>
           <h1 className="font-serif font-normal text-4xl md:text-5xl text-white leading-tight mb-3">
             {t.hello}, {firstName}
@@ -352,7 +352,7 @@ export default function CoachPage({
       </section>
 
       {/* Main Content */}
-      <div className="max-w-[1060px] mx-auto px-6 md:px-12 py-10">
+      <div className="max-w-[1060px] mx-auto px-8 md:px-12 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-8">
 
           {/* ── Sidebar ───────────────────────────────────────────────── */}

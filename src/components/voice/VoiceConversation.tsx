@@ -149,6 +149,7 @@ export default function VoiceConversation({
 
   const { supported, isListening, interimTranscript, startListening, stopListening } = useVoiceInput({
     lang,
+    continuous: true, // Keep listening in conversation mode
     onResult: handleVoiceResult,
     onError: (err) => {
       if (err !== 'no-speech' && err !== 'aborted') {

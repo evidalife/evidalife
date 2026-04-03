@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getLocale } from 'next-intl/server';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import PageHero from '@/components/PageHero';
 import LessonLibrary from '@/components/coach/LessonLibrary';
 
 export const metadata = { title: 'Lifestyle – Evida Life' };
@@ -102,18 +103,9 @@ export default async function LifestylePage() {
       <div className="min-h-screen bg-[#fafaf8] flex flex-col">
         <PublicNav />
 
-        <main className="mx-auto w-full max-w-[1200px] px-6 pt-20 pb-16 flex-1">
-          <div className="text-center mb-16">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">
-              {t.tag}
-            </p>
-            <h1 className="font-serif text-5xl text-[#0e393d] mb-4 leading-tight">
-              {t.h1}
-            </h1>
-            <p className="mx-auto max-w-xl text-base text-[#1c2a2b]/60 leading-relaxed">
-              {t.sub}
-            </p>
-          </div>
+        <PageHero variant="light" eyebrow={t.tag} title={t.h1} subtitle={t.sub} />
+
+        <main className="mx-auto w-full max-w-[1060px] px-8 md:px-12 pb-16 flex-1">
 
           <LessonLibrary
             lang={lang}
@@ -133,17 +125,9 @@ export default async function LifestylePage() {
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
-      <main className="mx-auto w-full max-w-[1060px] px-6 pt-28 pb-16 flex-1 flex flex-col items-center justify-center text-center">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">
-          {t.tag}
-        </p>
-        <h1 className="font-serif text-5xl text-[#0e393d] mb-4 leading-tight">
-          {t.h1}
-        </h1>
-        <p className="mx-auto max-w-xl text-base text-[#1c2a2b]/60 leading-relaxed mb-10">
-          {t.sub}
-        </p>
+      <PageHero variant="light" eyebrow={t.tag} title={t.h1} subtitle={t.sub} />
 
+      <main className="mx-auto w-full max-w-[1060px] px-8 md:px-12 pb-16 flex-1 flex flex-col items-center justify-center text-center">
         <div className="rounded-2xl bg-white ring-1 ring-[#0e393d]/8 px-10 py-12 max-w-lg w-full">
           <div className="text-4xl mb-4">🌿</div>
           <p className="text-sm text-[#1c2a2b]/60 leading-relaxed mb-6">

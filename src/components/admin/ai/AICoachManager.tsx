@@ -23,6 +23,7 @@ interface TTSCacheStats {
   orphanedFiles?: number;
   briefingCount?: number;
   bySource?: Record<string, number>;
+  byFeature?: Record<string, { count: number; sources: string[] }>;
   userStats?: Record<string, { name: string; email: string; files: number; sources?: Record<string, number> }>;
 }
 
@@ -75,7 +76,7 @@ interface UserProgressRow {
 }
 
 const TABS = [
-  { id: 'briefings', label: 'Briefings & Cache', icon: '🎙️' },
+  { id: 'briefings', label: 'AI Generation', icon: '🎙️' },
   { id: 'journey', label: 'Journey Config', icon: '🗺️' },
   { id: 'voice', label: 'Voice Test', icon: '🎤' },
   { id: 'progress', label: 'User Progress', icon: '📊' },
@@ -202,6 +203,7 @@ export default function AICoachManager() {
   const [cacheStats, setCacheStats] = useState<TTSCacheStats | null>(null);
   const [cacheLoading, setCacheLoading] = useState(false);
   const [purging, setPurging] = useState(false);
+  const [purgingFeature, setPurgingFeature] = useState<string | null>(null);
 
   // Journey Config state
   const [journeyConfig, setJourneyConfig] = useState<JourneyConfig | null>(null);
@@ -474,19 +476,6 @@ export default function AICoachManager() {
                   <div className="text-xl font-semibold text-amber-500">{cacheStats.orphanedFiles}</div>
                 </div>
               )}
-              {cacheStats.bySource && Object.keys(cacheStats.bySource).length > 0 && (
-                <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-1">By Source</div>
-                  <div className="flex gap-3">
-                    {Object.entries(cacheStats.bySource).map(([source, count]) => (
-                      <div key={source} className="text-[12px] text-[#1c2a2b]/60">
-                        <span className="font-medium text-[#0e393d]">{count}</span>
-                        <span className="ml-1">{source}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
               {Object.keys(cacheStats.byLang).length > 0 && (
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-1">By Language</div>
@@ -505,6 +494,70 @@ export default function AICoachManager() {
                   </div>
                 </div>
               )}
+
+              {/* ── By Feature (5 categories) ── */}
+              {cacheStats.byFeature && Object.keys(cacheStats.byFeature).length > 0 && (
+                <div className="basis-full mt-3 pt-3 border-t border-[#0e393d]/[.06]">
+                  <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-2">By Feature</div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                    {[
+                      { key: 'Health Briefing', icon: '🎙️', deleteSource: 'briefing' },
+                      { key: 'Research Voice', icon: '🔬', deleteSource: 'research' },
+                      { key: 'Daily Check-in', icon: '🌅', deleteSource: 'voice_daily_checkin' },
+                      { key: 'Voice Coaching', icon: '💬', deleteSource: 'voice_coaching' },
+                      { key: 'Open Conversation', icon: '🎙️', deleteSource: 'voice_freeform' },
+                    ].map(({ key, icon, deleteSource }) => {
+                      const feat = cacheStats.byFeature?.[key];
+                      const count = feat?.count ?? 0;
+                      if (count === 0) return (
+                        <div key={key} className="rounded-lg border border-[#0e393d]/[.05] bg-[#fafaf8] px-3 py-2 opacity-40">
+                          <div className="text-[11px] text-[#1c2a2b]/50">{icon} {key}</div>
+                          <div className="text-sm font-semibold text-[#0e393d]/30 mt-0.5">0</div>
+                        </div>
+                      );
+                      return (
+                        <div key={key} className="rounded-lg border border-[#0e393d]/[.08] bg-white px-3 py-2">
+                          <div className="flex items-center justify-between">
+                            <div className="text-[11px] text-[#1c2a2b]/60">{icon} {key}</div>
+                            <button
+                              onClick={async () => {
+                                if (!(await confirm({ title: `Delete ${key}`, message: `Delete ${count} cached audio files for ${key}? They will be re-generated on next use.`, variant: 'danger' }))) return;
+                                setPurgingFeature(deleteSource);
+                                try {
+                                  const res = await fetch('/api/admin/tts-cache', {
+                                    method: 'DELETE',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ source: deleteSource }),
+                                  });
+                                  if (res.ok) loadCacheStats();
+                                } catch { /* silent */ }
+                                setPurgingFeature(null);
+                              }}
+                              disabled={purgingFeature === deleteSource}
+                              className="text-[9px] text-red-400 hover:text-red-600 transition-colors disabled:opacity-30"
+                              title={`Delete ${key} cache`}
+                            >
+                              {purgingFeature === deleteSource ? '…' : '✕'}
+                            </button>
+                          </div>
+                          <div className="text-sm font-semibold text-[#0e393d] mt-0.5">{count} <span className="font-normal text-[10px] text-[#1c2a2b]/30">files</span></div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Legacy source breakdown (for old data) */}
+              {cacheStats.bySource && Object.keys(cacheStats.bySource).some(s => s === 'voice_turn' || s === 'chat') && (
+                <div className="basis-full mt-2">
+                  <div className="text-[10px] text-[#1c2a2b]/25 italic">
+                    Legacy sources: {Object.entries(cacheStats.bySource).filter(([s]) => s === 'voice_turn' || s === 'chat').map(([s, c]) => `${c} ${s}`).join(', ')}
+                    {' — these will be remapped to feature categories on next generation'}
+                  </div>
+                </div>
+              )}
+
               {cacheStats.userStats && Object.keys(cacheStats.userStats).length > 0 && (
                 <div className="basis-full mt-3 pt-3 border-t border-[#0e393d]/[.06]">
                   <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-2">Per User</div>

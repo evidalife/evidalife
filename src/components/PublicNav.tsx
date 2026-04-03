@@ -13,7 +13,7 @@ type Locale = 'de' | 'en' | 'fr' | 'es' | 'it';
 // URL slugs for each section's dropdown items, matching nav.dropdowns.* order in translations
 const NAV_SLUG_MAP: Record<string, (string | null)[]> = {
   Kitchen: ['/recipes', '/daily-dozen', '/blog'],
-  Health:  ['/health-engine', '/biomarkers', '/bioage', '/partner-labs'],
+  Health:  ['/health-engine', '/biomarkers', '/bioage', '/partner-labs', '/science'],
   Lifestyle: ['/lifestyle'],
   Shop:    ['/shop'],
 };
@@ -31,23 +31,23 @@ type AuthDropdownItem = { label: string; href: string };
 const AUTH_DROPDOWN_ITEMS: Partial<Record<string, Record<Locale, AuthDropdownItem[]>>> = {
   Health: {
     de: [
-      { label: 'Health Engine v2',      href: '/health-engine-v2' },
+      { label: 'Health Engine v2',      href: '/health-briefing' },
       { label: 'Forschung',            href: '/research' },
     ],
     en: [
-      { label: 'Health Engine v2',      href: '/health-engine-v2' },
+      { label: 'Health Engine v2',      href: '/health-briefing' },
       { label: 'Research',             href: '/research' },
     ],
     fr: [
-      { label: 'Health Engine v2',      href: '/health-engine-v2' },
+      { label: 'Health Engine v2',      href: '/health-briefing' },
       { label: 'Recherche',            href: '/research' },
     ],
     es: [
-      { label: 'Health Engine v2',      href: '/health-engine-v2' },
+      { label: 'Health Engine v2',      href: '/health-briefing' },
       { label: 'Investigación',        href: '/research' },
     ],
     it: [
-      { label: 'Health Engine v2',      href: '/health-engine-v2' },
+      { label: 'Health Engine v2',      href: '/health-briefing' },
       { label: 'Ricerca',              href: '/research' },
     ],
   },

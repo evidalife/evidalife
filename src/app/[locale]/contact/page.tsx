@@ -1,8 +1,10 @@
 import { getLocale } from 'next-intl/server';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import PageHero from '@/components/PageHero';
 import ContactForm from '@/components/ContactForm';
 import { buildMeta, PAGE_META } from '@/lib/seo';
+import { getCompanyInfo } from '@/lib/site-settings';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -19,7 +21,7 @@ const T = {
     heading:  'Schreib uns',
     sub:      'Fragen, Feedback oder Kooperationsanfragen – wir freuen uns von dir zu hören.',
     infoHead: 'Evida Life AG',
-    address:  ['Zürich', 'Schweiz'],
+    address:  ['Sihleggstrasse 5', '8832 Wollerau', 'Schweiz'],
     emailLabel: 'E-Mail',
     formHead: 'Nachricht senden',
   },
@@ -28,7 +30,7 @@ const T = {
     heading:  'Get in touch',
     sub:      "Questions, feedback, or partnership enquiries — we'd love to hear from you.",
     infoHead: 'Evida Life AG',
-    address:  ['Zürich', 'Switzerland'],
+    address:  ['Sihleggstrasse 5', '8832 Wollerau', 'Switzerland'],
     emailLabel: 'Email',
     formHead: 'Send a message',
   },
@@ -37,7 +39,7 @@ const T = {
     heading:  'Contactez-nous',
     sub:      "Questions, retours ou demandes de partenariat – nous serions ravis d'avoir de vos nouvelles.",
     infoHead: 'Evida Life AG',
-    address:  ['Zurich', 'Suisse'],
+    address:  ['Sihleggstrasse 5', '8832 Wollerau', 'Suisse'],
     emailLabel: 'E-mail',
     formHead: 'Envoyer un message',
   },
@@ -46,7 +48,7 @@ const T = {
     heading:  'Contáctanos',
     sub:      'Preguntas, comentarios o consultas de asociación – nos encantaría saber de ti.',
     infoHead: 'Evida Life AG',
-    address:  ['Zúrich', 'Suiza'],
+    address:  ['Sihleggstrasse 5', '8832 Wollerau', 'Suiza'],
     emailLabel: 'Correo electrónico',
     formHead: 'Enviar un mensaje',
   },
@@ -55,7 +57,7 @@ const T = {
     heading:  'Contattaci',
     sub:      'Domande, feedback o richieste di partnership – ci farebbe piacere sentirti.',
     infoHead: 'Evida Life AG',
-    address:  ['Zurigo', 'Svizzera'],
+    address:  ['Sihleggstrasse 5', '8832 Wollerau', 'Svizzera'],
     emailLabel: 'E-mail',
     formHead: 'Invia un messaggio',
   },
@@ -65,30 +67,30 @@ export default async function ContactPage() {
   const locale = await getLocale();
   const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale) ? (locale as Lang) : 'en';
   const t = T[lang];
+  const company = await getCompanyInfo(lang);
 
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-6 pt-28 pb-16">
+      <PageHero
+        variant="light"
+        eyebrow={t.eyebrow}
+        title={t.heading}
+        subtitle={t.sub}
+      />
 
-        {/* Hero */}
-        <div className="mb-12 max-w-xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-2">{t.eyebrow}</p>
-          <h1 className="font-serif text-4xl text-[#0e393d] mb-3">{t.heading}</h1>
-          <p className="text-[#1c2a2b]/60 text-base leading-relaxed">{t.sub}</p>
-        </div>
-
+      <main className="flex-1 w-full max-w-[1060px] mx-auto px-8 md:px-12 pb-16">
         <div className="grid gap-10 lg:grid-cols-[280px_1fr] items-start">
 
           {/* Company info */}
           <div className="space-y-6">
             <div className="rounded-2xl border border-[#0e393d]/10 bg-white p-6">
               <p className="text-xs font-semibold uppercase tracking-widest text-[#ceab84] mb-4">
-                {t.infoHead}
+                {company.name}
               </p>
 
-              {/* Address */}
+              {/* Address — from site_settings */}
               <div className="flex items-start gap-3 mb-5">
                 <span className="mt-0.5 text-[#0e393d]/40">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
@@ -97,13 +99,13 @@ export default async function ContactPage() {
                   </svg>
                 </span>
                 <div>
-                  {t.address.map((line) => (
-                    <p key={line} className="text-sm text-[#1c2a2b]/70">{line}</p>
-                  ))}
+                  <p className="text-sm text-[#1c2a2b]/70">{company.street}</p>
+                  <p className="text-sm text-[#1c2a2b]/70">{company.postalCode} {company.city}</p>
+                  <p className="text-sm text-[#1c2a2b]/70">{company.country}</p>
                 </div>
               </div>
 
-              {/* Email */}
+              {/* Email — from site_settings */}
               <div className="flex items-center gap-3">
                 <span className="text-[#0e393d]/40">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
@@ -114,10 +116,10 @@ export default async function ContactPage() {
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-[#1c2a2b]/35 mb-0.5">{t.emailLabel}</p>
                   <a
-                    href="mailto:hello@evidalife.com"
+                    href={`mailto:${company.email}`}
                     className="text-sm text-[#0e393d] font-medium hover:underline"
                   >
-                    hello@evidalife.com
+                    {company.email}
                   </a>
                 </div>
               </div>

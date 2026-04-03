@@ -13,7 +13,8 @@
         "Health Engine",
         "Biomarker",
         "Biologisches Alter",
-        "Partnerlabore"
+        "Partnerlabore",
+        "Wissenschaft"
       ],
       "Lifestyle": [
         "Lektionen"
@@ -91,7 +92,6 @@
       "label": "Unternehmen",
       "items": [
         "Über uns",
-        "Team",
         "Partner Labs",
         "Kontakt"
       ]
@@ -385,19 +385,19 @@
     "s1": {
       "heading": "Angaben gemäss Art. 3 UWG (Schweiz)",
       "company": "Evida Life AG",
-      "addressLine1": "[Strasse und Hausnummer]",
-      "addressLine2": "[PLZ] Zürich",
+      "addressLine1": "Sihleggstrasse 5",
+      "addressLine2": "8832 Wollerau",
       "country": "Schweiz",
       "emailLabel": "E-Mail:",
       "registryLabel": "Handelsregister:",
-      "registryValue": "Handelsregister des Kantons Zürich",
+      "registryValue": "Handelsregister des Kantons Schwyz",
       "uidLabel": "UID:",
-      "uidValue": "CHE-[xxx.xxx.xxx]"
+      "uidValue": "CHE-418.529.414"
     },
     "s2": {
       "heading": "Verantwortlich für den Inhalt",
       "name": "[Vorname Nachname]",
-      "company": "Evida Life AG, Zürich"
+      "company": "Evida Life AG, Wollerau"
     },
     "s3": {
       "heading": "Haftungsausschluss",

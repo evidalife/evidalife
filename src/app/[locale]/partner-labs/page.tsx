@@ -1,6 +1,7 @@
 import { getLocale } from 'next-intl/server';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import PageHero from '@/components/PageHero';
 import { createClient } from '@/lib/supabase/server';
 import { buildMeta, PAGE_META } from '@/lib/seo';
 import { T } from './translations';
@@ -54,19 +55,12 @@ export default async function PartnerLabsPage() {
 
       <main className="flex-1">
 
-        {/* Hero */}
-        <section className="w-full bg-[#0e393d] px-6 pt-28 pb-20">
-          <div className="max-w-3xl mx-auto">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.eyebrow}</p>
-            <h1 className="font-serif text-4xl sm:text-5xl text-white leading-tight mb-5">{t.heading}</h1>
-            <p className="text-white/60 text-base leading-relaxed max-w-xl">{t.heroSub}</p>
-          </div>
-        </section>
+        <PageHero variant="teal" eyebrow={t.eyebrow} title={t.heading} subtitle={t.heroSub} />
 
         {/* Stats bar */}
         {labList.length > 0 && (
           <section className="w-full border-b border-[#0e393d]/10 bg-white px-6 py-8">
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-[1060px] mx-auto">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-5">{t.statsTitle}</p>
               <div className="flex flex-wrap gap-10">
                 <div>
@@ -98,7 +92,7 @@ export default async function PartnerLabsPage() {
             t={clientTranslations}
           />
         ) : (
-          <section className="w-full max-w-5xl mx-auto px-6 pb-16">
+          <section className="w-full max-w-[1060px] mx-auto px-8 md:px-12 pb-16">
             <div className="rounded-2xl border border-[#0e393d]/10 bg-white px-6 py-14 text-center">
               <p className="text-sm text-[#1c2a2b]/40">{t.noLabs}</p>
             </div>
@@ -106,7 +100,7 @@ export default async function PartnerLabsPage() {
         )}
 
         {/* Why ISO */}
-        <section className="w-full max-w-3xl mx-auto px-6 py-10">
+        <section className="w-full max-w-[1060px] mx-auto px-6 py-10">
           <div className="rounded-2xl border border-[#ceab84]/30 bg-[#ceab84]/6 px-6 py-6 flex gap-5">
             <div className="shrink-0 mt-0.5">
               <div className="w-10 h-10 rounded-full bg-[#ceab84]/20 flex items-center justify-center">

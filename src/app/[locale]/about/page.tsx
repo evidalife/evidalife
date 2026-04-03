@@ -1,6 +1,7 @@
 import { getLocale } from 'next-intl/server';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import PageHero from '@/components/PageHero';
 import { buildMeta, PAGE_META } from '@/lib/seo';
 import { T } from './translations';
 
@@ -25,34 +26,27 @@ export default async function AboutPage() {
 
       <main className="flex-1">
 
-        {/* Hero */}
-        <section className="w-full bg-[#0e393d] px-6 pt-28 pb-20">
-          <div className="max-w-3xl mx-auto">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.eyebrow}</p>
-            <h1 className="font-serif text-4xl sm:text-5xl text-white leading-tight mb-6">{t.heroHead}</h1>
-            <p className="text-white/60 text-base leading-relaxed max-w-2xl">{t.heroSub}</p>
-          </div>
-        </section>
+        <PageHero variant="teal" eyebrow={t.eyebrow} title={t.heroHead} subtitle={t.heroSub} />
 
         {/* Mission */}
-        <section className="w-full max-w-3xl mx-auto px-6 py-16">
+        <section className="w-full max-w-[1060px] mx-auto px-8 md:px-12 py-16">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-3">{t.missionEyebrow}</p>
           <h2 className="font-serif text-3xl text-[#0e393d] mb-6 leading-snug">{t.missionHead}</h2>
           <p className="text-[#1c2a2b]/65 text-base leading-relaxed">{t.missionBody}</p>
         </section>
 
-        <div className="max-w-3xl mx-auto px-6"><hr className="border-[#0e393d]/10" /></div>
+        <div className="max-w-[1060px] mx-auto px-8 md:px-12"><hr className="border-[#0e393d]/10" /></div>
 
         {/* Vision */}
-        <section className="w-full max-w-3xl mx-auto px-6 py-16">
+        <section className="w-full max-w-[1060px] mx-auto px-8 md:px-12 py-16">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-3">{t.visionEyebrow}</p>
           <h2 className="font-serif text-3xl text-[#0e393d] mb-6 leading-snug">{t.visionHead}</h2>
           <p className="text-[#1c2a2b]/65 text-base leading-relaxed">{t.visionBody}</p>
         </section>
 
         {/* Why plant-based */}
-        <section className="w-full bg-white border-y border-[#0e393d]/10 px-6 py-16">
-          <div className="max-w-5xl mx-auto">
+        <section className="w-full bg-white border-y border-[#0e393d]/10">
+          <div className="max-w-[1060px] mx-auto px-8 md:px-12 py-16">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-3">{t.whyEyebrow}</p>
             <h2 className="font-serif text-3xl text-[#0e393d] mb-10 leading-snug">{t.whyHead}</h2>
             <div className="grid gap-5 sm:grid-cols-2">
@@ -68,15 +62,15 @@ export default async function AboutPage() {
         </section>
 
         {/* Science approach */}
-        <section className="w-full max-w-3xl mx-auto px-6 py-16">
+        <section className="w-full max-w-[1060px] mx-auto px-8 md:px-12 py-16">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-3">{t.scienceEyebrow}</p>
           <h2 className="font-serif text-3xl text-[#0e393d] mb-6 leading-snug">{t.scienceHead}</h2>
           <p className="text-[#1c2a2b]/65 text-base leading-relaxed">{t.scienceBody}</p>
         </section>
 
         {/* Founder */}
-        <section className="w-full bg-white border-t border-[#0e393d]/10 px-6 py-16">
-          <div className="max-w-3xl mx-auto">
+        <section className="w-full bg-white border-t border-[#0e393d]/10">
+          <div className="max-w-[1060px] mx-auto px-8 md:px-12 py-16">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-3">{t.founderEyebrow}</p>
             <h2 className="font-serif text-3xl text-[#0e393d] mb-8 leading-snug">{t.founderHead}</h2>
             <div className="flex items-start gap-6">

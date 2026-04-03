@@ -3,6 +3,7 @@ import { getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import PageHero from '@/components/PageHero';
 import { buildMeta, PAGE_META } from '@/lib/seo';
 import { createClient } from '@/lib/supabase/server';
 
@@ -382,20 +383,9 @@ export default async function BiomarkersPage() {
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
-      <main className="mx-auto w-full max-w-[1060px] px-6 pt-28 pb-16 flex-1">
+      <PageHero variant="light" eyebrow={t.tag} title={t.h1} subtitle={t.sub} />
 
-        {/* ── Hero ──────────────────────────────────────────────────────────── */}
-        <div className="mb-14 text-center">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">
-            {t.tag}
-          </p>
-          <h1 className="font-serif text-5xl text-[#0e393d] mb-4 leading-tight">
-            {t.h1}
-          </h1>
-          <p className="mx-auto max-w-xl text-base text-[#1c2a2b]/60 leading-relaxed">
-            {t.sub}
-          </p>
-        </div>
+      <main className="mx-auto w-full max-w-[1060px] px-8 md:px-12 pb-16 flex-1">
 
         {/* ── Package comparison matrix ──────────────────────────────────────── */}
         {packages.length > 0 && (

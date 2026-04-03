@@ -84,41 +84,14 @@ export async function GET() {
     .select('*', { count: 'exact', head: true })
     .not('disease_tags', 'eq', '{}');
 
-  // Book content chunks stats (per-book)
-  const { data: bookChunkRows } = await supabase
-    .from('book_chunks')
-    .select('book_id, content_length');
+  // Book content chunks stats (per-book) — use SQL aggregate to avoid 1,000-row limit
+  const { data: bookContentStats } = await supabase.rpc('book_chunks_stats')
+    .then(({ data, error }) => ({
+      data: error ? [] : (data as { book_id: string; title: string; slug: string; chunks: number; total_chars: number }[])
+    }));
 
-  // Aggregate book chunk stats manually
-  const bookChunkMap = new Map<string, { chunks: number; total_chars: number }>();
-  if (bookChunkRows) {
-    for (const row of bookChunkRows as any[]) {
-      const entry = bookChunkMap.get(row.book_id) ?? { chunks: 0, total_chars: 0 };
-      entry.chunks++;
-      entry.total_chars += row.content_length ?? 0;
-      bookChunkMap.set(row.book_id, entry);
-    }
-  }
-
-  // Get book titles for chunk stats
-  const { data: allBooks } = await supabase
-    .from('books')
-    .select('id, title, slug')
-    .order('title');
-
-  const bookContentStats = (allBooks ?? []).map((book: any) => {
-    const chunkInfo = bookChunkMap.get(book.id);
-    return {
-      book_id: book.id,
-      title: book.title,
-      slug: book.slug,
-      chunks: chunkInfo?.chunks ?? 0,
-      total_chars: chunkInfo?.total_chars ?? 0,
-    };
-  });
-
-  const totalBookChunks = bookContentStats.reduce((sum: number, b: any) => sum + b.chunks, 0);
-  const totalBookChars = bookContentStats.reduce((sum: number, b: any) => sum + b.total_chars, 0);
+  const totalBookChunks = (bookContentStats ?? []).reduce((sum: number, b: any) => sum + b.chunks, 0);
+  const totalBookChars = (bookContentStats ?? []).reduce((sum: number, b: any) => sum + b.total_chars, 0);
 
   // Add Tier 0 (book content) to tier counts if book chunks exist
   const tierCountsWithBookContent = [...(tierRows ?? [])];

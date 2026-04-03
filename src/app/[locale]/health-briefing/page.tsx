@@ -5,6 +5,7 @@ import HealthEngine2 from '@/components/health-v2/HealthEngine2';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { Link } from '@/i18n/navigation';
+import { getStudyCount, formatStudyCount } from '@/lib/research/study-count';
 
 export const metadata = { title: 'Health Engine 2.0 – Evida Life' };
 
@@ -70,6 +71,8 @@ export default async function HealthEngineV2Page({
   const lang: Lang = (VALID_LANGS as readonly string[]).includes(locale)
     ? (locale as Lang)
     : 'en';
+  const studyCount = await getStudyCount();
+  const studyCountLabel = formatStudyCount(studyCount, lang);
   const params = await searchParams;
   const supabase = await createClient();
 
@@ -98,6 +101,7 @@ export default async function HealthEngineV2Page({
             userId={SAMPLE_USER_ID}
             hasData={true}
             isSample
+            studyCountLabel={studyCountLabel}
           />
           <PublicFooter />
         </>
@@ -165,6 +169,7 @@ export default async function HealthEngineV2Page({
         lang={lang}
         userId={user.id}
         hasData={true}
+        studyCountLabel={studyCountLabel}
       />
       <PublicFooter />
     </>

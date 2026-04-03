@@ -23,6 +23,7 @@ interface Props {
   userId: string;
   hasData: boolean;
   isSample?: boolean;
+  studyCountLabel?: string;
 }
 
 type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused' | 'chatting' | 'done' | 'research_prompt' | 'researching';
@@ -225,8 +226,11 @@ const T: Record<Lang, Record<string, string>> = {
   },
 };
 
-export default function HealthEngine2({ lang, userId, hasData, isSample }: Props) {
+export default function HealthEngine2({ lang, userId, hasData, isSample, studyCountLabel }: Props) {
   const t = T[lang];
+  const researchSubText = studyCountLabel
+    ? t.researchSub.replace(/500[,. ]?000\+?/g, studyCountLabel)
+    : t.researchSub;
   const [playbackState, setPlaybackState] = useState<PlaybackState>(hasData ? 'idle' : 'done');
   const [slides, setSlides] = useState<BriefingSlide[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -253,7 +257,7 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
 
   // ── Check on mount if a cached briefing exists ────────────────
   useEffect(() => {
-    if (!hasData) return;
+    if (!hasData || isSample) { setCheckingCache(false); return; }
     let cancelled = false;
     (async () => {
       try {
@@ -532,6 +536,11 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
   }, [currentSlideIndex, playbackState, currentSlide, playSlideAudio]);
 
   const startBriefing = useCallback(async () => {
+    // Sample/public view — redirect to login instead of calling the API
+    if (isSample) {
+      window.location.href = `/${lang}/login`;
+      return;
+    }
     setError(null);
     setCurrentSlideIndex(0);
     setChatMessages([]);
@@ -1347,7 +1356,7 @@ export default function HealthEngine2({ lang, userId, hasData, isSample }: Props
               </div>
 
               <h2 className="font-serif text-2xl text-[#0e393d] mb-3">{t.researchTitle}</h2>
-              <p className="text-sm text-[#1c2a2b]/60 mb-4 leading-relaxed">{t.researchSub}</p>
+              <p className="text-sm text-[#1c2a2b]/60 mb-4 leading-relaxed">{researchSubText}</p>
 
               {/* Show flagged markers */}
               {researchMarkers.length > 0 && (

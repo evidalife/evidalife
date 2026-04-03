@@ -260,7 +260,7 @@ export default async function BlogDetailPage({
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
-      <main className="flex-1 w-full max-w-3xl mx-auto px-6 pt-28 pb-12">
+      <main className="flex-1 w-full max-w-[1060px] mx-auto px-8 md:px-12 pt-28 pb-12">
 
         {/* Breadcrumb */}
         <nav className="mb-8 text-xs text-[#1c2a2b]/40">

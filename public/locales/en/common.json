@@ -13,7 +13,8 @@
         "Health Engine",
         "Biomarkers",
         "Biological Age",
-        "Partner Labs"
+        "Partner Labs",
+        "Science"
       ],
       "Lifestyle": [
         "Lesson Library"
@@ -91,7 +92,6 @@
       "label": "Company",
       "items": [
         "About us",
-        "Team",
         "Partner Labs",
         "Contact"
       ]
@@ -385,19 +385,19 @@
     "s1": {
       "heading": "Information pursuant to Art. 3 UCA (Switzerland)",
       "company": "Evida Life AG",
-      "addressLine1": "[Street and number]",
-      "addressLine2": "[Postcode] Zurich",
+      "addressLine1": "Sihleggstrasse 5",
+      "addressLine2": "8832 Wollerau",
       "country": "Switzerland",
       "emailLabel": "Email:",
       "registryLabel": "Commercial register:",
-      "registryValue": "Commercial Register of the Canton of Zurich",
+      "registryValue": "Commercial Register of the Canton of Schwyz",
       "uidLabel": "UID:",
-      "uidValue": "CHE-[xxx.xxx.xxx]"
+      "uidValue": "CHE-418.529.414"
     },
     "s2": {
       "heading": "Responsible for content",
       "name": "[First Last]",
-      "company": "Evida Life AG, Zurich"
+      "company": "Evida Life AG, Wollerau"
     },
     "s3": {
       "heading": "Disclaimer",

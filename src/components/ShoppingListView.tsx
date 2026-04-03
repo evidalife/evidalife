@@ -80,7 +80,7 @@ const DD_INDEX = new Map<string, number>(DD_CATEGORIES.map((c, i) => [c.slug, i]
 
 const T = {
   de: {
-    eyebrow: 'Meine Liste', heading: 'Einkaufsliste',
+    eyebrow: 'Küche', heading: 'Einkaufsliste',
     addItem: 'Artikel hinzufügen…', enterHint: 'Enter: als persönlichen Artikel hinzufügen',
     allFilter: 'Alle', clearChecked: 'Erledigte löschen',
     xOfY: (x: number, y: number) => `${x} von ${y} erledigt`,
@@ -90,7 +90,7 @@ const T = {
     items: (n: number) => `${n} Artikel`,
   },
   en: {
-    eyebrow: 'My List', heading: 'Shopping List',
+    eyebrow: 'Kitchen', heading: 'Shopping List',
     addItem: 'Add an item…', enterHint: 'Press Enter to add as a personal item',
     allFilter: 'All', clearChecked: 'Clear checked',
     xOfY: (x: number, y: number) => `${x} of ${y} checked`,
@@ -100,7 +100,7 @@ const T = {
     items: (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`,
   },
   fr: {
-    eyebrow: 'Ma liste', heading: 'Liste de courses',
+    eyebrow: 'Cuisine', heading: 'Liste de courses',
     addItem: 'Ajouter un article…', enterHint: 'Entrée : ajouter comme article personnel',
     allFilter: 'Tous', clearChecked: 'Supprimer les cochés',
     xOfY: (x: number, y: number) => `${x} sur ${y} cochés`,
@@ -110,7 +110,7 @@ const T = {
     items: (n: number) => `${n} article${n !== 1 ? 's' : ''}`,
   },
   es: {
-    eyebrow: 'Mi lista', heading: 'Lista de compras',
+    eyebrow: 'Cocina', heading: 'Lista de compras',
     addItem: 'Agregar un artículo…', enterHint: 'Intro: añadir como artículo personal',
     allFilter: 'Todos', clearChecked: 'Borrar marcados',
     xOfY: (x: number, y: number) => `${x} de ${y} marcados`,
@@ -120,7 +120,7 @@ const T = {
     items: (n: number) => `${n} artículo${n !== 1 ? 's' : ''}`,
   },
   it: {
-    eyebrow: 'La mia lista', heading: 'Lista della spesa',
+    eyebrow: 'Cucina', heading: 'Lista della spesa',
     addItem: 'Aggiungi un articolo…', enterHint: 'Invio: aggiunge come articolo personale',
     allFilter: 'Tutti', clearChecked: 'Rimuovi selezionati',
     xOfY: (x: number, y: number) => `${x} di ${y} selezionati`,
@@ -737,17 +737,17 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
     <div className="flex-1 flex flex-col">
 
       {/* Hero header */}
-      <section className="w-full bg-[#0e393d] px-6 pt-28 pb-14">
-        <div className="max-w-5xl mx-auto flex items-start justify-between">
+      <section className="w-full bg-[#0e393d] pt-28 pb-14">
+        <div className="max-w-[1060px] mx-auto px-8 md:px-12 flex items-start justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.eyebrow}</p>
-            <h1 className="font-serif text-3xl sm:text-4xl text-white leading-tight">{t.heading}</h1>
+            <h1 className="font-serif font-normal text-4xl md:text-5xl text-white leading-tight">{t.heading}</h1>
           </div>
           {totalItems > 0 && <ProgressRing checked={totalChecked} total={totalItems} />}
         </div>
       </section>
 
-      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-6 pb-0">
+      <div className="w-full max-w-[1060px] mx-auto px-8 md:px-12 pt-6 pb-0">
 
       {/* Recipe filter pills */}
       {uniqueRecipes.length > 0 && (

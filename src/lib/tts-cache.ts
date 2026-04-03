@@ -18,7 +18,7 @@ export async function registerTTSCacheFile(opts: {
   userId: string;
   storagePath: string;
   lang: string;
-  source: 'briefing' | 'chat' | 'voice_turn';
+  source: string;
   briefingId?: string | null;
   sizeBytes?: number | null;
 }): Promise<void> {

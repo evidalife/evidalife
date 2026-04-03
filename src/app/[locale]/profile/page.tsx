@@ -2,6 +2,7 @@ import { getLocale } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import PageHero from '@/components/PageHero';
 import { type ProfileData } from '@/components/ProfileEditor';
 import ProfileTabs from '@/components/ProfileTabs';
 import { createClient } from '@/lib/supabase/server';
@@ -68,14 +69,9 @@ export default async function ProfilePage({ searchParams }: { searchParams?: Pro
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
-      <section className="w-full bg-[#0e393d] px-6 pt-28 pb-14">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.eyebrow}</p>
-          <h1 className="font-serif text-3xl sm:text-4xl text-white leading-tight">{t.heading}</h1>
-        </div>
-      </section>
+      <PageHero variant="teal" eyebrow={t.eyebrow} title={t.heading} />
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-6 py-8">
+      <main className="flex-1 w-full max-w-[1060px] mx-auto px-8 md:px-12 py-8">
         <ProfileTabs profile={profile} lang={lang} initialTab={initialTab} />
       </main>
 

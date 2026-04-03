@@ -1,6 +1,7 @@
 import { getLocale } from 'next-intl/server';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import PageHero from '@/components/PageHero';
 import HealthEngineDashboard from '@/components/health/HealthEngineDashboard';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -140,6 +141,10 @@ const T = {
   signIn: {
     en: 'Get Started', de: 'Jetzt starten', fr: 'Commencer', es: 'Empezar', it: 'Inizia',
   },
+  playBriefing: {
+    en: 'Play Health Briefing', de: 'Health Briefing abspielen',
+    fr: 'Lire le Health Briefing', es: 'Reproducir Health Briefing', it: 'Riproduci Health Briefing',
+  },
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -216,6 +221,7 @@ export default async function HealthEnginePage({
               {isLoggedIn ? T.sampleBannerLoggedIn[lang] : T.sampleBanner[lang]}
             </div>
           </div>
+
           <HealthEngineDashboard
             lang={lang}
             userId={SAMPLE_USER_ID}
@@ -235,30 +241,18 @@ export default async function HealthEnginePage({
       <>
         <PublicNav />
         <div className="min-h-screen bg-[#fafaf8] flex flex-col">
-          {/* ── Dark teal hero band (Pattern B1) ── */}
-          <section className="bg-[#0e393d] pt-28 pb-20">
-            <div className="mx-auto max-w-2xl px-6 text-center">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">
-                {T.heroTag[lang]}
-              </p>
-              <h1 className="font-serif text-4xl sm:text-5xl text-white leading-tight mb-4">
-                {T.publicTitle[lang]}
-              </h1>
-              <p className="text-base text-white/60 leading-relaxed max-w-xl mx-auto mb-10">
-                {T.publicDesc[lang]}
-              </p>
-              <Link
-                href="/login"
-                className="inline-block px-8 py-3 rounded-lg font-medium transition-all hover:brightness-110"
-                style={{ backgroundColor: '#ceab84', color: '#0e393d' }}
-              >
-                {T.signIn[lang]}
-              </Link>
-            </div>
-          </section>
+          <PageHero variant="teal" eyebrow={T.heroTag[lang]} title={T.publicTitle[lang]} subtitle={T.publicDesc[lang]}>
+            <Link
+              href="/login"
+              className="inline-block px-8 py-3 rounded-lg font-medium transition-all hover:brightness-110 mt-8"
+              style={{ backgroundColor: '#ceab84', color: '#0e393d' }}
+            >
+              {T.signIn[lang]}
+            </Link>
+          </PageHero>
 
           {/* ── 9 Health Domains feature grid ── */}
-          <section className="mx-auto w-full max-w-[1060px] px-6 py-20">
+          <section className="mx-auto w-full max-w-[1060px] px-8 md:px-12 py-20">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] text-center">
               {T.domainsTag[lang]}
             </p>
@@ -280,7 +274,7 @@ export default async function HealthEnginePage({
 
           {/* ── How it works ── */}
           <section className="bg-[#0e393d] py-16">
-            <div className="mx-auto max-w-3xl px-6 text-center">
+            <div className="mx-auto max-w-[1060px] px-8 md:px-12 text-center">
               <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">
                 {T.stepsTag[lang]}
               </p>
@@ -329,23 +323,10 @@ export default async function HealthEnginePage({
       <>
         <PublicNav />
         <div className="min-h-screen bg-[#fafaf8] flex flex-col">
-          {/* ── Dark teal hero band (Pattern B1) ── */}
-          <section className="bg-[#0e393d] pt-28 pb-20">
-            <div className="mx-auto max-w-2xl px-6 text-center">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">
-                {T.heroTag[lang]}
-              </p>
-              <h1 className="font-serif text-4xl sm:text-5xl text-white leading-tight mb-4">
-                {T.heading[lang]}
-              </h1>
-              <p className="text-base text-white/60 leading-relaxed max-w-xl mx-auto">
-                {T.heroSub[lang]}
-              </p>
-            </div>
-          </section>
+          <PageHero variant="teal" eyebrow={T.heroTag[lang]} title={T.heading[lang]} subtitle={T.heroSub[lang]} />
 
           {/* ── Empty state card ── */}
-          <section className="mx-auto w-full max-w-[1060px] px-6 py-16 flex-1">
+          <section className="mx-auto w-full max-w-[1060px] px-8 md:px-12 py-16 flex-1">
             <div className="max-w-xl mx-auto">
               <div className="bg-white rounded-2xl border border-[#0e393d]/10 p-10 text-center shadow-sm">
                 <div className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center bg-[#0e393d]/5">

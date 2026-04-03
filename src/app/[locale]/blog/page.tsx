@@ -1,6 +1,7 @@
 import { getLocale } from 'next-intl/server';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import PageHero from '@/components/PageHero';
 import BlogGrid, { type ArticleCard } from '@/components/BlogGrid';
 import { createClient } from '@/lib/supabase/server';
 import { buildMeta, PAGE_META } from '@/lib/seo';
@@ -57,15 +58,9 @@ export default async function BlogPage() {
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
-      <section className="w-full bg-[#0e393d] px-6 pt-28 pb-16">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84] mb-4">{t.eyebrow}</p>
-          <h1 className="font-serif text-4xl sm:text-5xl text-white leading-tight mb-4">{t.heading}</h1>
-          <p className="text-white/60 text-base leading-relaxed max-w-xl">{t.sub}</p>
-        </div>
-      </section>
+      <PageHero variant="teal" eyebrow={t.eyebrow} title={t.heading} subtitle={t.sub} />
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-6 py-10">
+      <main className="flex-1 w-full max-w-[1060px] mx-auto px-8 md:px-12 py-10">
         <BlogGrid articles={articles} lang={locale} />
       </main>
 

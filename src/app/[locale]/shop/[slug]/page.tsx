@@ -106,7 +106,7 @@ export default async function ProductSlugPage({ params }: { params: Params }) {
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
-      <main className="mx-auto w-full max-w-3xl px-6 pt-28 pb-20 flex-1">
+      <main className="mx-auto w-full max-w-[1060px] px-8 md:px-12 pt-28 pb-20 flex-1">
 
         {/* Back */}
         <Link

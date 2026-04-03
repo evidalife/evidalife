@@ -13,7 +13,8 @@
         "Health Engine",
         "Biomarcadores",
         "Edad biológica",
-        "Laboratorios asociados"
+        "Laboratorios asociados",
+        "Ciencia"
       ],
       "Lifestyle": [
         "Lecciones"
@@ -91,7 +92,6 @@
       "label": "Empresa",
       "items": [
         "Sobre nosotros",
-        "Equipo",
         "Laboratorios asociados",
         "Contacto"
       ]
@@ -385,19 +385,19 @@
     "s1": {
       "heading": "Información conforme al Art. 3 LCD (Suiza)",
       "company": "Evida Life AG",
-      "addressLine1": "[Calle y número]",
-      "addressLine2": "[Código postal] Zúrich",
+      "addressLine1": "Sihleggstrasse 5",
+      "addressLine2": "8832 Wollerau",
       "country": "Suiza",
       "emailLabel": "Correo electrónico:",
       "registryLabel": "Registro mercantil:",
-      "registryValue": "Registro Mercantil del Cantón de Zúrich",
+      "registryValue": "Registro Mercantil del Cantón de Schwyz",
       "uidLabel": "UID:",
-      "uidValue": "CHE-[xxx.xxx.xxx]"
+      "uidValue": "CHE-418.529.414"
     },
     "s2": {
       "heading": "Responsable del contenido",
       "name": "[Nombre Apellido]",
-      "company": "Evida Life AG, Zúrich"
+      "company": "Evida Life AG, Wollerau"
     },
     "s3": {
       "heading": "Aviso de responsabilidad",

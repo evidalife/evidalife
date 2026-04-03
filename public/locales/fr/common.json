@@ -13,7 +13,8 @@
         "Health Engine",
         "Biomarqueurs",
         "Âge biologique",
-        "Laboratoires partenaires"
+        "Laboratoires partenaires",
+        "Science"
       ],
       "Lifestyle": [
         "Bibliothèque"
@@ -91,7 +92,6 @@
       "label": "Entreprise",
       "items": [
         "À propos",
-        "Équipe",
         "Laboratoires partenaires",
         "Contact"
       ]
@@ -385,19 +385,19 @@
     "s1": {
       "heading": "Informations conformément à l'art. 3 LCD (Suisse)",
       "company": "Evida Life AG",
-      "addressLine1": "[Rue et numéro]",
-      "addressLine2": "[Code postal] Zurich",
+      "addressLine1": "Sihleggstrasse 5",
+      "addressLine2": "8832 Wollerau",
       "country": "Suisse",
       "emailLabel": "E-mail :",
       "registryLabel": "Registre du commerce :",
-      "registryValue": "Registre du commerce du canton de Zurich",
+      "registryValue": "Registre du commerce du canton de Schwyz",
       "uidLabel": "UID :",
-      "uidValue": "CHE-[xxx.xxx.xxx]"
+      "uidValue": "CHE-418.529.414"
     },
     "s2": {
       "heading": "Responsable du contenu",
       "name": "[Prénom Nom]",
-      "company": "Evida Life AG, Zurich"
+      "company": "Evida Life AG, Wollerau"
     },
     "s3": {
       "heading": "Avertissement",

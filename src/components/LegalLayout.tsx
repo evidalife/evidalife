@@ -1,8 +1,8 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import PageHero from '@/components/PageHero';
 
 interface LegalLayoutProps {
   title: string;
@@ -12,25 +12,20 @@ interface LegalLayoutProps {
 }
 
 export default function LegalLayout({ title, subtitle, lastUpdated, children }: LegalLayoutProps) {
-  const t = useTranslations('layout');
-
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
-      {/* Content — padded to clear the floating nav */}
-      <main className="mx-auto w-full max-w-3xl px-6 pt-28 pb-12 flex-1">
-        <div className="mb-10">
-          <h1 className="font-serif text-4xl text-[#0e393d] mb-2">{title}</h1>
-          {subtitle && <p className="text-[#0e393d]/60 text-lg">{subtitle}</p>}
-          {lastUpdated && (
-            <p className="mt-3 text-sm text-[#0e393d]/40">
-              {t('lastUpdated', { date: lastUpdated })}
-            </p>
-          )}
-        </div>
+      <PageHero
+        variant="light"
+        title={title}
+        subtitle={subtitle}
+        meta={lastUpdated ? `Last updated: ${lastUpdated}` : undefined}
+      />
 
-        <div className="prose-legal">
+      {/* Content — narrower reading width inside the standard container */}
+      <main className="mx-auto w-full max-w-[1060px] px-8 md:px-12 pb-12 flex-1">
+        <div className="max-w-[720px] prose-legal">
           {children}
         </div>
       </main>
