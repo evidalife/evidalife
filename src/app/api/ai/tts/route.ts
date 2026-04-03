@@ -6,23 +6,22 @@ import { TTS_BUCKET, ttsCacheKey } from '@/lib/tts-cache';
 
 export const maxDuration = 30;
 
-// ── Provider config ──────────────────────────────────────────────
-// ElevenLabs — primary TTS (natural, multilingual)
-const ELEVENLABS_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'; // Rachel
+import { getVoiceConfig } from '@/lib/voice/get-voice-config';
 
-// OpenAI TTS — fallback (fast, reliable, good quality)
-const OPENAI_VOICE = 'nova'; // warm female voice
-const OPENAI_MODEL = 'tts-1'; // standard quality (faster than tts-1-hd)
+// ── Provider config (defaults — overridden by admin settings) ────
+const DEFAULT_ELEVENLABS_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'; // Rachel
+const DEFAULT_OPENAI_VOICE = 'nova';
+const DEFAULT_OPENAI_MODEL = 'tts-1';
 
 // ── Cache config ─────────────────────────────────────────────────
 const CACHE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 // ── TTS providers ────────────────────────────────────────────────
 
-async function elevenLabsTTS(text: string, elKey: string): Promise<Buffer | null> {
+async function elevenLabsTTS(text: string, elKey: string, voiceId: string = DEFAULT_ELEVENLABS_VOICE_ID): Promise<Buffer | null> {
   try {
     const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
       {
         method: 'POST',
         headers: {
@@ -54,7 +53,7 @@ async function elevenLabsTTS(text: string, elKey: string): Promise<Buffer | null
   }
 }
 
-async function openaiTTS(text: string, openaiKey: string): Promise<Buffer | null> {
+async function openaiTTS(text: string, openaiKey: string, voice: string = DEFAULT_OPENAI_VOICE): Promise<Buffer | null> {
   try {
     const response = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
@@ -63,9 +62,9 @@ async function openaiTTS(text: string, openaiKey: string): Promise<Buffer | null
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: OPENAI_MODEL,
+        model: DEFAULT_OPENAI_MODEL,
         input: text,
-        voice: OPENAI_VOICE,
+        voice,
         response_format: 'mp3',
         speed: 0.95,
       }),
@@ -134,7 +133,17 @@ export async function POST(req: NextRequest) {
     // Cache miss — proceed to generate
   }
 
-  // ── 2. Generate audio with fallback chain ──────────────────────
+  // ── 2. Load admin voice config ──────────────────────────────────
+  let voiceConfig;
+  try {
+    voiceConfig = await getVoiceConfig();
+  } catch {
+    voiceConfig = null;
+  }
+  const elVoiceId = voiceConfig?.tts.elevenlabs_voice_id || DEFAULT_ELEVENLABS_VOICE_ID;
+  const oaiVoice = voiceConfig?.tts.openai_voice || DEFAULT_OPENAI_VOICE;
+
+  // ── 3. Generate audio with fallback chain ──────────────────────
   const ttsStartMs = Date.now();
   let audioBuffer: Buffer | null = null;
   let provider: 'elevenlabs' | 'openai' = 'elevenlabs';
@@ -142,7 +151,7 @@ export async function POST(req: NextRequest) {
   // Tier 1: ElevenLabs
   const elKey = process.env.ELEVENLABS_API_KEY;
   if (elKey) {
-    audioBuffer = await elevenLabsTTS(text, elKey);
+    audioBuffer = await elevenLabsTTS(text, elKey, elVoiceId);
     if (audioBuffer) provider = 'elevenlabs';
   }
 
@@ -150,7 +159,7 @@ export async function POST(req: NextRequest) {
   if (!audioBuffer) {
     const openaiKey = process.env.OPENAI_API_KEY;
     if (openaiKey) {
-      audioBuffer = await openaiTTS(text, openaiKey);
+      audioBuffer = await openaiTTS(text, openaiKey, oaiVoice);
       if (audioBuffer) provider = 'openai';
     }
   }
@@ -165,7 +174,7 @@ export async function POST(req: NextRequest) {
 
   const durationMs = Date.now() - ttsStartMs;
 
-  // ── 3. Store in cache (fire-and-forget) ────────────────────────
+  // ── 4. Store in cache (fire-and-forget) ────────────────────────
   adminDb.storage
     .from(TTS_BUCKET)
     .upload(key, audioBuffer, {
@@ -176,17 +185,17 @@ export async function POST(req: NextRequest) {
       if (uploadErr) console.error('[TTS] Cache upload error:', uploadErr.message);
     });
 
-  // ── 4. Log usage ───────────────────────────────────────────────
+  // ── 5. Log usage ───────────────────────────────────────────────
   logAIUsage({
     userId: authUserId,
     provider,
     endpoint: 'tts',
-    model: provider === 'elevenlabs' ? 'eleven_multilingual_v2' : OPENAI_MODEL,
+    model: provider === 'elevenlabs' ? 'eleven_multilingual_v2' : DEFAULT_OPENAI_MODEL,
     characters: text.length,
     durationMs,
     metadata: {
       lang,
-      voiceId: provider === 'elevenlabs' ? ELEVENLABS_VOICE_ID : OPENAI_VOICE,
+      voiceId: provider === 'elevenlabs' ? elVoiceId : oaiVoice,
       cached: false,
     },
   });

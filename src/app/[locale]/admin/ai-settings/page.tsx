@@ -24,6 +24,7 @@ export default async function AISettingsPage() {
     anthropic: !!process.env.ANTHROPIC_API_KEY,
     openai: !!process.env.OPENAI_API_KEY,
     elevenlabs: !!process.env.ELEVENLABS_API_KEY,
+    deepgram: !!process.env.DEEPGRAM_API_KEY,
   };
 
   return (

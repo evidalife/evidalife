@@ -220,6 +220,17 @@ const NAV_GROUPS: NavGroup[] = [
         ),
       },
       {
+        label: 'AI Credits',
+        href: '/admin/ai-credits',
+        icon: (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
+            <path d="M12 18V6" />
+          </svg>
+        ),
+      },
+      {
         label: 'AI Settings',
         href: '/admin/ai-settings',
         icon: (

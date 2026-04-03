@@ -28,6 +28,7 @@ export async function GET() {
     anthropic: !!process.env.ANTHROPIC_API_KEY,
     openai: !!process.env.OPENAI_API_KEY,
     elevenlabs: !!process.env.ELEVENLABS_API_KEY,
+    deepgram: !!process.env.DEEPGRAM_API_KEY,
   };
 
   return NextResponse.json({ settings: settings ?? [], keyStatus });
@@ -48,8 +49,10 @@ export async function PATCH(req: NextRequest) {
   }
 
   const ALLOWED_KEYS = [
-    'briefing_model', 'chat_model', 'tts_provider',
-    'briefing_enabled', 'companion_enabled', 'domain_weights',
+    'briefing_model', 'chat_model', 'tts_provider', 'stt_provider',
+    'elevenlabs_voice_id', 'openai_tts_voice',
+    'briefing_enabled', 'companion_enabled', 'briefing_pregenerate',
+    'domain_weights',
   ];
 
   const updates = Object.entries(body).filter(([k]) => ALLOWED_KEYS.includes(k));

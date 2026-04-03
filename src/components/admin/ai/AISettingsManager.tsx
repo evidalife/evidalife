@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import PageShell from '@/components/admin/PageShell';
+import { ELEVENLABS_VOICES, OPENAI_VOICES } from '@/lib/voice/types';
 
 interface Setting {
   key: string;
@@ -13,6 +14,7 @@ interface KeyStatus {
   anthropic: boolean;
   openai: boolean;
   elevenlabs: boolean;
+  deepgram: boolean;
 }
 
 const DOMAIN_LABELS: Record<string, string> = {
@@ -45,8 +47,13 @@ const CHAT_MODELS = [
 
 const TTS_PROVIDERS = [
   { value: 'elevenlabs', label: 'ElevenLabs (recommended — natural voice)' },
-  { value: 'openai', label: 'OpenAI TTS-1-HD (fallback)' },
+  { value: 'openai', label: 'OpenAI TTS-1 (fallback — cheaper)' },
   { value: 'browser', label: 'Browser SpeechSynthesis (free, lower quality)' },
+];
+
+const STT_PROVIDERS = [
+  { value: 'web_speech_api', label: 'Web Speech API (free — Chrome/Edge only)' },
+  { value: 'deepgram', label: 'Deepgram Nova-2 (all browsers, higher accuracy)' },
 ];
 
 function settingValue<T>(settings: Setting[], key: string, fallback: T): T {
@@ -77,6 +84,15 @@ export default function AISettingsManager({
   );
   const [ttsProvider, setTtsProvider] = useState<string>(() =>
     settingValue(initialSettings, 'tts_provider', 'elevenlabs')
+  );
+  const [sttProvider, setSttProvider] = useState<string>(() =>
+    settingValue(initialSettings, 'stt_provider', 'web_speech_api')
+  );
+  const [elevenlabsVoiceId, setElevenlabsVoiceId] = useState<string>(() =>
+    settingValue(initialSettings, 'elevenlabs_voice_id', '21m00Tcm4TlvDq8ikWAM')
+  );
+  const [openaiTtsVoice, setOpenaiTtsVoice] = useState<string>(() =>
+    settingValue(initialSettings, 'openai_tts_voice', 'nova')
   );
   const [briefingEnabled, setBriefingEnabled] = useState<boolean>(() =>
     settingValue(initialSettings, 'briefing_enabled', true)
@@ -112,6 +128,9 @@ export default function AISettingsManager({
         briefing_model: briefingModel,
         chat_model: chatModel,
         tts_provider: ttsProvider,
+        stt_provider: sttProvider,
+        elevenlabs_voice_id: elevenlabsVoiceId,
+        openai_tts_voice: openaiTtsVoice,
         briefing_enabled: briefingEnabled,
         companion_enabled: companionEnabled,
         briefing_pregenerate: briefingPregenerate,
@@ -178,11 +197,12 @@ export default function AISettingsManager({
         {/* API Key Status */}
         <div className="bg-white rounded-xl border border-[#0e393d]/[.07] p-6">
           <h2 className="text-[13px] font-semibold text-[#0e393d] mb-4">API Key Status</h2>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             {[
               { key: 'anthropic', label: 'Anthropic (Claude)', note: 'Required for briefings and chat' },
               { key: 'elevenlabs', label: 'ElevenLabs TTS', note: 'Primary text-to-speech' },
-              { key: 'openai', label: 'OpenAI', note: 'Fallback TTS (tts-1-hd)' },
+              { key: 'openai', label: 'OpenAI', note: 'Fallback TTS + embeddings' },
+              { key: 'deepgram', label: 'Deepgram', note: 'Cross-browser STT (optional)' },
             ].map(({ key, label, note }) => {
               const configured = keyStatus[key as keyof KeyStatus];
               return (
@@ -279,12 +299,11 @@ export default function AISettingsManager({
 
         {/* Model Selection */}
         <div className="bg-white rounded-xl border border-[#0e393d]/[.07] p-6">
-          <h2 className="text-[13px] font-semibold text-[#0e393d] mb-4">Model Selection</h2>
+          <h2 className="text-[13px] font-semibold text-[#0e393d] mb-4">AI Models</h2>
           <div className="space-y-4">
             {[
-              { label: 'Briefing Model', desc: 'Used to generate the 5-step personalized audio briefing', options: BRIEFING_MODELS, value: briefingModel, onChange: (v: string) => { setBriefingModel(v); markDirty(); } },
-              { label: 'Chat Model', desc: 'Used for Q&A during briefing and floating coach chat', options: CHAT_MODELS, value: chatModel, onChange: (v: string) => { setChatModel(v); markDirty(); } },
-              { label: 'TTS Provider', desc: 'Text-to-speech service for audio briefing narration', options: TTS_PROVIDERS, value: ttsProvider, onChange: (v: string) => { setTtsProvider(v); markDirty(); } },
+              { label: 'Briefing Model', desc: 'Used to generate the personalized audio briefing script', options: BRIEFING_MODELS, value: briefingModel, onChange: (v: string) => { setBriefingModel(v); markDirty(); } },
+              { label: 'Chat Model', desc: 'Used for Q&A during briefing, coach chat, and daily check-ins', options: CHAT_MODELS, value: chatModel, onChange: (v: string) => { setChatModel(v); markDirty(); } },
             ].map(({ label, desc, options, value, onChange }) => (
               <div key={label}>
                 <label className="block text-[12px] font-medium text-[#0e393d] mb-1">{label}</label>
@@ -300,6 +319,115 @@ export default function AISettingsManager({
                 </select>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Voice Configuration */}
+        <div className="bg-white rounded-xl border border-[#0e393d]/[.07] p-6">
+          <h2 className="text-[13px] font-semibold text-[#0e393d] mb-1">Voice Configuration</h2>
+          <p className="text-[11px] text-[#1c2a2b]/40 mb-4">
+            Configure speech-to-text input and text-to-speech output for voice features.
+          </p>
+
+          <div className="space-y-5">
+            {/* STT Provider */}
+            <div>
+              <label className="block text-[12px] font-medium text-[#0e393d] mb-1">Speech-to-Text (STT) Provider</label>
+              <p className="text-[11px] text-[#1c2a2b]/40 mb-2">How voice input is transcribed. Deepgram works on all browsers including Safari (required for iOS app).</p>
+              <select
+                value={sttProvider}
+                onChange={e => { setSttProvider(e.target.value); markDirty(); }}
+                className="w-full rounded-lg border border-[#0e393d]/[.12] px-3 py-2 text-[12px] text-[#0e393d] bg-[#fafaf8] outline-none focus:border-[#0e393d]/30 transition-colors"
+              >
+                {STT_PROVIDERS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              {sttProvider === 'deepgram' && !keyStatus.openai && (
+                <div className="mt-2 flex items-start gap-2 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                  <span>Deepgram requires a <code className="font-mono bg-amber-100 px-1 rounded">DEEPGRAM_API_KEY</code> in your environment variables.</span>
+                </div>
+              )}
+            </div>
+
+            {/* TTS Provider */}
+            <div>
+              <label className="block text-[12px] font-medium text-[#0e393d] mb-1">Text-to-Speech (TTS) Provider</label>
+              <p className="text-[11px] text-[#1c2a2b]/40 mb-2">Primary voice output. ElevenLabs → OpenAI → Browser fallback chain is always active regardless of selection.</p>
+              <select
+                value={ttsProvider}
+                onChange={e => { setTtsProvider(e.target.value); markDirty(); }}
+                className="w-full rounded-lg border border-[#0e393d]/[.12] px-3 py-2 text-[12px] text-[#0e393d] bg-[#fafaf8] outline-none focus:border-[#0e393d]/30 transition-colors"
+              >
+                {TTS_PROVIDERS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* ElevenLabs Voice Selector */}
+            <div className={ttsProvider !== 'elevenlabs' ? 'opacity-40 pointer-events-none' : ''}>
+              <label className="block text-[12px] font-medium text-[#0e393d] mb-1">ElevenLabs Voice</label>
+              <p className="text-[11px] text-[#1c2a2b]/40 mb-2">The voice character used for narration and spoken responses.</p>
+              <div className="grid grid-cols-2 gap-2">
+                {ELEVENLABS_VOICES.map(voice => (
+                  <button
+                    key={voice.id}
+                    onClick={() => { setElevenlabsVoiceId(voice.id); markDirty(); }}
+                    className={`text-left rounded-lg border p-3 transition-all ${
+                      elevenlabsVoiceId === voice.id
+                        ? 'border-[#0e393d] bg-[#0e393d]/[.04] ring-1 ring-[#0e393d]/20'
+                        : 'border-[#0e393d]/[.08] hover:border-[#0e393d]/20'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[12px] font-semibold text-[#0e393d]">{voice.name}</span>
+                      <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${
+                        voice.gender === 'female' ? 'bg-pink-50 text-pink-600' : 'bg-blue-50 text-blue-600'
+                      }`}>
+                        {voice.gender}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-[#1c2a2b]/40">{voice.description}</div>
+                    <div className="text-[9px] text-[#1c2a2b]/25 mt-0.5">{voice.accent} · {voice.use_case}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* OpenAI Voice Selector */}
+            <div className={ttsProvider !== 'openai' ? 'opacity-40 pointer-events-none' : ''}>
+              <label className="block text-[12px] font-medium text-[#0e393d] mb-1">OpenAI TTS Voice</label>
+              <p className="text-[11px] text-[#1c2a2b]/40 mb-2">Voice used when OpenAI is the primary TTS or fallback provider.</p>
+              <select
+                value={openaiTtsVoice}
+                onChange={e => { setOpenaiTtsVoice(e.target.value); markDirty(); }}
+                className="w-full rounded-lg border border-[#0e393d]/[.12] px-3 py-2 text-[12px] text-[#0e393d] bg-[#fafaf8] outline-none focus:border-[#0e393d]/30 transition-colors"
+              >
+                {OPENAI_VOICES.map(v => (
+                  <option key={v.value} value={v.value}>{v.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Future: Claude Realtime Voice */}
+            <div className="opacity-40">
+              <label className="block text-[12px] font-medium text-[#0e393d] mb-1">
+                Claude Realtime Voice
+                <span className="ml-2 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-[#0e393d]/10 text-[#0e393d]/50">COMING SOON</span>
+              </label>
+              <p className="text-[11px] text-[#1c2a2b]/40 mb-2">
+                Native voice-to-voice with Claude — sub-300ms latency. Available when Anthropic ships the Realtime Voice API.
+              </p>
+              <select disabled className="w-full rounded-lg border border-[#0e393d]/[.12] px-3 py-2 text-[12px] text-[#0e393d]/30 bg-[#fafaf8] outline-none cursor-not-allowed">
+                <option>Orchestrated Pipeline (Deepgram STT → Claude → TTS)</option>
+                <option>Claude Realtime Voice (pending API release)</option>
+              </select>
+            </div>
           </div>
         </div>
 

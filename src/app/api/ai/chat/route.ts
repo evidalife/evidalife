@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logAIUsage } from '@/lib/ai/usage-logger';
+import { buildCoachContext } from '@/lib/ai/coach-context';
 
 export const maxDuration = 30;
 
@@ -49,6 +50,16 @@ export async function POST(req: NextRequest) {
 
   const settingsMap = new Map((settingsRows ?? []).map(r => [r.key, r.value]));
 
+  // ── Build coach context with Daily Dozen + Lifestyle data ──────
+  let coachData = '';
+  if (mode === 'coach') {
+    try {
+      coachData = await buildCoachContext(user.id, lang);
+    } catch (e) {
+      console.error('[chat] Failed to build coach context:', e);
+    }
+  }
+
   // ── Build system prompt ────────────────────────────────────────
   const systemPrompt = mode === 'coach'
     ? `You are Evida's WFPB health coach — a friendly, knowledgeable assistant specializing in whole-food plant-based nutrition and longevity science.
@@ -59,13 +70,19 @@ STRICT GUARDRAILS (mandatory):
 - ALWAYS encourage consulting a healthcare provider for clinical decisions
 - Focus on lifestyle, nutrition, movement, and evidence-based wellness strategies
 
-EXPERTISE: Whole-food plant-based nutrition, Daily Dozen tracking, longevity biomarkers, plant-based cooking, lifestyle medicine, general wellness.
+EXPERTISE: Whole-food plant-based nutrition, Daily Dozen tracking (Dr. Greger's Daily Dozen), 21 Tweaks, Anti-Aging protocols, longevity biomarkers, plant-based cooking, lifestyle medicine, general wellness.
+
+DAILY DOZEN COACHING:
+- When the user's tracking data shows missed categories, gently suggest ways to incorporate those foods
+- Celebrate streaks and completed days — positive reinforcement builds habits
+- Reference specific lifestyle lessons when relevant (e.g., "We have a lesson on that if you'd like to learn more")
+- Connect nutrition choices to their biomarker results when health data is available
 
 TONE: Warm, encouraging, science-backed, practical. Like a knowledgeable friend, not a clinical authority.
 LANGUAGE: Respond in ${LANG_NAMES[lang] ?? 'English'}.
 RESPONSE LENGTH: Conversational, 2-4 sentences. Be helpful and actionable.
 
-${context ? `USER CONTEXT:\n${context}` : ''}`
+${coachData ? `USER TRACKING DATA:\n${coachData}\n\n` : ''}${context ? `USER CONTEXT:\n${context}` : ''}`
 
     : `You are Evida Life's health data assistant. The user is viewing their personalized health briefing — an AI-narrated walkthrough of their biomarker results across 9 health domains. You have access to their FULL briefing data below.
 
