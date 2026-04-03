@@ -14,33 +14,31 @@ export default async function HealthEnginePage() {
   const { data: profile } = await admin.from('profiles').select('is_admin').eq('id', user.id).single();
   if (!profile?.is_admin) redirect('/admin');
 
-  // Fetch domain weights from ai_settings (or null if not set)
-  const { data: weightsSetting } = await admin
-    .from('ai_settings')
-    .select('value')
-    .eq('key', 'domain_weights')
-    .single();
-
-  // Fetch biomarkers with categories
-  const { data: biomarkers } = await admin
-    .from('biomarkers')
-    .select('id, slug, name, category, unit, reference_range_low, reference_range_high, optimal_range_low, optimal_range_high, age_stratified, has_sex_specific_ranges, is_calculated')
-    .order('category')
-    .order('slug');
-
-  // Fetch presentation rules if they exist
-  const { data: rulesSetting } = await admin
-    .from('ai_settings')
-    .select('value')
-    .eq('key', 'he_presentation_rules')
-    .single();
-
-  // Fetch bio age weights
-  const { data: bioAgeWeightsSetting } = await admin
-    .from('ai_settings')
-    .select('value')
-    .eq('key', 'bio_age_weights')
-    .single();
+  // Fetch all data in parallel
+  const [
+    { data: weightsSetting },
+    { data: bioAgeWeightsSetting },
+    { data: rulesSetting },
+    { data: biomarkers },
+    { data: products },
+    { data: productBiomarkers },
+  ] = await Promise.all([
+    admin.from('ai_settings').select('value').eq('key', 'domain_weights').single(),
+    admin.from('ai_settings').select('value').eq('key', 'bio_age_weights').single(),
+    admin.from('ai_settings').select('value').eq('key', 'he_presentation_rules').single(),
+    admin.from('biomarkers')
+      .select('id, slug, name, he_domain, unit, ref_range_low, ref_range_high, optimal_range_low, optimal_range_high, age_stratified, has_sex_specific_ranges, is_calculated, is_active')
+      .eq('is_active', true)
+      .order('he_domain')
+      .order('slug'),
+    admin.from('products')
+      .select('id, name, product_type, sort_order, is_active')
+      .in('product_type', ['blood_test', 'clinical_test', 'epigenetic_test', 'genetic_test', 'microbiome_test', 'addon_test'])
+      .is('deleted_at', null)
+      .order('sort_order'),
+    admin.from('product_biomarkers')
+      .select('product_id, biomarker_id'),
+  ]);
 
   return (
     <HealthEngineSettings
@@ -48,6 +46,17 @@ export default async function HealthEnginePage() {
       initialBioAgeWeights={bioAgeWeightsSetting?.value as Record<string, number> | null}
       initialBiomarkers={biomarkers ?? []}
       initialPresentationRules={rulesSetting?.value as Record<string, unknown> | null}
+      products={(products ?? []).map(p => ({
+        id: p.id,
+        name: (p.name as Record<string, string>)?.en ?? p.id,
+        productType: p.product_type,
+        sortOrder: p.sort_order,
+        isActive: p.is_active,
+      }))}
+      productBiomarkers={(productBiomarkers ?? []).map(pb => ({
+        productId: pb.product_id,
+        biomarkerId: pb.biomarker_id,
+      }))}
     />
   );
 }

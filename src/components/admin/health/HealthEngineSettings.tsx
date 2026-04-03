@@ -9,15 +9,29 @@ interface Biomarker {
   id: string;
   slug: string;
   name: Record<string, string>;
-  category: string;
+  he_domain: string;
   unit: string;
-  reference_range_low: number | null;
-  reference_range_high: number | null;
+  ref_range_low: number | null;
+  ref_range_high: number | null;
   optimal_range_low: number | null;
   optimal_range_high: number | null;
   age_stratified: boolean;
   has_sex_specific_ranges: boolean;
   is_calculated: boolean;
+  is_active: boolean;
+}
+
+interface ProductInfo {
+  id: string;
+  name: string;
+  productType: string;
+  sortOrder: number | null;
+  isActive: boolean;
+}
+
+interface ProductBiomarkerLink {
+  productId: string;
+  biomarkerId: string;
 }
 
 interface PresentationRule {
@@ -286,11 +300,15 @@ export default function HealthEngineSettings({
   initialBioAgeWeights,
   initialBiomarkers,
   initialPresentationRules,
+  products = [],
+  productBiomarkers = [],
 }: {
   initialWeights: Record<string, number> | null;
   initialBioAgeWeights: Record<string, number> | null;
   initialBiomarkers: Biomarker[];
   initialPresentationRules: Record<string, unknown> | null;
+  products?: ProductInfo[];
+  productBiomarkers?: ProductBiomarkerLink[];
 }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -310,6 +328,17 @@ export default function HealthEngineSettings({
   const [biomarkerFilter, setBiomarkerFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [packageFilter, setPackageFilter] = useState<'all' | 'measured' | 'calculated'>('all');
+  const [productFilter, setProductFilter] = useState<string>('all');
+
+  // Build product-biomarker lookup: biomarkerId → Set of productIds
+  const biomarkerProducts = new Map<string, Set<string>>();
+  for (const link of productBiomarkers) {
+    if (!biomarkerProducts.has(link.biomarkerId)) biomarkerProducts.set(link.biomarkerId, new Set());
+    biomarkerProducts.get(link.biomarkerId)!.add(link.productId);
+  }
+
+  // Test packages (sort_order <= 3)
+  const testPackages = products.filter(p => (p.sortOrder ?? 99) <= 3).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
   // ── Presentation rules state ──────────────────────────────────
   const [rules, setRules] = useState<PresentationRule[]>(
@@ -352,9 +381,13 @@ export default function HealthEngineSettings({
 
   // ── Filtered biomarkers ───────────────────────────────────────
   const filteredBiomarkers = biomarkers.filter(b => {
-    if (categoryFilter !== 'all' && b.category !== categoryFilter) return false;
+    if (categoryFilter !== 'all' && b.he_domain !== categoryFilter) return false;
     if (packageFilter === 'measured' && b.is_calculated) return false;
     if (packageFilter === 'calculated' && !b.is_calculated) return false;
+    if (productFilter !== 'all') {
+      const inProduct = biomarkerProducts.get(b.id)?.has(productFilter);
+      if (!inProduct) return false;
+    }
     if (biomarkerFilter) {
       const q = biomarkerFilter.toLowerCase();
       return b.slug.includes(q) || (b.name?.en ?? '').toLowerCase().includes(q);
@@ -362,7 +395,7 @@ export default function HealthEngineSettings({
     return true;
   });
 
-  const categories = [...new Set(biomarkers.map(b => b.category))].sort();
+  const domains = [...new Set(biomarkers.map(b => b.he_domain).filter(Boolean))].sort();
 
   return (
     <PageShell
@@ -525,11 +558,17 @@ export default function HealthEngineSettings({
               ))}
             </div>
 
-            <div className="mt-4 p-3 rounded-lg bg-[#0e393d]/[.02] text-[10px] text-[#1c2a2b]/40">
-              <strong className="text-[#0e393d]/60">Score architecture:</strong> The user&apos;s dashboard shows two gauges side by side —
-              the <strong>Health Score</strong> (weighted average of 8 health domains above) and the <strong>Bio Age Score</strong> (weighted
-              average of 3 epigenetic clocks). They are independent scores, not combined.
-              PhenoAge is available in all packages. GrimAge v2 and DunedinPACE are <strong>Complete package only</strong>.
+            <div className="mt-4 p-3 rounded-lg bg-[#0e393d]/[.02] text-[10px] text-[#1c2a2b]/40 space-y-2">
+              <div>
+                <strong className="text-[#0e393d]/60">Score architecture:</strong> The user&apos;s dashboard shows two gauges side by side —
+                the <strong>Health Score</strong> (weighted average of 8 health domains above) and the <strong>Bio Age Score</strong> (weighted
+                average of 3 epigenetic clocks). They are independent scores, not combined.
+              </div>
+              <div>
+                <strong className="text-[#0e393d]/60">Package-aware weighting:</strong> These weights apply to <strong>Complete package</strong> users
+                who have all 3 clocks. For <strong>Core/Pro</strong> users (PhenoAge only), the Bio Age Score is 100% PhenoAge automatically —
+                the engine normalizes weights to only the available clocks.
+              </div>
             </div>
           </div>
 
@@ -571,14 +610,50 @@ export default function HealthEngineSettings({
           ═══════════════════════════════════════════════════════════ */}
       {activeTab === 'biomarkers' && (
         <div className="space-y-4">
+
+          {/* Product package overview cards */}
+          {testPackages.length > 0 && (
+            <div className="grid grid-cols-3 gap-3">
+              {testPackages.map((pkg, i) => {
+                const count = productBiomarkers.filter(pb => pb.productId === pkg.id).length;
+                const colors = [
+                  { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-700' },
+                  { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', badge: 'bg-blue-100 text-blue-700' },
+                  { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', badge: 'bg-purple-100 text-purple-700' },
+                ][i] ?? { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', badge: 'bg-gray-100 text-gray-700' };
+                return (
+                  <button
+                    key={pkg.id}
+                    onClick={() => setProductFilter(productFilter === pkg.id ? 'all' : pkg.id)}
+                    className={`rounded-xl border p-4 text-left transition-all ${
+                      productFilter === pkg.id
+                        ? `${colors.border} ${colors.bg} ring-2 ring-offset-1 ring-[#0e393d]/20`
+                        : `border-[#0e393d]/[.07] bg-white hover:${colors.bg}`
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-[13px] font-semibold ${colors.text}`}>{pkg.name}</span>
+                      <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full ${colors.badge}`}>
+                        {count} markers
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-[#1c2a2b]/40">
+                      {productFilter === pkg.id ? 'Click to show all' : 'Click to filter'}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <div className="bg-white rounded-xl border border-[#0e393d]/[.07] p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-[13px] font-semibold text-[#0e393d]">Biomarker Registry</h2>
                 <p className="text-[11px] text-[#1c2a2b]/40 mt-0.5">
-                  {biomarkers.length} biomarkers across {categories.length} categories.
-                  Biomarkers not in a user&apos;s package appear grayed out on their dashboard.
-                  Edit details in the <a href="/en/admin/biomarkers" className="text-[#0e393d] underline underline-offset-2 hover:text-[#0e393d]/80">Biomarkers admin</a>.
+                  {biomarkers.length} biomarkers across {domains.length} domains.
+                  Product-biomarker links are managed in <a href="/en/admin/products" className="text-[#0e393d] underline underline-offset-2 hover:text-[#0e393d]/80">Products admin</a>.
+                  Edit biomarker details in <a href="/en/admin/biomarkers" className="text-[#0e393d] underline underline-offset-2 hover:text-[#0e393d]/80">Biomarkers admin</a>.
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -596,8 +671,8 @@ export default function HealthEngineSettings({
                   onChange={e => setCategoryFilter(e.target.value)}
                   className="rounded-lg border border-[#0e393d]/[.12] px-3 py-1.5 text-[12px] text-[#0e393d] bg-[#fafaf8] outline-none"
                 >
-                  <option value="all">All categories</option>
-                  {categories.map(c => (
+                  <option value="all">All domains</option>
+                  {domains.map(c => (
                     <option key={c} value={c}>{CATEGORY_LABELS[c] ?? c}</option>
                   ))}
                 </select>
@@ -611,91 +686,79 @@ export default function HealthEngineSettings({
               </div>
             </div>
 
-            {/* Package legend */}
-            <div className="flex items-center gap-4 mb-4 pb-3 border-b border-[#0e393d]/[.05]">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">CORE</span>
-                <span className="text-[10px] text-[#1c2a2b]/40">38 measured markers</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">PRO</span>
-                <span className="text-[10px] text-[#1c2a2b]/40">55 measured + hormones, inflammation</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">COMPLETE</span>
-                <span className="text-[10px] text-[#1c2a2b]/40">57 measured + epigenetics</span>
-              </div>
-              <div className="flex items-center gap-1.5 ml-2">
-                <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-[#0e393d]/[.06] text-[#0e393d]/50">CALC</span>
-                <span className="text-[10px] text-[#1c2a2b]/40">Derived from other markers</span>
-              </div>
-            </div>
-
             <div className="overflow-x-auto">
               <table className="w-full text-[12px]">
                 <thead>
                   <tr className="border-b border-[#0e393d]/[.07]">
                     <th className="pb-2.5 text-left text-[10px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">Biomarker</th>
-                    <th className="pb-2.5 text-left text-[10px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">Category</th>
+                    <th className="pb-2.5 text-left text-[10px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">Domain</th>
                     <th className="pb-2.5 text-left text-[10px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">Unit</th>
-                    <th className="pb-2.5 text-center text-[10px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">Reference Range</th>
-                    <th className="pb-2.5 text-center text-[10px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">Optimal Range</th>
+                    <th className="pb-2.5 text-center text-[10px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">Reference</th>
+                    <th className="pb-2.5 text-center text-[10px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">Optimal</th>
+                    {/* Product inclusion columns */}
+                    {testPackages.map(pkg => (
+                      <th key={pkg.id} className="pb-2.5 text-center text-[10px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40 w-16">
+                        {pkg.name.replace('Longevity ', '')}
+                      </th>
+                    ))}
                     <th className="pb-2.5 text-center text-[10px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">Type</th>
-                    <th className="pb-2.5 text-center text-[10px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">Flags</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBiomarkers.map(b => (
-                    <tr key={b.id} className="border-b border-[#0e393d]/[.04] hover:bg-[#0e393d]/[.015] transition-colors">
-                      <td className="py-2.5">
-                        <div className="font-medium text-[#0e393d]">{b.name?.en ?? b.slug}</div>
-                        <div className="text-[10px] text-[#1c2a2b]/30 font-mono">{b.slug}</div>
-                      </td>
-                      <td className="py-2.5">
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#0e393d]/[.06] text-[#0e393d]/60">
-                          {CATEGORY_LABELS[b.category] ?? b.category}
-                        </span>
-                      </td>
-                      <td className="py-2.5 text-[#1c2a2b]/60 font-mono text-[11px]">{b.unit}</td>
-                      <td className="py-2.5 text-center text-[#1c2a2b]/60">
-                        {b.reference_range_low != null || b.reference_range_high != null ? (
-                          <span>{b.reference_range_low ?? '–'} — {b.reference_range_high ?? '–'}</span>
-                        ) : (
-                          <span className="text-[#1c2a2b]/20">—</span>
-                        )}
-                      </td>
-                      <td className="py-2.5 text-center">
-                        {b.optimal_range_low != null || b.optimal_range_high != null ? (
-                          <span className="text-[#0C9C6C] font-medium">{b.optimal_range_low ?? '–'} — {b.optimal_range_high ?? '–'}</span>
-                        ) : (
-                          <span className="text-[#1c2a2b]/20">—</span>
-                        )}
-                      </td>
-                      <td className="py-2.5 text-center">
-                        {b.is_calculated ? (
-                          <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-[#0e393d]/[.06] text-[#0e393d]/50">CALC</span>
-                        ) : (
-                          <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">MEASURED</span>
-                        )}
-                      </td>
-                      <td className="py-2.5 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          {b.age_stratified && (
-                            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600" title="Age-stratified ranges">AGE</span>
-                          )}
-                          {b.has_sex_specific_ranges && (
-                            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-600" title="Sex-specific ranges">SEX</span>
-                          )}
-                          {!b.age_stratified && !b.has_sex_specific_ranges && (
+                  {filteredBiomarkers.map(b => {
+                    const bProducts = biomarkerProducts.get(b.id) ?? new Set();
+                    return (
+                      <tr key={b.id} className="border-b border-[#0e393d]/[.04] hover:bg-[#0e393d]/[.015] transition-colors">
+                        <td className="py-2.5">
+                          <div className="font-medium text-[#0e393d]">{b.name?.en ?? b.slug}</div>
+                          <div className="text-[10px] text-[#1c2a2b]/30 font-mono">{b.slug}</div>
+                        </td>
+                        <td className="py-2.5">
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#0e393d]/[.06] text-[#0e393d]/60">
+                            {CATEGORY_LABELS[b.he_domain] ?? b.he_domain}
+                          </span>
+                        </td>
+                        <td className="py-2.5 text-[#1c2a2b]/60 font-mono text-[11px]">{b.unit}</td>
+                        <td className="py-2.5 text-center text-[#1c2a2b]/60">
+                          {b.ref_range_low != null || b.ref_range_high != null ? (
+                            <span>{b.ref_range_low ?? '–'} — {b.ref_range_high ?? '–'}</span>
+                          ) : (
                             <span className="text-[#1c2a2b]/20">—</span>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="py-2.5 text-center">
+                          {b.optimal_range_low != null || b.optimal_range_high != null ? (
+                            <span className="text-[#0C9C6C] font-medium">{b.optimal_range_low ?? '–'} — {b.optimal_range_high ?? '–'}</span>
+                          ) : (
+                            <span className="text-[#1c2a2b]/20">—</span>
+                          )}
+                        </td>
+                        {/* Product inclusion checkmarks */}
+                        {testPackages.map((pkg, i) => (
+                          <td key={pkg.id} className="py-2.5 text-center">
+                            {bProducts.has(pkg.id) ? (
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="inline-block">
+                                <circle cx="12" cy="12" r="10" fill={['#0C9C6C', '#3b82f6', '#8b5cf6'][i] ?? '#0C9C6C'} opacity="0.15" />
+                                <polyline points="8 12 11 15 16 9" fill="none" stroke={['#0C9C6C', '#3b82f6', '#8b5cf6'][i] ?? '#0C9C6C'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            ) : (
+                              <span className="text-[#1c2a2b]/10">—</span>
+                            )}
+                          </td>
+                        ))}
+                        <td className="py-2.5 text-center">
+                          {b.is_calculated ? (
+                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-[#0e393d]/[.06] text-[#0e393d]/50">CALC</span>
+                          ) : (
+                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">MEASURED</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {filteredBiomarkers.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-[12px] text-[#1c2a2b]/35">
+                      <td colSpan={7 + testPackages.length} className="py-8 text-center text-[12px] text-[#1c2a2b]/35">
                         {biomarkers.length === 0 ? 'No biomarkers found in database.' : 'No biomarkers match your filter.'}
                       </td>
                     </tr>
@@ -705,9 +768,10 @@ export default function HealthEngineSettings({
             </div>
 
             <div className="mt-4 p-3 rounded-lg bg-[#0e393d]/[.02] text-[10px] text-[#1c2a2b]/40">
-              <strong className="text-[#0e393d]/60">Display behavior:</strong> All biomarkers are shown on every user&apos;s dashboard. Markers not included in
-              the user&apos;s package (Core/Pro/Complete) appear grayed out with placeholder state, so users can see what&apos;s available
-              in higher tiers. Markers without data from the current report also appear dimmed until the next report is uploaded.
+              <strong className="text-[#0e393d]/60">How it works:</strong> Biomarker-to-product links are set in the{' '}
+              <a href="/en/admin/products" className="underline">Products admin</a> when editing each test package. Whatever markers are linked to a product
+              automatically appear here. On the user&apos;s dashboard, all markers are shown — those not in the user&apos;s purchased package appear grayed out,
+              so they can see what higher tiers offer. Markers without data from the current report also appear dimmed.
             </div>
           </div>
         </div>
