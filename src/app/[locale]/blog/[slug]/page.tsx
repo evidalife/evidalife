@@ -212,7 +212,7 @@ export default async function BlogDetailPage({
     .from('articles')
     .select(`
       id, slug, title, excerpt, content,
-      featured_image_url, category, author_name,
+      featured_image_url, photo_credit, category, author_name,
       reading_time_min, published_at, is_featured,
       article_tags(tag)
     `)
@@ -282,17 +282,24 @@ export default async function BlogDetailPage({
       <PublicNav />
 
       {article.featured_image_url ? (
-        <PageHero
-          variant="photo"
-          eyebrow={eyebrow}
-          title={title}
-          subtitle={excerpt || undefined}
-          imageUrl={supabaseTransform(article.featured_image_url, 1400) ?? article.featured_image_url}
-        >
-          {metaLine && (
-            <p className="mt-4 text-sm text-white/40">{metaLine}</p>
+        <div className="relative">
+          <PageHero
+            variant="photo"
+            eyebrow={eyebrow}
+            title={title}
+            subtitle={excerpt || undefined}
+            imageUrl={supabaseTransform(article.featured_image_url, 1400) ?? article.featured_image_url}
+          >
+            {metaLine && (
+              <p className="mt-4 text-sm text-white/40">{metaLine}</p>
+            )}
+          </PageHero>
+          {article.photo_credit && (
+            <span className="absolute bottom-3 right-4 text-[10px] text-white/30 tracking-wide">
+              Photo: {article.photo_credit as string}
+            </span>
           )}
-        </PageHero>
+        </div>
       ) : (
         <PageHero
           variant="light"

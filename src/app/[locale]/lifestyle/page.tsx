@@ -64,7 +64,7 @@ export default async function LifestylePage() {
       admin
         .from('lifestyle_lessons')
         .select(
-          'id, slug, title_en, title_de, title_fr, title_es, title_it, caption_en, caption_de, caption_fr, caption_es, caption_it, framework, category, difficulty, photo_url, estimated_minutes, sort_order'
+          'id, slug, title_en, title_de, title_fr, title_es, title_it, caption_en, caption_de, caption_fr, caption_es, caption_it, framework, category, difficulty, photo_url, photo_credit, estimated_minutes, sort_order'
         )
         .eq('is_published', true)
         .order('sort_order')

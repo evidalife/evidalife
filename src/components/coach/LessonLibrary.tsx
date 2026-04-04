@@ -24,6 +24,7 @@ interface Lesson {
   category: string;
   difficulty: Difficulty;
   photo_url: string | null;
+  photo_credit: string | null;
   estimated_minutes: number | null;
   sort_order: number | null;
 }
@@ -222,6 +223,11 @@ export default function LessonLibrary({
                 Today
               </span>
             </div>
+          )}
+          {lesson.photo_credit && (
+            <span className="absolute bottom-1.5 right-2 text-[9px] text-white/40 tracking-wide">
+              {lesson.photo_credit}
+            </span>
           )}
         </div>
 

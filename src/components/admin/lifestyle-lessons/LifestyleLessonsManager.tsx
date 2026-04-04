@@ -44,6 +44,7 @@ export type LessonRow = {
   category: string;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   photo_url: string | null;
+  photo_credit: string | null;
   photo_alt_en: string | null;
   photo_alt_de: string | null;
   photo_alt_fr: string | null;
@@ -99,6 +100,7 @@ const EMPTY_FORM: FormData = {
   category: 'pantry_essentials',
   difficulty: 'beginner',
   photo_url: null,
+  photo_credit: null,
   photo_alt_en: null,
   photo_alt_de: null,
   photo_alt_fr: null,
@@ -242,6 +244,7 @@ export default function LifestyleLessonsManager({ initialLessons }: { initialLes
       category: lesson.category,
       difficulty: lesson.difficulty,
       photo_url: lesson.photo_url,
+      photo_credit: lesson.photo_credit,
       photo_alt_en: lesson.photo_alt_en,
       photo_alt_de: lesson.photo_alt_de,
       photo_alt_fr: lesson.photo_alt_fr,
@@ -352,6 +355,7 @@ export default function LifestyleLessonsManager({ initialLessons }: { initialLes
         category: form.category,
         difficulty: form.difficulty,
         photo_url: form.photo_url,
+        photo_credit: form.photo_credit?.trim() || null,
         photo_alt_en: form.photo_alt_en?.trim() || null,
         photo_alt_de: form.photo_alt_de?.trim() || null,
         photo_alt_fr: form.photo_alt_fr?.trim() || null,
@@ -573,6 +577,9 @@ export default function LifestyleLessonsManager({ initialLessons }: { initialLes
             label="Cover Photo"
             hint="16:9 · Cropped & compressed on upload"
           />
+          <AdminField label="Photo Credit">
+            <input className={inputCls} placeholder="e.g. Jane Doe / Unsplash" value={form.photo_credit ?? ''} onChange={e => setForm(f => ({ ...f, photo_credit: e.target.value }))} />
+          </AdminField>
           <AdminField label={`Alt text (${lang.toUpperCase()})`}>
             <input className={inputCls} placeholder={`Alt text (${lang.toUpperCase()})`} value={(form[altField(lang)] as string) ?? ''} onChange={e => setForm(f => ({ ...f, [altField(lang)]: e.target.value }))} />
           </AdminField>
