@@ -7,8 +7,6 @@ function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!);
 }
 
-const SWISS_TAX_RATE = 0.081; // 8.1 % MwSt
-
 type CartItem = { productId: string; quantity: number };
 
 export async function POST(req: NextRequest) {
@@ -48,7 +46,6 @@ export async function POST(req: NextRequest) {
 
   // Build Stripe line items — use pre-created Price ID if available, dynamic otherwise
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
-  let dynamicSubtotalRappen = 0;
 
   for (const p of products) {
     const qty = cartItems.find((i) => i.productId === p.id)?.quantity ?? 1;
@@ -61,7 +58,6 @@ export async function POST(req: NextRequest) {
           ? p.name
           : (p.name?.de || p.name?.en || 'Product');
       const unitAmount = Math.round((p.price_chf ?? 0) * 100);
-      dynamicSubtotalRappen += unitAmount * qty;
       lineItems.push({
         price_data: {
           currency: 'chf',
@@ -76,18 +72,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Add Swiss MwSt line item only for dynamic-priced items
-  if (dynamicSubtotalRappen > 0) {
-    const taxRappen = Math.round(dynamicSubtotalRappen * SWISS_TAX_RATE);
-    lineItems.push({
-      price_data: {
-        currency: 'chf',
-        product_data: { name: 'MwSt 8.1 %' },
-        unit_amount: taxRappen,
-      },
-      quantity: 1,
-    });
-  }
+  // Tax is handled by Stripe Tax or configured on the Price object in Stripe dashboard
 
   const origin =
     req.headers.get('origin') ??

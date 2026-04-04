@@ -6,6 +6,7 @@ import { useCart } from '@/lib/cart';
 import { createClient } from '@/lib/supabase/client';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import PageHero from '@/components/PageHero';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -30,7 +31,7 @@ const T: Record<Lang, {
   browseShop: string;
   continueShopping: string;
   subtotal: string;
-  tax: string;
+  taxNote: string;
   total: string;
   checkout: string;
   loading: string;
@@ -43,8 +44,8 @@ const T: Record<Lang, {
     browseShop: '→ Zum Shop',
     continueShopping: '← Weiter einkaufen',
     subtotal: 'Zwischensumme',
-    tax: 'MwSt 8.1 %',
-    total: 'Gesamtbetrag',
+    taxNote: 'MwSt wird beim Checkout berechnet',
+    total: 'Zwischensumme',
     checkout: 'Zur Kasse',
     loading: 'Lade …',
     checkoutError: 'Fehler beim Checkout. Bitte erneut versuchen.',
@@ -56,8 +57,8 @@ const T: Record<Lang, {
     browseShop: '→ Browse Shop',
     continueShopping: '← Continue Shopping',
     subtotal: 'Subtotal',
-    tax: 'VAT 8.1 %',
-    total: 'Total',
+    taxNote: 'Taxes calculated at checkout',
+    total: 'Subtotal',
     checkout: 'Proceed to Checkout',
     loading: 'Loading…',
     checkoutError: 'Checkout failed. Please try again.',
@@ -69,8 +70,8 @@ const T: Record<Lang, {
     browseShop: '→ Voir la boutique',
     continueShopping: '← Continuer les achats',
     subtotal: 'Sous-total',
-    tax: 'TVA 8.1 %',
-    total: 'Total',
+    taxNote: 'TVA calculée lors du paiement',
+    total: 'Sous-total',
     checkout: 'Passer à la caisse',
     loading: 'Chargement…',
     checkoutError: 'Erreur de paiement. Veuillez réessayer.',
@@ -82,8 +83,8 @@ const T: Record<Lang, {
     browseShop: '→ Ver la tienda',
     continueShopping: '← Seguir comprando',
     subtotal: 'Subtotal',
-    tax: 'IVA 8.1 %',
-    total: 'Total',
+    taxNote: 'Impuestos calculados en el pago',
+    total: 'Subtotal',
     checkout: 'Proceder al pago',
     loading: 'Cargando…',
     checkoutError: 'Error al pagar. Inténtalo de nuevo.',
@@ -95,8 +96,8 @@ const T: Record<Lang, {
     browseShop: '→ Visita il negozio',
     continueShopping: '← Continua a fare acquisti',
     subtotal: 'Subtotale',
-    tax: 'IVA 8.1 %',
-    total: 'Totale',
+    taxNote: 'IVA calcolata al pagamento',
+    total: 'Subtotale',
     checkout: 'Procedi al pagamento',
     loading: 'Caricamento…',
     checkoutError: 'Errore al pagamento. Riprova.',
@@ -104,7 +105,6 @@ const T: Record<Lang, {
   },
 };
 
-const SWISS_TAX = 0.081;
 const VALID_LANGS = ['de', 'en', 'fr', 'es', 'it'] as const;
 
 function loc(field: I18n, lng: string): string {
@@ -150,8 +150,7 @@ export default function CartContent({ locale }: { locale: string }) {
     const product = products.find((p) => p.id === item.productId);
     return sum + (product?.price_chf ?? 0) * item.quantity;
   }, 0);
-  const tax = Math.round(subtotal * SWISS_TAX * 100) / 100;
-  const total = subtotal + tax;
+  const total = subtotal;
 
   const handleCheckout = async () => {
     setCheckoutLoading(true);
@@ -179,12 +178,13 @@ export default function CartContent({ locale }: { locale: string }) {
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
-      <main className="mx-auto w-full max-w-3xl px-6 pt-28 pb-20 flex-1">
+      <PageHero
+        variant="light"
+        eyebrow={lang === 'de' ? 'Warenkorb' : lang === 'fr' ? 'Panier' : lang === 'es' ? 'Carrito' : lang === 'it' ? 'Carrello' : 'Your Cart'}
+        title={t.title}
+      />
 
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#ceab84]">
-          {lang === 'de' ? 'Warenkorb' : lang === 'fr' ? 'Panier' : lang === 'es' ? 'Carrito' : lang === 'it' ? 'Carrello' : 'Your Cart'}
-        </p>
-        <h1 className="font-serif text-4xl text-[#0e393d] mb-10">{t.title}</h1>
+      <main className="mx-auto w-full max-w-[1060px] px-8 md:px-12 pb-20 flex-1">
 
         {/* Empty state */}
         {!fetching && items.length === 0 && (
@@ -299,18 +299,11 @@ export default function CartContent({ locale }: { locale: string }) {
         {!fetching && items.length > 0 && (
           <div className="rounded-2xl bg-white shadow-sm ring-1 ring-[#0e393d]/8 p-6 max-w-sm ml-auto">
             <div className="space-y-2.5 mb-5">
-              <div className="flex justify-between text-sm text-[#1c2a2b]/60">
-                <span>{t.subtotal}</span>
-                <span>{chf(subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm text-[#1c2a2b]/60">
-                <span>{t.tax}</span>
-                <span>{chf(tax)}</span>
-              </div>
-              <div className="border-t border-[#0e393d]/10 pt-3 flex justify-between font-semibold text-[#0e393d]">
+              <div className="flex justify-between font-semibold text-[#0e393d]">
                 <span>{t.total}</span>
                 <span className="font-serif text-xl">{chf(total)}</span>
               </div>
+              <p className="text-xs text-[#1c2a2b]/40 mt-1">{t.taxNote}</p>
             </div>
 
             <button

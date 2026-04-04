@@ -5,22 +5,23 @@ import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import { createClient } from '@/lib/supabase/server';
 import { getStudyCount, formatStudyCount } from '@/lib/research/study-count';
+import HeroVoicePlayer from '@/components/HeroVoicePlayer';
 
 const VALID_LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 type Lang = (typeof VALID_LANGS)[number];
 
 // ─── Photo constants ──────────────────────────────────────────────────────────
 const PHOTOS = {
-  hero:      'https://images.unsplash.com/photo-1476611338391-6f395a0ebc7b?w=1600&q=80',
-  dashboard: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1200&q=80',
-  mission:   'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=1200&q=80',
-  pillar1:   'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&q=80',
-  pillar2:   'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80',
-  pillar3:   'https://images.unsplash.com/photo-1559757175-5700dde675bc?w=800&q=80',
-  pillar4:   'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80',
-  step1:     'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=800&q=80',
-  step2:     'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80',
-  step3:     'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&q=80',
+  hero:      'https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/hero.jpg',
+  dashboard: 'https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/dashboard.jpg',
+  mission:   'https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/mission.jpg',
+  pillar1:   'https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/pillar1.jpg',
+  pillar2:   'https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/pillar2.jpg',
+  pillar3:   'https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/pillar3.jpg',
+  pillar4:   'https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/pillar4.jpg',
+  step1:     'https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/step1.jpg',
+  step2:     'https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/step2.jpg',
+  step3:     'https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/step3.jpg',
 };
 
 const PILLARS: { photo: string; href: string }[] = [
@@ -709,8 +710,11 @@ export default async function HomePage() {
               </Link>
             </div>
 
+            {/* AI Voice Coach */}
+            <HeroVoicePlayer lang={lang} page="home" />
+
             {/* Trust stats */}
-            <div className="flex flex-wrap gap-x-8 gap-y-3">
+            <div className="flex flex-wrap gap-x-8 gap-y-3 mt-6">
               <div className="flex items-baseline gap-2">
                 <span className="font-serif text-xl text-[#ceab84]">{maxBiomarkers}+</span>
                 <span className="text-white/50 text-xs">{t.trustBar.biomarkers}</span>

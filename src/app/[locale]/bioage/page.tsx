@@ -436,7 +436,7 @@ export default async function BioAgePage() {
         {/* ── Hero Image ────────────────────────────────────────────────────── */}
         <div className="mb-16 rounded-2xl overflow-hidden h-64 sm:h-80 bg-[#0e393d]/5">
           <img
-            src="https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=1200&q=80"
+            src="https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/bioage-dna.jpg"
             alt="DNA science imagery"
             className="w-full h-full object-cover"
           />

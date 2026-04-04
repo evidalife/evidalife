@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import CoverImageUploader from '@/components/shared/CoverImageUploader';
 import GalleryUploader from '@/components/shared/GalleryUploader';
-import type { ParsedProduct } from '@/app/api/admin/parse-product/route';
 import { PRODUCT_TYPES } from '@/components/admin/lab-results/shared';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -63,6 +62,9 @@ type FormState = {
   sort_order: string;
   is_active: boolean;
   is_featured: boolean;
+  stripe_product_id: string;
+  stripe_price_id_chf: string;
+  stripe_price_id_eur: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -75,6 +77,7 @@ const EMPTY_FORM: FormState = {
   tax_class: 'standard', product_type: 'blood_test',
   marker_count: '', sort_order: '',
   is_active: true, is_featured: false,
+  stripe_product_id: '', stripe_price_id_chf: '', stripe_price_id_eur: '',
 };
 
 const TAX_CLASSES = ['standard', 'reduced', 'zero'];
@@ -228,46 +231,6 @@ function MarkdownToolbar({ taRef, value, onChange }: {
 
 // ─── Quick Import components ──────────────────────────────────────────────────
 
-function ParsedProductCard({
-  result, onApply, onDiscard,
-}: { result: ParsedProduct; onApply: () => void; onDiscard: () => void }) {
-  return (
-    <div className="rounded-xl border border-emerald-200 bg-emerald-50/40">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-emerald-200/60">
-        <div className="flex items-center gap-2">
-          <span className="text-sm">✓</span>
-          <span className="text-sm font-medium text-emerald-800">Product parsed successfully</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={onDiscard}
-            className="rounded-lg border border-[#0e393d]/15 px-3 py-1.5 text-xs font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition">
-            Discard
-          </button>
-          <button type="button" onClick={onApply}
-            className="rounded-lg bg-[#0e393d] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0e393d]/90 transition">
-            Apply to form
-          </button>
-        </div>
-      </div>
-      <div className="px-4 py-3 space-y-1.5 text-xs">
-        {([
-          ['Name',        result.name_en],
-          ['Short desc',  result.short_description_en ? result.short_description_en.slice(0, 100) + (result.short_description_en.length > 100 ? '…' : '') : '—'],
-          ['Description', result.description_en ? result.description_en.slice(0, 120) + (result.description_en.length > 120 ? '…' : '') : '—'],
-          ['Price',       result.suggested_price_chf != null ? `CHF ${result.suggested_price_chf}` : '—'],
-          ['Type',        result.suggested_product_type ?? '—'],
-          ['Markers',     result.marker_count != null ? String(result.marker_count) : '—'],
-        ] as [string, string][]).map(([label, value]) => (
-          <div key={label} className="flex gap-2">
-            <span className="w-24 shrink-0 font-medium text-[#1c2a2b]/50">{label}</span>
-            <span className="text-[#1c2a2b]/80 break-words flex-1">{value}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ─── AI button ────────────────────────────────────────────────────────────────
 
 function AiBtn({
@@ -317,19 +280,14 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
 
   // AI statuses
   const [rewriteStatus, setRewriteStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [styleStatus, setStyleStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
-
-  // Quick Import
-  const [quickImportOpen, setQuickImportOpen] = useState(false);
-  const [quickImportText, setQuickImportText] = useState('');
-  const [quickImportParsing, setQuickImportParsing] = useState(false);
-  const [quickImportError, setQuickImportError] = useState<string | null>(null);
-  const [quickImportResult, setQuickImportResult] = useState<ParsedProduct | null>(null);
 
   // Gallery
   const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
@@ -414,10 +372,6 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     setCoverImageUrl(null);
     setError(null);
     setGalleryUrls([]);
-    setQuickImportOpen(false);
-    setQuickImportText('');
-    setQuickImportResult(null);
-    setQuickImportError(null);
     setRewriteStatus('idle');
     setStyleStatus('idle');
     setItemsSearch('');
@@ -429,7 +383,6 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     setLang('de');
     setForm(EMPTY_FORM);
     resetPanel();
-    setQuickImportOpen(true); // open for new products
     setOpenSections({ content: true, details: true, pricing: true, settings: true, testItems: true, gallery: false, cover: true });
     setPanelOpen(true);
   };
@@ -453,6 +406,9 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       sort_order: p.sort_order != null ? String(p.sort_order) : '',
       is_active: p.is_active ?? true,
       is_featured: p.is_featured ?? false,
+      stripe_product_id: p.stripe_product_id ?? '',
+      stripe_price_id_chf: p.stripe_price_id_chf ?? '',
+      stripe_price_id_eur: p.stripe_price_id_eur ?? '',
     });
     const isTest = ['blood_test', 'clinical_test', 'epigenetic_test', 'genetic_test', 'microbiome_test', 'addon_test'].includes(p.product_type ?? '');
     const existingGallery = p.gallery_urls ?? [];
@@ -557,45 +513,6 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
     }
   };
 
-  // ── Quick Import ──────────────────────────────────────────────────────────────
-
-  const handleQuickImport = async (text: string) => {
-    if (!text.trim()) return;
-    setQuickImportParsing(true);
-    setQuickImportError(null);
-    setQuickImportResult(null);
-    try {
-      const res = await fetch('/api/admin/parse-product', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'Parse failed');
-      setQuickImportResult(json as ParsedProduct);
-    } catch (e: unknown) {
-      setQuickImportError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setQuickImportParsing(false);
-    }
-  };
-
-  const handleApplyParsed = (result: ParsedProduct) => {
-    setForm((f) => ({
-      ...f,
-      name:              { ...f.name,              en: result.name_en || f.name.en },
-      short_description: { ...f.short_description, en: result.short_description_en || f.short_description.en },
-      description:       { ...f.description,       en: result.description_en || f.description.en },
-      price_chf:         result.suggested_price_chf != null ? String(result.suggested_price_chf) : f.price_chf,
-      product_type:      result.suggested_product_type ?? f.product_type,
-      marker_count:      result.marker_count != null ? String(result.marker_count) : f.marker_count,
-    }));
-    setQuickImportResult(null);
-    setQuickImportOpen(false);
-    setLang('en');
-    setOpenSections((prev) => ({ ...prev, content: true, details: true, pricing: true }));
-  };
-
   // ── Test items toggle ─────────────────────────────────────────────────────────
 
   const handleToggleItem = async (definitionId: string, checked: boolean) => {
@@ -645,6 +562,9 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       sort_order: form.sort_order ? Number(form.sort_order) : null,
       is_active: form.is_active,
       is_featured: form.is_featured,
+      stripe_product_id: form.stripe_product_id.trim() || null,
+      stripe_price_id_chf: form.stripe_price_id_chf.trim() || null,
+      stripe_price_id_eur: form.stripe_price_id_eur.trim() || null,
     };
 
     try {
@@ -672,6 +592,38 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
       setError(typeof e === 'object' && e && 'message' in e ? (e as any).message : String(e));
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ── Sync to Stripe ──────────────────────────────────────────────────────────
+
+  const handleSyncStripe = async () => {
+    if (!editingId) return;
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await fetch('/api/admin/sync-stripe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: editingId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Sync failed');
+
+      // Update form with returned Stripe IDs
+      setForm((f) => ({
+        ...f,
+        stripe_product_id: data.stripe_product_id ?? f.stripe_product_id,
+        stripe_price_id_chf: data.stripe_price_id_chf ?? f.stripe_price_id_chf,
+        stripe_price_id_eur: data.stripe_price_id_eur ?? f.stripe_price_id_eur,
+      }));
+      setSyncResult('Synced to Stripe');
+      await refresh();
+      setTimeout(() => setSyncResult(null), 4000);
+    } catch (e) {
+      setSyncResult(e instanceof Error ? e.message : 'Sync failed');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -937,95 +889,6 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
             {/* Panel body */}
             <div className="flex-1 overflow-y-auto px-6 py-5">
 
-              {/* ── Quick Import ─────────────────────────────────────────── */}
-              <div className="mb-5">
-                <button type="button" onClick={() => setQuickImportOpen((v) => !v)}
-                  className="flex w-full items-center justify-between group">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84]">Quick Import</span>
-                    <span className="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-600">AI-powered</span>
-                  </div>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
-                    className={`text-[#0e393d]/30 group-hover:text-[#0e393d]/60 transition-transform ${quickImportOpen ? 'rotate-180' : ''}`}>
-                    <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-
-                {quickImportOpen && (
-                  <div className="mt-3 space-y-3">
-                    {!quickImportResult && !quickImportParsing && (
-                      <div
-                        className="rounded-xl border-2 border-dashed border-violet-200 bg-violet-50/40 p-4 space-y-3"
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => { e.preventDefault(); const t = e.dataTransfer.getData('text'); if (t) { handleQuickImport(t); } }}
-                      >
-                        <div className="flex flex-col items-center gap-2 py-1 text-center">
-                          <span className="text-2xl">📋</span>
-                          <p className="text-sm font-medium text-violet-800">Paste product info from any source</p>
-                          <p className="text-xs text-violet-500">Product page, PDF, spec sheet, or any text</p>
-                          <button
-                            type="button"
-                            disabled={quickImportParsing}
-                            onClick={async () => {
-                              try {
-                                const t = await navigator.clipboard.readText();
-                                if (t) handleQuickImport(t);
-                              } catch { /* permission denied */ }
-                            }}
-                            className="mt-1 flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50 transition"
-                          >
-                            📋 Paste from clipboard
-                          </button>
-                        </div>
-                        <div className="relative">
-                          <span className="absolute inset-x-0 top-0 flex justify-center -translate-y-1/2">
-                            <span className="bg-violet-50 px-2 text-[10px] text-violet-400">or type / paste below</span>
-                          </span>
-                          <textarea
-                            value={quickImportText}
-                            onChange={(e) => setQuickImportText(e.target.value)}
-                            onPaste={(e) => { const t = e.clipboardData.getData('text'); if (t) { e.preventDefault(); handleQuickImport(t); } }}
-                            rows={4}
-                            placeholder="Paste product text here…"
-                            className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm placeholder:text-[#1c2a2b]/30 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-200 transition resize-none mt-2"
-                          />
-                          {quickImportText.trim() && (
-                            <div className="flex justify-end mt-1">
-                              <button type="button" onClick={() => { handleQuickImport(quickImportText); setQuickImportText(''); }}
-                                className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-700 transition">
-                                Parse with AI
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {quickImportParsing && (
-                      <div className="flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-4">
-                        <svg className="animate-spin h-4 w-4 text-violet-500 shrink-0" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                        </svg>
-                        <p className="text-sm text-violet-700">Parsing product with AI…</p>
-                      </div>
-                    )}
-                    {quickImportError && (
-                      <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                        {quickImportError}
-                        <button type="button" onClick={() => setQuickImportError(null)} className="ml-2 text-xs underline">Dismiss</button>
-                      </div>
-                    )}
-                    {quickImportResult && (
-                      <ParsedProductCard
-                        result={quickImportResult}
-                        onApply={() => handleApplyParsed(quickImportResult)}
-                        onDiscard={() => setQuickImportResult(null)}
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
-
               {/* ── Content ──────────────────────────────────────────────── */}
               <SectionBlock title={`Content — ${lang.toUpperCase()}`} open={openSections.content} onToggle={() => toggleSection('content')}>
                 <div className="space-y-4">
@@ -1138,24 +1001,45 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
                       {TAX_CLASSES.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </Field>
-                  {editingId && (() => {
-                    const p = products.find((x) => x.id === editingId);
-                    if (!p?.stripe_product_id && !p?.stripe_price_id_chf) return null;
-                    return (
-                      <div className="rounded-lg bg-[#0e393d]/4 px-3 py-2.5 space-y-1.5">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-[#0e393d]/50">Stripe IDs (read-only)</p>
-                        {p.stripe_product_id && (
-                          <p className="text-[11px] font-mono text-[#1c2a2b]/60 break-all">Product: {p.stripe_product_id}</p>
-                        )}
-                        {p.stripe_price_id_chf && (
-                          <p className="text-[11px] font-mono text-[#1c2a2b]/60 break-all">Price CHF: {p.stripe_price_id_chf}</p>
-                        )}
-                        {p.stripe_price_id_eur && (
-                          <p className="text-[11px] font-mono text-[#1c2a2b]/60 break-all">Price EUR: {p.stripe_price_id_eur}</p>
-                        )}
-                      </div>
-                    );
-                  })()}
+                  <div className="rounded-lg bg-[#0e393d]/4 px-3 py-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#0e393d]/50">Stripe Integration</p>
+                      {editingId && (
+                        <button
+                          type="button"
+                          onClick={handleSyncStripe}
+                          disabled={syncing || saving}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#635bff] text-white hover:bg-[#635bff]/90 disabled:opacity-50 transition"
+                        >
+                          {syncing ? (
+                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          ) : (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" />
+                            </svg>
+                          )}
+                          {syncing ? 'Syncing…' : 'Sync to Stripe'}
+                        </button>
+                      )}
+                    </div>
+                    {syncResult && (
+                      <p className={`text-xs ${syncResult.includes('Synced') ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {syncResult}
+                      </p>
+                    )}
+                    <Field label="Stripe Product ID" hint="prod_xxx — auto-filled on sync">
+                      <input className={inputCls + ' font-mono text-xs'} value={form.stripe_product_id}
+                        onChange={(e) => setField('stripe_product_id', e.target.value)} placeholder="prod_xxx" />
+                    </Field>
+                    <Field label="Stripe Price ID (CHF)" hint="price_xxx — auto-filled on sync">
+                      <input className={inputCls + ' font-mono text-xs'} value={form.stripe_price_id_chf}
+                        onChange={(e) => setField('stripe_price_id_chf', e.target.value)} placeholder="price_xxx" />
+                    </Field>
+                    <Field label="Stripe Price ID (EUR)" hint="price_xxx — auto-filled on sync">
+                      <input className={inputCls + ' font-mono text-xs'} value={form.stripe_price_id_eur}
+                        onChange={(e) => setField('stripe_price_id_eur', e.target.value)} placeholder="price_xxx" />
+                    </Field>
+                  </div>
                 </div>
               </SectionBlock>
 

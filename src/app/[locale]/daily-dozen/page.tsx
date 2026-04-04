@@ -494,7 +494,7 @@ const DD_CATEGORIES: Record<Lang, { emoji: string; name: string; servings: numbe
   ],
 };
 
-const OATS_PHOTO = 'https://images.unsplash.com/photo-1517673400267-0251440c45dc?w=800&q=80';
+const OATS_PHOTO = 'https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/daily-dozen-oats.jpg';
 
 export default async function DailyDozenPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   const locale = await getLocale();

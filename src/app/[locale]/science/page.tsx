@@ -902,7 +902,7 @@ export default async function SciencePage() {
 
         <PageHero
           variant="photo"
-          imageUrl="https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=2000&q=80"
+          imageUrl="https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/science-research.jpg"
           eyebrow={t.eyebrow}
           title={t.heading}
           subtitle={t.heroSub}

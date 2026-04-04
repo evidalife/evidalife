@@ -1,0 +1,62 @@
+{
+  "hero": {
+    "oldUrl": "https://images.unsplash.com/photo-1476611338391-6f395a0ebc7b?w=1600&q=80",
+    "newUrl": "https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/hero.jpg"
+  },
+  "dashboard": {
+    "oldUrl": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1200&q=80",
+    "newUrl": "https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/dashboard.jpg"
+  },
+  "mission": {
+    "oldUrl": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=1200&q=80",
+    "newUrl": "https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/mission.jpg"
+  },
+  "pillar1": {
+    "oldUrl": "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&q=80",
+    "newUrl": "https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/pillar1.jpg"
+  },
+  "pillar2": {
+    "oldUrl": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80",
+    "newUrl": "https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/pillar2.jpg"
+  },
+  "pillar3": {
+    "oldUrl": "https://images.unsplash.com/photo-1559757175-5700dde675bc?w=800&q=80",
+    "newUrl": "https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/pillar3.jpg"
+  },
+  "pillar4": {
+    "oldUrl": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80",
+    "newUrl": "https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/pillar4.jpg"
+  },
+  "step1": {
+    "oldUrl": "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=800&q=80",
+    "newUrl": "https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/step1.jpg"
+  },
+  "step2": {
+    "oldUrl": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80",
+    "newUrl": "https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/step2.jpg"
+  },
+  "step3": {
+    "oldUrl": "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&q=80",
+    "newUrl": "https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/step3.jpg"
+  },
+  "auth-hero": {
+    "oldUrl": "https://images.unsplash.com/photo-1476611338391-6f395a0ebc7b?w=1600&q=80",
+    "newUrl": "https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/auth-hero.jpg"
+  },
+  "shopping-hero": {
+    "oldUrl": "https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200&q=80",
+    "newUrl": "https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/shopping-hero.jpg"
+  },
+  "daily-dozen-oats": {
+    "oldUrl": "https://images.unsplash.com/photo-1517673400267-0251440c45dc?w=800&q=80",
+    "newUrl": "https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/daily-dozen-oats.jpg"
+  },
+  "bioage-dna": {
+    "oldUrl": "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=1200&q=80",
+    "newUrl": "https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/bioage-dna.jpg"
+  },
+  "science-research": {
+    "oldUrl": "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=2000&q=80",
+    "newUrl": "https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/science-research.jpg"
+  }
+}

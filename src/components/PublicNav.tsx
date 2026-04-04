@@ -12,7 +12,7 @@ type Locale = 'de' | 'en' | 'fr' | 'es' | 'it';
 
 // URL slugs for each section's dropdown items, matching nav.dropdowns.* order in translations
 const NAV_SLUG_MAP: Record<string, (string | null)[]> = {
-  Kitchen: ['/blog', '/recipes', '/daily-dozen'],
+  Kitchen: ['/blog', '/recipes', '/daily-dozen', '/shopping-list'],
   Health:  ['/health-engine', '/biomarkers', '/bioage', '/partner-labs', '/science'],
   Lifestyle: ['/lifestyle'],
   Shop:    ['/shop'],
@@ -45,23 +45,6 @@ const AUTH_DROPDOWN_ITEMS: Partial<Record<string, Record<Locale, AuthDropdownIte
     ],
     it: [
       { label: 'Ricerca',              href: '/research', insertAt: 1 },
-    ],
-  },
-  Kitchen: {
-    de: [
-      { label: 'Einkaufsliste', href: '/shopping-list' },
-    ],
-    en: [
-      { label: 'Shopping List', href: '/shopping-list' },
-    ],
-    fr: [
-      { label: 'Liste de courses', href: '/shopping-list' },
-    ],
-    es: [
-      { label: 'Lista de compras', href: '/shopping-list' },
-    ],
-    it: [
-      { label: 'Lista della spesa', href: '/shopping-list' },
     ],
   },
   Lifestyle: {

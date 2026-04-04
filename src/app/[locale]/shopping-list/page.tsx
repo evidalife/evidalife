@@ -7,8 +7,7 @@ import ShoppingListView, { type ShoppingList, type ShoppingListItem } from '@/co
 import { createClient } from '@/lib/supabase/server';
 import { buildMeta, PAGE_META } from '@/lib/seo';
 
-// TODO: migrate hero image to Supabase Storage
-const HERO_IMG = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200&q=80';
+const HERO_IMG = 'https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/shopping-hero.jpg';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -118,7 +117,7 @@ function PublicIntro({ lang }: { lang: Lang }) {
   const t = T[lang];
   return (
     <div className="flex-1 flex flex-col">
-      <PageHero variant="teal" eyebrow={t.tag} title={t.h1} subtitle={t.sub} />
+      <PageHero variant="photo" eyebrow={t.tag} title={t.h1} subtitle={t.sub} imageUrl={HERO_IMG} />
 
       {/* Features */}
       <section className="max-w-[1060px] mx-auto px-8 md:px-12 py-16 w-full">

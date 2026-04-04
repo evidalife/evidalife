@@ -7,7 +7,7 @@ import Image from 'next/image';
 
 type Locale = 'de' | 'en';
 
-const HERO_IMG = 'https://images.unsplash.com/photo-1476611338391-6f395a0ebc7b?w=1600&q=80';
+const HERO_IMG = 'https://rwbmdxgcjgidalcoeppp.supabase.co/storage/v1/object/public/website-photos/auth-hero.jpg';
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations('auth.hero');
