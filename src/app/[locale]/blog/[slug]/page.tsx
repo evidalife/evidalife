@@ -281,25 +281,29 @@ export default async function BlogDetailPage({
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
-      <PageHero
-        variant="light"
-        eyebrow={eyebrow}
-        title={title}
-        subtitle={excerpt || undefined}
-        meta={metaLine || undefined}
-      />
+      {article.featured_image_url ? (
+        <PageHero
+          variant="photo"
+          eyebrow={eyebrow}
+          title={title}
+          subtitle={excerpt || undefined}
+          imageUrl={supabaseTransform(article.featured_image_url, 1400) ?? article.featured_image_url}
+        >
+          {metaLine && (
+            <p className="mt-4 text-sm text-white/40">{metaLine}</p>
+          )}
+        </PageHero>
+      ) : (
+        <PageHero
+          variant="light"
+          eyebrow={eyebrow}
+          title={title}
+          subtitle={excerpt || undefined}
+          meta={metaLine || undefined}
+        />
+      )}
 
-      <main className="flex-1 w-full max-w-[1060px] mx-auto px-8 md:px-12 pb-12">
-
-        {/* Hero image */}
-        {article.featured_image_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={supabaseTransform(article.featured_image_url, 1200) ?? article.featured_image_url}
-            alt={title}
-            className="w-full h-64 object-cover rounded-2xl border border-[#0e393d]/10 mt-10 mb-8"
-          />
-        )}
+      <main className="flex-1 w-full max-w-[1060px] mx-auto px-8 md:px-12 pt-10 pb-12">
 
         {/* Article body */}
         {content ? (
