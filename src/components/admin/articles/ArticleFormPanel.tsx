@@ -1,10 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import CoverImageUploader from '@/components/shared/CoverImageUploader';
 import GalleryUploader from '@/components/shared/GalleryUploader';
+import {
+  AdminSectionBlock,
+  AdminField,
+  inputCls,
+  selectCls,
+} from '@/components/admin/shared/AdminUI';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -35,6 +41,7 @@ type ArticleForm = {
   published_at:    string;
   is_published:    boolean;
   is_featured:     boolean;
+  photo_credit:    string;
   tags:            string[];
 };
 
@@ -51,41 +58,96 @@ const EMPTY_FORM: ArticleForm = {
   published_at:    '',
   is_published:    false,
   is_featured:     false,
+  photo_credit:    '',
   tags:            [],
 };
 
-// ─── Shared primitives ────────────────────────────────────────────────────────
+// ─── AI Button Component ──────────────────────────────────────────────────────
 
-const inputCls = 'w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition';
-
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function AiBtn({
+  onClick,
+  disabled,
+  status,
+  idle,
+  loading,
+  done,
+  color = 'amber',
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  status: 'idle' | 'loading' | 'done';
+  idle: string;
+  loading: string;
+  done: string;
+  color?: 'amber' | 'sky' | 'violet';
+}) {
+  const cls = {
+    amber: 'border-amber-200 text-amber-700 bg-amber-50',
+    sky: 'border-sky-200 text-sky-700 bg-sky-50',
+    violet: 'border-violet-200 text-violet-700 bg-violet-50',
+  };
+  const doneCls = 'border-emerald-200 text-emerald-700 bg-emerald-50';
   return (
-    <div>
-      <label className="block text-xs font-medium text-[#0e393d]/70 mb-1">{label}</label>
-      {children}
-      {hint && <p className="mt-1 text-[11px] text-[#1c2a2b]/40">{hint}</p>}
-    </div>
+    <button
+      onClick={onClick}
+      disabled={disabled || status === 'loading'}
+      className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-medium disabled:opacity-50 transition whitespace-nowrap ${
+        status === 'done' ? doneCls : cls[color]
+      }`}
+    >
+      {status === 'loading' ? loading : status === 'done' ? done : idle}
+    </button>
   );
 }
 
-function SectionHead({ children }: { children: React.ReactNode }) {
-  return <p className="text-[11px] font-semibold uppercase tracking-widest text-[#ceab84] mb-3">{children}</p>;
-}
+// ─── Markdown Toolbar Component ───────────────────────────────────────────────
 
-function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
+function MarkdownToolbar({ textareaRef }: { textareaRef: React.RefObject<HTMLTextAreaElement | null> }) {
+  const insertMarkdown = (before: string, after: string = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = textarea.value.substring(start, end);
+    const replacement = selected ? `${before}${selected}${after}` : `${before}${after}`;
+
+    const newValue = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
+    textarea.value = newValue;
+    textarea.focus();
+    const newPos = start + before.length + selected.length;
+    textarea.setSelectionRange(newPos, newPos);
+
+    // Trigger change event for React to pick up the change
+    const event = new Event('change', { bubbles: true });
+    textarea.dispatchEvent(event);
+  };
+
+  const tools = [
+    { label: '**Bold**', before: '**', after: '**' },
+    { label: '*Italic*', before: '*', after: '*' },
+    { label: '## Heading', before: '## ', after: '' },
+    { label: '- List', before: '- ', after: '' },
+    { label: '1. Numbered', before: '1. ', after: '' },
+    { label: '> Quote', before: '> ', after: '' },
+    { label: '--- Divider', before: '---', after: '' },
+  ];
+
   return (
-    <div className="flex items-center justify-between rounded-lg border border-[#0e393d]/10 px-4 py-3">
-      <div>
-        <p className="text-sm font-medium text-[#1c2a2b]">{label}</p>
-        {hint && <p className="text-xs text-[#1c2a2b]/40">{hint}</p>}
-      </div>
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${checked ? 'bg-[#0e393d]' : 'bg-gray-200'}`}
-      >
-        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
-      </button>
+    <div className="flex gap-1 flex-wrap mb-2 p-2 rounded-lg bg-[#fafaf8] border border-[#0e393d]/8">
+      {tools.map(({ label, before, after }) => (
+        <button
+          key={label}
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            insertMarkdown(before, after);
+          }}
+          className="px-2 py-1 rounded border border-[#0e393d]/20 text-[11px] font-medium text-[#1c2a2b] hover:bg-white transition"
+        >
+          {label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -99,52 +161,108 @@ interface Props {
   onDeleted?: () => void;
 }
 
-export default function ArticleFormPanel({ articleId, onClose, onSaved, onDeleted }: Props) {
+export default function ArticleFormPanel({
+  articleId,
+  onClose,
+  onSaved,
+  onDeleted,
+}: Props) {
   const supabase = createClient();
   const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
-  const [deleting, setDeleting] = useState(false);
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const [lang, setLang]                 = useState<Lang>('de');
-  const [translating, setTranslating]   = useState(false);
-  const [form, setForm]                 = useState<ArticleForm>(EMPTY_FORM);
-  const [tagInput, setTagInput]         = useState('');
+  const [lang, setLang] = useState<Lang>('en');
+  const [form, setForm] = useState<ArticleForm>(EMPTY_FORM);
+  const [tagInput, setTagInput] = useState('');
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
-  const [galleryUrls, setGalleryUrls]   = useState<string[]>([]);
-  const [loading, setLoading]           = useState(!!articleId);
-  const [saving, setSaving]             = useState(false);
-  const [error, setError]               = useState<string | null>(null);
+  const [photoCredit, setPhotoCredit] = useState('');
+  const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
+  const [loading, setLoading] = useState(!!articleId);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [rewriteStatus, setRewriteStatus] = useState<'idle' | 'loading' | 'done'>('idle');
+  const [translateStatus, setTranslateStatus] = useState<'idle' | 'loading' | 'done'>('idle');
+  const [seoStatus, setSeoStatus] = useState<'idle' | 'loading' | 'done'>('idle');
+
+  // Collapsible section state
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    content: true, seo: false, metadata: false, tags: false, image: true, gallery: false, settings: false,
+  });
+  const toggleSection = (key: string) => setOpenSections((s) => ({ ...s, [key]: !s[key] }));
 
   // ── Load ──────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!articleId) { setForm(EMPTY_FORM); setLoading(false); return; }
+    if (!articleId) {
+      setForm(EMPTY_FORM);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     Promise.all([
       supabase.from('articles').select('*').eq('id', articleId).single(),
       supabase.from('article_tags').select('tag').eq('article_id', articleId),
     ]).then(([{ data: a }, { data: tags }]) => {
-      if (!a) { setLoading(false); return; }
+      if (!a) {
+        setLoading(false);
+        return;
+      }
       setCoverImageUrl(a.featured_image_url ?? null);
-      setGalleryUrls((a as Record<string, unknown>).gallery_urls as string[] ?? []);
+      setPhotoCredit(a.photo_credit ?? '');
+      setGalleryUrls((a as Record<string, unknown>).gallery_urls as string[]);
 
-      // published_at → datetime-local value (YYYY-MM-DDTHH:mm)
-      const pa = a.published_at ? new Date(a.published_at).toISOString().slice(0, 16) : '';
+      const pa = a.published_at
+        ? new Date(a.published_at).toISOString().slice(0, 16)
+        : '';
 
       setForm({
-        title:           { de: a.title?.de ?? '',           en: a.title?.en ?? '',           fr: a.title?.fr ?? '',           es: a.title?.es ?? '',           it: a.title?.it ?? '' },
-        slug:            a.slug ?? '',
-        excerpt:         { de: a.excerpt?.de ?? '',         en: a.excerpt?.en ?? '',         fr: a.excerpt?.fr ?? '',         es: a.excerpt?.es ?? '',         it: a.excerpt?.it ?? '' },
-        content:         { de: a.content?.de ?? '',         en: a.content?.en ?? '',         fr: a.content?.fr ?? '',         es: a.content?.es ?? '',         it: a.content?.it ?? '' },
-        seo_title:       { de: a.seo_title?.de ?? '',       en: a.seo_title?.en ?? '',       fr: a.seo_title?.fr ?? '',       es: a.seo_title?.es ?? '',       it: a.seo_title?.it ?? '' },
-        seo_description: { de: a.seo_description?.de ?? '', en: a.seo_description?.en ?? '', fr: a.seo_description?.fr ?? '', es: a.seo_description?.es ?? '', it: a.seo_description?.it ?? '' },
-        author_name:     a.author_name     ?? '',
-        category:        a.category        ?? 'health',
+        title: {
+          de: a.title?.de ?? '',
+          en: a.title?.en ?? '',
+          fr: a.title?.fr ?? '',
+          es: a.title?.es ?? '',
+          it: a.title?.it ?? '',
+        },
+        slug: a.slug ?? '',
+        excerpt: {
+          de: a.excerpt?.de ?? '',
+          en: a.excerpt?.en ?? '',
+          fr: a.excerpt?.fr ?? '',
+          es: a.excerpt?.es ?? '',
+          it: a.excerpt?.it ?? '',
+        },
+        content: {
+          de: a.content?.de ?? '',
+          en: a.content?.en ?? '',
+          fr: a.content?.fr ?? '',
+          es: a.content?.es ?? '',
+          it: a.content?.it ?? '',
+        },
+        seo_title: {
+          de: a.seo_title?.de ?? '',
+          en: a.seo_title?.en ?? '',
+          fr: a.seo_title?.fr ?? '',
+          es: a.seo_title?.es ?? '',
+          it: a.seo_title?.it ?? '',
+        },
+        seo_description: {
+          de: a.seo_description?.de ?? '',
+          en: a.seo_description?.en ?? '',
+          fr: a.seo_description?.fr ?? '',
+          es: a.seo_description?.es ?? '',
+          it: a.seo_description?.it ?? '',
+        },
+        author_name: a.author_name ?? '',
+        category: a.category ?? 'health',
         reading_time_min: a.reading_time_min != null ? String(a.reading_time_min) : '',
-        published_at:    pa,
-        is_published:    a.is_published  ?? false,
-        is_featured:     a.is_featured   ?? false,
-        tags:            (tags ?? []).map((t) => t.tag).filter(Boolean),
+        published_at: pa,
+        is_published: a.is_published ?? false,
+        is_featured: a.is_featured ?? false,
+        photo_credit: a.photo_credit ?? '',
+        tags: (tags ?? []).map((t) => t.tag).filter(Boolean),
       });
       setLoading(false);
     });
@@ -152,8 +270,14 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
 
-  const setLF = (field: keyof Pick<ArticleForm, 'title' | 'excerpt' | 'content' | 'seo_title' | 'seo_description'>, l: Lang, v: string) =>
-    setForm((f) => ({ ...f, [field]: { ...f[field], [l]: v } }));
+  const setLF = (
+    field: keyof Pick<
+      ArticleForm,
+      'title' | 'excerpt' | 'content' | 'seo_title' | 'seo_description'
+    >,
+    l: Lang,
+    v: string
+  ) => setForm((f) => ({ ...f, [field]: { ...f[field], [l]: v } }));
 
   const setF = <K extends keyof ArticleForm>(k: K, v: ArticleForm[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -180,39 +304,148 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
   const removeTag = (tag: string) =>
     setForm((f) => ({ ...f, tags: f.tags.filter((t) => t !== tag) }));
 
-  // ── AI Translate ──────────────────────────────────────────────────────────────
+  // ── AI: Rewrite & Proofread ───────────────────────────────────────────────────
 
-  const handleTranslate = async () => {
-    const src = form.title.en || form.title.de;
-    if (!src) { alert('Enter an EN or DE title first.'); return; }
-    setTranslating(true);
+  const handleRewrite = async () => {
+    const src = form.title[lang] || form.title.en || form.title.de;
+    if (!src) {
+      alert(`Enter a title for ${lang.toUpperCase()} first.`);
+      return;
+    }
+    setRewriteStatus('loading');
     try {
-      const res = await fetch('/api/admin/translate-article', {
+      const res = await fetch('/api/admin/rewrite-content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title_en:           form.title.en || form.title.de,
-          excerpt_en:         form.excerpt.en || form.excerpt.de,
-          seo_title_en:       form.seo_title.en || form.seo_title.de,
-          seo_description_en: form.seo_description.en || form.seo_description.de,
+          fields: {
+            title: form.title[lang],
+            excerpt: form.excerpt[lang],
+            content: form.content[lang],
+          },
+          language: lang,
+          context: 'Blog article for a health and longevity platform',
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Rewrite failed');
+      setLF('title', lang, json.title ?? form.title[lang]);
+      setLF('excerpt', lang, json.excerpt ?? form.excerpt[lang]);
+      setLF('content', lang, json.content ?? form.content[lang]);
+      setRewriteStatus('done');
+      setTimeout(() => setRewriteStatus('idle'), 2000);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : String(e));
+      setRewriteStatus('idle');
+    }
+  };
+
+  // ── AI: Translate to all ──────────────────────────────────────────────────────
+
+  const handleTranslateAll = async () => {
+    const src = form.title[lang] || form.title.en || form.title.de;
+    if (!src) {
+      alert(`Enter a title for ${lang.toUpperCase()} first.`);
+      return;
+    }
+    setTranslateStatus('loading');
+    try {
+      const res = await fetch('/api/admin/translate-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            title: form.title[lang],
+            excerpt: form.excerpt[lang],
+            content: form.content[lang],
+            seo_title: form.seo_title[lang],
+            seo_description: form.seo_description[lang],
+          },
+          source_language: lang,
+          context: 'Blog article',
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Translate failed');
+
+      // Update all languages from response
+      const translations = json.translations || {};
       setForm((f) => ({
         ...f,
-        title:           { ...f.title,           fr: f.title.fr           || json.title_fr           || '', es: f.title.es           || json.title_es           || '', it: f.title.it           || json.title_it           || '' },
-        excerpt:         { ...f.excerpt,         fr: f.excerpt.fr         || json.excerpt_fr         || '', es: f.excerpt.es         || json.excerpt_es         || '', it: f.excerpt.it         || json.excerpt_it         || '' },
-        seo_title:       { ...f.seo_title,       fr: f.seo_title.fr       || json.seo_title_fr       || '', es: f.seo_title.es       || json.seo_title_es       || '', it: f.seo_title.it       || json.seo_title_it       || '' },
-        seo_description: { ...f.seo_description, fr: f.seo_description.fr || json.seo_description_fr || '', es: f.seo_description.es || json.seo_description_es || '', it: f.seo_description.it || json.seo_description_it || '' },
+        title: {
+          de: translations.de?.title ?? f.title.de,
+          en: translations.en?.title ?? f.title.en,
+          fr: translations.fr?.title ?? f.title.fr,
+          es: translations.es?.title ?? f.title.es,
+          it: translations.it?.title ?? f.title.it,
+        },
+        excerpt: {
+          de: translations.de?.excerpt ?? f.excerpt.de,
+          en: translations.en?.excerpt ?? f.excerpt.en,
+          fr: translations.fr?.excerpt ?? f.excerpt.fr,
+          es: translations.es?.excerpt ?? f.excerpt.es,
+          it: translations.it?.excerpt ?? f.excerpt.it,
+        },
+        content: {
+          de: translations.de?.content ?? f.content.de,
+          en: translations.en?.content ?? f.content.en,
+          fr: translations.fr?.content ?? f.content.fr,
+          es: translations.es?.content ?? f.content.es,
+          it: translations.it?.content ?? f.content.it,
+        },
+        seo_title: {
+          de: translations.de?.seo_title ?? f.seo_title.de,
+          en: translations.en?.seo_title ?? f.seo_title.en,
+          fr: translations.fr?.seo_title ?? f.seo_title.fr,
+          es: translations.es?.seo_title ?? f.seo_title.es,
+          it: translations.it?.seo_title ?? f.seo_title.it,
+        },
+        seo_description: {
+          de: translations.de?.seo_description ?? f.seo_description.de,
+          en: translations.en?.seo_description ?? f.seo_description.en,
+          fr: translations.fr?.seo_description ?? f.seo_description.fr,
+          es: translations.es?.seo_description ?? f.seo_description.es,
+          it: translations.it?.seo_description ?? f.seo_description.it,
+        },
       }));
+      setTranslateStatus('done');
+      setTimeout(() => setTranslateStatus('idle'), 2000);
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : String(e));
-    } finally {
-      setTranslating(false);
+      setTranslateStatus('idle');
     }
   };
 
+  // ── AI: SEO Autofill ──────────────────────────────────────────────────────────
+
+  const handleSeoAutofill = async () => {
+    if (!form.title[lang].trim()) {
+      alert(`Enter a title for ${lang.toUpperCase()} first.`);
+      return;
+    }
+    setSeoStatus('loading');
+    try {
+      const res = await fetch('/api/admin/seo-autofill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: form.title[lang],
+          excerpt: form.excerpt[lang],
+          content: form.content[lang],
+          language: lang,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'SEO autofill failed');
+      setLF('seo_title', lang, json.seo_title ?? form.seo_title[lang]);
+      setLF('seo_description', lang, json.seo_description ?? form.seo_description[lang]);
+      setSeoStatus('done');
+      setTimeout(() => setSeoStatus('idle'), 2000);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : String(e));
+      setSeoStatus('idle');
+    }
+  };
 
   // ── Save ──────────────────────────────────────────────────────────────────────
 
@@ -226,28 +459,67 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
 
     try {
       const payload = {
-        title:           { de: form.title.de,           en: form.title.en,           fr: form.title.fr,           es: form.title.es,           it: form.title.it },
-        slug:            form.slug.trim() || slugify(form.title.de || form.title.en),
-        excerpt:         { de: form.excerpt.de,         en: form.excerpt.en,         fr: form.excerpt.fr,         es: form.excerpt.es,         it: form.excerpt.it },
-        content:         { de: form.content.de,         en: form.content.en,         fr: form.content.fr,         es: form.content.es,         it: form.content.it },
-        seo_title:       { de: form.seo_title.de,       en: form.seo_title.en,       fr: form.seo_title.fr,       es: form.seo_title.es,       it: form.seo_title.it },
-        seo_description: { de: form.seo_description.de, en: form.seo_description.en, fr: form.seo_description.fr, es: form.seo_description.es, it: form.seo_description.it },
-        author_name:      form.author_name.trim() || null,
-        category:         form.category || null,
+        title: {
+          de: form.title.de,
+          en: form.title.en,
+          fr: form.title.fr,
+          es: form.title.es,
+          it: form.title.it,
+        },
+        slug: form.slug.trim() || slugify(form.title.de || form.title.en),
+        excerpt: {
+          de: form.excerpt.de,
+          en: form.excerpt.en,
+          fr: form.excerpt.fr,
+          es: form.excerpt.es,
+          it: form.excerpt.it,
+        },
+        content: {
+          de: form.content.de,
+          en: form.content.en,
+          fr: form.content.fr,
+          es: form.content.es,
+          it: form.content.it,
+        },
+        seo_title: {
+          de: form.seo_title.de,
+          en: form.seo_title.en,
+          fr: form.seo_title.fr,
+          es: form.seo_title.es,
+          it: form.seo_title.it,
+        },
+        seo_description: {
+          de: form.seo_description.de,
+          en: form.seo_description.en,
+          fr: form.seo_description.fr,
+          es: form.seo_description.es,
+          it: form.seo_description.it,
+        },
+        author_name: form.author_name.trim() || null,
+        category: form.category || null,
         reading_time_min: form.reading_time_min ? Number(form.reading_time_min) : null,
-        published_at:     form.published_at ? new Date(form.published_at).toISOString() : null,
-        is_published:     form.is_published,
-        is_featured:      form.is_featured,
+        published_at: form.published_at ? new Date(form.published_at).toISOString() : null,
+        is_published: form.is_published,
+        is_featured: form.is_featured,
+        photo_credit: photoCredit.trim() || null,
       };
 
-      // 1. Upsert article (images already uploaded by CoverImageUploader / GalleryUploader)
-      const fullPayload = { ...payload, featured_image_url: coverImageUrl, gallery_urls: galleryUrls };
+      // 1. Upsert article
+      const fullPayload = {
+        ...payload,
+        featured_image_url: coverImageUrl,
+        gallery_urls: galleryUrls,
+      };
       let id = articleId;
       if (id) {
         const { error } = await supabase.from('articles').update(fullPayload).eq('id', id);
         if (error) throw error;
       } else {
-        const { data, error } = await supabase.from('articles').insert(fullPayload).select('id').single();
+        const { data, error } = await supabase
+          .from('articles')
+          .insert(fullPayload)
+          .select('id')
+          .single();
         if (error) throw error;
         id = data.id;
       }
@@ -263,8 +535,11 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
 
       onSaved();
     } catch (e: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setError(typeof e === 'object' && e && 'message' in e ? (e as any).message : String(e));
+      setError(
+        typeof e === 'object' && e && 'message' in e
+          ? (e as Record<string, unknown>).message as string
+          : String(e)
+      );
     } finally {
       setSaving(false);
     }
@@ -275,7 +550,14 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
   const handleDelete = async () => {
     if (!articleId) return;
     const title = form.title.de || form.title.en || 'this article';
-    if (!(await confirm({ title: 'Delete Article', message: `Delete "${title}"? This cannot be undone.`, variant: 'danger' }))) return;
+    if (
+      !(await confirm({
+        title: 'Delete Article',
+        message: `Delete "${title}"? This cannot be undone.`,
+        variant: 'danger',
+      }))
+    )
+      return;
     setDeleting(true);
     // Clean up storage image before deleting the DB row
     if (coverImageUrl) {
@@ -300,39 +582,28 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
     <>
       {confirmDialog}
       <div className="fixed inset-0 bg-black/20 z-40 backdrop-blur-[1px]" onClick={onClose} />
-
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col bg-white shadow-2xl">
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col bg-white shadow-2xl rounded-l-2xl">
 
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#0e393d]/10 px-6 py-4 shrink-0">
           <h2 className="font-serif text-lg text-[#0e393d]">
             {articleId ? 'Edit Article' : 'New Article'}
           </h2>
-          <div className="flex items-center gap-3">
-            {/* AI Translate */}
-            <button
-              onClick={handleTranslate}
-              disabled={translating}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#ceab84]/40 text-[10px] font-medium text-[#8a6a3e] hover:bg-[#ceab84]/10 disabled:opacity-50 transition whitespace-nowrap"
-            >
-              {translating ? '…' : '✦ AI Translate'}
-            </button>
-            {/* Lang switcher */}
-            <div className="flex rounded-lg border border-[#0e393d]/15 overflow-hidden text-xs">
-              {(['de', 'en', 'fr', 'es', 'it'] as Lang[]).map((l) => (
-                <button
-                  key={l}
-                  onClick={() => setLang(l)}
+          <div className="flex items-center gap-2">
+            {/* AI buttons */}
+            <AiBtn onClick={handleRewrite} status={rewriteStatus} idle="✦ Rewrite" loading="Rewriting…" done="✓ Done" color="amber" />
+            <AiBtn onClick={handleTranslateAll} status={translateStatus} idle="Translate all" loading="Translating…" done="✓ Done" color="violet" />
+            <AiBtn onClick={handleSeoAutofill} status={seoStatus} idle="SEO Autofill" loading="Filling…" done="✓ Done" color="sky" />
+            {/* Language switcher */}
+            <div className="flex rounded-lg border border-[#0e393d]/15 overflow-hidden text-xs ml-1">
+              {(['en', 'de', 'fr', 'es', 'it'] as Lang[]).map((l) => (
+                <button key={l} onClick={() => setLang(l)}
                   className={`px-3 py-1.5 font-medium transition ${lang === l ? 'bg-[#0e393d] text-white' : 'text-[#1c2a2b]/60 hover:bg-[#0e393d]/5'}`}
-                >
-                  {l.toUpperCase()}
-                </button>
+                >{l.toUpperCase()}</button>
               ))}
             </div>
-            <button onClick={onClose} className="text-[#1c2a2b]/40 hover:text-[#1c2a2b] transition">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-                <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/>
-              </svg>
+            <button onClick={onClose} className="ml-1 p-1.5 rounded-lg text-[#1c2a2b]/40 hover:text-[#1c2a2b] hover:bg-[#0e393d]/5 transition">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round"/></svg>
             </button>
           </div>
         </div>
@@ -341,242 +612,160 @@ export default function ArticleFormPanel({ articleId, onClose, onSaved, onDelete
         {loading ? (
           <div className="flex-1 flex items-center justify-center text-sm text-[#1c2a2b]/40">Loading…</div>
         ) : (
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-7">
+          <div className="flex-1 overflow-y-auto">
 
-            {/* ── Content (lang) ─────────────────────────────────────────── */}
-            <div className="space-y-4">
-              <SectionHead>Content — {lang.toUpperCase()}</SectionHead>
+            {/* Content Section */}
+            <AdminSectionBlock title="CONTENT" open={openSections.content} onToggle={() => toggleSection('content')}>
+              <div className="space-y-4">
+                <AdminField label={`Title (${lang.toUpperCase()}) *`}>
+                  <input className={inputCls} value={form.title[lang]} onChange={(e) => setLF('title', lang, e.target.value)}
+                    placeholder={lang === 'de' ? 'z.B. Warum Hülsenfrüchte leben verlängern' : 'e.g. Why legumes extend your life'} />
+                </AdminField>
+                <AdminField label={`Excerpt (${lang.toUpperCase()})`} hint="Short summary shown in listings and cards">
+                  <textarea className={inputCls + ' resize-none'} rows={2} value={form.excerpt[lang]}
+                    onChange={(e) => setLF('excerpt', lang, e.target.value)}
+                    placeholder={lang === 'de' ? 'Kurze Zusammenfassung…' : 'Short summary…'} />
+                </AdminField>
+                <AdminField label={`Content (${lang.toUpperCase()})`} hint="Markdown supported — headings, bold, lists, links">
+                  <MarkdownToolbar textareaRef={contentTextareaRef} />
+                  <textarea ref={contentTextareaRef} className={inputCls + ' resize-y font-mono text-xs leading-relaxed'} rows={14}
+                    value={form.content[lang]} onChange={(e) => setLF('content', lang, e.target.value)}
+                    placeholder={lang === 'de' ? '## Einleitung\n\nHülsenfrüchte sind…' : '## Introduction\n\nLegumes are…'} />
+                </AdminField>
+              </div>
+            </AdminSectionBlock>
 
-              <Field label={`Title (${lang.toUpperCase()}) *`}>
-                <input
-                  className={inputCls}
-                  value={form.title[lang]}
-                  onChange={(e) => setLF('title', lang, e.target.value)}
-                  placeholder={lang === 'de' ? 'z.B. Warum Hülsenfrüchte leben verlängern' : 'e.g. Why legumes extend your life'}
-                />
-              </Field>
+            {/* SEO Section */}
+            <AdminSectionBlock title="SEO" open={openSections.seo} onToggle={() => toggleSection('seo')}>
+              <div className="space-y-4">
+                <AdminField label={`SEO Title (${lang.toUpperCase()})`} hint="Recommended ≤60 chars">
+                  <div className="relative">
+                    <input className={inputCls} value={form.seo_title[lang]} onChange={(e) => setLF('seo_title', lang, e.target.value)}
+                      placeholder={lang === 'de' ? 'SEO-Titel…' : 'SEO title…'} maxLength={80} />
+                    <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[10px] ${form.seo_title[lang].length > 60 ? 'text-amber-500' : 'text-[#1c2a2b]/30'}`}>
+                      {form.seo_title[lang].length}/60
+                    </span>
+                  </div>
+                </AdminField>
+                <AdminField label={`SEO Description (${lang.toUpperCase()})`} hint="Recommended ≤160 chars">
+                  <div className="relative">
+                    <textarea className={inputCls + ' resize-none pr-14'} rows={2} value={form.seo_description[lang]}
+                      onChange={(e) => setLF('seo_description', lang, e.target.value)}
+                      placeholder={lang === 'de' ? 'Meta-Beschreibung…' : 'Meta description…'} maxLength={200} />
+                    <span className={`absolute right-3 top-2 text-[10px] ${form.seo_description[lang].length > 160 ? 'text-amber-500' : 'text-[#1c2a2b]/30'}`}>
+                      {form.seo_description[lang].length}/160
+                    </span>
+                  </div>
+                </AdminField>
+                <AdminField label="Slug">
+                  <input className={inputCls} value={form.slug} onChange={(e) => setF('slug', e.target.value)} placeholder="auto-generated from title" />
+                </AdminField>
+              </div>
+            </AdminSectionBlock>
 
-              <Field label={`Excerpt (${lang.toUpperCase()})`} hint="Short summary shown in listings and cards">
-                <textarea
-                  className={inputCls + ' resize-none'}
-                  rows={2}
-                  value={form.excerpt[lang]}
-                  onChange={(e) => setLF('excerpt', lang, e.target.value)}
-                  placeholder={lang === 'de' ? 'Kurze Zusammenfassung…' : 'Short summary…'}
-                />
-              </Field>
-
-              <Field label={`Content (${lang.toUpperCase()})`} hint="Markdown supported — headings, bold, lists, links">
-                <textarea
-                  className={inputCls + ' resize-y font-mono text-xs leading-relaxed'}
-                  rows={14}
-                  value={form.content[lang]}
-                  onChange={(e) => setLF('content', lang, e.target.value)}
-                  placeholder={lang === 'de' ? '## Einleitung\n\nHülsenfrüchte sind…' : '## Introduction\n\nLegumes are…'}
-                />
-              </Field>
-            </div>
-
-            {/* ── SEO (lang) ─────────────────────────────────────────────── */}
-            <div className="space-y-4 border-t border-[#0e393d]/8 pt-6">
-              <SectionHead>SEO — {lang.toUpperCase()}</SectionHead>
-
-              <Field label={`SEO Title (${lang.toUpperCase()})`} hint="Defaults to article title if empty · recommended ≤60 chars">
-                <div className="relative">
-                  <input
-                    className={inputCls}
-                    value={form.seo_title[lang]}
-                    onChange={(e) => setLF('seo_title', lang, e.target.value)}
-                    placeholder={lang === 'de' ? 'SEO-Titel…' : 'SEO title…'}
-                    maxLength={80}
-                  />
-                  <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[10px] ${form.seo_title[lang].length > 60 ? 'text-amber-500' : 'text-[#1c2a2b]/30'}`}>
-                    {form.seo_title[lang].length}/60
-                  </span>
+            {/* Metadata Section */}
+            <AdminSectionBlock title="METADATA" open={openSections.metadata} onToggle={() => toggleSection('metadata')}>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <AdminField label="Author name">
+                    <input className={inputCls} value={form.author_name} onChange={(e) => setF('author_name', e.target.value)} placeholder="Evida Life" />
+                  </AdminField>
+                  <AdminField label="Category">
+                    <select className={selectCls + ' capitalize'} value={form.category} onChange={(e) => setF('category', e.target.value)}>
+                      {CATEGORIES.map((c) => <option key={c} value={c} className="capitalize">{c}</option>)}
+                    </select>
+                  </AdminField>
                 </div>
-              </Field>
-
-              <Field label={`SEO Description (${lang.toUpperCase()})`} hint="Recommended ≤160 chars">
-                <div className="relative">
-                  <textarea
-                    className={inputCls + ' resize-none pr-14'}
-                    rows={2}
-                    value={form.seo_description[lang]}
-                    onChange={(e) => setLF('seo_description', lang, e.target.value)}
-                    placeholder={lang === 'de' ? 'Meta-Beschreibung…' : 'Meta description…'}
-                    maxLength={200}
-                  />
-                  <span className={`absolute right-3 top-2 text-[10px] ${form.seo_description[lang].length > 160 ? 'text-amber-500' : 'text-[#1c2a2b]/30'}`}>
-                    {form.seo_description[lang].length}/160
-                  </span>
+                <div className="grid grid-cols-2 gap-3">
+                  <AdminField label="Reading time (min)">
+                    <input type="number" min={1} className={inputCls} value={form.reading_time_min} onChange={(e) => setF('reading_time_min', e.target.value)} placeholder="5" />
+                  </AdminField>
+                  <AdminField label="Publish date / time" hint="Leave blank to publish without a date">
+                    <input type="datetime-local" className={inputCls} value={form.published_at} onChange={(e) => setF('published_at', e.target.value)} />
+                  </AdminField>
                 </div>
-              </Field>
-            </div>
-
-            {/* ── Metadata ───────────────────────────────────────────────── */}
-            <div className="space-y-4 border-t border-[#0e393d]/8 pt-6">
-              <SectionHead>Metadata</SectionHead>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Author name">
-                  <input
-                    className={inputCls}
-                    value={form.author_name}
-                    onChange={(e) => setF('author_name', e.target.value)}
-                    placeholder="Dr. Michael Greger"
-                  />
-                </Field>
-                <Field label="Category">
-                  <select
-                    className={inputCls + ' cursor-pointer capitalize'}
-                    value={form.category}
-                    onChange={(e) => setF('category', e.target.value)}
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c} className="capitalize">{c}</option>
-                    ))}
-                  </select>
-                </Field>
               </div>
+            </AdminSectionBlock>
 
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Reading time (min)">
-                  <input
-                    type="number" min={1}
-                    className={inputCls}
-                    value={form.reading_time_min}
-                    onChange={(e) => setF('reading_time_min', e.target.value)}
-                    placeholder="5"
-                  />
-                </Field>
-                <Field label="Publish date / time" hint="Leave blank to publish without a date">
-                  <input
-                    type="datetime-local"
-                    className={inputCls}
-                    value={form.published_at}
-                    onChange={(e) => setF('published_at', e.target.value)}
-                  />
-                </Field>
-              </div>
-            </div>
-
-            {/* ── Tags ───────────────────────────────────────────────────── */}
-            <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
-              <SectionHead>Tags</SectionHead>
-
-              {/* Tag pills */}
-              <div className="flex flex-wrap gap-1.5 min-h-[28px]">
-                {form.tags.map((tag) => (
-                  <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-[#0e393d]/8 px-2.5 py-1 text-xs font-medium text-[#0e393d]">
-                    #{tag}
-                    <button
-                      type="button"
-                      onClick={() => removeTag(tag)}
-                      className="text-[#0e393d]/50 hover:text-[#0e393d] transition leading-none"
-                      aria-label={`Remove ${tag}`}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-
-              {/* Tag input */}
-              <div className="relative">
-                <input
-                  type="text"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={handleTagKeyDown}
+            {/* Tags Section */}
+            <AdminSectionBlock title="TAGS" open={openSections.tags} onToggle={() => toggleSection('tags')}>
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-1.5 min-h-[28px]">
+                  {form.tags.map((tag) => (
+                    <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-[#0e393d]/8 px-2.5 py-1 text-xs font-medium text-[#0e393d]">
+                      #{tag}
+                      <button type="button" onClick={() => removeTag(tag)} className="text-[#0e393d]/50 hover:text-[#0e393d] transition leading-none" aria-label={`Remove ${tag}`}>×</button>
+                    </span>
+                  ))}
+                </div>
+                <input type="text" value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown}
                   onBlur={() => { if (tagInput.trim()) { addTag(tagInput); setTagInput(''); } }}
-                  placeholder="Type a tag and press Enter or comma…"
-                  className={inputCls}
-                />
+                  placeholder="Type a tag and press Enter or comma…" className={inputCls} />
+                <p className="text-[11px] text-[#1c2a2b]/40">Tags are auto-lowercased and hyphenated. Backspace removes the last tag.</p>
               </div>
-              <p className="text-[11px] text-[#1c2a2b]/40">Tags are auto-lowercased and hyphenated. Backspace removes the last tag.</p>
-            </div>
+            </AdminSectionBlock>
 
-            {/* ── Featured image ─────────────────────────────────────────── */}
-            <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
-              <SectionHead>Featured Image</SectionHead>
+            {/* Featured Image Section */}
+            <AdminSectionBlock title="FEATURED IMAGE" open={openSections.image} onToggle={() => toggleSection('image')}>
               <CoverImageUploader
-                currentUrl={coverImageUrl}
                 bucket="article-images"
-                aspect={16 / 9}
-                outputWidth={1200}
-                outputHeight={675}
+                crops={[
+                  { key: 'cover', label: 'Cover (16:9)', aspect: 16 / 9, outputWidth: 1200, outputHeight: 675, url: coverImageUrl, onUrlChange: setCoverImageUrl },
+                ]}
                 hint="16:9 · max 5 MB"
-                onUrlChange={setCoverImageUrl}
+                photoCredit={photoCredit}
+                onPhotoCreditChange={setPhotoCredit}
               />
-            </div>
+            </AdminSectionBlock>
 
-            {/* ── Gallery ────────────────────────────────────────────────── */}
-            <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
-              <SectionHead>Gallery</SectionHead>
-              <GalleryUploader
-                urls={galleryUrls}
-                bucket="article-images"
-                maxImages={10}
-                outputWidth={1200}
-                label=""
-                hint="Additional article images. Up to 10."
-                onUrlsChange={setGalleryUrls}
-              />
-            </div>
+            {/* Gallery Section */}
+            <AdminSectionBlock title="GALLERY" open={openSections.gallery} onToggle={() => toggleSection('gallery')}>
+              <GalleryUploader urls={galleryUrls} bucket="article-images" maxImages={10} outputWidth={1200}
+                label="" hint="Additional article images. Up to 10." onUrlsChange={setGalleryUrls} />
+            </AdminSectionBlock>
 
-            {/* ── Settings ───────────────────────────────────────────────── */}
-            <div className="space-y-3 border-t border-[#0e393d]/8 pt-6">
-              <SectionHead>Settings</SectionHead>
-              <Toggle
-                checked={form.is_published}
-                onChange={(v) => setF('is_published', v)}
-                label="Published"
-                hint="Visible to readers on the platform"
-              />
-              <Toggle
-                checked={form.is_featured}
-                onChange={(v) => setF('is_featured', v)}
-                label="Featured"
-                hint="Highlighted on the homepage and article list"
-              />
-            </div>
+            {/* Settings Section */}
+            <AdminSectionBlock title="SETTINGS" open={openSections.settings} onToggle={() => toggleSection('settings')}>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-lg border border-[#0e393d]/10 px-4 py-3">
+                  <div><p className="text-sm font-medium text-[#1c2a2b]">Published</p><p className="text-xs text-[#1c2a2b]/40">Visible to readers on the platform</p></div>
+                  <button type="button" onClick={() => setF('is_published', !form.is_published)}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.is_published ? 'bg-[#0e393d]' : 'bg-gray-200'}`}>
+                    <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${form.is_published ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-[#0e393d]/10 px-4 py-3">
+                  <div><p className="text-sm font-medium text-[#1c2a2b]">Featured</p><p className="text-xs text-[#1c2a2b]/40">Highlighted on the homepage and article list</p></div>
+                  <button type="button" onClick={() => setF('is_featured', !form.is_featured)}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.is_featured ? 'bg-[#0e393d]' : 'bg-gray-200'}`}>
+                    <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${form.is_featured ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+              </div>
+            </AdminSectionBlock>
 
           </div>
         )}
 
         {/* Footer */}
         <div className="border-t border-[#0e393d]/10 px-6 py-4 shrink-0">
-          {error && (
-            <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
-          )}
+          {error && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
           <div className="flex gap-3">
             {articleId && (
-              <button
-                onClick={handleDelete}
-                disabled={deleting || saving}
-                className="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 transition"
-              >
+              <button onClick={handleDelete} disabled={deleting || saving}
+                className="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 transition">
                 {deleting ? '…' : 'Delete'}
               </button>
             )}
-            <button
-              onClick={onClose}
-              className="flex-1 rounded-lg border border-[#0e393d]/15 py-2.5 text-sm font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving || loading}
-              className="flex-1 rounded-lg bg-[#0e393d] py-2.5 text-sm font-medium text-white hover:bg-[#0e393d]/90 disabled:opacity-50 transition"
-            >
+            <button onClick={onClose} className="flex-1 rounded-lg border border-[#0e393d]/15 py-2.5 text-sm font-medium text-[#1c2a2b] hover:bg-[#fafaf8] transition">Cancel</button>
+            <button onClick={handleSave} disabled={saving || loading}
+              className="flex-1 rounded-lg bg-[#0e393d] py-2.5 text-sm font-medium text-white hover:bg-[#0e393d]/90 disabled:opacity-50 transition">
               {saving ? 'Saving…' : articleId ? 'Save Changes' : 'Create Article'}
             </button>
           </div>
         </div>
 
       </div>
-
     </>
   );
 }

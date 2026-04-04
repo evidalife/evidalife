@@ -7,7 +7,8 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       // Orphan page — canonical location is profile tab
-      { source: '/:locale/orders', destination: '/:locale/profile?tab=orders', permanent: true },
+      // Use :locale(\\w{2}) to only match 2-letter locale codes, preventing match on "admin"
+      { source: '/:locale(\\w{2})/orders', destination: '/:locale/profile?tab=orders', permanent: false },
     ];
   },
   images: {

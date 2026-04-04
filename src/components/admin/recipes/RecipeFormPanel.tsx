@@ -2310,24 +2310,12 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
             <SectionBlock title="Cover Image" open={openSections.cover} onToggle={() => toggleSection('cover')}>
               <div className="space-y-6">
                 <CoverImageUploader
-                  currentUrl={coverImageUrl}
                   bucket="recipe-images"
-                  aspect={16 / 9}
-                  outputWidth={1200}
-                  outputHeight={675}
-                  label="Cover (16:9)"
-                  hint="Recipe detail page hero."
-                  onUrlChange={setCoverImageUrl}
-                />
-                <CoverImageUploader
-                  currentUrl={thumbnailUrl}
-                  bucket="recipe-images"
-                  aspect={4 / 3}
-                  outputWidth={600}
-                  outputHeight={450}
-                  label="Thumbnail (4:3)"
-                  hint="Recipe card image."
-                  onUrlChange={setThumbnailUrl}
+                  crops={[
+                    { key: 'cover', label: 'Cover (16:9)', aspect: 16 / 9, outputWidth: 1200, outputHeight: 675, url: coverImageUrl, onUrlChange: setCoverImageUrl },
+                    { key: 'thumbnail', label: 'Thumbnail (4:3)', aspect: 4 / 3, outputWidth: 600, outputHeight: 450, url: thumbnailUrl, onUrlChange: setThumbnailUrl },
+                  ]}
+                  hint="Upload once, crop for both cover and card."
                 />
               </div>
             </SectionBlock>

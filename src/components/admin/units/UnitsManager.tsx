@@ -693,7 +693,7 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
                   isEditing={true}
                 />
               ) : (
-                <tr key={unit.id} className="hover:bg-[#fafaf8] transition-colors">
+                <tr key={unit.id} className="cursor-pointer group hover:bg-[#fafaf8] transition-colors" onClick={() => startEdit(unit)}>
                   <td className="px-4 py-3 font-mono text-xs font-medium text-[#0e393d]">{unit.code}</td>
                   <td className="px-4 py-3">
                     <div className="font-medium text-[#0e393d]">{unit.name.en ?? '—'}</div>
@@ -713,19 +713,21 @@ export default function UnitsManager({ initialUnits }: { initialUnits: Measureme
                   </td>
                   <td className="px-4 py-3 text-[#1c2a2b]/60 capitalize">{unit.category ?? '—'}</td>
                   <td className="px-4 py-3 text-[#1c2a2b]/40 tabular-nums">{unit.sort_order ?? '—'}</td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
-                    <button
-                      onClick={() => startEdit(unit)}
-                      className="px-3 py-1 rounded-md text-xs font-medium text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => deleteUnit(unit.id)}
-                      className="px-3 py-1 rounded-md text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 transition"
-                    >
-                      Delete
-                    </button>
+                  <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <button onClick={() => startEdit(unit)}
+                        className="p-1.5 rounded-lg text-[#0e393d]/50 hover:text-[#0e393d] hover:bg-[#0e393d]/8 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5Z" />
+                        </svg>
+                      </button>
+                      <button onClick={() => deleteUnit(unit.id)}
+                        className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )

@@ -1254,13 +1254,11 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
               {/* ── Cover Image ───────────────────────────────────────────── */}
               <SectionBlock title="Cover Image" open={openSections.cover} onToggle={() => toggleSection('cover')}>
                 <CoverImageUploader
-                  currentUrl={coverImageUrl}
                   bucket="product-images"
-                  aspect={1}
-                  outputWidth={800}
-                  outputHeight={800}
+                  crops={[
+                    { key: 'cover', label: 'Product (1:1)', aspect: 1, outputWidth: 800, outputHeight: 800, url: coverImageUrl, onUrlChange: setCoverImageUrl },
+                  ]}
                   hint="1:1 square · max 5 MB"
-                  onUrlChange={setCoverImageUrl}
                 />
               </SectionBlock>
 

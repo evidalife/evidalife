@@ -565,7 +565,7 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
                   saving={saving}
                 />
               ) : (
-                <tr key={note.id} className="hover:bg-[#fafaf8] transition-colors">
+                <tr key={note.id} className="cursor-pointer group hover:bg-[#fafaf8] transition-colors" onClick={() => startEdit(note)}>
                   <td className="px-4 py-3">
                     <div className="font-medium text-[#0e393d]">{note.name.en ?? '—'}</div>
                     {(note.name.fr || note.name.es || note.name.it) && (
@@ -576,7 +576,7 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
                   </td>
                   <td className="px-4 py-3 text-[#1c2a2b]/60">{note.name.de ?? '—'}</td>
                   <td className="px-4 py-3 font-mono text-xs text-[#1c2a2b]/40">{note.slug}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => toggleCommon(note)}
                       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset transition ${
@@ -588,19 +588,21 @@ export default function PrepNotesManager({ initialNotes }: { initialNotes: PrepN
                       {note.is_common ? 'Common' : 'Uncommon'}
                     </button>
                   </td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
-                    <button
-                      onClick={() => startEdit(note)}
-                      className="px-3 py-1 rounded-md text-xs font-medium text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => deleteNote(note.id)}
-                      className="px-3 py-1 rounded-md text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 transition"
-                    >
-                      Delete
-                    </button>
+                  <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <button onClick={() => startEdit(note)}
+                        className="p-1.5 rounded-lg text-[#0e393d]/50 hover:text-[#0e393d] hover:bg-[#0e393d]/8 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5Z" />
+                        </svg>
+                      </button>
+                      <button onClick={() => deleteNote(note.id)}
+                        className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )

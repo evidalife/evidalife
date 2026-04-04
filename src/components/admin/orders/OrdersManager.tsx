@@ -1700,7 +1700,7 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
               return (
                 <tr
                   key={order.id}
-                  className={`hover:bg-[#fafaf8] transition-colors cursor-pointer ${isSelected ? 'bg-[#0e393d]/[0.03]' : ''}`}
+                  className={`hover:bg-[#fafaf8] transition-colors cursor-pointer group ${isSelected ? 'bg-[#0e393d]/[0.03]' : ''}`}
                   onClick={() => { setSelectedOrder(order); setDetailTab('fulfilment'); }}
                 >
                   {/* Checkbox */}
@@ -1782,13 +1782,15 @@ export default function OrdersManager({ initialOrders }: { initialOrders: Order[
                   </td>
 
                   {/* View */}
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => { setSelectedOrder(order); setDetailTab('fulfilment'); }}
-                      className="px-3 py-1 rounded-md text-xs font-medium text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition"
-                    >
-                      View
-                    </button>
+                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <button onClick={() => { setSelectedOrder(order); setDetailTab('fulfilment'); }}
+                        className="p-1.5 rounded-lg text-[#0e393d]/50 hover:text-[#0e393d] hover:bg-[#0e393d]/8 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5Z" />
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

@@ -937,6 +937,7 @@ export default function CommunicationsManager() {
                     { key: null,            label: 'Subject'   },
                     { key: 'status',        label: 'Status'    },
                     { key: 'sent_at',       label: 'Sent at'   },
+                    { key: null,            label: ''          },
                   ] as { key: typeof logSortCol | null; label: string }[]).map(({ key, label }) => (
                     <th
                       key={label}
@@ -951,20 +952,20 @@ export default function CommunicationsManager() {
               <tbody className="divide-y divide-[#0e393d]/6">
                 {logLoading && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center">
+                    <td colSpan={6} className="px-4 py-10 text-center">
                       <div className="inline-block h-5 w-5 animate-spin rounded-full border border-[#0e393d]/30 border-t-[#0e393d]" />
                     </td>
                   </tr>
                 )}
                 {!logLoading && filteredLog.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
+                    <td colSpan={6} className="px-4 py-10 text-center text-sm text-[#1c2a2b]/40">
                       {logEntries.length === 0 ? 'No emails sent yet.' : 'No results match the current filters.'}
                     </td>
                   </tr>
                 )}
                 {!logLoading && sortedLog.map((entry) => (
-                  <tr key={entry.id} className="hover:bg-[#fafaf8] transition-colors">
+                  <tr key={entry.id} className="cursor-pointer hover:bg-[#fafaf8] transition-colors group">
                     <td className="px-4 py-3 text-xs text-[#1c2a2b] font-mono">{entry.email_address}</td>
                     <td className="px-4 py-3 text-xs text-[#1c2a2b]/70 capitalize">{entry.template.replace('_', ' ')}</td>
                     <td className="px-4 py-3 text-xs text-[#1c2a2b]/70 max-w-[200px] truncate" title={entry.subject ?? ''}>
@@ -981,6 +982,16 @@ export default function CommunicationsManager() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-xs text-[#1c2a2b]/50 whitespace-nowrap">{fmtDate(entry.sent_at)}</td>
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
+                        <button
+                          className="p-1.5 rounded-lg text-[#0e393d]/50 hover:text-[#0e393d] hover:bg-[#0e393d]/8 transition">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5Z" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

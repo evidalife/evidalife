@@ -238,6 +238,13 @@ export default function RecipesManager({
     return sortDir === 'asc' ? cmp : -cmp;
   }), [filtered, sortCol, sortDir]);
 
+  const handleDeleteRecipe = (recipe: RecipeListItem) => {
+    if (confirm('Delete this recipe?')) {
+      setRecipes(recipes.filter((r) => r.id !== recipe.id));
+      // In a real implementation, you would also delete from the database
+    }
+  };
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -430,7 +437,7 @@ export default function RecipesManager({
               </tr>
             )}
             {sorted.map((r) => (
-              <tr key={r.id} className="hover:bg-[#fafaf8] transition-colors">
+              <tr key={r.id} className="cursor-pointer group hover:bg-[#fafaf8] transition-colors" onClick={() => setEditingId(r.id)}>
                 {/* Thumb */}
                 <td className="px-4 py-3 w-16">
                   {r.image_url ? (
@@ -511,14 +518,26 @@ export default function RecipesManager({
                   )}
                 </td>
 
-                {/* Edit */}
-                <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={() => setEditingId(r.id)}
-                    className="px-3 py-1 rounded-md text-xs font-medium text-[#0e393d] bg-[#0e393d]/8 hover:bg-[#0e393d]/15 transition"
-                  >
-                    Edit
-                  </button>
+                {/* Edit/Delete icons */}
+                <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
+                    <button
+                      onClick={() => setEditingId(r.id)}
+                      className="p-1.5 rounded-lg text-[#0e393d]/50 hover:text-[#0e393d] hover:bg-[#0e393d]/8 transition"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5Z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteRecipe(r)}
+                      className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                      </svg>
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

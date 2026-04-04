@@ -865,7 +865,7 @@ export default function AllResultsTab() {
 
               return (
                 <React.Fragment key={report.id}>
-                <tr className={`group transition-colors ${isArchived ? 'bg-gray-50/50' : 'hover:bg-[#fafaf8]'}`}>
+                <tr className={`group cursor-pointer transition-colors ${isArchived ? 'bg-gray-50/50' : 'hover:bg-[#fafaf8]'}`} onClick={() => toggleExpand(report.id)}>
                   {/* Report */}
                   <td className="px-4 py-3">
                     <div className="flex items-start gap-2">
@@ -915,30 +915,37 @@ export default function AllResultsTab() {
                     {reportStatusBadge(report.status)}
                   </td>
                   {/* Actions */}
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center gap-1 justify-end">
-                      {isLoading ? (
-                        <Spinner size={3} />
-                      ) : isArchived ? (
+                  <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
+                      {!isLoading && (
                         <>
-                          <button onClick={() => handleReactivate(report)} className="opacity-0 group-hover:opacity-100 text-[10px] text-emerald-600 hover:text-emerald-700 font-medium transition px-1.5 py-0.5 rounded hover:bg-emerald-50">
-                            Restore
+                          <button
+                            onClick={() => toggleExpand(report.id)}
+                            title="Edit report"
+                            className="p-1.5 rounded-lg text-[#0e393d]/50 hover:text-[#0e393d] hover:bg-[#0e393d]/8 transition"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
                           </button>
-                          <button onClick={() => handlePermanentDelete(report)} className="opacity-0 group-hover:opacity-100 text-[10px] text-red-500 hover:text-red-700 font-medium transition px-1.5 py-0.5 rounded hover:bg-red-50">
-                            Delete
-                          </button>
+                          {isArchived ? (
+                            <button
+                              onClick={() => handleReactivate(report)}
+                              title="Reactivate report"
+                              className="p-1.5 rounded-lg text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 102.13-9.36L1 10" /></svg>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleArchive(report)}
+                              title="Deactivate report"
+                              className="p-1.5 rounded-lg text-amber-400 hover:text-amber-600 hover:bg-amber-50 transition"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><path d="m4.93 4.93 14.14 14.14" /></svg>
+                            </button>
+                          )}
                         </>
-                      ) : (
-                        <button onClick={() => handleArchive(report)} className="opacity-0 group-hover:opacity-100 text-[10px] text-[#1c2a2b]/40 hover:text-[#1c2a2b]/70 font-medium transition px-1.5 py-0.5 rounded hover:bg-[#0e393d]/5">
-                          Archive
-                        </button>
                       )}
-                      <button onClick={() => toggleExpand(report.id)} className="p-1 rounded-lg hover:bg-[#0e393d]/5 transition">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                          className={`text-[#1c2a2b]/30 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
-                          <polyline points="6 9 12 15 18 9" />
-                        </svg>
-                      </button>
+                      {isLoading && <Spinner size={3} />}
                     </div>
                   </td>
                 </tr>

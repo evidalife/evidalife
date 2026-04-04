@@ -534,10 +534,12 @@ export default function AICoachManager() {
                                 setPurgingFeature(null);
                               }}
                               disabled={purgingFeature === deleteSource}
-                              className="text-[9px] text-red-400 hover:text-red-600 transition-colors disabled:opacity-30"
+                              className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-30"
                               title={`Delete ${key} cache`}
                             >
-                              {purgingFeature === deleteSource ? '…' : '✕'}
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                              </svg>
                             </button>
                           </div>
                           <div className="text-sm font-semibold text-[#0e393d] mt-0.5">{count} <span className="font-normal text-[10px] text-[#1c2a2b]/30">files</span></div>
@@ -650,13 +652,10 @@ export default function AICoachManager() {
                     <button
                       onClick={() => deleteBriefing(b.id)}
                       disabled={deleting === b.id}
-                      className="px-3 py-3 text-[#1c2a2b]/20 hover:text-red-400 transition-colors disabled:opacity-30"
+                      className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-30"
                     >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6l-1 14H6L5 6" />
-                        <path d="M10 11v6M14 11v6" />
-                        <path d="M9 6V4h6v2" />
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
                       </svg>
                     </button>
                   </div>

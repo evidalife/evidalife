@@ -490,6 +490,22 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
     await refresh();
   };
 
+  // ── Delete ────────────────────────────────────────────────────────────────
+
+  const handleDelete = async (p: LabPartner) => {
+    // Clean up storage image first
+    if (p.cover_image_url) {
+      await fetch('/api/delete-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: p.cover_image_url, bucket: 'lab-covers' }),
+      }).catch(() => {});
+    }
+    // Then delete the database record
+    await supabase.from('lab_partners').delete().eq('id', p.id);
+    await refresh();
+  };
+
   // ── Filtered list ─────────────────────────────────────────────────────────────
 
   const [sortCol, setSortCol] = useState<'name' | 'city' | 'is_active'>('name');
@@ -1062,14 +1078,12 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
               {/* ── COVER IMAGE ── */}
               <div className="border-t border-[#0e393d]/8 pt-5">
                 <CoverImageUploader
-                  currentUrl={coverImageUrl}
                   bucket="lab-covers"
-                  aspect={16 / 9}
-                  outputWidth={1200}
-                  outputHeight={675}
+                  crops={[
+                    { key: 'cover', label: 'Cover (16:9)', aspect: 16 / 9, outputWidth: 1200, outputHeight: 675, url: coverImageUrl, onUrlChange: (url) => setCoverImageUrl(url) },
+                  ]}
                   label="Cover Image"
                   hint="Displayed on the public partner labs page. 16:9, max 5 MB."
-                  onUrlChange={(url) => setCoverImageUrl(url)}
                 />
               </div>
 
