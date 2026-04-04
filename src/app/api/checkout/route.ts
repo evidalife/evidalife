@@ -40,9 +40,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Products not found' }, { status: 404 });
   }
 
-  // Resolve current user (optional — guest checkout is allowed)
+  // Resolve current user and profile
   const userClient = await createClient();
   const { data: { user } } = await userClient.auth.getUser();
+
+  let customerEmail: string | undefined;
+  if (user) {
+    // Get email from profile or auth
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('email')
+      .eq('id', user.id)
+      .single();
+    customerEmail = profile?.email || user.email;
+  }
 
   // Build Stripe line items — use pre-created Price ID if available, dynamic otherwise
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
@@ -79,16 +90,26 @@ export async function POST(req: NextRequest) {
     process.env.NEXT_PUBLIC_SITE_URL ??
     'http://localhost:3000';
 
-  const session = await getStripe().checkout.sessions.create({
+  const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: 'payment',
     line_items: lineItems,
-    success_url: `${origin}/shop?success=1`,
-    cancel_url: `${origin}/shop?cancelled=1`,
+    // Redirect to order confirmation page with session ID for verification
+    success_url: `${origin}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/cart`,
+    billing_address_collection: 'required',
     metadata: {
       product_ids: productIds.join(','),
+      quantities: cartItems.map(i => i.quantity).join(','),
       user_id: user?.id ?? '',
     },
-  });
+  };
+
+  // Pre-fill email if user is logged in
+  if (customerEmail) {
+    sessionParams.customer_email = customerEmail;
+  }
+
+  const session = await getStripe().checkout.sessions.create(sessionParams);
 
   return NextResponse.json({ url: session.url });
 }
