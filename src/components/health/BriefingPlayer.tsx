@@ -194,7 +194,7 @@ export default function BriefingPlayer({ lang, firstName, onHighlight }: Props) 
       const res = await fetch('/api/ai/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: narration, lang }),
+        body: JSON.stringify({ text: narration, lang, role: 'briefing' }),
       });
 
       if (!res.ok) {

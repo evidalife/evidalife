@@ -89,7 +89,7 @@ export async function pregenerateBriefing(userId: string): Promise<void> {
             'X-Pregenerate-User-Id': userId,
         'X-Pregenerate-Secret': process.env.SUPABASE_SERVICE_ROLE_KEY!,
           },
-          body: JSON.stringify({ text: slide.narration, lang }),
+          body: JSON.stringify({ text: slide.narration, lang, role: 'briefing' }),
         });
         if (ttsRes.ok) {
           cached_count++;

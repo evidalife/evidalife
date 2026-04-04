@@ -118,7 +118,7 @@ function StepPlayer({ narration, lang }: { narration: string; lang: string }) {
       const res = await fetch('/api/ai/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: narration, lang }),
+        body: JSON.stringify({ text: narration, lang, role: 'coach' }),
       });
       if (!res.ok) {
         // Fallback to browser speech

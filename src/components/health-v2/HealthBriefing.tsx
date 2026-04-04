@@ -428,7 +428,7 @@ export default function HealthBriefing({ lang, userId, hasData, isSample, studyC
           const res = await fetch('/api/ai/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: narration, lang }),
+            body: JSON.stringify({ text: narration, lang, role: 'briefing' }),
           });
           if (!res.ok) {
             // If all TTS providers failed (502), try once more then give up
@@ -800,7 +800,7 @@ export default function HealthBriefing({ lang, userId, hasData, isSample, studyC
           const res = await fetch('/api/ai/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, lang }),
+            body: JSON.stringify({ text, lang, role: 'briefing' }),
           });
           if (res.ok) {
             const blob = await res.blob();
@@ -827,7 +827,7 @@ export default function HealthBriefing({ lang, userId, hasData, isSample, studyC
           fetch('/api/ai/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, lang }),
+            body: JSON.stringify({ text, lang, role: 'briefing' }),
           }),
           new Promise<null>(resolve => setTimeout(() => resolve(null), 2000)),
         ]);
@@ -973,7 +973,7 @@ export default function HealthBriefing({ lang, userId, hasData, isSample, studyC
           const ttsRes = await fetch('/api/ai/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: cleanText, lang }),
+            body: JSON.stringify({ text: cleanText, lang, role: 'briefing' }),
           });
 
           if (ttsRes.ok) {
@@ -1425,7 +1425,7 @@ export default function HealthBriefing({ lang, userId, hasData, isSample, studyC
                       const res = await fetch('/api/ai/tts', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text, lang }),
+                        body: JSON.stringify({ text, lang, role: 'briefing' }),
                       });
                       if (res.ok) {
                         const blob = await res.blob();
