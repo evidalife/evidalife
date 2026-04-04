@@ -3,6 +3,7 @@ import { getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import PageHero from '@/components/PageHero';
 import { createClient } from '@/lib/supabase/server';
 
 
@@ -205,8 +206,9 @@ export default async function BlogDetailPage({
   const t = T[lang];
   const supabase = await createClient();
 
-  // Fetch article
-  const { data: article } = await supabase
+  // Fetch article – only match by id when slug looks like a UUID (avoids type-cast error)
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+  let query = supabase
     .from('articles')
     .select(`
       id, slug, title, excerpt, content,
@@ -214,10 +216,16 @@ export default async function BlogDetailPage({
       reading_time_min, published_at, is_featured,
       article_tags(tag)
     `)
-    .or(`slug.eq.${slug},id.eq.${slug}`)
     .eq('is_published', true)
-    .is('deleted_at', null)
-    .single();
+    .is('deleted_at', null);
+
+  if (isUuid) {
+    query = query.or(`slug.eq.${slug},id.eq.${slug}`);
+  } else {
+    query = query.eq('slug', slug);
+  }
+
+  const { data: article } = await query.single();
 
   if (!article) notFound();
 
@@ -256,18 +264,32 @@ export default async function BlogDetailPage({
     published_at: r.published_at as string | null,
   }));
 
+  // Build meta line
+  const metaParts: string[] = [];
+  if (article.author_name) metaParts.push(`${t.by} ${article.author_name}`);
+  if (article.published_at) metaParts.push(`${t.published} ${formatDate(article.published_at, locale)}`);
+  if (article.reading_time_min) metaParts.push(`${article.reading_time_min} ${t.minutes}`);
+  const metaLine = metaParts.join('  ·  ');
+
+  // Eyebrow: featured badge + category
+  const eyebrowParts: string[] = [];
+  if (article.is_featured) eyebrowParts.push(`★ ${t.featured}`);
+  if (catLabel) eyebrowParts.push(catLabel);
+  const eyebrow = eyebrowParts.join('  ·  ') || undefined;
+
   return (
     <div className="min-h-screen bg-[#fafaf8] flex flex-col">
       <PublicNav />
 
-      <main className="flex-1 w-full max-w-[1060px] mx-auto px-8 md:px-12 pt-28 pb-12">
+      <PageHero
+        variant="light"
+        eyebrow={eyebrow}
+        title={title}
+        subtitle={excerpt || undefined}
+        meta={metaLine || undefined}
+      />
 
-        {/* Breadcrumb */}
-        <nav className="mb-8 text-xs text-[#1c2a2b]/40">
-          <Link href="/blog" className="hover:text-[#0e393d] transition">{t.back}</Link>
-          <span className="mx-2">›</span>
-          <span className="text-[#1c2a2b]/60 line-clamp-1">{title}</span>
-        </nav>
+      <main className="flex-1 w-full max-w-[1060px] mx-auto px-8 md:px-12 pb-12">
 
         {/* Hero image */}
         {article.featured_image_url && (
@@ -275,41 +297,9 @@ export default async function BlogDetailPage({
           <img
             src={supabaseTransform(article.featured_image_url, 1200) ?? article.featured_image_url}
             alt={title}
-            className="w-full h-64 object-cover rounded-2xl border border-[#0e393d]/10 mb-8"
+            className="w-full h-64 object-cover rounded-2xl border border-[#0e393d]/10 mt-10 mb-8"
           />
         )}
-
-        {/* Header */}
-        <header className="mb-8 pb-8 border-b border-[#0e393d]/10">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            {article.is_featured && (
-              <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#ceab84]">★ {t.featured}</span>
-            )}
-            {catLabel && (
-              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-medium ${catCls}`}>
-                {catLabel}
-              </span>
-            )}
-          </div>
-
-          <h1 className="font-serif text-3xl text-[#0e393d] leading-snug mb-3">{title}</h1>
-
-          {excerpt && (
-            <p className="text-[#1c2a2b]/60 text-base leading-relaxed mb-4">{excerpt}</p>
-          )}
-
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#1c2a2b]/45">
-            {article.author_name && (
-              <span>{t.by} <span className="font-medium text-[#1c2a2b]/70">{article.author_name}</span></span>
-            )}
-            {article.published_at && (
-              <span>{t.published} {formatDate(article.published_at, locale)}</span>
-            )}
-            {article.reading_time_min && (
-              <span>{article.reading_time_min} {t.minutes}</span>
-            )}
-          </div>
-        </header>
 
         {/* Article body */}
         {content ? (

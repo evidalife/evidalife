@@ -85,7 +85,7 @@ const T: Record<Lang, {
   de: {
     hero: {
       h1: 'Gesund leben.',
-      h1em: 'Wissenschaftlich fundiert.',
+      h1em: 'Wissenschaftlich fundiert, zugänglich durch KI.',
       sub: 'Biomarker messen. KI-gestützt optimieren. Fortschritt verfolgen. Ein geschlossener Kreislauf für deine Gesundheit – gestützt auf 500.000+ Studien.',
       cta1: 'Kostenlos registrieren',
       cta2: 'Mehr erfahren',
@@ -186,7 +186,7 @@ const T: Record<Lang, {
   en: {
     hero: {
       h1: 'Live well.',
-      h1em: 'AI-powered longevity.',
+      h1em: 'Scientifically grounded, accessible through AI.',
       sub: 'Measure your biomarkers. Get AI-driven insights from 500,000+ studies. Track your progress. A closed-loop system for your health.',
       cta1: 'Sign up free',
       cta2: 'Learn more',
@@ -287,7 +287,7 @@ const T: Record<Lang, {
   fr: {
     hero: {
       h1: 'Vivez bien.',
-      h1em: 'Longévité par l\'IA.',
+      h1em: 'Scientifiquement fondé, accessible par l\'IA.',
       sub: 'Mesurez vos biomarqueurs. Obtenez des insights IA basés sur 500 000+ études. Suivez vos progrès. Un système en boucle fermée pour votre santé.',
       cta1: "S'inscrire gratuitement",
       cta2: 'En savoir plus',
@@ -388,7 +388,7 @@ const T: Record<Lang, {
   es: {
     hero: {
       h1: 'Vive bien.',
-      h1em: 'Longevidad con IA.',
+      h1em: 'Científicamente fundamentado, accesible a través de IA.',
       sub: 'Mide tus biomarcadores. Obtén insights de IA basados en 500.000+ estudios. Sigue tu progreso. Un sistema de circuito cerrado para tu salud.',
       cta1: 'Registrarse gratis',
       cta2: 'Saber más',
@@ -489,7 +489,7 @@ const T: Record<Lang, {
   it: {
     hero: {
       h1: 'Vivi bene.',
-      h1em: 'Longevità con IA.',
+      h1em: 'Scientificamente fondato, accessibile tramite IA.',
       sub: 'Misura i tuoi biomarcatori. Ottieni insights IA basati su 500.000+ studi. Monitora i tuoi progressi. Un sistema a circuito chiuso per la tua salute.',
       cta1: 'Registrati gratis',
       cta2: 'Scopri di più',

@@ -1,6 +1,36 @@
-import { LongevityScoreData, Lang, scoreColor } from '@/lib/health-engine-v2-types';
+import React from 'react';
+import { LongevityScoreData, Lang, scoreColor } from '@/lib/health-engine';
 import HealthGauge from '@/components/health/HealthGauge';
 import { LineChart, Line, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer } from 'recharts';
+
+// ── InfoTooltip (matches HealthEngineDashboard exactly) ─────────────────────
+function DomainInfoTooltip({ lines }: { lines: { label: string; value: string }[] }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <span className="absolute top-4 right-4 z-10 inline-block align-middle">
+      <button
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onClick={() => setOpen(o => !o)}
+        className="w-[18px] h-[18px] rounded-full border border-white/20 text-white/35 flex items-center justify-center text-[10px] font-bold leading-none hover:border-white/40 hover:text-white/60 transition-colors cursor-help"
+        aria-label="Info"
+      >
+        i
+      </button>
+      {open && (
+        <div className="absolute z-50 right-0 top-7 w-56 bg-[#0b2e31] border border-white/15 rounded-xl shadow-xl p-3 text-left">
+          <div className="absolute -top-1.5 right-2 w-3 h-3 rotate-45 bg-[#0b2e31] border-l border-t border-white/15" />
+          {lines.map((l, i) => (
+            <div key={i} className="flex justify-between text-[10px] leading-relaxed">
+              <span className="text-white/50">{l.label}</span>
+              <span className="text-white/80 font-medium">{l.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </span>
+  );
+}
 
 // ── Translations ────────────────────────────────────────────────────────────
 const T: Record<Lang, Record<string, string>> = {
@@ -66,7 +96,11 @@ export default function LongevityScoreSlide({ data, lang }: { data: LongevitySco
       <div className="grid md:grid-cols-2 gap-3">
 
         {/* LEFT: LONGEVITY SCORE gauge card (matches health engine) */}
-        <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col">
+        <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col relative">
+          {/* Domain weight info tooltip (same as health engine) */}
+          {data.domainWeights && data.domainWeights.length > 0 && (
+            <DomainInfoTooltip lines={data.domainWeights} />
+          )}
           <div className="px-5 pt-5 pb-3.5 flex flex-col items-center gap-[5px]">
             <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-[#ceab84] mb-2 self-start">
               {t.longevityScore}
@@ -106,14 +140,14 @@ export default function LongevityScoreSlide({ data, lang }: { data: LongevitySco
           {data.history.length >= 2 && (
             <div className="border-t border-white/[.06] px-4 py-3 bg-black/[.12]">
               <div className="text-[10px] font-semibold tracking-[.08em] uppercase text-white/22 mb-1.5">{t.scoreHistory}</div>
-              <div className="h-[120px]">
+              <div className="h-[150px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data.history.map(h => ({
                     date: new Date(h.date + 'T00:00:00').toLocaleDateString(lang === 'de' ? 'de-CH' : 'en-GB', { month: 'short', year: 'numeric' }),
                     score: h.score,
                   }))} margin={{ top: 4, right: 4, bottom: 0, left: -28 }}>
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'rgba(255,255,255,.35)' }} axisLine={false} tickLine={false} />
-                    <YAxis domain={['dataMin - 5', 'dataMax + 3']} tick={{ fontSize: 10, fill: 'rgba(255,255,255,.35)' }} axisLine={false} tickLine={false} tickCount={4} />
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={['dataMin - 5', 'dataMax + 3']} tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={4} tickFormatter={(v: number) => parseFloat(v.toFixed(2)).toString()} />
                     <RTooltip
                       formatter={(v: unknown) => [v as number, 'Score']}
                       contentStyle={{ fontSize: 11, background: '#0e393d', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8 }}

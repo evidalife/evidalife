@@ -9,7 +9,7 @@ import {
   type BiomarkerCategory,
   type ScoredBiomarker,
   CATEGORY_DISPLAY,
-} from '@/lib/health-score';
+} from '@/lib/health-engine';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-import { WelcomeData, Lang, fmtDateFull } from '@/lib/health-engine-v2-types';
+import { WelcomeData, Lang, fmtDateFull } from '@/lib/health-engine';
 
 export default function WelcomeSlide({ data, lang }: { data: WelcomeData; lang: Lang }) {
   return (

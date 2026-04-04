@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { BriefingSlide, Lang } from '@/lib/health-engine-v2-types';
+import type { BriefingSlide, Lang } from '@/lib/health-engine';
 import SlideCard from './SlideCard';
 
 interface Props {

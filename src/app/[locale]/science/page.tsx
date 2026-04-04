@@ -1418,7 +1418,7 @@ export default async function SciencePage() {
                   {t.ctaBtn2}
                 </a>
                 <a
-                  href="/how-to-start"
+                  href="/lifestyle"
                   className="bg-white/10 text-white border border-white/20 text-[13px] font-light px-7 py-3.5 rounded-full transition-all hover:bg-white/20 whitespace-nowrap"
                 >
                   {t.ctaBtn3}

@@ -1,4 +1,4 @@
-import type { BriefingSlide, Lang } from '@/lib/health-engine-v2-types';
+import type { BriefingSlide, Lang } from '@/lib/health-engine';
 import WelcomeSlide from './WelcomeSlide';
 import LongevityScoreSlide from './LongevityScoreSlide';
 import BioAgeSlide from './BioAgeSlide';

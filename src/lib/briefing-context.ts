@@ -14,7 +14,7 @@ import type {
   DomainSummaryData,
   ClosingData,
   MarkerDetail,
-} from '@/lib/health-engine-v2-types';
+} from '@/lib/health-engine';
 
 function fmtMarker(m: MarkerDetail): string {
   const parts = [`${m.name}: ${m.value} ${m.unit} (score ${m.score}/100, ${m.status})`];

@@ -13,7 +13,7 @@ import {
   type WelcomeData,
   type ClosingData,
   type MarkerDetail,
-} from '@/lib/health-engine-v2-types';
+} from '@/lib/health-engine';
 
 export const maxDuration = 30;
 

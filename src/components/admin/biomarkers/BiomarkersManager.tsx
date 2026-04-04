@@ -831,10 +831,10 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
       unit:        form.unit || null,
       range_type:   rt,
       scoring_type: form.scoring_type || 'standard',
-      // age_ratio: ref/opt high hold ratio thresholds (e.g. 1.0 / 0.8); low bounds unused
-      ref_range_low:     (rt === 'lower_is_better' || form.scoring_type === 'age_ratio')  ? null : parseNum(form.ref_range_low),
+      // age_ratio / pace_ratio: opt_high = optimal threshold, ref_low = good threshold, ref_high = borderline/risk threshold
+      ref_range_low:     (rt === 'lower_is_better' && form.scoring_type !== 'age_ratio' && form.scoring_type !== 'pace_ratio') ? null : parseNum(form.ref_range_low),
       ref_range_high:    rt === 'higher_is_better' ? null : parseNum(form.ref_range_high),
-      optimal_range_low: (rt === 'lower_is_better' || form.scoring_type === 'age_ratio')  ? null : parseNum(form.optimal_range_low),
+      optimal_range_low: (rt === 'lower_is_better' || form.scoring_type === 'age_ratio' || form.scoring_type === 'pace_ratio') ? null : parseNum(form.optimal_range_low),
       optimal_range_high:rt === 'higher_is_better' ? null : parseNum(form.optimal_range_high),
       he_domain:   form.he_domain || null,
       // Chart range
@@ -1374,21 +1374,26 @@ export default function BiomarkersManager({ initialItems }: { initialItems: Item
                   <select className={selectCls} value={form.scoring_type} onChange={(e) => setForm((f) => ({ ...f, scoring_type: e.target.value }))}>
                     <option value="standard">Standard — score against absolute ranges</option>
                     <option value="age_ratio">Age Ratio — score (value ÷ patient age at test)</option>
+                    <option value="pace_ratio">Pace Ratio — value is already a ratio (e.g. DunedinPACE)</option>
                   </select>
-                  {form.scoring_type === 'age_ratio' && (
+                  {(form.scoring_type === 'age_ratio' || form.scoring_type === 'pace_ratio') && (
                     <p className="mt-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">
-                      <strong>Age Ratio mode:</strong> the value is divided by the patient&apos;s chronological age at the time of the test before scoring.
-                      Set <em>Optimal Max</em> and <em>Max Normal</em> below as ratio thresholds — e.g. <strong>0.8</strong> (optimal) and <strong>1.0</strong> (normal).
-                      A ratio of 0.8 means the bio-age is 80% of real age. Ref/Opt Low are ignored.
+                      {form.scoring_type === 'age_ratio' ? (
+                        <><strong>Age Ratio mode:</strong> the value is divided by the patient&apos;s chronological age before scoring.</>
+                      ) : (
+                        <><strong>Pace Ratio mode:</strong> the raw value is already a ratio (e.g. 0.87 = aging at 87% speed) — no division by age.</>
+                      )}
+                      {' '}Set thresholds: <em>Optimal Max</em> (below = optimal), <em>Min Normal</em> (below = good),
+                      <em> Max Normal</em> (below = borderline, above = risk).
                     </p>
                   )}
                 </Field>
                 {form.range_type && (
                   <>
-                    {form.scoring_type !== 'age_ratio' && (
+                    {form.scoring_type !== 'age_ratio' && form.scoring_type !== 'pace_ratio' && (
                       <RangeBar refLow={previewRanges.refLow} refHigh={previewRanges.refHigh} optLow={previewRanges.optLow} optHigh={previewRanges.optHigh} />
                     )}
-                    <RangeFields form={form} setForm={setForm} rangeType={form.scoring_type === 'age_ratio' ? 'lower_is_better' : form.range_type} sexSpecific={form.has_sex_specific_ranges} />
+                    <RangeFields form={form} setForm={setForm} rangeType={(form.scoring_type === 'age_ratio' || form.scoring_type === 'pace_ratio') ? 'lower_is_better' : form.range_type} sexSpecific={form.has_sex_specific_ranges} />
                     <div className="flex gap-3 text-xs text-[#1c2a2b]/50 pt-1">
                       <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-200" />Normal range</span>
                       <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-emerald-400/70" />Optimal range</span>

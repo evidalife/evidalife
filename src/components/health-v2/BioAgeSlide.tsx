@@ -1,4 +1,5 @@
-import { BioAgeScoreData, Lang, scoreColor } from '@/lib/health-engine-v2-types';
+import React from 'react';
+import { BioAgeScoreData, Lang, scoreColor } from '@/lib/health-engine';
 import HealthGauge from '@/components/health/HealthGauge';
 import { LineChart, Line, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer } from 'recharts';
 
@@ -46,6 +47,35 @@ const T: Record<Lang, Record<string, string>> = {
   },
 };
 
+// ── InfoTooltip (matches HealthEngineDashboard) ─────────────────────────────
+function ClockInfoTooltip({ lines }: { lines: { label: string; value: string }[] }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <span className="absolute top-4 right-4 z-10 inline-block align-middle">
+      <button
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onClick={() => setOpen(o => !o)}
+        className="w-[18px] h-[18px] rounded-full border border-white/20 text-white/35 flex items-center justify-center text-[10px] font-bold leading-none hover:border-white/40 hover:text-white/60 transition-colors cursor-help"
+        aria-label="Info"
+      >
+        i
+      </button>
+      {open && (
+        <div className="absolute z-50 right-0 top-7 w-56 bg-[#0b2e31] border border-white/15 rounded-xl shadow-xl p-3 text-left">
+          <div className="absolute -top-1.5 right-2 w-3 h-3 rotate-45 bg-[#0b2e31] border-l border-t border-white/15" />
+          {lines.map((l, i) => (
+            <div key={i} className="flex justify-between text-[10px] leading-relaxed">
+              <span className="text-white/50">{l.label}</span>
+              <span className="text-white/80 font-medium">{l.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </span>
+  );
+}
+
 export default function BioAgeSlide({ data, lang }: { data: BioAgeScoreData; lang: Lang }) {
   const t = T[lang] || T.en;
 
@@ -69,20 +99,27 @@ export default function BioAgeSlide({ data, lang }: { data: BioAgeScoreData; lan
     data.dunedinPace != null && { label: t.dunedinLabel, value: data.dunedinPace.toFixed(2), sub: t.dunedinSub },
   ].filter(Boolean) as { label: string; value: string; sub: string }[];
 
+  // Clock weight tooltip lines (equal weight per available clock)
+  const clockWeightLines = clocks.map(c => ({
+    label: c.label,
+    value: `${Math.round(100 / clocks.length)}%`,
+  }));
+
   // Chart data filtering (with backwards compat defaults)
   const chartPoints = (data.chartData ?? []).filter(d => d.avg != null);
 
   return (
-    <div className="w-full max-w-4xl bg-white rounded-2xl ring-1 ring-[#0e393d]/8 shadow-sm overflow-hidden">
-      <div className="grid md:grid-cols-[1fr_1fr] gap-0">
+    <div className="w-full max-w-4xl">
+      <div className="grid md:grid-cols-2 gap-3">
 
-        {/* LEFT: Bio Age Gauge matching health engine (dark teal) */}
-        <div className="bg-[#0e393d] flex flex-col">
+        {/* LEFT: Bio Age Gauge card (matches health engine exactly) */}
+        <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col relative">
+          {clockWeightLines.length > 0 && <ClockInfoTooltip lines={clockWeightLines} />}
           <div className="px-5 pt-5 pb-3.5 flex flex-col items-center gap-[5px]">
             <div className="text-[10px] font-semibold tracking-[.16em] uppercase text-[#ceab84] mb-2 self-start">
               {t.bioAgeScore}
             </div>
-            <div className="mt-2 mb-1"><HealthGauge score={data.bioAgeScore} size="md" dark /></div>
+            <div className="mt-2 mb-1"><HealthGauge score={data.bioAgeScore} size="lg" dark /></div>
             {avgBioAge != null && (
               <>
                 <div className="text-[11px] text-white/30 text-center">
@@ -120,18 +157,19 @@ export default function BioAgeSlide({ data, lang }: { data: BioAgeScoreData; lan
           {chartPoints.length >= 2 && (
             <div className="border-t border-white/[.06] px-4 py-3 bg-black/[.12]">
               <div className="text-[10px] font-semibold tracking-[.08em] uppercase text-white/22 mb-1.5">{t.avgVsChron}</div>
-              <div className="h-[120px]">
+              <div className="h-[150px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data.chartData} margin={{ top: 4, right: 4, bottom: 0, left: -28 }}>
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'rgba(255,255,255,.35)' }} axisLine={false} tickLine={false} />
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} />
                     <YAxis
-                      tick={{ fontSize: 10, fill: 'rgba(255,255,255,.35)' }} axisLine={false} tickLine={false} tickCount={4}
+                      tick={{ fontSize: 11, fill: 'rgba(255,255,255,.4)' }} axisLine={false} tickLine={false} tickCount={4}
                       tickFormatter={(v: number) => parseFloat(v.toFixed(1)).toString()}
                     />
                     <RTooltip
                       formatter={(v) => typeof v === 'number' ? parseFloat(v.toFixed(1)).toString() : String(v ?? '')}
                       contentStyle={{ fontSize: 11, background: '#0e393d', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8 }}
                       labelStyle={{ color: 'rgba(255,255,255,.5)' }}
+                      itemStyle={{ fontSize: 11 }}
                     />
                     <Line name="Chronological" type="monotone" dataKey="chron" stroke="rgba(255,255,255,.2)" strokeWidth={1} strokeDasharray="5 4" dot={false} />
                     <Line name="Avg Bio Age" type="monotone" dataKey="avg" stroke="#0C9C6C" strokeWidth={2} dot={false} activeDot={{ r: 4 }} connectNulls />
@@ -142,42 +180,44 @@ export default function BioAgeSlide({ data, lang }: { data: BioAgeScoreData; lan
           )}
         </div>
 
-        {/* RIGHT: Epigenetic Clocks */}
-        <div className="p-8 flex flex-col justify-center">
-          {clocks.length > 0 && (
-            <>
-              <p className="text-[10px] font-semibold tracking-[.18em] uppercase text-[#ceab84] mb-4">{t.epiClocks}</p>
-              <div className="space-y-3">
-                {clocks.map((c) => (
-                  <div key={c.label}
-                    className="flex items-center justify-between p-4 rounded-xl bg-[#fafaf8] border border-[#0e393d]/[.05] hover:shadow-sm transition-shadow"
-                  >
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[#1c2a2b]/40 mb-0.5">{c.label}</p>
-                      <p className="text-[11px] text-[#1c2a2b]/35">{c.sub}</p>
+        {/* RIGHT: Epigenetic Clocks detail card (matches health engine dark teal) */}
+        <div className="bg-[#0e393d] rounded-2xl overflow-hidden flex flex-col">
+          <div className="px-5 pt-5 pb-4 flex-1 flex flex-col">
+            {clocks.length > 0 && (
+              <>
+                <p className="text-[10px] font-semibold tracking-[.18em] uppercase text-[#ceab84] mb-4">{t.epiClocks}</p>
+                <div className="space-y-2.5 flex-1">
+                  {clocks.map((c) => (
+                    <div key={c.label}
+                      className="flex items-center justify-between p-3.5 rounded-xl bg-white/[.04] border border-white/[.06] hover:bg-white/[.06] transition-colors"
+                    >
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-white/40 mb-0.5">{c.label}</p>
+                        <p className="text-[11px] text-white/25">{c.sub}</p>
+                      </div>
+                      <span className="font-serif text-2xl font-bold text-white shrink-0 ml-4">{c.value}</span>
                     </div>
-                    <span className="font-serif text-2xl font-bold text-[#0e393d] shrink-0 ml-4">{c.value}</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </>
+            )}
+
+            {clocks.length === 0 && (
+              <div className="text-center py-8 flex-1 flex flex-col items-center justify-center">
+                <p className="text-[13px] text-white/40">{t.noClocks}</p>
+                <p className="text-[11px] text-white/25 mt-1">{t.noClocksSub}</p>
               </div>
-            </>
-          )}
+            )}
 
-          {clocks.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-[13px] text-[#1c2a2b]/40">{t.noClocks}</p>
-              <p className="text-[11px] text-[#1c2a2b]/25 mt-1">{t.noClocksSub}</p>
-            </div>
-          )}
-
-          {/* Score indicator */}
-          <div className="mt-6 pt-5 border-t border-[#0e393d]/[.06] flex items-center justify-between">
-            <span className="text-[10px] text-[#1c2a2b]/40 uppercase tracking-[.12em]">{t.epiScore}</span>
-            <div className="flex items-center gap-2">
-              <span className="font-serif text-2xl font-bold" style={{ color: scoreColor(data.bioAgeScore) }}>
-                {data.bioAgeScore}
-              </span>
-              <span className="text-[10px] text-[#1c2a2b]/30">/ 100</span>
+            {/* Score indicator */}
+            <div className="mt-5 pt-4 border-t border-white/[.06] flex items-center justify-between">
+              <span className="text-[10px] text-white/40 uppercase tracking-[.12em]">{t.epiScore}</span>
+              <div className="flex items-center gap-2">
+                <span className="font-serif text-2xl font-bold" style={{ color: scoreColor(data.bioAgeScore) }}>
+                  {data.bioAgeScore}
+                </span>
+                <span className="text-[10px] text-white/30">/ 100</span>
+              </div>
             </div>
           </div>
         </div>

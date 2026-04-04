@@ -402,7 +402,7 @@ async function executeAction(
 
     case 'calculate_health_engine_score': {
       // Trigger score recalculation after results are uploaded
-      // This calls the health-score.ts engine
+      // This calls the health-engine.ts scoring functions
       console.log(`TODO: Recalculate Health Engine score for user ${userId}`);
       break;
     }

@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logAIUsage } from '@/lib/ai/usage-logger';
+import { continuousScore, scoreToStatus, getName } from '@/lib/health-engine';
 
 export const maxDuration = 60;
 
@@ -220,33 +221,6 @@ export async function POST(req: NextRequest) {
   const latestDate = allDates[allDates.length - 1];
   const prevDate = allDates.length > 1 ? allDates[allDates.length - 2] : null;
 
-  // Continuous scoring helper
-  function continuousScore(value: number, rL: number | null, rH: number | null, oL: number | null, oH: number | null): number {
-    if (rL != null && rH != null) {
-      const span = rH - rL || 1;
-      if (oL != null && oH != null) {
-        if (value >= oL && value <= oH) return 95;
-        if (value >= rL && value <= rH) return 70;
-        const excess = value < rL ? (rL - value) / span : (value - rH) / span;
-        return Math.max(5, 50 - excess * 100);
-      }
-      if (value >= rL && value <= rH) return 75;
-      const excess = value < rL ? (rL - value) / span : (value - rH) / span;
-      return Math.max(5, 50 - excess * 100);
-    }
-    if (rH != null) { // lower is better
-      if (oH != null && value <= oH) return 95;
-      if (value <= rH) return 75;
-      return Math.max(5, 75 - ((value - rH) / (rH || 1)) * 50);
-    }
-    if (rL != null) { // higher is better
-      if (oL != null && value >= oL) return 95;
-      if (value >= rL) return 75;
-      return Math.max(5, 75 - ((rL - value) / (rL || 1)) * 50);
-    }
-    return 50;
-  }
-
   // Build domain scores
   const domainScores: Array<{ key: string; name: string; latestScore: number; prevScore: number | null; weight: string }> = [];
   let longevityScore = 0;
@@ -289,12 +263,6 @@ export async function POST(req: NextRequest) {
   if (prevTotalWeight > 0 && prevLongevityScore != null) prevLongevityScore = prevLongevityScore / prevTotalWeight;
 
   // Find risk + improved markers
-  const getName = (obj: Record<string, string> | string | null): string => {
-    if (!obj) return '';
-    if (typeof obj === 'string') return obj;
-    return obj['en'] ?? obj['de'] ?? '';
-  };
-
   const riskMarkers: Array<{ name: string; value: number; unit: string; status: string; refLow: number | null; refHigh: number | null }> = [];
   const improvedMarkers: Array<{ name: string; delta: number; unit: string }> = [];
 
@@ -304,10 +272,10 @@ export async function POST(req: NextRequest) {
     if (!latestEntry) continue;
 
     const score = continuousScore(latestEntry.value, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high);
-    const status = score >= 85 ? 'optimal' : score >= 65 ? 'good' : score >= 40 ? 'borderline' : 'risk';
+    const status = scoreToStatus(score);
 
     if (status === 'borderline' || status === 'risk') {
-      riskMarkers.push({ name: getName(def.name), value: latestEntry.value, unit: def.unit ?? '', status, refLow: def.ref_range_low, refHigh: def.ref_range_high });
+      riskMarkers.push({ name: getName(def.name, lang), value: latestEntry.value, unit: def.unit ?? '', status, refLow: def.ref_range_low, refHigh: def.ref_range_high });
     }
 
     if (prevDate) {
@@ -315,7 +283,7 @@ export async function POST(req: NextRequest) {
       if (prevEntry) {
         const prevScore = continuousScore(prevEntry.value, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high);
         if (score > prevScore + 10) {
-          improvedMarkers.push({ name: getName(def.name), delta: latestEntry.value - prevEntry.value, unit: def.unit ?? '' });
+          improvedMarkers.push({ name: getName(def.name, lang), delta: latestEntry.value - prevEntry.value, unit: def.unit ?? '' });
         }
       }
     }

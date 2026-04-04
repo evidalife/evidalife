@@ -61,18 +61,18 @@ const BIO_AGE_CONFIG: { key: string; label: string; description: string; package
   { key: 'dunedinpace', label: 'DunedinPACE',   description: 'Pace of aging (rate, not age)', package: 'complete' },
 ];
 
-// V1 correct weights from health-score.ts
+// Canonical weights — must match DOMAIN_META in health-engine.ts
 const DEFAULT_WEIGHTS: Record<string, number> = {
-  heart_vessels: 0.20, metabolism: 0.18, inflammation: 0.15,
-  organ_function: 0.15, nutrients: 0.12, hormones: 0.10,
-  body_composition: 0.05, fitness: 0.05,
+  heart_vessels: 0.18, metabolism: 0.16, inflammation: 0.14,
+  organ_function: 0.13, nutrients: 0.10, hormones: 0.09,
+  epigenetics: 0.10, body_composition: 0.05, fitness: 0.05,
 };
 
 const DEFAULT_BIO_AGE_WEIGHTS: Record<string, number> = {
   phenoage: 0.40, grimage: 0.35, dunedinpace: 0.25,
 };
 
-// Matches V2 engine thresholds from health-engine-v2-types.ts scoreToStatus()
+// Matches engine thresholds from health-engine.ts scoreToStatus()
 const SCORE_THRESHOLDS = [
   { label: 'Optimal', min: 90, max: 100, color: '#0C9C6C', bgColor: 'bg-[#0C9C6C]', borderColor: 'border-[#0C9C6C]/20', bgFill: 'bg-[#0C9C6C]/[.03]', textColor: 'text-[#0C9C6C]', desc: 'Briefly acknowledged in briefing. Compact card — no action needed.' },
   { label: 'Good',     min: 75, max: 89,  color: '#5ba37a', bgColor: 'bg-[#5ba37a]', borderColor: 'border-[#5ba37a]/20', bgFill: 'bg-[#5ba37a]/[.03]', textColor: 'text-[#5ba37a]', desc: 'Positive mention in briefing. Compact card with optional trend.' },

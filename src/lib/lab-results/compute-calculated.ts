@@ -5,7 +5,7 @@
 //
 // Call this from any import path: save-report, parse-lab-results, bulk, or manual add.
 
-import { computeAllCalculatedMarkers } from '@/lib/health-score';
+import { computeAllCalculatedMarkers } from '@/lib/health-engine';
 import { computeStatusFlag } from '@/lib/lab-results/flagging';
 import type { SupabaseClient } from '@supabase/supabase-js';
 

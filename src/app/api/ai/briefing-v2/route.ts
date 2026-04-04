@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { logAIUsage } from '@/lib/ai/usage-logger';
 import {
   continuousScore,
+  ageRatioScore,
   scoreToStatus,
   scoreColor,
   getName,
@@ -23,7 +24,7 @@ import {
   type ClosingData,
   type MarkerSummary,
   type MarkerDetail,
-} from '@/lib/health-engine-v2-types';
+} from '@/lib/health-engine';
 
 export const maxDuration = 60;
 
@@ -312,7 +313,11 @@ export async function POST(req: NextRequest) {
     if (def.scoring_type === 'age_ratio') {
       if (chronAge <= 0) return 70;
       const ratio = value / chronAge;
-      return continuousScore(ratio, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high);
+      return ageRatioScore(ratio, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high);
+    }
+    if (def.scoring_type === 'pace_ratio') {
+      // Value IS the ratio (e.g. DunedinPACE 0.87 = aging at 87% pace) — no division needed
+      return ageRatioScore(value, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high);
     }
     return continuousScore(value, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high);
   }
@@ -459,7 +464,7 @@ export async function POST(req: NextRequest) {
   for (const date of allDates) {
     const dScores: number[] = [];
     let dTotalWeight = 0;
-    for (const [domKey, weight] of Object.entries(DEFAULT_WEIGHTS)) {
+    for (const [domKey, weight] of Object.entries(dbWeights)) {
       if (domKey === 'epigenetics') continue;
       const domDefs = definitions.filter(d => d.he_domain === domKey && markerData.has(d.id) && !d.is_calculated && !EXCLUDED_SLUGS.has(d.slug));
       if (!domDefs.length) continue;
@@ -532,6 +537,12 @@ export async function POST(req: NextRequest) {
       progressLabel,
       firstBioAgeDiff: null,  // filled after bio age computation below
       latestBioAgeDiff: null,
+      domainWeights: Object.entries(dbWeights)
+        .filter(([k]) => k !== 'epigenetics')
+        .map(([k, w]) => ({
+          label: (DOMAIN_META[k]?.name[lang] || DOMAIN_META[k]?.name['en'] || k).split(/\s*\(/)[0],
+          value: `${Math.round(w * 100)}%`,
+        })),
     } as LongevityScoreData,
   });
 

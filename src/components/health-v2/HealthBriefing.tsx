@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import type { Lang, BriefingSlide, BriefingV2Response } from '@/lib/health-engine-v2-types';
+import type { Lang, BriefingSlide, BriefingV2Response } from '@/lib/health-engine';
 import { buildBriefingContext } from '@/lib/briefing-context';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import dynamic from 'next/dynamic';
@@ -320,7 +320,7 @@ export default function HealthBriefing({ lang, userId, hasData, isSample, studyC
     const markers: FlaggedMarker[] = [];
     for (const slide of slidesRef.current) {
       if (slide.type === 'domain_summary') {
-        const data = slide.data as import('@/lib/health-engine-v2-types').DomainSummaryData;
+        const data = slide.data as import('@/lib/health-engine').DomainSummaryData;
         // First add critical markers (score < 55)
         for (const m of data.criticalMarkers || []) {
           markers.push({

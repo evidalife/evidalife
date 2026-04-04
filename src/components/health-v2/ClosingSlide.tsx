@@ -1,4 +1,4 @@
-import { ClosingData, Lang } from '@/lib/health-engine-v2-types';
+import { ClosingData, Lang } from '@/lib/health-engine';
 import HealthGauge from '@/components/health/HealthGauge';
 import { scoreColor } from './SlideBlocks';
 

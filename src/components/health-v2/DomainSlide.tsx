@@ -1,4 +1,4 @@
-import { DomainSummaryData, Lang } from '@/lib/health-engine-v2-types';
+import { DomainSummaryData, Lang } from '@/lib/health-engine';
 import HealthGauge from '@/components/health/HealthGauge';
 import { SectionTag, MarkerCard, MarkerRow, Sparkline, scoreColor } from './SlideBlocks';
 

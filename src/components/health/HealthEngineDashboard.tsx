@@ -7,7 +7,8 @@ import {
 } from 'recharts';
 import BiomarkerTrendChart from './BiomarkerTrendChart';
 // BriefingPlayer removed — briefing now lives at /health-briefing
-import { CATEGORY_DISPLAY } from '@/lib/health-score';
+import { CATEGORY_DISPLAY } from '@/lib/health-engine';
+import { continuousScore as canonicalContinuousScore, ageRatioScore } from '@/lib/health-engine';
 import { createClient } from '@/lib/supabase/client';
 // ResearchChat removed — moving to Health Engine v2
 
@@ -237,103 +238,8 @@ function fmtDateFull(iso: string, lang: string): string {
   );
 }
 
-// ── Continuous Scoring ────────────────────────────────────────────────────────
-// Returns 0–100 with realistic granularity (not just 100/75/50/25).
-// All paths clamped to [0, 100].
-function continuousScore(
-  value: number,
-  refLow: number | null, refHigh: number | null,
-  optLow: number | null, optHigh: number | null,
-): number {
-  const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
-  const hRL = refLow != null, hRH = refHigh != null;
-  const hOL = optLow != null, hOH = optHigh != null;
-
-  // Both ref bounds (range type)
-  if (hRL && hRH) {
-    const rL = refLow!, rH = refHigh!;
-    const span = rH - rL || 1;
-
-    if (hOL && hOH) {
-      const oL = optLow!, oH = optHigh!;
-      const oMid = (oL + oH) / 2;
-      const oHalf = (oH - oL) / 2 || 1;
-
-      if (value >= oL && value <= oH) {
-        // In optimal: 82–100 based on centering (wider spread for realism)
-        const dist = Math.abs(value - oMid) / oHalf;
-        return clamp(100 - 18 * dist);
-      }
-      if (value >= rL && value <= rH) {
-        // In reference, not optimal: 55–81
-        if (value < oL) {
-          const pct = (oL - value) / (oL - rL || 1);
-          return clamp(81 - 26 * pct);
-        } else {
-          const pct = (value - oH) / (rH - oH || 1);
-          return clamp(81 - 26 * pct);
-        }
-      }
-    } else {
-      // No optimal range, just reference
-      const mid = (rL + rH) / 2;
-      const half = span / 2;
-      if (value >= rL && value <= rH) {
-        const dist = Math.abs(value - mid) / half;
-        return clamp(90 - 22 * dist);
-      }
-    }
-
-    // Out of reference
-    const overshoot = value < rL ? (rL - value) / span : (value - rH) / span;
-    if (overshoot <= 0.15) return clamp(50 - overshoot * 80);
-    if (overshoot <= 0.5) return clamp(42 - overshoot * 50);
-    return clamp(25 - overshoot * 30);
-  }
-
-  // Only upper bound (lower is better)
-  if (!hRL && hRH) {
-    const rH = refHigh!;
-    const opt = hOH ? optHigh! : rH * 0.8;
-    // Negative values on lower-is-better markers are always optimal
-    // (e.g. AIP = log10(TG/HDL): negative means HDL > TG → excellent CV health)
-    if (value <= 0) return 100;
-    if (value <= opt * 0.5) {
-      return clamp(98 - 4 * (value / (opt * 0.5 || 1)));
-    }
-    if (value <= opt) {
-      const ratio = (value - opt * 0.5) / (opt * 0.5 || 1);
-      return clamp(94 - 12 * ratio);
-    }
-    if (value <= rH) {
-      const pct = (value - opt) / (rH - opt || 1);
-      return clamp(81 - 26 * pct);
-    }
-    const overshoot = (value - rH) / (rH || 1);
-    return clamp(50 - overshoot * 65);
-  }
-
-  // Only lower bound (higher is better)
-  if (hRL && !hRH) {
-    const rL = refLow!;
-    const opt = hOL ? optLow! : rL * 1.2;
-    if (value >= opt * 1.5) {
-      return clamp(94 - 6 * Math.min(1, (value - opt * 1.5) / (opt || 1)));
-    }
-    if (value >= opt) {
-      const excess = (value - opt) / (opt * 0.5 || 1);
-      return clamp(98 - 4 * Math.min(1, excess));
-    }
-    if (value >= rL) {
-      const pct = (opt - value) / (opt - rL || 1);
-      return clamp(81 - 26 * pct);
-    }
-    const undershoot = (rL - value) / (rL || 1);
-    return clamp(50 - undershoot * 65);
-  }
-
-  return 70; // No ranges available
-}
+// ── Continuous Scoring — single source of truth in health-engine.ts ──
+const continuousScore = canonicalContinuousScore;
 
 function scoreToStatus(s: number): MStatus {
   if (s >= 90) return 'optimal';
@@ -594,7 +500,7 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
       const chronoAge = (testDate.getTime() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
       if (chronoAge <= 0) return 70;
       const ratio = value / chronoAge;
-      return continuousScore(ratio, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high);
+      return ageRatioScore(ratio, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high);
     };
 
     // Build domains — use admin-configured weights when available
@@ -624,18 +530,24 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
         }
 
         // Continuous score — age_ratio markers: divide value by chronoAge before scoring
+        // pace_ratio markers: value is already a ratio, use ageRatioScore directly
         const isAgeRatio = def.scoring_type === 'age_ratio';
+        const isPaceRatio = def.scoring_type === 'pace_ratio';
         const latestDate = displayDates[displayDates.length - 1] ?? '';
         const latestScore = latest != null
           ? (isAgeRatio
               ? bioClockRatioScore(latest, latestDate, def)
-              : continuousScore(latest, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high))
+              : isPaceRatio
+                ? ageRatioScore(latest, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high)
+                : continuousScore(latest, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high))
           : 50;
 
         const previousScore = previous != null
           ? (isAgeRatio
               ? bioClockRatioScore(previous, latestDate, def)
-              : continuousScore(previous, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high))
+              : isPaceRatio
+                ? ageRatioScore(previous, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high)
+                : continuousScore(previous, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high))
           : null;
 
         const delta = latest != null && previous != null ? +(latest - previous).toFixed(2) : null;
@@ -661,6 +573,9 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
             const def = defMap.get(m.defId)!;
             if (def.scoring_type === 'age_ratio') {
               return bioClockRatioScore(entry.value, date, def);
+            }
+            if (def.scoring_type === 'pace_ratio') {
+              return ageRatioScore(entry.value, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high);
             }
             return continuousScore(entry.value, def.ref_range_low, def.ref_range_high, def.optimal_range_low, def.optimal_range_high);
           })

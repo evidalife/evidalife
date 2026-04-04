@@ -4,60 +4,17 @@ import { redirect } from 'next/navigation';
 import CoachPage from '@/components/coach/CoachPage';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import { continuousScore, ageRatioScore } from '@/lib/health-engine';
 
 export const metadata = { title: 'Coach – Evida Life' };
 
 type Lang = 'en' | 'de' | 'fr' | 'es' | 'it';
 
-// Domain weights — same as health-engine and old dashboard
-const DOMAIN_WEIGHTS: Record<string, number> = {
-  heart_vessels: 0.20, metabolism: 0.18, inflammation: 0.15, organ_function: 0.15,
-  nutrients: 0.12, hormones: 0.10, body_composition: 0.05, fitness: 0.05, epigenetics: 0.10,
+// Fallback weights — overridden by DB ai_settings when available
+const DEFAULT_WEIGHTS: Record<string, number> = {
+  heart_vessels: 0.18, metabolism: 0.16, inflammation: 0.14, organ_function: 0.13,
+  nutrients: 0.10, hormones: 0.09, body_composition: 0.05, fitness: 0.05, epigenetics: 0.10,
 };
-
-function continuousScore(
-  value: number,
-  refLow: number | null, refHigh: number | null,
-  optLow: number | null, optHigh: number | null,
-): number {
-  const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
-  const hRL = refLow != null, hRH = refHigh != null;
-  const hOL = optLow != null, hOH = optHigh != null;
-  if (hRL && hRH) {
-    const rL = refLow!, rH = refHigh!, span = rH - rL || 1;
-    if (hOL && hOH) {
-      const oL = optLow!, oH = optHigh!, oMid = (oL + oH) / 2, oHalf = (oH - oL) / 2 || 1;
-      if (value >= oL && value <= oH) return clamp(100 - 18 * Math.abs(value - oMid) / oHalf);
-      if (value >= rL && value <= rH) {
-        const pct = value < oL ? (oL - value) / (oL - rL || 1) : (value - oH) / (rH - oH || 1);
-        return clamp(81 - 26 * pct);
-      }
-    } else {
-      const mid = (rL + rH) / 2, half = span / 2;
-      if (value >= rL && value <= rH) return clamp(90 - 22 * Math.abs(value - mid) / half);
-    }
-    const overshoot = value < refLow! ? (refLow! - value) / span : (value - refHigh!) / span;
-    if (overshoot <= 0.15) return clamp(50 - overshoot * 80);
-    if (overshoot <= 0.5) return clamp(42 - overshoot * 50);
-    return clamp(25 - overshoot * 30);
-  }
-  if (!hRL && hRH) {
-    const rH = refHigh!, opt = hOH ? optHigh! : rH * 0.8;
-    if (value <= 0) return 100;
-    if (value <= opt * 0.5) return clamp(98 - 4 * (value / (opt * 0.5 || 1)));
-    if (value <= opt) return clamp(94 - 12 * ((value - opt * 0.5) / (opt * 0.5 || 1)));
-    if (value <= rH) return clamp(81 - 26 * ((value - opt) / (rH - opt || 1)));
-    return clamp(50 - ((value - rH) / (rH || 1)) * 65);
-  }
-  if (hRL && !hRH) {
-    const rL = refLow!, opt = hOL ? optLow! : rL * 1.2;
-    if (value >= opt * 1.5) return clamp(94 - 6 * Math.min(1, (value - opt * 1.5) / (opt || 1)));
-    if (value >= opt) return clamp(98 - 4 * Math.min(1, (value - opt) / (opt * 0.5 || 1)));
-    if (value >= rL) return clamp(81 - 26 * ((opt - value) / (opt - rL || 1)));
-    return clamp(50 - ((rL - value) / (rL || 1)) * 65);
-  }
-  return 70;
-}
 
 export default async function CoachPageServer({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -82,6 +39,7 @@ export default async function CoachPageServer({ params }: { params: Promise<{ lo
     ddEntriesRes,
     checklistItemsRes,
     checklistEntriesRes,
+    domainWeightsRes,
   ] = await Promise.all([
     // Coach data
     admin.from('profiles').select('first_name, last_name, date_of_birth').eq('id', user.id).single(),
@@ -106,7 +64,14 @@ export default async function CoachPageServer({ params }: { params: Promise<{ lo
     supabase.from('daily_dozen_entries').select('category_id, servings_completed').eq('user_id', user.id).eq('entry_date', today),
     supabase.from('daily_checklist_items').select('id, framework, target_servings').eq('is_active', true).in('framework', ['21_tweaks', 'anti_aging']),
     supabase.from('daily_checklist_entries').select('checklist_item_id, servings_completed, is_done').eq('user_id', user.id).eq('entry_date', today),
+
+    // Domain weights from admin settings (same source as health-engine & briefing)
+    admin.from('ai_settings').select('value').eq('key', 'domain_weights').single(),
   ]);
+
+  // ── Domain weights (DB → fallback) — same source as health-engine ──────
+  const dbWeights = (domainWeightsRes.data?.value as Record<string, number>) ?? null;
+  const DOMAIN_WEIGHTS: Record<string, number> = { ...DEFAULT_WEIGHTS, ...dbWeights };
 
   // ── Coach data extraction ──────────────────────────────────────────────
   const profile = profileResult.data || null;
@@ -147,8 +112,20 @@ export default async function CoachPageServer({ params }: { params: Promise<{ lo
     const bd = r.biomarkers as unknown as BmDef | null;
     if (!bd?.he_domain || r.value_numeric == null) continue;
     let value = Number(r.value_numeric);
-    if (bd.scoring_type === 'age_ratio' && chronoAge && chronoAge > 0) value = value / chronoAge;
-    else if (bd.scoring_type === 'age_ratio') continue;
+    if (bd.scoring_type === 'age_ratio') {
+      if (!chronoAge || chronoAge <= 0) continue;
+      const ratio = value / chronoAge;
+      const score = ageRatioScore(ratio, bd.ref_range_low, bd.ref_range_high, bd.optimal_range_low, bd.optimal_range_high);
+      if (!domainScores[bd.he_domain]) domainScores[bd.he_domain] = [];
+      domainScores[bd.he_domain].push(score);
+      continue;
+    }
+    if (bd.scoring_type === 'pace_ratio') {
+      const score = ageRatioScore(value, bd.ref_range_low, bd.ref_range_high, bd.optimal_range_low, bd.optimal_range_high);
+      if (!domainScores[bd.he_domain]) domainScores[bd.he_domain] = [];
+      domainScores[bd.he_domain].push(score);
+      continue;
+    }
     const score = continuousScore(value, bd.ref_range_low, bd.ref_range_high, bd.optimal_range_low, bd.optimal_range_high);
     if (!domainScores[bd.he_domain]) domainScores[bd.he_domain] = [];
     domainScores[bd.he_domain].push(score);

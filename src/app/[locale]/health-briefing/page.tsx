@@ -90,7 +90,7 @@ export default async function HealthEngineV2Page({
       const isLoggedIn = !!user;
 
       // Fetch cached v2 briefing for sample user (so logged-out visitors can watch it)
-      let sampleSlides: import('@/lib/health-engine-v2-types').BriefingSlide[] = [];
+      let sampleSlides: import('@/lib/health-engine').BriefingSlide[] = [];
       let sampleBriefingId: string | undefined;
       {
         const { data: cachedRows } = await adminDb

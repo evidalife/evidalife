@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { MarkerStatus, MarkerDetail } from '@/lib/health-engine-v2-types';
+import type { MarkerStatus, MarkerDetail } from '@/lib/health-engine';
 
 // ── Color utilities (exact v1 match) ────────────────────────────────────────
 

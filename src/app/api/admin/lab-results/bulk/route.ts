@@ -8,7 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import { transitionOrder } from '@/lib/order-fulfilment';
 import { computeStatusFlag, checkPlausibility } from '@/lib/lab-results/flagging';
 import { generateReportNumber } from '@/lib/lab-results/report-number';
-import { computeAllCalculatedMarkers } from '@/lib/health-score';
+import { computeAllCalculatedMarkers } from '@/lib/health-engine';
 import { pregenerateBriefing } from '@/lib/briefing-pregenerate';
 
 function adminClient() {
