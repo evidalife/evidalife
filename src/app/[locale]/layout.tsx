@@ -26,7 +26,7 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Evida Life – Gesund leben. Wissenschaftlich fundiert.',
+    default: 'Evida Life – Gesund leben. Wissenschaftlich belegt, KI-gestützt.',
     template: '%s – Evida Life',
   },
   description:

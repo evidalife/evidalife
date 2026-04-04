@@ -88,7 +88,7 @@ const T: Record<Lang, {
   de: {
     hero: {
       h1: 'Gesund leben.',
-      h1em: 'Wissenschaftlich fundiert.',
+      h1em: 'Wissenschaftlich belegt, KI-gestützt.',
       sub: 'Biomarker messen. KI-gestuetzt optimieren. Fortschritt verfolgen. Ein geschlossener Kreislauf fuer deine Gesundheit – gestuetzt auf 500.000+ Studien.',
       cta1: 'Kostenlos registrieren',
       cta2: 'Mehr erfahren',
@@ -194,7 +194,7 @@ const T: Record<Lang, {
   en: {
     hero: {
       h1: 'Live well.',
-      h1em: 'AI-powered longevity.',
+      h1em: 'Scientifically proven, AI-supported.',
       sub: 'Measure your biomarkers. Get AI-driven insights from 500,000+ studies. Track your progress. A closed-loop system for your health.',
       cta1: 'Sign up free',
       cta2: 'Learn more',
@@ -300,7 +300,7 @@ const T: Record<Lang, {
   fr: {
     hero: {
       h1: 'Vivez bien.',
-      h1em: 'Longevite par l\'IA.',
+      h1em: 'Scientifiquement prouve, assiste par l\'IA.',
       sub: 'Mesurez vos biomarqueurs. Obtenez des insights IA bases sur 500 000+ etudes. Suivez vos progres. Un systeme en boucle fermee pour votre sante.',
       cta1: 'S\'inscrire gratuitement',
       cta2: 'En savoir plus',
@@ -406,7 +406,7 @@ const T: Record<Lang, {
   es: {
     hero: {
       h1: 'Vive bien.',
-      h1em: 'Longevidad con IA.',
+      h1em: 'Cientificamente probado, respaldado por IA.',
       sub: 'Mide tus biomarcadores. Obten insights de IA basados en 500.000+ estudios. Sigue tu progreso. Un sistema de circuito cerrado para tu salud.',
       cta1: 'Registrarse gratis',
       cta2: 'Saber mas',
@@ -512,7 +512,7 @@ const T: Record<Lang, {
   it: {
     hero: {
       h1: 'Vivi bene.',
-      h1em: 'Longevita con IA.',
+      h1em: 'Scientificamente provato, supportato dall\'IA.',
       sub: 'Misura i tuoi biomarcatori. Ottieni insights IA basati su 500.000+ studi. Monitora i tuoi progressi. Un sistema a circuito chiuso per la tua salute.',
       cta1: 'Registrati gratis',
       cta2: 'Scopri di piu',
