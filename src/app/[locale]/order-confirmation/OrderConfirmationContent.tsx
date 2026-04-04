@@ -160,10 +160,21 @@ export default function OrderConfirmationContent({ locale }: { locale: string })
     // Clear the cart on successful redirect
     clearCart();
 
-    const verify = async () => {
+    const verify = async (attempt = 1) => {
       try {
         const res = await fetch(`/api/checkout/verify?session_id=${sessionId}`);
         const data = await res.json();
+
+        if (!res.ok) {
+          console.error('[order-confirmation] verify error', res.status, data);
+          // Retry once after 2s — webhook may not have arrived yet
+          if (attempt < 3) {
+            setTimeout(() => verify(attempt + 1), 2000);
+            return;
+          }
+          setState('error');
+          return;
+        }
 
         if (data.status === 'completed') {
           setOrder(data.order);
@@ -171,11 +182,21 @@ export default function OrderConfirmationContent({ locale }: { locale: string })
           setCustomerEmail(data.customer_email);
           setState('success');
         } else if (data.status === 'pending') {
+          // Payment not yet confirmed — retry a few times
+          if (attempt < 5) {
+            setTimeout(() => verify(attempt + 1), 2000);
+            return;
+          }
           setState('pending');
         } else {
           setState('error');
         }
-      } catch {
+      } catch (err) {
+        console.error('[order-confirmation] verify fetch failed', err);
+        if (attempt < 3) {
+          setTimeout(() => verify(attempt + 1), 2000);
+          return;
+        }
         setState('error');
       }
     };
