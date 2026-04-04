@@ -23,6 +23,13 @@ type DataPoint = {
   statusFlag: string | null;
 };
 
+interface PreloadedResult {
+  value_numeric: number | null;
+  status_flag: string | null;
+  measured_at: string;
+  test_date?: string | null;
+}
+
 interface Props {
   userId: string;
   definitionId: string;
@@ -31,6 +38,8 @@ interface Props {
   refHigh: number | null;
   optLow: number | null;
   optHigh: number | null;
+  /** Pre-loaded results — when provided, skips the client-side fetch (needed for sample/public data) */
+  preloadedResults?: PreloadedResult[];
 }
 
 function dotColor(flag: string | null): string {
@@ -68,11 +77,27 @@ export default function BiomarkerTrendChart({
   refHigh,
   optLow,
   optHigh,
+  preloadedResults,
 }: Props) {
   const [data, setData] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // If pre-loaded results are provided (e.g. sample data for public page), use those directly
+    if (preloadedResults) {
+      const filtered = preloadedResults
+        .filter((r) => r.value_numeric != null)
+        .map((r) => ({
+          date: new Date(r.measured_at || r.test_date!).toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: '2-digit' }),
+          value: Number(r.value_numeric),
+          statusFlag: r.status_flag,
+        }));
+      setData(filtered);
+      setLoading(false);
+      return;
+    }
+
+    // Otherwise fetch client-side (for logged-in users viewing their own data)
     const supabase = createClient();
     supabase
       .from('lab_results')
@@ -93,7 +118,7 @@ export default function BiomarkerTrendChart({
         );
         setLoading(false);
       });
-  }, [userId, definitionId]);
+  }, [userId, definitionId, preloadedResults]);
 
   if (loading) {
     return (

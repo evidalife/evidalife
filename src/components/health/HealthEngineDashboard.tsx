@@ -1830,7 +1830,8 @@ export default function HealthEngineDashboard({ lang, userId, profile, reports, 
                     <div className="border-t border-[#1c2a2b]/[.05] p-4 bg-[#fafaf8]/50">
                       <div className="text-[9px] font-semibold uppercase tracking-wider text-[#ceab84] mb-3">{t.trend}</div>
                       <BiomarkerTrendChart userId={userId} definitionId={m.defId} unit={m.unit}
-                        refLow={m.refLow} refHigh={m.refHigh} optLow={m.optLow} optHigh={m.optHigh} />
+                        refLow={m.refLow} refHigh={m.refHigh} optLow={m.optLow} optHigh={m.optHigh}
+                        preloadedResults={isSample ? results.filter(r => r.biomarker_definition_id === m.defId) : undefined} />
                       <div className="flex gap-4 text-[10px] text-[#1c2a2b]/45 mt-3">
                         {m.refLow != null && m.refHigh != null && (
                           <div><span className="text-[8px] font-semibold uppercase tracking-wider text-[#1c2a2b]/35">{t.refRange}</span> {m.refLow}–{m.refHigh} {m.unit}</div>
