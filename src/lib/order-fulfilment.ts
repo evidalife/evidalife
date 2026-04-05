@@ -40,6 +40,15 @@ export const ORDER_TRANSITIONS: OrderStatusTransition[] = [
     autoActions: ['create_invoice', 'generate_voucher'],
   },
   {
+    // Fallback for when the checkout verify endpoint creates the order
+    // (webhook didn't fire or hasn't arrived yet)
+    from: 'pending',
+    to: 'paid',
+    trigger: 'checkout_verify_fallback',
+    emailTemplate: 'order_confirmation',
+    autoActions: ['generate_voucher'],
+  },
+  {
     from: 'paid',
     to: 'voucher_sent',
     trigger: 'voucher_generated_and_emailed',

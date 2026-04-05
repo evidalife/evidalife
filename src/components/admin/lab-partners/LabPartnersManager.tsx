@@ -57,6 +57,7 @@ type FormState = {
   is_active: boolean;
   description: Record<Lang, string>;
   test_categories: string[];
+  login_username: string;
 };
 
 const EMPTY_DESC: Record<Lang, string> = { de: '', en: '', fr: '', es: '', it: '' };
@@ -81,6 +82,7 @@ const EMPTY_FORM: FormState = {
   is_active: true,
   description: { ...EMPTY_DESC },
   test_categories: [],
+  login_username: '',
 };
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
@@ -241,6 +243,8 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
 
   // Cover image
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  // Lab portal password (only sent when setting a new one)
+  const [labPassword, setLabPassword] = useState('');
 
   // AI states
   const [translating, setTranslating] = useState(false);
@@ -297,7 +301,9 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
         it: savedDesc.it ?? '',
       },
       test_categories: p.test_categories ?? [],
+      login_username: (p as any).login_username ?? '',
     });
+    setLabPassword('');
     setDescLang('de');
     setError(null);
     setPanelOpen(true);
@@ -464,7 +470,16 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
       description:       Object.keys(descPayload).length > 0 ? descPayload : null,
       test_categories:   form.test_categories.length > 0 ? form.test_categories : [],
       cover_image_url:   coverImageUrl,
-    };
+      login_username:    form.login_username.trim() || null,
+    } as Record<string, unknown>;
+
+    // Hash password if provided
+    if (labPassword.trim()) {
+      const encoded = new TextEncoder().encode(labPassword.trim());
+      const hashBuf = await crypto.subtle.digest('SHA-256', encoded);
+      const hashArr = Array.from(new Uint8Array(hashBuf));
+      (payload as Record<string, unknown>).login_password_hash = hashArr.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
 
     try {
       if (editingId) {
@@ -1096,6 +1111,30 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                     value={form.iso_accreditation}
                     onChange={(e) => setField('iso_accreditation', e.target.value)}
                     placeholder="ISO 15189"
+                  />
+                </Field>
+              </div>
+
+              {/* ── LAB PORTAL ACCESS ── */}
+              <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
+                <SectionHead>Lab Portal Access</SectionHead>
+                <Field label="Login Username" hint="Used by the lab to sign in at /lab-portal">
+                  <input
+                    className={inputCls}
+                    value={form.login_username}
+                    onChange={(e) => setField('login_username', e.target.value)}
+                    placeholder="e.g. medisyn-zurich"
+                    autoComplete="off"
+                  />
+                </Field>
+                <Field label="Set Password" hint="Leave empty to keep current password">
+                  <input
+                    type="password"
+                    className={inputCls}
+                    value={labPassword}
+                    onChange={(e) => setLabPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    autoComplete="new-password"
                   />
                 </Field>
               </div>

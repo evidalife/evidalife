@@ -157,9 +157,6 @@ export default function OrderConfirmationContent({ locale }: { locale: string })
       return;
     }
 
-    // Clear the cart on successful redirect
-    clearCart();
-
     const verify = async (attempt = 1) => {
       try {
         const res = await fetch(`/api/checkout/verify?session_id=${sessionId}`);
@@ -177,6 +174,7 @@ export default function OrderConfirmationContent({ locale }: { locale: string })
         }
 
         if (data.status === 'completed') {
+          clearCart();
           setOrder(data.order);
           setItems(data.items ?? []);
           setCustomerEmail(data.customer_email);

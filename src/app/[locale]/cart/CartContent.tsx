@@ -163,7 +163,9 @@ export default function CartContent({ locale }: { locale: string }) {
       });
       const data = await res.json();
       if (data.url) {
-        clearCart();
+        // Don't clear cart here — clear it after successful payment verification
+        // in the order confirmation page. This prevents the flash of "empty cart"
+        // and keeps the cart intact if the user navigates back from Stripe.
         window.location.href = data.url;
       } else {
         throw new Error(data.error ?? 'Checkout failed');

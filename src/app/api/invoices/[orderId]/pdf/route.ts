@@ -102,8 +102,9 @@ export async function GET(req: NextRequest, { params }: { params: Params }) {
   // Items
   doc.setFontSize(9);
   doc.setTextColor(28, 42, 43);
-  for (const item of items as { product_name: string | null; product_sku: string | null; quantity: number; unit_price: number }[]) {
-    const name = item.product_name ?? 'Product';
+  for (const item of items as { product_name: Record<string, string> | string | null; product_sku: string | null; quantity: number; unit_price: number }[]) {
+    const rawName = item.product_name;
+    const name = typeof rawName === 'string' ? rawName : (rawName?.de || rawName?.en || 'Product');
     doc.text(name, MARGIN, y);
     doc.text(String(item.quantity), 120, y);
     doc.text(chfStr(item.unit_price), 150, y);
