@@ -5,6 +5,7 @@ import PageShell from '@/components/admin/PageShell';
 import { inputCls, AdminBadge } from '@/components/admin/shared/AdminUI';
 import WebsitePhotosTab from './WebsitePhotosTab';
 import VoiceBriefingsTab from './VoiceBriefingsTab';
+import DevToolsTab from './DevToolsTab';
 
 interface SettingRow {
   key: string;
@@ -37,7 +38,7 @@ const COMPANY_FIELDS: FieldDef[] = [
 const LANGS = ['en', 'de', 'fr', 'es', 'it'] as const;
 const LANG_LABELS: Record<string, string> = { en: 'English', de: 'Deutsch', fr: 'Français', es: 'Español', it: 'Italiano' };
 
-type Tab = 'company' | 'photos' | 'voice';
+type Tab = 'company' | 'photos' | 'voice' | 'devtools';
 
 /* ─── Component ─────────────────────────────────────────────────────────── */
 
@@ -107,9 +108,10 @@ export default function SiteSettingsManager() {
 
   /* ── Tabs ────────────────────────────────────────────────────────────── */
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'company', label: 'Company Info' },
-    { id: 'photos',  label: 'Website Photos' },
-    { id: 'voice',   label: 'Voice Briefings' },
+    { id: 'company',  label: 'Company Info' },
+    { id: 'photos',   label: 'Website Photos' },
+    { id: 'voice',    label: 'Voice Briefings' },
+    { id: 'devtools', label: 'Dev Tools' },
   ];
 
   /* ── Render ──────────────────────────────────────────────────────────── */
@@ -248,6 +250,7 @@ export default function SiteSettingsManager() {
 
       {activeTab === 'photos' && <WebsitePhotosTab />}
       {activeTab === 'voice' && <VoiceBriefingsTab />}
+      {activeTab === 'devtools' && <DevToolsTab />}
     </PageShell>
   );
 }
