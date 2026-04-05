@@ -1546,33 +1546,30 @@ export default function HealthBriefing({ lang, userId, hasData, isSample, studyC
               </div>
             )}
 
-            <div className="flex gap-3">
-              {/* Chat Input */}
-              <div className="flex-1 flex gap-2">
-                <input
-                  type="text"
-                  value={isSample ? '' : chatInput}
-                  onChange={(e) => !isSample && setChatInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !isSample && handleSendQuestion()}
-                  placeholder={isSample ? (lang === 'de' ? 'Melde dich an, um Fragen zu stellen…' : 'Sign in to ask questions…') : t.typeQuestion}
-                  disabled={isSample || isListening || voiceResponseLoading}
-                  className="flex-1 px-4 py-2.5 rounded-lg text-sm border border-[#0e393d]/10 bg-white text-[#1c2a2b] placeholder-[#1c2a2b]/40 focus:outline-none focus:border-[#ceab84] focus:ring-1 focus:ring-[#ceab84] disabled:opacity-50"
-                />
-                <button
-                  onClick={handleSendQuestion}
-                  disabled={isSample || !chatInput.trim() || chatLoading || isListening || voiceResponseLoading}
-                  className="px-4 py-2.5 rounded-lg text-sm font-medium text-[#0e393d] bg-[#ceab84] hover:bg-[#ceab84]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  {chatLoading ? '…' : t.send}
-                </button>
-              </div>
-
+            {/* Row 1: Chat Input + Send + Mic */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={isSample ? '' : chatInput}
+                onChange={(e) => !isSample && setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !isSample && handleSendQuestion()}
+                placeholder={isSample ? (lang === 'de' ? 'Melde dich an, um Fragen zu stellen…' : 'Sign in to ask questions…') : t.typeQuestion}
+                disabled={isSample || isListening || voiceResponseLoading}
+                className="flex-1 min-w-0 px-3 py-2.5 rounded-lg text-sm border border-[#0e393d]/10 bg-white text-[#1c2a2b] placeholder-[#1c2a2b]/40 focus:outline-none focus:border-[#ceab84] focus:ring-1 focus:ring-[#ceab84] disabled:opacity-50"
+              />
+              <button
+                onClick={handleSendQuestion}
+                disabled={isSample || !chatInput.trim() || chatLoading || isListening || voiceResponseLoading}
+                className="shrink-0 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium text-[#0e393d] bg-[#ceab84] hover:bg-[#ceab84]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {chatLoading ? '…' : t.send}
+              </button>
               {/* Voice Mic Button (push-to-talk) — hidden for sample/public */}
               {voiceSupported && !isSample && (
                 <button
                   onClick={toggleVoiceMic}
                   disabled={voiceResponseLoading || chatLoading}
-                  className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                  className={`shrink-0 px-2.5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
                     isListening
                       ? 'bg-[#E06B5B] text-white animate-pulse'
                       : 'bg-[#0e393d]/10 text-[#0e393d] hover:bg-[#0e393d]/20'
@@ -1587,15 +1584,18 @@ export default function HealthBriefing({ lang, userId, hasData, isSample, studyC
                   </svg>
                 </button>
               )}
+            </div>
 
+            {/* Row 2: Playback Controls — centered */}
+            <div className="flex items-center justify-center gap-3">
               {/* Previous Chapter */}
               <button
                 onClick={() => goToSlide(currentSlideIndex - 1)}
                 disabled={voiceResponseLoading || currentSlideIndex <= 0}
-                className="px-2.5 py-2.5 rounded-lg text-sm font-medium bg-[#0e393d]/10 text-[#0e393d] hover:bg-[#0e393d]/20 transition-all flex items-center disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-2.5 rounded-lg text-sm font-medium bg-[#0e393d]/10 text-[#0e393d] hover:bg-[#0e393d]/20 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
                 title="Previous chapter"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
                 </svg>
               </button>
@@ -1604,7 +1604,7 @@ export default function HealthBriefing({ lang, userId, hasData, isSample, studyC
               <button
                 onClick={handlePlayPause}
                 disabled={voiceResponseLoading}
-                className="px-4 py-2.5 rounded-lg text-sm font-medium text-[#fafaf8] bg-[#0e393d] hover:bg-[#0e393d]/90 transition-all flex items-center gap-2 disabled:opacity-50"
+                className="px-5 py-2.5 rounded-lg text-sm font-medium text-[#fafaf8] bg-[#0e393d] hover:bg-[#0e393d]/90 transition-all flex items-center gap-2 disabled:opacity-50"
               >
                 {playbackState === 'playing' ? (
                   <>
@@ -1627,10 +1627,10 @@ export default function HealthBriefing({ lang, userId, hasData, isSample, studyC
               <button
                 onClick={() => goToSlide(currentSlideIndex + 1)}
                 disabled={voiceResponseLoading || currentSlideIndex >= slides.length - 1}
-                className="px-2.5 py-2.5 rounded-lg text-sm font-medium bg-[#0e393d]/10 text-[#0e393d] hover:bg-[#0e393d]/20 transition-all flex items-center disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-2.5 rounded-lg text-sm font-medium bg-[#0e393d]/10 text-[#0e393d] hover:bg-[#0e393d]/20 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
                 title="Next chapter"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M6 18l8.5-6L6 6v12zm10-12v12h2V6z" />
                 </svg>
               </button>

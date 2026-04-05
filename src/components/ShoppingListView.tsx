@@ -842,23 +842,25 @@ export default function ShoppingListView({ lang, initialList, initialItems, user
 
       {/* Qty + Unit + Add */}
       {selectedIng && (
-        <div className="flex gap-2 mt-2 mb-4">
-          <input ref={qtyInputRef} type="number" value={newQty} onChange={(e) => setNewQty(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); unitSelectRef.current?.focus(); } }}
-            placeholder={t.qty} min={0} step={0.1}
-            className="w-20 rounded-xl border border-[#0e393d]/15 bg-white px-3 py-2.5 text-sm text-center text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition" />
-          <select ref={unitSelectRef} value={newUnit} onChange={(e) => setNewUnit(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddIngredient(); } }}
-            className="w-28 rounded-xl border border-[#0e393d]/15 bg-white px-2 py-2.5 text-sm text-[#1c2a2b] focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition">
-            <option value="">—</option>
-            {units.map((u) => (
-              <option key={u.id} value={u.code}>
-                {(u.abbreviation as Record<string, string>)[lang] ?? u.code}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-wrap gap-2 mt-2 mb-4">
+          <div className="flex gap-2 flex-1 min-w-[10rem]">
+            <input ref={qtyInputRef} type="number" value={newQty} onChange={(e) => setNewQty(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); unitSelectRef.current?.focus(); } }}
+              placeholder={t.qty} min={0} step={0.1}
+              className="w-20 shrink-0 rounded-xl border border-[#0e393d]/15 bg-white px-3 py-2.5 text-sm text-center text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition" />
+            <select ref={unitSelectRef} value={newUnit} onChange={(e) => setNewUnit(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddIngredient(); } }}
+              className="flex-1 min-w-[5rem] rounded-xl border border-[#0e393d]/15 bg-white px-2 py-2.5 text-sm text-[#1c2a2b] focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition">
+              <option value="">—</option>
+              {units.map((u) => (
+                <option key={u.id} value={u.code}>
+                  {(u.abbreviation as Record<string, string>)[lang] ?? u.code}
+                </option>
+              ))}
+            </select>
+          </div>
           <button onClick={handleAddIngredient} disabled={adding}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 disabled:opacity-40 transition">
+            className="w-full sm:w-auto sm:flex-1 px-4 py-2.5 rounded-xl bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 disabled:opacity-40 transition">
             {adding ? '…' : t.add}
           </button>
         </div>
