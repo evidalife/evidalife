@@ -45,7 +45,27 @@ export default function LabPortalClient({
   const [scanLoading, setScanLoading] = useState(false);
   const [redeemResult, setRedeemResult] = useState<RedeemResult | null>(null);
 
-  const [tab, setTab] = useState<'scan' | 'history'>('scan');
+  const [tab, setTab] = useState<'scan' | 'history' | 'earnings'>('scan');
+
+  // Earnings state
+  type EarningsSummary = { pending_payout: number; total_paid: number; total_earned: number; pending_count: number; total_count: number; currency: string };
+  type EarningsItem = { id: string; product_name: string; lab_payout_amount: number; currency: string; status: string; created_at: string };
+  type EarningsBatch = { id: string; batch_number: string; period_from: string; period_to: string; total_lab_payout: number; item_count: number; currency: string; paid_at: string | null };
+  const [earnings, setEarnings] = useState<{ summary: EarningsSummary; recent_items: EarningsItem[]; batches: EarningsBatch[] } | null>(null);
+  const [loadingEarnings, setLoadingEarnings] = useState(false);
+
+  const loadEarnings = useCallback(async () => {
+    setLoadingEarnings(true);
+    try {
+      const res = await fetch('/api/lab-portal/settlements');
+      if (res.ok) setEarnings(await res.json());
+    } catch { /* ignore */ }
+    setLoadingEarnings(false);
+  }, []);
+
+  useEffect(() => {
+    if (session && tab === 'earnings') loadEarnings();
+  }, [session, tab, loadEarnings]);
 
   // Login handler
   const handleLogin = async (e: React.FormEvent) => {
@@ -201,6 +221,14 @@ export default function LabPortalClient({
           >
             Voucher History
           </button>
+          <button
+            onClick={() => setTab('earnings')}
+            className={`px-5 py-2 rounded-md text-sm font-medium transition-colors ${
+              tab === 'earnings' ? 'bg-white text-[#0e393d] shadow-sm' : 'text-[#0e393d]/50 hover:text-[#0e393d]'
+            }`}
+          >
+            Earnings
+          </button>
         </div>
 
         {/* ── Scan tab ──────────────────────────────────────────── */}
@@ -274,6 +302,112 @@ export default function LabPortalClient({
                   </div>
                 )}
               </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Earnings tab ──────────────────────────────────────── */}
+        {tab === 'earnings' && (
+          <div className="space-y-6">
+            {loadingEarnings ? (
+              <div className="bg-white rounded-2xl border border-[#0e393d]/10 p-8 text-center text-sm text-[#0e393d]/40">Loading…</div>
+            ) : !earnings ? (
+              <div className="bg-white rounded-2xl border border-[#0e393d]/10 p-8 text-center text-sm text-[#0e393d]/40">Unable to load earnings data</div>
+            ) : (
+              <>
+                {/* Summary cards */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-white rounded-2xl border border-[#0e393d]/10 p-6 text-center">
+                    <p className="text-xs uppercase tracking-wider text-amber-600/70 mb-1">Pending Payout</p>
+                    <p className="text-2xl font-serif text-amber-700">{earnings.summary.pending_payout.toFixed(2)}</p>
+                    <p className="text-xs text-[#0e393d]/40 mt-1">{earnings.summary.currency} · {earnings.summary.pending_count} items</p>
+                  </div>
+                  <div className="bg-white rounded-2xl border border-[#0e393d]/10 p-6 text-center">
+                    <p className="text-xs uppercase tracking-wider text-emerald-600/70 mb-1">Already Paid</p>
+                    <p className="text-2xl font-serif text-emerald-700">{earnings.summary.total_paid.toFixed(2)}</p>
+                    <p className="text-xs text-[#0e393d]/40 mt-1">{earnings.summary.currency}</p>
+                  </div>
+                  <div className="bg-white rounded-2xl border border-[#0e393d]/10 p-6 text-center">
+                    <p className="text-xs uppercase tracking-wider text-[#0e393d]/50 mb-1">Total Earned</p>
+                    <p className="text-2xl font-serif text-[#0e393d]">{earnings.summary.total_earned.toFixed(2)}</p>
+                    <p className="text-xs text-[#0e393d]/40 mt-1">{earnings.summary.currency} · {earnings.summary.total_count} samples</p>
+                  </div>
+                </div>
+
+                {/* Recent items */}
+                {earnings.recent_items.length > 0 && (
+                  <div className="bg-white rounded-2xl border border-[#0e393d]/10 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-[#0e393d]/8">
+                      <h2 className="font-serif text-lg text-[#0e393d]">Recent Earnings</h2>
+                    </div>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-xs uppercase tracking-wide text-[#0e393d]/40 border-b border-[#0e393d]/5">
+                          <th className="text-left px-6 py-3 font-medium">Date</th>
+                          <th className="text-left px-4 py-3 font-medium">Product</th>
+                          <th className="text-right px-4 py-3 font-medium">Your Share</th>
+                          <th className="text-left px-4 py-3 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {earnings.recent_items.map(item => (
+                          <tr key={item.id} className="border-b border-[#0e393d]/5 last:border-0">
+                            <td className="px-6 py-3 text-[#0e393d]/60">{fmtDate(item.created_at)}</td>
+                            <td className="px-4 py-3 text-[#0e393d]">{item.product_name}</td>
+                            <td className="px-4 py-3 text-right font-medium">{Number(item.lab_payout_amount).toFixed(2)} {item.currency}</td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                item.status === 'paid' ? 'bg-emerald-50 text-emerald-700' :
+                                item.status === 'pending' ? 'bg-amber-50 text-amber-700' :
+                                'bg-gray-100 text-gray-500'
+                              }`}>
+                                {item.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Past settlement batches */}
+                {earnings.batches.length > 0 && (
+                  <div className="bg-white rounded-2xl border border-[#0e393d]/10 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-[#0e393d]/8">
+                      <h2 className="font-serif text-lg text-[#0e393d]">Payout History</h2>
+                    </div>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-xs uppercase tracking-wide text-[#0e393d]/40 border-b border-[#0e393d]/5">
+                          <th className="text-left px-6 py-3 font-medium">Batch</th>
+                          <th className="text-left px-4 py-3 font-medium">Period</th>
+                          <th className="text-right px-4 py-3 font-medium">Amount</th>
+                          <th className="text-left px-4 py-3 font-medium">Paid On</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {earnings.batches.map(b => (
+                          <tr key={b.id} className="border-b border-[#0e393d]/5 last:border-0">
+                            <td className="px-6 py-3 font-mono text-xs">{b.batch_number}</td>
+                            <td className="px-4 py-3 text-[#0e393d]/60">{b.period_from} — {b.period_to}</td>
+                            <td className="px-4 py-3 text-right font-medium text-emerald-700">
+                              {Number(b.total_lab_payout).toFixed(2)} {b.currency}
+                            </td>
+                            <td className="px-4 py-3 text-[#0e393d]/60">{fmtDate(b.paid_at)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {earnings.summary.total_count === 0 && (
+                  <div className="bg-white rounded-2xl border border-[#0e393d]/10 p-8 text-center text-sm text-[#0e393d]/40">
+                    No earnings yet. Earnings appear here when you redeem vouchers.
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

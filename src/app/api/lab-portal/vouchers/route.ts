@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   const { data: voucher } = await admin
     .from('order_vouchers')
     .select(`
-      id, voucher_code, status, product_type, expires_at, order_id,
+      id, voucher_code, status, product_type, expires_at, order_id, order_item_id,
       orders!inner(order_number, user_id, profiles:user_id(first_name, last_name, email))
     `)
     .eq('voucher_code', code.trim().toUpperCase())
@@ -97,6 +97,71 @@ export async function POST(req: NextRequest) {
     await transitionOrder(voucher.order_id, 'lab_confirms_collection', session.labId);
   } catch (e) {
     console.error('[lab-portal] Order transition failed', e);
+  }
+
+  // ── Create settlement line item ──────────────────────────────────
+  try {
+    // Get lab commission rate
+    const { data: labInfo } = await admin
+      .from('lab_partners')
+      .select('commission_rate, settlement_currency')
+      .eq('id', session.labId)
+      .single();
+
+    // Get the order item to know the price
+    const orderItemId = voucher.order_item_id;
+    let grossAmount = 0;
+    let productName = 'Product';
+
+    if (orderItemId) {
+      const { data: item } = await admin
+        .from('order_items')
+        .select('unit_price, quantity, product_name')
+        .eq('id', orderItemId)
+        .single();
+      if (item) {
+        grossAmount = Number(item.unit_price) * (item.quantity ?? 1);
+        const rawName = item.product_name;
+        productName = typeof rawName === 'string'
+          ? rawName
+          : (rawName?.de || rawName?.en || 'Product');
+      }
+    } else {
+      // Fallback: get first order item for this order
+      const { data: items } = await admin
+        .from('order_items')
+        .select('unit_price, quantity, product_name')
+        .eq('order_id', voucher.order_id)
+        .limit(1);
+      if (items?.[0]) {
+        grossAmount = Number(items[0].unit_price) * (items[0].quantity ?? 1);
+        const rawName = items[0].product_name;
+        productName = typeof rawName === 'string'
+          ? rawName
+          : (rawName?.de || rawName?.en || 'Product');
+      }
+    }
+
+    const rate = labInfo?.commission_rate ?? 0.5;
+    const labPayout = Math.round(grossAmount * rate * 100) / 100;
+    const evidaRevenue = Math.round((grossAmount - labPayout) * 100) / 100;
+
+    await admin.from('lab_settlements').insert({
+      lab_partner_id: session.labId,
+      voucher_id: voucher.id,
+      order_id: voucher.order_id,
+      order_item_id: orderItemId || null,
+      product_name: productName,
+      gross_amount: grossAmount,
+      commission_rate: rate,
+      lab_payout_amount: labPayout,
+      evida_revenue: evidaRevenue,
+      currency: labInfo?.settlement_currency ?? 'CHF',
+      status: 'pending',
+    });
+  } catch (e) {
+    // Don't fail the redemption if settlement creation fails
+    console.error('[lab-portal] Settlement creation failed', e);
   }
 
   const order = voucher.orders as any;
