@@ -5,7 +5,6 @@
     "login": "Anmelden",
     "dropdowns": {
       "Kitchen": [
-        "Blog",
         "Rezepte",
         "Daily Dozen",
         "Einkaufsliste"
@@ -18,7 +17,8 @@
         "Wissenschaft"
       ],
       "Lifestyle": [
-        "Lektionen"
+        "Lektionen",
+        "Blog"
       ],
       "Shop": [
         "Shop entdecken"

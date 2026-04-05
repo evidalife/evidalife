@@ -5,7 +5,6 @@
     "login": "Accedi",
     "dropdowns": {
       "Kitchen": [
-        "Blog",
         "Ricette",
         "Daily Dozen",
         "Lista della spesa"
@@ -18,7 +17,8 @@
         "Scienza"
       ],
       "Lifestyle": [
-        "Lezioni"
+        "Lezioni",
+        "Blog"
       ],
       "Shop": [
         "Sfoglia il negozio"

@@ -5,7 +5,6 @@
     "login": "Iniciar sesión",
     "dropdowns": {
       "Kitchen": [
-        "Blog",
         "Recetas",
         "Daily Dozen",
         "Lista de compras"
@@ -18,7 +17,8 @@
         "Ciencia"
       ],
       "Lifestyle": [
-        "Lecciones"
+        "Lecciones",
+        "Blog"
       ],
       "Shop": [
         "Ver tienda"

@@ -5,7 +5,6 @@
     "login": "Connexion",
     "dropdowns": {
       "Kitchen": [
-        "Blog",
         "Recettes",
         "Daily Dozen",
         "Liste de courses"
@@ -18,7 +17,8 @@
         "Science"
       ],
       "Lifestyle": [
-        "Bibliothèque"
+        "Bibliothèque",
+        "Blog"
       ],
       "Shop": [
         "Parcourir la boutique"
