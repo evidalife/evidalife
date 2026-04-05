@@ -4,6 +4,7 @@ import { Link } from '@/i18n/navigation';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
 import PageHero from '@/components/PageHero';
+import MarkdownRenderer, { type GalleryPhoto, type RecipeEmbed } from '@/components/shared/MarkdownRenderer';
 import { createClient } from '@/lib/supabase/server';
 
 
@@ -89,97 +90,7 @@ const CAT_CLS: Record<string, string> = {
   news:      'bg-gray-50 text-gray-600 ring-1 ring-gray-500/20',
 };
 
-// ─── Inline markdown renderer ─────────────────────────────────────────────────
-
-function inlineFormat(text: string): React.ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i} className="font-semibold text-[#1c2a2b]">{part.slice(2, -2)}</strong>;
-    }
-    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
-      return <em key={i}>{part.slice(1, -1)}</em>;
-    }
-    if (part.startsWith('`') && part.endsWith('`')) {
-      return <code key={i} className="rounded bg-[#0e393d]/6 px-1 py-0.5 text-[0.85em] font-mono text-[#0e393d]">{part.slice(1, -1)}</code>;
-    }
-    return part;
-  });
-}
-
-function renderMarkdown(md: string): React.ReactNode[] {
-  const lines = md.split('\n');
-  const nodes: React.ReactNode[] = [];
-  let listBuffer: string[] = [];
-  let orderedBuffer: string[] = [];
-  let key = 0;
-
-  const flushList = () => {
-    if (listBuffer.length > 0) {
-      nodes.push(
-        <ul key={key++} className="list-disc list-outside ml-5 space-y-1.5 text-[#1c2a2b]/80 text-base leading-relaxed mb-5">
-          {listBuffer.map((item, i) => <li key={i}>{inlineFormat(item)}</li>)}
-        </ul>
-      );
-      listBuffer = [];
-    }
-    if (orderedBuffer.length > 0) {
-      nodes.push(
-        <ol key={key++} className="list-decimal list-outside ml-5 space-y-1.5 text-[#1c2a2b]/80 text-base leading-relaxed mb-5">
-          {orderedBuffer.map((item, i) => <li key={i}>{inlineFormat(item)}</li>)}
-        </ol>
-      );
-      orderedBuffer = [];
-    }
-  };
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    if (trimmed.startsWith('### ')) {
-      flushList();
-      nodes.push(
-        <h4 key={key++} className="font-serif text-lg text-[#0e393d] mt-6 mb-2">{trimmed.slice(4)}</h4>
-      );
-    } else if (trimmed.startsWith('## ')) {
-      flushList();
-      nodes.push(
-        <h3 key={key++} className="font-serif text-xl text-[#0e393d] mt-8 mb-3">{trimmed.slice(3)}</h3>
-      );
-    } else if (trimmed.startsWith('# ')) {
-      flushList();
-      nodes.push(
-        <h2 key={key++} className="font-serif text-2xl text-[#0e393d] mt-10 mb-3">{trimmed.slice(2)}</h2>
-      );
-    } else if (trimmed.startsWith('> ')) {
-      flushList();
-      nodes.push(
-        <blockquote key={key++} className="border-l-4 border-[#ceab84] pl-4 my-5 italic text-[#1c2a2b]/65 text-base leading-relaxed">
-          {inlineFormat(trimmed.slice(2))}
-        </blockquote>
-      );
-    } else if (/^---+$/.test(trimmed)) {
-      flushList();
-      nodes.push(<hr key={key++} className="my-8 border-[#0e393d]/10" />);
-    } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-      if (orderedBuffer.length > 0) flushList();
-      listBuffer.push(trimmed.slice(2));
-    } else if (/^\d+\.\s/.test(trimmed)) {
-      if (listBuffer.length > 0) flushList();
-      orderedBuffer.push(trimmed.replace(/^\d+\.\s/, ''));
-    } else if (trimmed === '') {
-      flushList();
-    } else {
-      flushList();
-      nodes.push(
-        <p key={key++} className="text-base text-[#1c2a2b]/75 leading-relaxed mb-4">{inlineFormat(trimmed)}</p>
-      );
-    }
-  }
-
-  flushList();
-  return nodes;
-}
+// ─── Markdown rendering via shared component (see MarkdownRenderer.tsx) ──────
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -214,6 +125,7 @@ export default async function BlogDetailPage({
       id, slug, title, excerpt, content,
       featured_image_url, photo_credit, category, author_name,
       reading_time_min, published_at, is_featured,
+      gallery_urls,
       article_tags(tag)
     `)
     .eq('is_published', true)
@@ -238,6 +150,32 @@ export default async function BlogDetailPage({
   const tags    = Array.isArray(article.article_tags)
     ? (article.article_tags as { tag: string }[]).map((t) => t.tag)
     : [];
+
+  // Gallery: convert simple string[] to GalleryPhoto[]
+  const galleryRaw = (article.gallery_urls ?? []) as string[];
+  const gallery: GalleryPhoto[] = galleryRaw.map((url, i) => ({ url, order: i }));
+
+  // Extract ::recipe[slug] references from content and fetch them
+  const recipeSlugs = [...(content.matchAll(/::recipe\[([^\]]+)\]/g))].map((m) => m[1]);
+  let recipeEmbeds: RecipeEmbed[] = [];
+  if (recipeSlugs.length > 0) {
+    const { data: recipes } = await supabase
+      .from('recipes')
+      .select('slug, title, description, image_url, prep_time_min, cook_time_min, servings, difficulty')
+      .in('slug', recipeSlugs)
+      .eq('is_published', true)
+      .is('deleted_at', null);
+    recipeEmbeds = (recipes ?? []).map((r) => ({
+      slug: r.slug as string,
+      title: (r.title as Record<string, string>)?.[lang] || (r.title as Record<string, string>)?.en || '',
+      description: (r.description as Record<string, string>)?.[lang] || (r.description as Record<string, string>)?.en || '',
+      image_url: r.image_url as string | null,
+      prep_time_min: r.prep_time_min as number | null,
+      cook_time_min: r.cook_time_min as number | null,
+      servings: r.servings as number | null,
+      difficulty: r.difficulty as 'easy' | 'medium' | 'hard' | null,
+    }));
+  }
 
   const catLabel = article.category ? (CAT_LABELS[article.category]?.[lang] ?? CAT_LABELS[article.category]?.en ?? article.category) : null;
   const catCls   = article.category ? CAT_CLS[article.category] : '';
@@ -315,7 +253,13 @@ export default async function BlogDetailPage({
         {/* Article body */}
         {content ? (
           <div className="mb-12">
-            {renderMarkdown(content)}
+            <MarkdownRenderer
+              content={content}
+              variant="article"
+              gallery={gallery}
+              recipeEmbeds={recipeEmbeds}
+              lang={lang}
+            />
           </div>
         ) : null}
 

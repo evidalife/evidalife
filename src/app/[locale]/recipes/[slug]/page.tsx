@@ -10,6 +10,7 @@ import PrintButton from '@/components/PrintButton';
 import FavouriteButton from '@/components/FavouriteButton';
 import RecipeGallery, { type GalleryPhoto } from '@/components/RecipeGallery';
 import AddToDailyDozenButton from '@/components/AddToDailyDozenButton';
+import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 import { createClient } from '@/lib/supabase/server';
 import { T } from './translations';
 
@@ -58,114 +59,7 @@ const DIFF_CLS = {
   hard:   'bg-red-50 text-red-700 ring-1 ring-red-600/20',
 };
 
-// ─── Markdown renderer ────────────────────────────────────────────────────────
-
-function renderMarkdown(md: string, gallery: GalleryPhoto[] = []): React.ReactNode[] {
-  const lines = md.split('\n');
-  const nodes: React.ReactNode[] = [];
-  let ulBuffer: string[] = [];
-  let olBuffer: { num: string; text: string }[] = [];
-  let key = 0;
-
-  const inlineFormat = (text: string): React.ReactNode => {
-    const parts = text.split(/(\*\*[^*]+\*\*)/g);
-    return parts.map((part, i) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={i} className="font-semibold text-[#1c2a2b]">{part.slice(2, -2)}</strong>;
-      }
-      return part;
-    });
-  };
-
-  const flushUl = () => {
-    if (!ulBuffer.length) return;
-    nodes.push(
-      <ul key={key++} className="space-y-1.5 mb-4 pl-0">
-        {ulBuffer.map((item, i) => (
-          <li key={i} className="flex gap-2.5 text-sm text-[#1c2a2b]/75 leading-relaxed">
-            <span className="mt-2 shrink-0 w-1.5 h-1.5 rounded-full bg-[#ceab84]" />
-            <span>{inlineFormat(item)}</span>
-          </li>
-        ))}
-      </ul>
-    );
-    ulBuffer = [];
-  };
-
-  const flushOl = () => {
-    if (!olBuffer.length) return;
-    nodes.push(
-      <ol key={key++} className="space-y-3 mb-5 pl-0">
-        {olBuffer.map((item, i) => (
-          <li key={i} className="flex gap-3">
-            <span className="shrink-0 w-6 h-6 rounded-full bg-[#0e393d]/8 text-[#0e393d] text-[11px] font-semibold flex items-center justify-center mt-0.5">
-              {item.num}
-            </span>
-            <span className="flex-1 text-sm text-[#1c2a2b]/75 leading-relaxed pt-0.5">{inlineFormat(item.text)}</span>
-          </li>
-        ))}
-      </ol>
-    );
-    olBuffer = [];
-  };
-
-  const flushAll = () => { flushUl(); flushOl(); };
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    const photoMatch = trimmed.match(/^!\[photo:(\d+)\]$/);
-    if (photoMatch) {
-      flushAll();
-      const p = gallery[parseInt(photoMatch[1], 10) - 1];
-      if (p) {
-        // eslint-disable-next-line @next/next/no-img-element
-        nodes.push(<img key={key++} src={p.url} alt="" className="w-full rounded-xl object-cover my-4" />);
-      }
-    } else if (trimmed === '---') {
-      flushAll();
-      nodes.push(<hr key={key++} className="border-[#0e393d]/10 my-5" />);
-    } else if (trimmed.startsWith('## ')) {
-      flushAll();
-      nodes.push(
-        <h3 key={key++} className="text-xs font-semibold uppercase tracking-widest text-[#0e393d]/50 mt-7 mb-3">
-          {trimmed.slice(3)}
-        </h3>
-      );
-    } else if (trimmed.startsWith('# ')) {
-      flushAll();
-      nodes.push(
-        <h2 key={key++} className="font-serif text-xl text-[#0e393d] mt-7 mb-3">{trimmed.slice(2)}</h2>
-      );
-    } else if (trimmed.startsWith('> ')) {
-      flushAll();
-      nodes.push(
-        <div key={key++} className="border-l-2 border-[#ceab84] pl-4 py-1.5 mb-3 bg-[#ceab84]/5 rounded-r-lg">
-          <p className="text-sm text-[#1c2a2b]/65 italic leading-relaxed">{inlineFormat(trimmed.slice(2))}</p>
-        </div>
-      );
-    } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-      flushOl();
-      ulBuffer.push(trimmed.slice(2));
-    } else {
-      const olMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
-      if (olMatch) {
-        flushUl();
-        olBuffer.push({ num: olMatch[1], text: olMatch[2] });
-      } else if (trimmed === '') {
-        flushAll();
-      } else {
-        flushAll();
-        nodes.push(
-          <p key={key++} className="text-sm text-[#1c2a2b]/75 leading-relaxed mb-3">{inlineFormat(trimmed)}</p>
-        );
-      }
-    }
-  }
-
-  flushAll();
-  return nodes;
-}
+// ─── Markdown rendering via shared component (see MarkdownRenderer.tsx) ──────
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -416,7 +310,12 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ s
             {instructions && (
               <section>
                 <h2 className="font-serif text-xl text-[#0e393d] mb-5">{t.instructions}</h2>
-                <div>{renderMarkdown(instructions, gallery)}</div>
+                <MarkdownRenderer
+                  content={instructions}
+                  variant="recipe"
+                  gallery={gallery}
+                  lang={lang}
+                />
               </section>
             )}
 

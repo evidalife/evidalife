@@ -3,6 +3,7 @@ import { Link } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/server';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
+import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 import { buildMeta } from '@/lib/seo';
 import BuyButton from './BuyButton';
 
@@ -56,7 +57,7 @@ export default async function ProductSlugPage({ params }: { params: Params }) {
 
   const { data: product } = await supabase
     .from('products')
-    .select('id, name, description, short_description, price_chf, compare_at_price_chf, product_type, is_featured, image_url, metadata')
+    .select('id, name, description, short_description, price_chf, compare_at_price_chf, product_type, is_featured, image_url, gallery_urls, metadata')
     .eq('slug', slug)
     .eq('is_active', true)
     .is('deleted_at', null)
@@ -166,10 +167,13 @@ export default async function ProductSlugPage({ params }: { params: Params }) {
 
         {/* Full description */}
         {description && (
-          <div className="mt-10 space-y-3 text-base text-[#1c2a2b]/65 leading-relaxed">
-            {description.split('\n').map((para, i) =>
-              para.trim() ? <p key={i}>{para}</p> : <br key={i} />
-            )}
+          <div className="mt-10">
+            <MarkdownRenderer
+              content={description}
+              variant="product"
+              gallery={((product.gallery_urls ?? []) as string[]).map((url, i) => ({ url, order: i }))}
+              lang={locale}
+            />
           </div>
         )}
 
