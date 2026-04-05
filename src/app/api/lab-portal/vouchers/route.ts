@@ -101,26 +101,30 @@ export async function POST(req: NextRequest) {
 
   // ── Create settlement line item ──────────────────────────────────
   try {
-    // Get lab commission rate
-    const { data: labInfo } = await admin
+    // Determine billing lab: if this lab has a parent, bill to parent org
+    const { data: redeemingLab } = await admin
       .from('lab_partners')
-      .select('commission_rate, settlement_currency')
+      .select('id, parent_lab_id, settlement_currency')
       .eq('id', session.labId)
       .single();
 
-    // Get the order item to know the price
+    const billingLabId = redeemingLab?.parent_lab_id ?? session.labId;
+
+    // Get order item info (price, product)
     const orderItemId = voucher.order_item_id;
     let grossAmount = 0;
     let productName = 'Product';
+    let productId: string | null = null;
 
     if (orderItemId) {
       const { data: item } = await admin
         .from('order_items')
-        .select('unit_price, quantity, product_name')
+        .select('unit_price, quantity, product_name, product_id')
         .eq('id', orderItemId)
         .single();
       if (item) {
         grossAmount = Number(item.unit_price) * (item.quantity ?? 1);
+        productId = item.product_id;
         const rawName = item.product_name;
         productName = typeof rawName === 'string'
           ? rawName
@@ -130,11 +134,12 @@ export async function POST(req: NextRequest) {
       // Fallback: get first order item for this order
       const { data: items } = await admin
         .from('order_items')
-        .select('unit_price, quantity, product_name')
+        .select('unit_price, quantity, product_name, product_id')
         .eq('order_id', voucher.order_id)
         .limit(1);
       if (items?.[0]) {
         grossAmount = Number(items[0].unit_price) * (items[0].quantity ?? 1);
+        productId = items[0].product_id;
         const rawName = items[0].product_name;
         productName = typeof rawName === 'string'
           ? rawName
@@ -142,21 +147,41 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const rate = labInfo?.commission_rate ?? 0.5;
-    const labPayout = Math.round(grossAmount * rate * 100) / 100;
+    // Look up negotiated fixed cost for this lab × product
+    let labCost = 0;
+    if (productId) {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: pricing } = await admin
+        .from('lab_product_pricing')
+        .select('lab_cost')
+        .eq('lab_partner_id', billingLabId)
+        .eq('product_id', productId)
+        .lte('effective_from', today)
+        .or(`effective_to.is.null,effective_to.gte.${today}`)
+        .order('effective_from', { ascending: false })
+        .limit(1)
+        .single();
+      if (pricing) labCost = Number(pricing.lab_cost);
+    }
+
+    const labPayout = labCost;
     const evidaRevenue = Math.round((grossAmount - labPayout) * 100) / 100;
+    const currency = redeemingLab?.settlement_currency ?? 'CHF';
 
     await admin.from('lab_settlements').insert({
-      lab_partner_id: session.labId,
+      lab_partner_id: billingLabId,
+      billing_lab_id: billingLabId,
+      redeeming_lab_id: session.labId,
       voucher_id: voucher.id,
       order_id: voucher.order_id,
       order_item_id: orderItemId || null,
+      product_id: productId,
       product_name: productName,
       gross_amount: grossAmount,
-      commission_rate: rate,
+      lab_cost: labCost,
       lab_payout_amount: labPayout,
       evida_revenue: evidaRevenue,
-      currency: labInfo?.settlement_currency ?? 'CHF',
+      currency,
       status: 'pending',
     });
   } catch (e) {

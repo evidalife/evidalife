@@ -58,7 +58,6 @@ type FormState = {
   description: Record<Lang, string>;
   test_categories: string[];
   login_username: string;
-  commission_rate: string;
   bank_iban: string;
   bank_name: string;
   bank_bic: string;
@@ -87,7 +86,6 @@ const EMPTY_FORM: FormState = {
   description: { ...EMPTY_DESC },
   test_categories: [],
   login_username: '',
-  commission_rate: '50',
   bank_iban: '',
   bank_name: '',
   bank_bic: '',
@@ -254,61 +252,6 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
   // Lab portal password (only sent when setting a new one)
   const [labPassword, setLabPassword] = useState('');
 
-  // Settlement data for the currently editing lab
-  type SettlementSummary = {
-    total_all_time_gross: number;
-    total_all_time_lab_payout: number;
-    total_all_time_evida_revenue: number;
-    total_pending_payout: number;
-    total_paid_out: number;
-    pending_count: number;
-    paid_count: number;
-    total_count: number;
-  };
-  type SettlementItem = {
-    id: string; product_name: string; gross_amount: number;
-    commission_rate: number; lab_payout_amount: number;
-    evida_revenue: number; currency: string; status: string;
-    created_at: string; order_vouchers: { voucher_code: string; redeemed_at: string } | null;
-    orders: { order_number: string } | null;
-  };
-  type SettlementBatch = {
-    id: string; batch_number: string; period_from: string; period_to: string;
-    total_lab_payout: number; item_count: number; currency: string; status: string; paid_at: string | null;
-    payment_reference: string | null;
-  };
-  type SettlementData = { summary: SettlementSummary; items: SettlementItem[]; batches: SettlementBatch[] };
-
-  const [settlement, setSettlement] = useState<SettlementData | null>(null);
-  const [settlingPending, setSettlingPending] = useState(false);
-  const [settleRef, setSettleRef] = useState('');
-
-  const fetchSettlement = useCallback(async (labId: string) => {
-    try {
-      const res = await fetch(`/api/admin/lab-settlements?labId=${labId}`);
-      if (res.ok) setSettlement(await res.json());
-    } catch { /* ignore */ }
-  }, []);
-
-  const handleSettlePending = async () => {
-    if (!editingId || !settlement) return;
-    const pendingIds = settlement.items.filter(i => i.status === 'pending' || i.status === 'approved').map(i => i.id);
-    if (!pendingIds.length) return;
-    setSettlingPending(true);
-    try {
-      const res = await fetch('/api/admin/lab-settlements', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ labId: editingId, itemIds: pendingIds, paymentReference: settleRef.trim() || null }),
-      });
-      if (res.ok) {
-        await fetchSettlement(editingId);
-        setSettleRef('');
-      }
-    } catch { /* ignore */ }
-    setSettlingPending(false);
-  };
-
   // AI states
   const [translating, setTranslating] = useState(false);
   const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
@@ -365,14 +308,11 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
       },
       test_categories: p.test_categories ?? [],
       login_username: (p as any).login_username ?? '',
-      commission_rate: (p as any).commission_rate != null ? String(Number((p as any).commission_rate) * 100) : '50',
       bank_iban: (p as any).bank_iban ?? '',
       bank_name: (p as any).bank_name ?? '',
       bank_bic: (p as any).bank_bic ?? '',
     });
     setLabPassword('');
-    setSettlement(null);
-    if (p.id) fetchSettlement(p.id);
     setDescLang('de');
     setError(null);
     setPanelOpen(true);
@@ -540,7 +480,6 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
       test_categories:   form.test_categories.length > 0 ? form.test_categories : [],
       cover_image_url:   coverImageUrl,
       login_username:    form.login_username.trim() || null,
-      commission_rate:   form.commission_rate ? Number(form.commission_rate) / 100 : 0.5,
       bank_iban:         form.bank_iban.trim() || null,
       bank_name:         form.bank_name.trim() || null,
       bank_bic:          form.bank_bic.trim() || null,
@@ -1212,25 +1151,10 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                 </Field>
               </div>
 
-              {/* ── FINANCIAL / COMMISSION ── */}
+              {/* ── BANK DETAILS ── */}
               <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
-                <SectionHead>Financial</SectionHead>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Commission Rate (%)" hint="Lab's share of product price">
-                    <input
-                      type="number"
-                      min="0" max="100" step="1"
-                      className={inputCls}
-                      value={form.commission_rate}
-                      onChange={(e) => setField('commission_rate', e.target.value)}
-                      placeholder="50"
-                    />
-                  </Field>
-                  <Field label="Currency">
-                    <input className={readonlyCls} value="CHF" readOnly />
-                  </Field>
-                </div>
-                <Field label="Bank IBAN" hint="For manual settlement payouts">
+                <SectionHead>Bank Details</SectionHead>
+                <Field label="Bank IBAN" hint="For settlement payouts">
                   <input
                     className={inputCls}
                     value={form.bank_iban}
@@ -1257,130 +1181,6 @@ export default function LabPartnersManager({ initialLabPartners }: { initialLabP
                   </Field>
                 </div>
               </div>
-
-              {/* ── SETTLEMENT OVERVIEW ── */}
-              {editingId && (
-                <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
-                  <SectionHead>Settlement Overview</SectionHead>
-                  {settlement ? (
-                    <>
-                      {/* Summary cards */}
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="rounded-lg bg-amber-50 p-3 text-center">
-                          <p className="text-[10px] uppercase tracking-wider text-amber-600/70">Pending</p>
-                          <p className="text-lg font-semibold text-amber-700">
-                            {settlement.summary.total_pending_payout.toFixed(2)}
-                          </p>
-                          <p className="text-[10px] text-amber-600/50">{settlement.summary.pending_count} items</p>
-                        </div>
-                        <div className="rounded-lg bg-emerald-50 p-3 text-center">
-                          <p className="text-[10px] uppercase tracking-wider text-emerald-600/70">Paid Out</p>
-                          <p className="text-lg font-semibold text-emerald-700">
-                            {settlement.summary.total_paid_out.toFixed(2)}
-                          </p>
-                          <p className="text-[10px] text-emerald-600/50">{settlement.summary.paid_count} items</p>
-                        </div>
-                        <div className="rounded-lg bg-[#0e393d]/5 p-3 text-center">
-                          <p className="text-[10px] uppercase tracking-wider text-[#0e393d]/50">Total Revenue</p>
-                          <p className="text-lg font-semibold text-[#0e393d]">
-                            {settlement.summary.total_all_time_gross.toFixed(2)}
-                          </p>
-                          <p className="text-[10px] text-[#0e393d]/40">
-                            Evida: {settlement.summary.total_all_time_evida_revenue.toFixed(2)}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Pending items table */}
-                      {settlement.summary.pending_count > 0 && (
-                        <div className="rounded-lg border border-[#0e393d]/10 overflow-hidden">
-                          <div className="bg-[#fafaf8] px-3 py-2 text-[11px] font-medium text-[#0e393d]/60">
-                            Pending Settlement Items
-                          </div>
-                          <div className="max-h-40 overflow-y-auto">
-                            <table className="w-full text-xs">
-                              <thead>
-                                <tr className="border-b border-[#0e393d]/5 text-left text-[10px] text-[#0e393d]/40">
-                                  <th className="px-3 py-1.5">Voucher</th>
-                                  <th className="px-3 py-1.5">Product</th>
-                                  <th className="px-3 py-1.5 text-right">Gross</th>
-                                  <th className="px-3 py-1.5 text-right">Lab Share</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {settlement.items
-                                  .filter(i => i.status === 'pending' || i.status === 'approved')
-                                  .map(item => (
-                                    <tr key={item.id} className="border-b border-[#0e393d]/5 last:border-0">
-                                      <td className="px-3 py-1.5 font-mono text-[10px]">
-                                        {(item.order_vouchers as any)?.voucher_code ?? '—'}
-                                      </td>
-                                      <td className="px-3 py-1.5 truncate max-w-[120px]">{item.product_name}</td>
-                                      <td className="px-3 py-1.5 text-right">{Number(item.gross_amount).toFixed(2)}</td>
-                                      <td className="px-3 py-1.5 text-right font-medium text-amber-700">
-                                        {Number(item.lab_payout_amount).toFixed(2)}
-                                      </td>
-                                    </tr>
-                                  ))}
-                              </tbody>
-                            </table>
-                          </div>
-                          <div className="border-t border-[#0e393d]/10 bg-[#fafaf8] px-3 py-2 space-y-2">
-                            <Field label="Payment Reference" hint="Bank transfer ref or note">
-                              <input
-                                className={inputCls}
-                                value={settleRef}
-                                onChange={(e) => setSettleRef(e.target.value)}
-                                placeholder="e.g. Bank transfer 2026-04-05"
-                              />
-                            </Field>
-                            <button
-                              onClick={handleSettlePending}
-                              disabled={settlingPending}
-                              className="w-full rounded-lg bg-amber-600 py-2 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50 transition"
-                            >
-                              {settlingPending
-                                ? 'Processing…'
-                                : `Mark ${settlement.summary.pending_count} items as paid (${settlement.summary.total_pending_payout.toFixed(2)} CHF)`}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Past batches */}
-                      {settlement.batches.length > 0 && (
-                        <div className="rounded-lg border border-[#0e393d]/10 overflow-hidden">
-                          <div className="bg-[#fafaf8] px-3 py-2 text-[11px] font-medium text-[#0e393d]/60">
-                            Past Settlements
-                          </div>
-                          <div className="max-h-32 overflow-y-auto">
-                            {settlement.batches.map(b => (
-                              <div key={b.id} className="flex items-center justify-between px-3 py-2 border-b border-[#0e393d]/5 last:border-0 text-xs">
-                                <div>
-                                  <span className="font-mono text-[10px] text-[#0e393d]/50">{b.batch_number}</span>
-                                  <span className="ml-2 text-[#1c2a2b]/60">
-                                    {b.period_from} — {b.period_to}
-                                  </span>
-                                </div>
-                                <div className="text-right">
-                                  <span className="font-medium text-emerald-700">{Number(b.total_lab_payout).toFixed(2)}</span>
-                                  <span className="ml-1 text-[10px] text-[#0e393d]/40">CHF · {b.item_count} items</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {settlement.summary.total_count === 0 && (
-                        <p className="text-xs text-[#1c2a2b]/40 text-center py-4">No settlements yet. Items appear here when vouchers are redeemed.</p>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-xs text-[#1c2a2b]/40 text-center py-4">Loading settlement data…</p>
-                  )}
-                </div>
-              )}
 
               {/* ── SETTINGS ── */}
               <div className="space-y-3 border-t border-[#0e393d]/8 pt-5">
