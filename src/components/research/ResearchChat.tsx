@@ -496,6 +496,7 @@ export default function ResearchChat({
     pendingFetches: number;   // how many TTS fetches are in-flight
     isPlaying: boolean;       // is an audio element currently playing
     stopped: boolean;         // user hit stop or component unmounted
+    streamDone: boolean;      // SSE stream finished — safe to clean up when queue drains
     msgId: string | null;     // which message is being spoken
   } | null>(null);
 
@@ -504,6 +505,10 @@ export default function ResearchChat({
    *  but is NOT read aloud — only the conversational answer content is spoken. */
   const cleanForSpeech = useCallback((text: string): string => {
     let clean = text;
+    // Strip markdown headers (# ## ### etc.)
+    clean = clean.replace(/^#{1,6}\s+/gm, '');
+    // Strip emoji bullets (🥜, 🫘, etc.) at line starts
+    clean = clean.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}]+\s*/gmu, '');
     // Strip markdown bold/italic markers
     clean = clean.replace(/\*{1,3}/g, '');
     // Strip inline citation numbers like [1], [2,3], [1-3]
@@ -546,8 +551,8 @@ export default function ResearchChat({
     if (!st || st.stopped) return;
     if (st.audioQueue.length === 0) {
       st.isPlaying = false;
-      // If no more fetches pending and queue empty → done speaking
-      if (st.pendingFetches === 0) {
+      // Only fully clean up when stream is done AND no more work pending
+      if (st.streamDone && st.pendingFetches === 0) {
         setSpeakingMsgId(null);
         streamTTSRef.current = null;
       }
@@ -610,8 +615,8 @@ export default function ResearchChat({
       console.warn('[StreamingTTS] chunk fetch failed:', err);
     } finally {
       if (st) st.pendingFetches--;
-      // Check if everything is done
-      if (st && st.pendingFetches === 0 && st.audioQueue.length === 0 && !st.isPlaying) {
+      // Only clean up when stream is done AND nothing left to play
+      if (st && st.streamDone && st.pendingFetches === 0 && st.audioQueue.length === 0 && !st.isPlaying) {
         setSpeakingMsgId(null);
         streamTTSRef.current = null;
       }
@@ -639,6 +644,7 @@ export default function ResearchChat({
       pendingFetches: 0,
       isPlaying: false,
       stopped: false,
+      streamDone: false,
       msgId,
     };
     setSpeakingMsgId(msgId);
@@ -696,6 +702,8 @@ export default function ResearchChat({
   const flushStreamingTTS = useCallback(() => {
     const st = streamTTSRef.current;
     if (!st || st.stopped) return;
+
+    st.streamDone = true; // Signal that no more chunks will arrive
 
     const remaining = cleanForSpeech(st.buffer).trim();
     st.buffer = '';
