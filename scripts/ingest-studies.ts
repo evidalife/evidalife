@@ -6,7 +6,7 @@
 //   npx tsx scripts/ingest-studies.ts [options]
 //
 // Options:
-//   --source greger|greger_epub|greger_all|pubmed_nutrition|pubmed_longevity  (default: greger)
+//   --source greger|greger_epub|greger_all|nutritionfacts|pubmed_nutrition|pubmed_longevity  (default: greger)
 //   --include-videos    Also scrape NutritionFacts.org video citations
 //   --epub-dir PATH     Directory containing Greger EPUB files (for greger_epub source)
 //   --dry-run           Fetch + embed but don't write to DB
@@ -197,7 +197,7 @@ async function main() {
     }
     pmids = [...new Set(pmids)];
   } else {
-    console.error(`Unknown source: ${source}. Use greger, greger_epub, greger_all, pubmed_nutrition, or pubmed_longevity`);
+    console.error(`Unknown source: ${source}. Use greger, greger_epub, greger_all, nutritionfacts, pubmed_nutrition, or pubmed_longevity`);
     process.exit(1);
   }
 

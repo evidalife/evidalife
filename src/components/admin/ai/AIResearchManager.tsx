@@ -70,6 +70,7 @@ type Tab = 'overview' | 'studies' | 'ingest' | 'jobs';
 const SOURCE_LABELS: Record<string, string> = {
   greger: 'Greger / NutritionFacts',
   greger_epub: 'Greger Books (EPUB)',
+  nutritionfacts: 'NutritionFacts.org',
   pubmed_nutrition: 'PubMed Nutrition',
   pubmed_longevity: 'PubMed Longevity',
 };
@@ -151,7 +152,7 @@ const INGESTION_ROADMAP: RoadmapSource[] = [
   { key: 'book_content', label: 'Book Content (Prose & Analysis)', tier: 0, target: 2353, description: "Greger's synthesized conclusions from 6 books" },
   // Tier 1 — Greger-cited (all citations from books + videos)
   { key: 'greger_epub', label: 'Greger Books (EPUB)', tier: 1, target: 22000, description: '6 books: How Not to Age/Die/Diet, Lower LDL, Ozempic, Ultra-Processed' },
-  { key: 'greger_videos', label: 'NutritionFacts.org Videos', tier: 1, target: 5000, description: 'Video citations from nutritionfacts.org' },
+  { key: 'nutritionfacts', label: 'NutritionFacts.org', tier: 1, target: 5000, description: 'Articles, videos & citations from nutritionfacts.org' },
   // Tier 2 — Systematic Reviews & Meta-analyses
   { key: 'pubmed_sr_nutrition', label: 'PubMed — Nutrition Reviews', tier: 2, target: 8000, description: 'Systematic reviews on dietary interventions and nutrition' },
   { key: 'pubmed_sr_longevity', label: 'PubMed — Longevity Reviews', tier: 2, target: 5000, description: 'Meta-analyses on aging, mortality, biological age' },
