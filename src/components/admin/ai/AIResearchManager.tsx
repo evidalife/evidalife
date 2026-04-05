@@ -334,28 +334,7 @@ function RoadmapSection({ stats }: { stats: StatsData }) {
   );
 }
 
-function ProgressBar({ value, max, color = 'bg-[#0C9C6C]', label }: { value: number; max: number; color?: string; label?: string }) {
-  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-1.5">
-        {label && <p className="text-sm font-medium text-[#0e393d]">{label}</p>}
-        <p className="text-sm font-semibold text-[#0e393d] tabular-nums">{pct}%</p>
-      </div>
-      <div className="h-2.5 rounded-full bg-[#0e393d]/8 overflow-hidden">
-        <div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${pct}%` }} />
-      </div>
-      <p className="text-[11px] text-[#1c2a2b]/40 mt-1.5">
-        {value.toLocaleString()} / {max.toLocaleString()} studies
-      </p>
-    </div>
-  );
-}
-
 function OverviewTab({ stats }: { stats: StatsData }) {
-  const embPct = stats.totalStudies > 0
-    ? Math.round((stats.withEmbeddings / stats.totalStudies) * 100)
-    : 0;
   const biomarkerPct = stats.totalStudies > 0
     ? Math.round((stats.withBiomarkers / stats.totalStudies) * 100)
     : 0;
@@ -371,91 +350,31 @@ function OverviewTab({ stats }: { stats: StatsData }) {
       {/* Ingestion Roadmap — full plan with targets */}
       <RoadmapSection stats={stats} />
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard label="Total Studies" value={stats.totalStudies} />
-        <StatCard label="Book Content Chunks" value={stats.totalBookChunks ?? 0} sub="Tier 0 — highest evidence" />
-        <StatCard label="With Embeddings" value={stats.withEmbeddings} sub={`${embPct}% of total`} />
-        <StatCard label="Biomarker-tagged" value={stats.withBiomarkers} sub={`${biomarkerPct}% of total`} />
-        <StatCard label="Disease-tagged" value={stats.withDiseaseTags} sub={`${diseasePct}% of total`} />
-      </div>
-
-      {/* Coverage progress bars */}
-      <div className="rounded-xl border border-[#0e393d]/8 bg-white p-5 space-y-5">
-        <p className="text-xs font-semibold tracking-wider uppercase text-[#ceab84]">Indexing Coverage</p>
-        <ProgressBar value={stats.withEmbeddings} max={stats.totalStudies} label="Embeddings" color="bg-[#0C9C6C]" />
-        <ProgressBar value={stats.withBiomarkers} max={stats.totalStudies} label="Biomarker Tags" color="bg-[#0e393d]" />
-        <ProgressBar value={stats.withDiseaseTags} max={stats.totalStudies} label="Disease Tags" color="bg-[#ceab84]" />
-        {stats.withoutEmbeddings > 0 && (
-          <p className="text-[11px] text-[#1c2a2b]/35">
-            {stats.withoutEmbeddings.toLocaleString()} studies need embeddings · ~${stats.estimatedEmbeddingCostUsd} estimated cost
-          </p>
-        )}
-      </div>
-
-      {/* Quality tier breakdown */}
-      <div className="rounded-xl border border-[#0e393d]/8 bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#0e393d]/8">
-          <p className="text-sm font-semibold text-[#0e393d]">Evidence Quality Tiers</p>
-          <p className="text-[11px] text-[#1c2a2b]/35 mt-0.5">All research ranked by evidence strength (studies + book content)</p>
+      {/* Tagging coverage — compact inline */}
+      <div className="rounded-xl border border-[#0e393d]/8 bg-white p-5">
+        <p className="text-xs font-semibold tracking-wider uppercase text-[#ceab84] mb-4">Tagging Coverage</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-sm font-medium text-[#0e393d]">Biomarker Tags</p>
+              <p className="text-sm font-semibold text-[#0e393d] tabular-nums">{biomarkerPct}%</p>
+            </div>
+            <div className="h-2 rounded-full bg-[#0e393d]/8 overflow-hidden">
+              <div className="h-full rounded-full bg-[#0e393d] transition-all" style={{ width: `${biomarkerPct}%` }} />
+            </div>
+            <p className="text-[11px] text-[#1c2a2b]/40 mt-1">{stats.withBiomarkers.toLocaleString()} / {stats.totalStudies.toLocaleString()} studies</p>
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-sm font-medium text-[#0e393d]">Disease Tags</p>
+              <p className="text-sm font-semibold text-[#0e393d] tabular-nums">{diseasePct}%</p>
+            </div>
+            <div className="h-2 rounded-full bg-[#0e393d]/8 overflow-hidden">
+              <div className="h-full rounded-full bg-[#ceab84] transition-all" style={{ width: `${diseasePct}%` }} />
+            </div>
+            <p className="text-[11px] text-[#1c2a2b]/40 mt-1">{stats.withDiseaseTags.toLocaleString()} / {stats.totalStudies.toLocaleString()} studies</p>
+          </div>
         </div>
-        {stats.tierCounts.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-[#1c2a2b]/35">No quality tiers assigned yet.</div>
-        ) : (
-          <div className="divide-y divide-[#0e393d]/[.04]">
-            {stats.tierCounts.map(({ tier, count }) => {
-              const totalAll = stats.totalStudies + stats.totalBookChunks;
-              const pct = totalAll > 0 ? (count / totalAll) * 100 : 0;
-              const info = TIER_LABELS[tier] ?? { label: `Tier ${tier}`, color: 'bg-gray-400' };
-              const unitLabel = tier === 0 ? 'chunks' : 'studies';
-              return (
-                <div key={tier} className={`px-5 py-3.5 flex items-center gap-4 ${tier === 0 ? 'bg-purple-50/30' : ''}`}>
-                  <span className={`w-2.5 h-2.5 rounded-full ${info.color} shrink-0`} />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-[#0e393d]">{info.label}</p>
-                    <div className="mt-1.5 h-1.5 rounded-full bg-[#0e393d]/8 overflow-hidden w-48">
-                      <div className={`h-full rounded-full ${info.color}`} style={{ width: `${Math.max(pct, 1)}%` }} />
-                    </div>
-                  </div>
-                  <p className="text-sm font-semibold text-[#1c2a2b]/60 tabular-nums w-28 text-right">
-                    {count.toLocaleString()} <span className="text-[11px] font-normal text-[#1c2a2b]/30">{unitLabel} ({pct.toFixed(1)}%)</span>
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Source breakdown */}
-      <div className="rounded-xl border border-[#0e393d]/8 bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#0e393d]/8">
-          <p className="text-sm font-semibold text-[#0e393d]">Studies by Source</p>
-        </div>
-        {stats.sourceCounts.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-[#1c2a2b]/35">
-            No studies in database yet. Run an ingestion job to get started.
-          </div>
-        ) : (
-          <div className="divide-y divide-[#0e393d]/[.04]">
-            {stats.sourceCounts.map(({ source, count }) => {
-              const pct = stats.totalStudies > 0 ? (count / stats.totalStudies) * 100 : 0;
-              return (
-                <div key={source} className="px-5 py-3.5 flex items-center gap-4">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-[#0e393d]">{SOURCE_LABELS[source] ?? source}</p>
-                    <div className="mt-1.5 h-1.5 rounded-full bg-[#0e393d]/8 overflow-hidden w-48">
-                      <div className="h-full rounded-full bg-[#ceab84]" style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                  <p className="text-sm font-semibold text-[#1c2a2b]/60 tabular-nums w-16 text-right">
-                    {count.toLocaleString()}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       {/* Disease/condition distribution */}
@@ -467,7 +386,7 @@ function OverviewTab({ stats }: { stats: StatsData }) {
           </p>
         </div>
         {stats.diseaseCounts.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-[#1c2a2b]/35">No disease tags assigned yet. Run the backfill script.</div>
+          <div className="px-5 py-8 text-center text-sm text-[#1c2a2b]/35">No disease tags assigned yet.</div>
         ) : (
           <>
             <div className="px-5 py-4">
@@ -491,25 +410,6 @@ function OverviewTab({ stats }: { stats: StatsData }) {
           </>
         )}
       </div>
-
-      {/* Recent jobs */}
-      {stats.recentJobs.length > 0 && (
-        <div className="rounded-xl border border-[#0e393d]/8 bg-white overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#0e393d]/8">
-            <p className="text-sm font-semibold text-[#0e393d]">Recent Ingestion Jobs</p>
-          </div>
-          <div className="divide-y divide-[#0e393d]/[.04]">
-            {stats.recentJobs.slice(0, 5).map(job => (
-              <div key={job.id} className="px-5 py-3 flex items-center gap-4 text-sm">
-                <Badge status={job.status} />
-                <span className="flex-1 text-[#0e393d] font-medium">{SOURCE_LABELS[job.source] ?? job.source}</span>
-                <span className="text-[#1c2a2b]/35 text-xs">{job.dry_run ? 'dry run · ' : ''}{job.total_stored} stored</span>
-                <span className="text-[#1c2a2b]/35 text-xs">{fmt(job.created_at)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -823,7 +723,7 @@ function StudyExpandedView({ study, onUpdate }: { study: Study; onUpdate: () => 
 // ── Ingestion tab ─────────────────────────────────────────────────────────────
 
 function IngestTab({ onJobStarted }: { onJobStarted: () => void }) {
-  const [source, setSource] = useState('greger');
+  const [source, setSource] = useState('pubmed_nutrition');
   const [limit, setLimit] = useState(100);
   const [dryRun, setDryRun] = useState(true);
   const [running, setRunning] = useState(false);
@@ -855,22 +755,68 @@ function IngestTab({ onJobStarted }: { onJobStarted: () => void }) {
   const estCost = (limit * 300 / 1_000_000 * 0.02).toFixed(4);
 
   return (
-    <div className="p-8 max-w-lg">
+    <div className="p-8 max-w-2xl space-y-6">
+      {/* Phase 1 — completed */}
+      <div className="rounded-xl border border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30 p-5">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-50 text-emerald-600">completed</span>
+          <p className="text-sm font-semibold text-[#0e393d]">Phase 1 — Greger / NutritionFacts</p>
+        </div>
+        <p className="text-xs text-[#1c2a2b]/60">
+          18,253 studies from 6 books + NutritionFacts.org · 4,027 NF content items · 2,353 book chunks — all embedded and searchable.
+          Weekly auto-sync checks for new NutritionFacts.org content (see NutritionFacts tab).
+        </p>
+      </div>
+
+      {/* Phase 2/3 — planned */}
+      <div className="rounded-xl border border-[#0e393d]/8 bg-white p-5 space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-50 text-blue-600">next</span>
+          <p className="text-sm font-semibold text-[#0e393d]">Phase 2 & 3 — PubMed Expansion</p>
+        </div>
+        <p className="text-xs text-[#1c2a2b]/60 leading-relaxed">
+          Expand the research database with targeted PubMed searches: systematic reviews, meta-analyses, RCTs,
+          and cohort studies on nutrition, longevity, biomarkers, and disease prevention.
+          This requires targeted search queries with article-type filters and quality classification — best done
+          together via the CLI for control over what gets ingested.
+        </p>
+        <div className="space-y-2">
+          {[
+            { label: 'Systematic Reviews & Meta-analyses', target: '~13K', cost: '~$3–5', tier: 'Tier 2' },
+            { label: 'Randomized Controlled Trials', target: '~26K', cost: '~$8–12', tier: 'Tier 3' },
+            { label: 'Cohort & Observational Studies', target: '~23K', cost: '~$7–10', tier: 'Tier 4' },
+            { label: 'General Health & Longevity', target: '~5K', cost: '~$1–2', tier: 'Tier 5' },
+          ].map(({ label, target, cost, tier }) => (
+            <div key={label} className="flex items-center gap-3 text-xs px-3 py-2 rounded-lg bg-[#0e393d]/[.02]">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#0e393d]/8 text-[#0e393d]/60 font-medium shrink-0">{tier}</span>
+              <span className="flex-1 text-[#1c2a2b]/60">{label}</span>
+              <span className="text-[#1c2a2b]/40 tabular-nums">{target}</span>
+              <span className="text-[#0C9C6C] font-medium tabular-nums">{cost}</span>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-[#1c2a2b]/30">
+          Estimated total: ~67K additional studies · ~$19–29 in embedding costs
+        </p>
+      </div>
+
+      {/* Quick PubMed search — for small exploratory batches */}
       <div className="rounded-xl border border-[#0e393d]/8 bg-white p-6 space-y-5">
-        <h2 className="text-sm font-semibold text-[#0e393d]">Run Ingestion Job</h2>
+        <div>
+          <h2 className="text-sm font-semibold text-[#0e393d]">Quick PubMed Search</h2>
+          <p className="text-[11px] text-[#1c2a2b]/40 mt-0.5">
+            Run a small exploratory batch from PubMed. For large-scale Phase 2/3 ingestion, use the CLI for better control.
+          </p>
+        </div>
 
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-medium text-[#1c2a2b]/60 block mb-1.5">Data Source</label>
+            <label className="text-xs font-medium text-[#1c2a2b]/60 block mb-1.5">Search Topic</label>
             <select value={source} onChange={e => setSource(e.target.value)}
               className="w-full rounded-lg border border-[#0e393d]/15 px-3 py-2 text-sm focus:outline-none focus:border-[#0e393d]/40">
-              <option value="greger">Greger / NutritionFacts.org (books + videos)</option>
               <option value="pubmed_nutrition">PubMed — Nutrition & Diet Studies</option>
               <option value="pubmed_longevity">PubMed — Longevity & Aging Studies</option>
             </select>
-            <p className="text-[10px] text-[#1c2a2b]/30 mt-1">
-              For NutritionFacts.org content sync, use the NutritionFacts tab instead. For EPUB/book ingestion, use the CLI script.
-            </p>
           </div>
 
           <div>
@@ -893,7 +839,7 @@ function IngestTab({ onJobStarted }: { onJobStarted: () => void }) {
             </button>
             <div>
               <p className="text-sm text-[#0e393d] font-medium">Dry Run</p>
-              <p className="text-[11px] text-[#1c2a2b]/40">Fetches + embeds but does not write to DB</p>
+              <p className="text-[11px] text-[#1c2a2b]/40">Preview what would be fetched without writing to DB</p>
             </div>
           </div>
 
@@ -913,8 +859,7 @@ function IngestTab({ onJobStarted }: { onJobStarted: () => void }) {
         {result && (
           <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
             <p className="text-xs font-semibold text-emerald-800">Job started!</p>
-            <p className="text-xs text-emerald-700 mt-0.5">Job ID: {result.jobId}</p>
-            <p className="text-xs text-emerald-700">Switch to the Jobs tab to monitor progress.</p>
+            <p className="text-xs text-emerald-700 mt-0.5">Job ID: {result.jobId} — switch to Jobs tab to monitor.</p>
           </div>
         )}
 
@@ -924,30 +869,6 @@ function IngestTab({ onJobStarted }: { onJobStarted: () => void }) {
             <p className="text-xs text-red-700 mt-0.5">{error}</p>
           </div>
         )}
-      </div>
-
-      {/* Phase guide */}
-      <div className="mt-6 rounded-xl border border-[#0e393d]/8 bg-white p-5">
-        <p className="text-xs font-semibold text-[#0e393d] mb-3">Ingestion Phases</p>
-        <div className="space-y-2.5">
-          {[
-            { phase: 'Phase 1', source: 'Greger / NutritionFacts', studies: '~18K done', cost: '~$3', status: 'done' },
-            { phase: 'Phase 2', source: 'PubMed Reviews & RCTs', studies: '~40–80K', cost: '~$15–30', status: 'next' },
-            { phase: 'Phase 3', source: 'PubMed Cohorts & General', studies: '~25–50K', cost: '~$10–20', status: 'planned' },
-          ].map(({ phase, source: s, studies, cost, status }) => (
-            <div key={phase} className="flex items-center gap-3 text-xs">
-              <span className="w-14 font-semibold text-[#ceab84]">{phase}</span>
-              <span className="flex-1 text-[#1c2a2b]/60">{s}</span>
-              <span className="text-[#1c2a2b]/40">{studies}</span>
-              <span className="text-[#0C9C6C] font-medium">{cost}</span>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                status === 'done' ? 'bg-emerald-50 text-emerald-600' :
-                status === 'next' ? 'bg-blue-50 text-blue-600' :
-                'bg-gray-100 text-gray-400'
-              }`}>{status}</span>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
@@ -984,10 +905,29 @@ function JobsTab() {
   }, [loadJobs, jobs]);
 
   if (loading) return <div className="p-8 text-sm text-[#1c2a2b]/35">Loading jobs...</div>;
-  if (jobs.length === 0) return <div className="p-8 text-sm text-[#1c2a2b]/35">No ingestion jobs yet. Run one from the Ingest tab.</div>;
+
+  // Context banner about CLI jobs
+  const cliBanner = (
+    <div className="rounded-xl border border-[#0e393d]/8 bg-[#0e393d]/[.02] p-4 mb-4">
+      <p className="text-xs font-semibold text-[#0e393d] mb-1">Job History Note</p>
+      <p className="text-[11px] text-[#1c2a2b]/50 leading-relaxed">
+        This tab shows jobs triggered from the web UI. The initial database build (18K studies, 4K NF content,
+        2.3K book chunks) was done via CLI scripts and is not listed here. NutritionFacts.org sync jobs appear
+        in the NutritionFacts tab.
+      </p>
+    </div>
+  );
+
+  if (jobs.length === 0) return (
+    <div className="p-8">
+      {cliBanner}
+      <p className="text-sm text-[#1c2a2b]/35">No web-triggered ingestion jobs yet.</p>
+    </div>
+  );
 
   return (
     <div className="p-8 space-y-3">
+      {cliBanner}
       {jobs.map(job => (
         <div key={job.id} className="rounded-xl border border-[#0e393d]/8 bg-white overflow-hidden">
           <button
