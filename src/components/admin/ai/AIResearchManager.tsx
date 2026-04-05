@@ -27,6 +27,12 @@ interface StatsData {
   withDiseaseTags: number;
   recentJobs: IngestionJob[];
   estimatedEmbeddingCostUsd: string;
+  // NF content
+  totalNfContent: number;
+  nfWithEmbeddings: number;
+  nfVideos: number;
+  nfBlogs: number;
+  nfQuestions: number;
 }
 
 interface IngestionJob {
@@ -63,7 +69,7 @@ interface Study {
   created_at: string;
 }
 
-type Tab = 'overview' | 'studies' | 'ingest' | 'jobs';
+type Tab = 'overview' | 'studies' | 'ingest' | 'nf-sync' | 'jobs';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -151,8 +157,9 @@ const INGESTION_ROADMAP: RoadmapSource[] = [
   // Tier 0 — Book content (Greger's prose, analysis, conclusions)
   { key: 'book_content', label: 'Book Content (Prose & Analysis)', tier: 0, target: 2353, description: "Greger's synthesized conclusions from 6 books" },
   // Tier 1 — Greger-cited (all citations from books + videos)
-  { key: 'greger_epub', label: 'Greger Books (EPUB)', tier: 1, target: 22000, description: '6 books: How Not to Age/Die/Diet, Lower LDL, Ozempic, Ultra-Processed' },
-  { key: 'nutritionfacts', label: 'NutritionFacts.org', tier: 1, target: 5000, description: 'Articles, videos & citations from nutritionfacts.org' },
+  { key: 'greger_epub', label: 'Greger Books (EPUB)', tier: 1, target: 9000, description: '6 books: How Not to Age/Die/Diet, Lower LDL, Ozempic, Ultra-Processed' },
+  { key: 'nutritionfacts', label: 'NutritionFacts.org', tier: 1, target: 10000, description: 'Cited studies from 4,000+ videos, blogs & Q&As' },
+  { key: 'greger', label: 'Greger / NutritionFacts (Legacy)', tier: 1, target: 300, description: 'Initial hand-curated Greger citations' },
   // Tier 2 — Systematic Reviews & Meta-analyses
   { key: 'pubmed_sr_nutrition', label: 'PubMed — Nutrition Reviews', tier: 2, target: 8000, description: 'Systematic reviews on dietary interventions and nutrition' },
   { key: 'pubmed_sr_longevity', label: 'PubMed — Longevity Reviews', tier: 2, target: 5000, description: 'Meta-analyses on aging, mortality, biological age' },
@@ -509,6 +516,9 @@ function OverviewTab({ stats }: { stats: StatsData }) {
 
 // ── Studies tab ───────────────────────────────────────────────────────────────
 
+type SortField = 'created_at' | 'title' | 'publication_year' | 'journal' | 'source';
+type SortDir = 'asc' | 'desc';
+
 function StudiesTab() {
   const [studies, setStudies] = useState<Study[]>([]);
   const [loading, setLoading] = useState(true);
@@ -518,7 +528,20 @@ function StudiesTab() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
   const [page, setPage] = useState(0);
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const PAGE_SIZE = 50;
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir(field === 'title' ? 'asc' : 'desc');
+    }
+    setPage(0);
+  };
 
   const loadStudies = useCallback(async () => {
     setLoading(true);
@@ -526,16 +549,39 @@ function StudiesTab() {
     let q = supabase
       .from('studies')
       .select('id,pmid,title,authors,journal,publication_year,abstract,mesh_terms,doi,source,biomarker_slugs,he_domains,created_at')
-      .order('created_at', { ascending: false })
+      .order(sortField, { ascending: sortDir === 'asc' })
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
     if (sourceFilter) q = q.eq('source', sourceFilter);
-    if (search.trim()) q = q.ilike('title', `%${search.trim()}%`);
+    if (search.trim()) {
+      // Support PMID search (numeric) and title search
+      const term = search.trim();
+      if (/^\d+$/.test(term)) {
+        q = q.eq('pmid', term);
+      } else {
+        q = q.ilike('title', `%${term}%`);
+      }
+    }
 
     const { data } = await q;
     setStudies((data ?? []) as Study[]);
+
+    // Get total count for pagination info
+    let countQ = supabase.from('studies').select('*', { count: 'exact', head: true });
+    if (sourceFilter) countQ = countQ.eq('source', sourceFilter);
+    if (search.trim()) {
+      const term = search.trim();
+      if (/^\d+$/.test(term)) {
+        countQ = countQ.eq('pmid', term);
+      } else {
+        countQ = countQ.ilike('title', `%${term}%`);
+      }
+    }
+    const { count } = await countQ;
+    setTotalCount(count);
+
     setLoading(false);
-  }, [search, sourceFilter, page]);
+  }, [search, sourceFilter, page, sortField, sortDir]);
 
   useEffect(() => { loadStudies(); }, [loadStudies]);
 
@@ -567,7 +613,7 @@ function StudiesTab() {
         <input
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(0); }}
-          placeholder="Search by title..."
+          placeholder="Search by title or PMID..."
           className="flex-1 rounded-lg border border-[#0e393d]/15 px-3 py-2 text-sm text-[#1c2a2b] placeholder-[#1c2a2b]/30 focus:outline-none focus:border-[#0e393d]/40"
         />
         <select
@@ -577,6 +623,8 @@ function StudiesTab() {
         >
           <option value="">All sources</option>
           <option value="greger">Greger / NutritionFacts</option>
+          <option value="greger_epub">Greger Books (EPUB)</option>
+          <option value="nutritionfacts">NutritionFacts.org</option>
           <option value="pubmed_nutrition">PubMed Nutrition</option>
           <option value="pubmed_longevity">PubMed Longevity</option>
         </select>
@@ -599,10 +647,18 @@ function StudiesTab() {
               <th className="w-8 px-4 py-3 text-left">
                 <input type="checkbox" onChange={e => setSelected(e.target.checked ? new Set(studies.map(s => s.id)) : new Set())} />
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#0e393d]/50 uppercase tracking-wide">Title</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#0e393d]/50 uppercase tracking-wide hidden lg:table-cell">Journal</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#0e393d]/50 uppercase tracking-wide">Year</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#0e393d]/50 uppercase tracking-wide">Source</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-[#0e393d]/50 uppercase tracking-wide cursor-pointer select-none hover:text-[#0e393d]" onClick={() => toggleSort('title')}>
+                Title {sortField === 'title' && <span className="text-[#0e393d]">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-[#0e393d]/50 uppercase tracking-wide hidden lg:table-cell cursor-pointer select-none hover:text-[#0e393d]" onClick={() => toggleSort('journal')}>
+                Journal {sortField === 'journal' && <span className="text-[#0e393d]">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-[#0e393d]/50 uppercase tracking-wide cursor-pointer select-none hover:text-[#0e393d]" onClick={() => toggleSort('publication_year')}>
+                Year {sortField === 'publication_year' && <span className="text-[#0e393d]">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-[#0e393d]/50 uppercase tracking-wide cursor-pointer select-none hover:text-[#0e393d]" onClick={() => toggleSort('source')}>
+                Source {sortField === 'source' && <span className="text-[#0e393d]">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+              </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-[#0e393d]/50 uppercase tracking-wide hidden md:table-cell">Tags</th>
             </tr>
           </thead>
@@ -666,7 +722,9 @@ function StudiesTab() {
 
       {/* Pagination */}
       <div className="flex items-center justify-between">
-        <p className="text-xs text-[#1c2a2b]/40">{studies.length} studies shown</p>
+        <p className="text-xs text-[#1c2a2b]/40">
+          Page {page + 1}{totalCount !== null ? ` of ${Math.max(1, Math.ceil(totalCount / PAGE_SIZE))}` : ''} · {totalCount !== null ? `${totalCount.toLocaleString()} total` : `${studies.length} shown`}
+        </p>
         <div className="flex gap-2">
           <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
             className="px-3 py-1.5 text-xs rounded-lg border border-[#0e393d]/15 disabled:opacity-30 hover:bg-[#0e393d]/[.03]">← Prev</button>
@@ -810,6 +868,9 @@ function IngestTab({ onJobStarted }: { onJobStarted: () => void }) {
               <option value="pubmed_nutrition">PubMed — Nutrition & Diet Studies</option>
               <option value="pubmed_longevity">PubMed — Longevity & Aging Studies</option>
             </select>
+            <p className="text-[10px] text-[#1c2a2b]/30 mt-1">
+              For NutritionFacts.org content sync, use the NutritionFacts tab instead. For EPUB/book ingestion, use the CLI script.
+            </p>
           </div>
 
           <div>
@@ -870,15 +931,20 @@ function IngestTab({ onJobStarted }: { onJobStarted: () => void }) {
         <p className="text-xs font-semibold text-[#0e393d] mb-3">Ingestion Phases</p>
         <div className="space-y-2.5">
           {[
-            { phase: 'Phase 1', source: 'Greger / NutritionFacts', studies: '~15–20K', cost: '~$3–5' },
-            { phase: 'Phase 2', source: 'PubMed Nutrition', studies: '~50–100K', cost: '~$15–30' },
-            { phase: 'Phase 3', source: 'PubMed Longevity', studies: '~500K+', cost: '~$100–150' },
-          ].map(({ phase, source: s, studies, cost }) => (
+            { phase: 'Phase 1', source: 'Greger / NutritionFacts', studies: '~18K done', cost: '~$3', status: 'done' },
+            { phase: 'Phase 2', source: 'PubMed Reviews & RCTs', studies: '~40–80K', cost: '~$15–30', status: 'next' },
+            { phase: 'Phase 3', source: 'PubMed Cohorts & General', studies: '~25–50K', cost: '~$10–20', status: 'planned' },
+          ].map(({ phase, source: s, studies, cost, status }) => (
             <div key={phase} className="flex items-center gap-3 text-xs">
               <span className="w-14 font-semibold text-[#ceab84]">{phase}</span>
               <span className="flex-1 text-[#1c2a2b]/60">{s}</span>
               <span className="text-[#1c2a2b]/40">{studies}</span>
               <span className="text-[#0C9C6C] font-medium">{cost}</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                status === 'done' ? 'bg-emerald-50 text-emerald-600' :
+                status === 'next' ? 'bg-blue-50 text-blue-600' :
+                'bg-gray-100 text-gray-400'
+              }`}>{status}</span>
             </div>
           ))}
         </div>
@@ -970,6 +1036,219 @@ function JobsTab() {
   );
 }
 
+// ── NutritionFacts Sync tab ──────────────────────────────────────────────────
+
+interface NfSyncJob {
+  id: string;
+  status: string;
+  new_videos: number;
+  new_blogs: number;
+  new_questions: number;
+  new_pmids_found: number;
+  new_pmids_ingested: number;
+  total_embedded: number;
+  error_message: string | null;
+  log_lines: string[];
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+interface NfSyncStats {
+  totalNfContent: number;
+  withEmbeddings: number;
+  typeCounts: { content_type: string; count: number }[];
+  recentContent: { slug: string; title: string; content_type: string; created_at: string }[];
+  recentJobs: NfSyncJob[];
+}
+
+function NfSyncTab() {
+  const [stats, setStats] = useState<NfSyncStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [error, setError] = useState('');
+  const [expandedJob, setExpandedJob] = useState<string | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const loadStats = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/nf-sync');
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data);
+      }
+    } catch { /* ignore */ }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadStats();
+    // Auto-refresh while syncing
+    intervalRef.current = setInterval(() => {
+      if (stats?.recentJobs?.some(j => j.status === 'running' || j.status === 'pending')) {
+        loadStats();
+      }
+    }, 3000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [loadStats, stats?.recentJobs]);
+
+  const triggerSync = async () => {
+    if (!confirm('Start NutritionFacts.org sync? This will check for new videos, blogs, and Q&As.')) return;
+    setSyncing(true);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/nf-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Unknown error');
+      // Refresh stats to show new job
+      setTimeout(loadStats, 1000);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  if (loading) return <div className="p-8 text-sm text-[#1c2a2b]/35">Loading NutritionFacts stats...</div>;
+
+  const isRunning = stats?.recentJobs?.some(j => j.status === 'running' || j.status === 'pending');
+
+  return (
+    <div className="p-8 space-y-6 max-w-2xl">
+      {/* Stats cards */}
+      <div className="grid grid-cols-4 gap-3">
+        <StatCard label="Total Content" value={stats?.totalNfContent ?? 0} />
+        <StatCard
+          label="Videos"
+          value={stats?.typeCounts?.find(t => t.content_type === 'video')?.count ?? 0}
+        />
+        <StatCard
+          label="Blog Posts"
+          value={stats?.typeCounts?.find(t => t.content_type === 'blog')?.count ?? 0}
+        />
+        <StatCard
+          label="With Embeddings"
+          value={stats?.withEmbeddings ?? 0}
+          sub={stats ? `${Math.round((stats.withEmbeddings / Math.max(stats.totalNfContent, 1)) * 100)}% coverage` : ''}
+        />
+      </div>
+
+      {/* Sync control */}
+      <div className="rounded-xl border border-[#0e393d]/8 bg-white p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-sm font-semibold text-[#0e393d]">NutritionFacts.org Content Sync</h2>
+            <p className="text-[11px] text-[#1c2a2b]/40 mt-0.5">
+              Checks for new videos, blog posts, and Q&As. Extracts transcripts, PMIDs, and generates embeddings.
+            </p>
+          </div>
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+            isRunning
+              ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-500/20'
+              : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500/20'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'}`} />
+            {isRunning ? 'Syncing' : 'Idle'}
+          </span>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={triggerSync}
+            disabled={syncing || !!isRunning}
+            className="flex-1 py-2.5 rounded-xl bg-[#4a8b3f] text-white text-sm font-semibold hover:bg-[#4a8b3f]/80 disabled:opacity-50 transition-colors"
+          >
+            {syncing ? 'Starting...' : isRunning ? 'Sync Running...' : 'Sync Now'}
+          </button>
+        </div>
+
+        {error && (
+          <div className="mt-3 rounded-lg bg-red-50 border border-red-200 p-3">
+            <p className="text-xs font-semibold text-red-800">Error</p>
+            <p className="text-xs text-red-700 mt-0.5">{error}</p>
+          </div>
+        )}
+
+        <p className="text-[10px] text-[#1c2a2b]/30 mt-3">
+          Also runs automatically every Monday at 6am via scheduled task.
+        </p>
+      </div>
+
+      {/* Recent content */}
+      {stats?.recentContent && stats.recentContent.length > 0 && (
+        <div className="rounded-xl border border-[#0e393d]/8 bg-white p-5">
+          <p className="text-xs font-semibold text-[#0e393d] mb-3">Most Recently Added</p>
+          <div className="space-y-2">
+            {stats.recentContent.map(item => (
+              <div key={item.slug} className="flex items-center gap-3 text-xs">
+                <span className={`shrink-0 w-14 text-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  item.content_type === 'video' ? 'bg-[#4a8b3f]/10 text-[#4a8b3f]'
+                  : item.content_type === 'blog' ? 'bg-blue-50 text-blue-700'
+                  : 'bg-purple-50 text-purple-700'
+                }`}>
+                  {item.content_type}
+                </span>
+                <span className="flex-1 text-[#1c2a2b]/60 truncate">{item.title}</span>
+                <span className="shrink-0 text-[#1c2a2b]/30">{fmt(item.created_at)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sync history */}
+      {stats?.recentJobs && stats.recentJobs.length > 0 && (
+        <div className="rounded-xl border border-[#0e393d]/8 bg-white overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#0e393d]/8">
+            <p className="text-xs font-semibold text-[#0e393d]">Sync History</p>
+          </div>
+          <div className="divide-y divide-[#0e393d]/6">
+            {stats.recentJobs.map(job => (
+              <div key={job.id}>
+                <button
+                  onClick={() => setExpandedJob(expandedJob === job.id ? null : job.id)}
+                  className="w-full px-5 py-3 flex items-center gap-4 hover:bg-[#0e393d]/[.01] transition-colors text-left"
+                >
+                  <Badge status={job.status} />
+                  <div className="flex-1">
+                    <p className="text-xs text-[#1c2a2b]/60">
+                      {job.new_videos > 0 ? `${job.new_videos} videos` : ''}
+                      {job.new_blogs > 0 ? `${job.new_videos > 0 ? ', ' : ''}${job.new_blogs} blogs` : ''}
+                      {job.new_questions > 0 ? `${(job.new_videos + job.new_blogs) > 0 ? ', ' : ''}${job.new_questions} Q&As` : ''}
+                      {(job.new_videos + job.new_blogs + job.new_questions) === 0 ? 'No new content' : ''}
+                      {job.new_pmids_found > 0 ? ` · ${job.new_pmids_found} new PMIDs` : ''}
+                    </p>
+                  </div>
+                  <span className="text-xs text-[#1c2a2b]/30 shrink-0">{fmt(job.created_at)}</span>
+                  <span className="text-[#1c2a2b]/25 text-xs">{expandedJob === job.id ? '▲' : '▼'}</span>
+                </button>
+
+                {expandedJob === job.id && (
+                  <div className="px-5 pb-4">
+                    {job.error_message && (
+                      <div className="rounded-lg bg-red-50 border border-red-200 p-3 mb-3">
+                        <p className="text-xs text-red-700">{job.error_message}</p>
+                      </div>
+                    )}
+                    {job.log_lines?.length > 0 && (
+                      <div className="rounded-lg bg-[#0e393d]/[.03] p-3 font-mono text-[10px] text-[#1c2a2b]/60 max-h-48 overflow-y-auto space-y-0.5">
+                        {job.log_lines.map((line, i) => <p key={i}>{line}</p>)}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main manager ──────────────────────────────────────────────────────────────
 
 export default function AIResearchManager() {
@@ -992,13 +1271,47 @@ export default function AIResearchManager() {
     { id: 'overview', label: 'Overview' },
     { id: 'studies', label: 'Studies' },
     { id: 'ingest', label: 'Ingest' },
+    { id: 'nf-sync', label: 'NutritionFacts' },
     { id: 'jobs', label: 'Jobs' },
   ];
 
+  // Computed totals for key indicators
+  const totalAllContent = (stats?.totalStudies ?? 0) + (stats?.totalBookChunks ?? 0) + (stats?.totalNfContent ?? 0);
+  const totalAllEmbedded = (stats?.withEmbeddings ?? 0) + (stats?.totalBookChunks ?? 0) + (stats?.nfWithEmbeddings ?? 0);
+  const embCoveragePct = totalAllContent > 0 ? Math.round((totalAllEmbedded / totalAllContent) * 100) : 0;
+
   return (
     <div>
+      {/* Key indicator cards — products-page style */}
+      {stats && (
+        <div className="px-8 pt-6 pb-2">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="rounded-xl border border-[#0e393d]/8 bg-gradient-to-br from-white to-[#0e393d]/[0.02] px-4 py-3">
+              <div className="text-2xl font-semibold text-[#0e393d] tabular-nums">{stats.totalStudies.toLocaleString()}</div>
+              <div className="text-xs text-[#1c2a2b]/50 mt-0.5">PubMed Studies</div>
+            </div>
+            <div className="rounded-xl border border-[#4a8b3f]/20 bg-gradient-to-br from-white to-[#4a8b3f]/[0.03] px-4 py-3">
+              <div className="text-2xl font-semibold text-[#4a8b3f] tabular-nums">{stats.totalNfContent.toLocaleString()}</div>
+              <div className="text-xs text-[#4a8b3f]/60 mt-0.5">NF Content Items</div>
+            </div>
+            <div className="rounded-xl border border-purple-200/60 bg-gradient-to-br from-white to-purple-50/30 px-4 py-3">
+              <div className="text-2xl font-semibold text-purple-700 tabular-nums">{stats.totalBookChunks.toLocaleString()}</div>
+              <div className="text-xs text-purple-600/60 mt-0.5">Book Chunks</div>
+            </div>
+            <div className="rounded-xl border border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30 px-4 py-3">
+              <div className="text-2xl font-semibold text-emerald-700 tabular-nums">{totalAllContent.toLocaleString()}</div>
+              <div className="text-xs text-emerald-600/60 mt-0.5">Total Indexed</div>
+            </div>
+            <div className="rounded-xl border border-[#ceab84]/30 bg-gradient-to-br from-white to-[#ceab84]/[0.04] px-4 py-3">
+              <div className="text-2xl font-semibold text-[#8a6a3e] tabular-nums">{embCoveragePct}%</div>
+              <div className="text-xs text-[#8a6a3e]/60 mt-0.5">Embedding Coverage</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tab bar */}
-      <div className="border-b border-[#0e393d]/8 px-8 pt-5">
+      <div className="border-b border-[#0e393d]/8 px-8 pt-3">
         <div className="flex gap-1">
           {TABS.map(({ id, label }) => (
             <button
@@ -1023,6 +1336,7 @@ export default function AIResearchManager() {
       )}
       {tab === 'studies' && <StudiesTab />}
       {tab === 'ingest' && <IngestTab onJobStarted={() => { loadStats(); setTab('jobs'); }} />}
+      {tab === 'nf-sync' && <NfSyncTab />}
       {tab === 'jobs' && <JobsTab />}
     </div>
   );

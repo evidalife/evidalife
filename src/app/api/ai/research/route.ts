@@ -11,9 +11,9 @@ import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { searchStudiesAdmin, searchBookChunksAdmin, enrichBookChunks } from '@/lib/research/search';
+import { searchStudiesAdmin, searchBookChunksAdmin, enrichBookChunks, searchNfContentAdmin } from '@/lib/research/search';
 import { formatCitation, pubmedUrl } from '@/lib/research/search';
-import type { StudyResult, BookChunkResult } from '@/lib/research/search';
+import type { StudyResult, BookChunkResult, NfContentResult } from '@/lib/research/search';
 import { getResearchQuestion, getMappingBySlug } from '@/lib/research/biomarker-mapper';
 import { getDiseaseLabel } from '@/lib/research/disease-mapper';
 
@@ -96,7 +96,8 @@ function buildResearchPrompt(
   question: string,
   studies: StudyResult[],
   biomarkerContext?: string,
-  bookChunks?: BookChunkResult[]
+  bookChunks?: BookChunkResult[],
+  nfContent?: NfContentResult[]
 ): string {
   // Book content section (highest evidence tier)
   let bookContext = '';
@@ -124,18 +125,31 @@ Abstract: ${s.abstract.slice(0, 800)}${s.abstract.length > 800 ? '...' : ''}`;
     })
     .join('\n\n---\n\n');
 
+  // NutritionFacts.org content section
+  let nfContext = '';
+  if (nfContent && nfContent.length > 0) {
+    const nfSections = nfContent.map((nf, i) => {
+      const typeLabel = nf.content_type === 'video' ? 'Video transcript' : nf.content_type === 'blog' ? 'Blog post' : 'Q&A';
+      return `[NF ${i + 1}] ${nf.title} (${typeLabel})
+Source: ${nf.url}
+Content: ${nf.transcript.slice(0, 1000)}${nf.transcript.length > 1000 ? '...' : ''}`;
+    }).join('\n\n---\n\n');
+
+    nfContext = `\n\nHere are ${nfContent.length} relevant pieces from NutritionFacts.org (Dr. Greger's video transcripts, blogs, and Q&As):\n\n${nfSections}\n`;
+  }
+
   const bioContext = biomarkerContext
     ? `\n\nUser's biomarker context:\n${biomarkerContext}\n`
     : '';
 
   return `${bioContext}
 Research question: ${question}
-${bookContext}
+${bookContext}${nfContext}
 Here are the ${studies.length} most relevant studies from the research database:
 
 ${studyContext}
 
-Based on the book content and studies above, please provide a clear, evidence-based answer to the research question. Lead with insights from the book content when available (cite as [Book Title, Chapter]), then support with study citations using their author/year format.`;
+Based on the book content, NutritionFacts.org content, and studies above, please provide a clear, evidence-based answer to the research question. Lead with insights from the book content when available (cite as [Book Title, Chapter]), reference NutritionFacts.org content when relevant (cite as [NutritionFacts.org, Title]), then support with study citations using their author/year format.`;
 }
 
 function buildBriefingResearchPrompt(
@@ -397,19 +411,23 @@ export async function POST(req: NextRequest) {
           ...(diseaseTag ? { diseaseTag } : {}),
         };
 
-        const [studies, rawBookChunks] = await Promise.all([
+        const [studies, rawBookChunks, nfContent] = await Promise.all([
           searchStudiesAdmin(question, OPENAI_API_KEY, searchOpts),
           searchBookChunksAdmin(question, OPENAI_API_KEY, {
             limit: 5,
             minSimilarity: 0.25,
             ...(diseaseTag ? { diseaseTag } : {}),
           }),
+          searchNfContentAdmin(question, OPENAI_API_KEY, {
+            limit: 5,
+            minSimilarity: 0.25,
+          }).catch(() => [] as NfContentResult[]), // graceful fallback if no embeddings yet
         ]);
 
         // Enrich book chunks with book titles
         const bookChunks = await enrichBookChunks(rawBookChunks);
 
-        if (studies.length === 0 && bookChunks.length === 0) {
+        if (studies.length === 0 && bookChunks.length === 0 && nfContent.length === 0) {
           await send(sseChunk('citations', []));
           await send(sseChunk('text', "I couldn't find closely matching research in the database for this specific question. "));
           await send(sseChunk('text', "The database is still growing — try rephrasing your question or asking about a related topic like dietary interventions, specific biomarkers, or lifestyle factors."));
@@ -451,12 +469,30 @@ export async function POST(req: NextRequest) {
           is_book_chunk: true,
         }));
 
-        await send(sseChunk('citations', [...bookCitationsPayload, ...citationsPayload]));
+        // Add NutritionFacts.org content references to citations
+        const nfCitationsPayload = nfContent.map(nf => ({
+          pmid: null,
+          title: nf.title,
+          authors: ['Dr. Michael Greger'],
+          journal: 'NutritionFacts.org',
+          publication_year: null,
+          doi: null,
+          similarity: Math.round(nf.similarity * 100),
+          url: nf.url,
+          citation: `NutritionFacts.org, ${nf.title}`,
+          quality_tier: 1,
+          biomarker_slugs: null,
+          disease_tags: null,
+          is_nf_content: true,
+          content_type: nf.content_type,
+        }));
+
+        await send(sseChunk('citations', [...bookCitationsPayload, ...nfCitationsPayload, ...citationsPayload]));
 
         // Stream Claude synthesis
         const startB = Date.now();
         const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
-        const prompt = buildResearchPrompt(question, studies, biomarkerContext, bookChunks);
+        const prompt = buildResearchPrompt(question, studies, biomarkerContext, bookChunks, nfContent);
 
         const claudeStream = await client.messages.stream({
           model: 'claude-sonnet-4-6',
@@ -486,7 +522,7 @@ export async function POST(req: NextRequest) {
             user_id: user.id,
             query: question,
             answer: fullTextB,
-            citations: [...bookCitationsPayload, ...citationsPayload],
+            citations: [...bookCitationsPayload, ...nfCitationsPayload, ...citationsPayload],
             lang: locale,
             model_used: 'claude-sonnet-4-6',
             tokens_used: (finalMsgB.usage?.input_tokens ?? 0) + (finalMsgB.usage?.output_tokens ?? 0),

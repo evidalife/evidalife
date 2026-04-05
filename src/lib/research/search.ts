@@ -40,6 +40,17 @@ export interface BookChunkResult {
   book_slug?: string;
 }
 
+export interface NfContentResult {
+  id: string;
+  slug: string;
+  title: string;
+  content_type: string; // 'video' | 'blog' | 'question'
+  transcript: string;
+  pmids: string[] | null;
+  url: string;
+  similarity: number;
+}
+
 export interface SearchOptions {
   limit?: number;
   minSimilarity?: number;
@@ -171,6 +182,39 @@ export async function searchBookChunksAdmin(
 
   if (error) throw new Error(`Book chunk search failed: ${error.message}`);
   return (data ?? []) as BookChunkResult[];
+}
+
+// ── NutritionFacts content search ──────────────────────────────────────────
+
+export interface NfContentSearchOptions {
+  limit?: number;
+  minSimilarity?: number;
+  contentType?: string; // 'video' | 'blog' | 'question'
+}
+
+// Search NutritionFacts content (videos, blogs, Q&A) by vector similarity
+export async function searchNfContentAdmin(
+  query: string,
+  openaiApiKey: string,
+  options: NfContentSearchOptions = {}
+): Promise<NfContentResult[]> {
+  const {
+    limit = 5,
+    minSimilarity = 0.3,
+  } = options;
+
+  const queryEmbedding = await embedText(query, openaiApiKey);
+  const embeddingStr = `[${queryEmbedding.join(',')}]`;
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.rpc('match_nf_content', {
+    query_embedding: embeddingStr,
+    match_threshold: minSimilarity,
+    match_count: limit,
+  });
+
+  if (error) throw new Error(`NF content search failed: ${error.message}`);
+  return (data ?? []) as NfContentResult[];
 }
 
 // Enrich book chunk results with book title/slug

@@ -11,7 +11,7 @@
 //   --epub-dir PATH     Directory containing Greger EPUB files (for greger_epub source)
 //   --dry-run           Fetch + embed but don't write to DB
 //   --limit N           Only process first N PMIDs (for testing)
-//   --pmids 1234,5678   Ingest specific PMIDs directly
+//   --pmids 1234,5678   Ingest specific PMIDs (comma-separated or file path, one per line)
 //
 // Environment variables required:
 //   NEXT_PUBLIC_SUPABASE_URL
@@ -58,7 +58,20 @@ const epubDir = getArg('--epub-dir');
 const dryRun = hasFlag('--dry-run');
 const linkOnly = hasFlag('--link-only');
 const limit = getArg('--limit') ? parseInt(getArg('--limit')!, 10) : undefined;
-const specificPmids = getArg('--pmids')?.split(',').map(p => p.trim());
+// --pmids accepts comma-separated PMIDs OR a file path (one PMID per line)
+const pmidsArg = getArg('--pmids');
+let specificPmids: string[] | undefined;
+if (pmidsArg) {
+  try {
+    // Try to read as a file first
+    const fileContent = readFileSync(resolve(pmidsArg), 'utf-8');
+    specificPmids = fileContent.split('\n').map(l => l.trim()).filter(l => l && /^\d+$/.test(l));
+    console.log(`Read ${specificPmids.length} PMIDs from file: ${pmidsArg}`);
+  } catch {
+    // Not a file — treat as comma-separated list
+    specificPmids = pmidsArg.split(',').map(p => p.trim()).filter(p => p && /^\d+$/.test(p));
+  }
+}
 
 // ── Validate env ──────────────────────────────────────────────────────────────
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;

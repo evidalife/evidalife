@@ -99,6 +99,31 @@ export async function GET() {
     tierCountsWithBookContent.unshift({ tier: 0, count: totalBookChunks });
   }
 
+  // NF content stats
+  const { count: totalNfContent } = await supabase
+    .from('nf_content')
+    .select('*', { count: 'exact', head: true });
+
+  const { count: nfWithEmbeddings } = await supabase
+    .from('nf_content')
+    .select('*', { count: 'exact', head: true })
+    .not('embedding', 'is', null);
+
+  const { count: nfVideos } = await supabase
+    .from('nf_content')
+    .select('*', { count: 'exact', head: true })
+    .eq('content_type', 'video');
+
+  const { count: nfBlogs } = await supabase
+    .from('nf_content')
+    .select('*', { count: 'exact', head: true })
+    .eq('content_type', 'blog');
+
+  const { count: nfQuestions } = await supabase
+    .from('nf_content')
+    .select('*', { count: 'exact', head: true })
+    .eq('content_type', 'question');
+
   // Estimated cost
   const avgAbstractTokens = 300;
   const costPer1M = 0.02;
@@ -119,6 +144,12 @@ export async function GET() {
     withDiseaseTags: withDiseaseTags ?? 0,
     recentJobs: recentJobs ?? [],
     estimatedEmbeddingCostUsd: estimatedCost,
+    // NF content
+    totalNfContent: totalNfContent ?? 0,
+    nfWithEmbeddings: nfWithEmbeddings ?? 0,
+    nfVideos: nfVideos ?? 0,
+    nfBlogs: nfBlogs ?? 0,
+    nfQuestions: nfQuestions ?? 0,
   });
 }
 

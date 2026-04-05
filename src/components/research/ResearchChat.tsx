@@ -17,6 +17,8 @@ interface Citation {
   url: string | null;
   citation: string;
   is_book_chunk?: boolean;
+  is_nf_content?: boolean;
+  content_type?: string; // 'video' | 'blog' | 'question'
 }
 
 const BOOK_URLS: Record<string, string> = {
@@ -240,7 +242,7 @@ function CitationCard({ citation, index }: { citation: Citation; index: number }
         className="w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-[#0e393d]/[.02] transition-colors"
       >
         <span className={`mt-0.5 shrink-0 w-6 h-6 rounded-lg text-white text-[10px] font-bold flex items-center justify-center ${
-          citation.is_book_chunk ? 'bg-[#ceab84]' : 'bg-[#0e393d]'
+          citation.is_book_chunk ? 'bg-[#ceab84]' : citation.is_nf_content ? 'bg-[#4a8b3f]' : 'bg-[#0e393d]'
         }`}>
           {index + 1}
         </span>
@@ -284,6 +286,23 @@ function CitationCard({ citation, index }: { citation: Citation; index: number }
                 })()}
                 <span className="text-[10px] font-medium text-[#ceab84] bg-[#ceab84]/10 rounded-full px-2 py-0.5">
                   Book Content
+                </span>
+              </>
+            ) : citation.is_nf_content ? (
+              <>
+                {citation.url && (
+                  <a
+                    href={citation.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-semibold text-[#4a8b3f] hover:underline"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    View on NutritionFacts.org →
+                  </a>
+                )}
+                <span className="text-[10px] font-medium text-[#4a8b3f] bg-[#4a8b3f]/10 rounded-full px-2 py-0.5">
+                  {citation.content_type === 'video' ? 'Video' : citation.content_type === 'blog' ? 'Blog' : 'Q&A'}
                 </span>
               </>
             ) : (
