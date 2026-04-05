@@ -76,7 +76,7 @@ function detectDiseases(text: string): string[] {
   const tags: string[] = [];
   for (const dm of DISEASE_MAP) {
     if (dm.searchTerms.some(term => lower.includes(term.toLowerCase()))) {
-      tags.push(dm.slug);
+      tags.push(dm.tag);
     }
   }
   return tags;
