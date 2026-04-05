@@ -479,31 +479,35 @@ export default function ResearchChat({
     setSpeakingMsgId(null);
   }, []);
 
-  /** Extract a short spoken summary: just the key points */
-  const extractSpokenSummary = useCallback((text: string): string => {
-    // Strip markdown bold markers, citation numbers, disclaimer
-    let clean = text.replace(/\*\*/g, '').replace(/\[\d+\]/g, '');
+  /** Extract clean spoken text: full answer minus citations, markdown, disclaimers.
+   *  Citations and study references stay visible in the chat but are NOT read aloud. */
+  const extractSpokenText = useCallback((text: string): string => {
+    let clean = text;
+    // Strip markdown bold/italic markers
+    clean = clean.replace(/\*{1,3}/g, '');
+    // Strip inline citation numbers like [1], [2,3], [1-3]
+    clean = clean.replace(/\[\d+(?:[,\-–]\d+)*\]/g, '');
+    // Strip markdown links — keep display text, drop URL: [text](url) → text
+    clean = clean.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    // Remove horizontal rules
+    clean = clean.replace(/^-{3,}$/gm, '');
     // Remove the standard disclaimer suffix
     clean = clean.replace(/For educational purposes only[.][\s\S]*/, '').trim();
-    // Collapse multiple newlines
-    clean = clean.replace(/\n{2,}/g, '\n').trim();
-    // Take first ~250 chars, break at sentence boundary for a quick summary
-    if (clean.length > 300) {
-      const truncated = clean.slice(0, 300);
-      const lastSentence = truncated.search(/[.!?]\s[^.!?]*$/);
-      if (lastSentence > 80) {
-        clean = truncated.slice(0, lastSentence + 1);
-      } else {
-        clean = truncated.replace(/\s\S*$/, '') + '.';
-      }
-    }
+    // Remove "Sources:" or "References:" section at the end
+    clean = clean.replace(/\n(?:Sources|References|Citations):?\s*\n[\s\S]*$/i, '').trim();
+    // Collapse multiple newlines into a single pause
+    clean = clean.replace(/\n{2,}/g, '. ').trim();
+    // Collapse remaining single newlines
+    clean = clean.replace(/\n/g, ' ').trim();
+    // Clean up double periods or spaces
+    clean = clean.replace(/\.\s*\./g, '.').replace(/ {2,}/g, ' ');
     return clean;
   }, []);
 
   const playTTS = useCallback(async (text: string, msgId?: string) => {
     stopTTS();
 
-    const spokenText = extractSpokenSummary(text);
+    const spokenText = extractSpokenText(text);
     if (msgId) setSpeakingMsgId(msgId);
 
     try {
@@ -559,7 +563,7 @@ export default function ResearchChat({
         setSpeakingMsgId(null);
       }
     }
-  }, [locale, stopTTS, extractSpokenSummary]);
+  }, [locale, stopTTS, extractSpokenText]);
 
   // Cleanup TTS on unmount
   useEffect(() => { return () => { stopTTS(); }; }, [stopTTS]);
