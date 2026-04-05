@@ -33,7 +33,11 @@ interface TTSCacheStats {
   briefingCount?: number;
   bySource?: Record<string, number>;
   byFeature?: Record<string, { count: number; sources: string[] }>;
-  userStats?: Record<string, { name: string; email: string; files: number; sources?: Record<string, number> }>;
+  userStats?: Record<string, {
+    name: string; email: string; files: number;
+    sources?: Record<string, number>;
+    fileDetails?: Array<{ id: string; source: string; storage_path: string; lang: string; size_bytes: number | null; created_at: string; briefing_id: string | null }>;
+  }>;
 }
 
 interface BriefingRow {
@@ -222,6 +226,7 @@ export default function AICoachManager() {
 
   // Per-user expanded state
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [expandedFeatures, setExpandedFeatures] = useState<Record<string, boolean>>({});
 
   // Journey Config state
   const [journeyConfig, setJourneyConfig] = useState<JourneyConfig | null>(null);
@@ -375,6 +380,7 @@ export default function AICoachManager() {
     email: u.email,
     totalFiles: u.files,
     sources: u.sources ?? {},
+    fileDetails: u.fileDetails ?? [],
     briefings: briefings.filter(b => b.user_id === uid),
   }));
 
@@ -389,6 +395,7 @@ export default function AICoachManager() {
         email: b.user?.email ?? '',
         totalFiles: 0,
         sources: {},
+        fileDetails: [],
         briefings: briefings.filter(x => x.user_id === uid),
       });
     }
@@ -604,127 +611,170 @@ export default function AICoachManager() {
                       {/* Expanded user detail */}
                       {isExpanded && (
                         <div className="bg-[#fafaf8] border-t border-[#0e393d]/5 px-5 py-4 space-y-4">
-                          {/* Feature breakdown for this user */}
-                          <div>
-                            <div className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-2">
-                              Audio Cache by Feature
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                              {FEATURES.map(({ key, icon, source }) => {
-                                const count = user.sources[source] ?? 0;
-                                return (
-                                  <div
-                                    key={key}
-                                    className={`rounded-lg border px-3 py-2 ${
-                                      count > 0
-                                        ? 'border-[#0e393d]/10 bg-white'
-                                        : 'border-[#0e393d]/5 bg-white/50 opacity-40'
-                                    }`}
-                                  >
-                                    <div className="text-[11px] text-[#1c2a2b]/50">{icon} {key}</div>
-                                    <div className="text-lg font-semibold text-[#0e393d] mt-0.5">{count} <span className="text-[10px] font-normal text-[#1c2a2b]/30">files</span></div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
+                          {/* Feature sections – each feature with file count header + expandable file list */}
+                          {FEATURES.map(({ key, icon, source }) => {
+                            const count = user.sources[source] ?? 0;
+                            const featureFiles = user.fileDetails.filter(f => f.source === source);
+                            const featureBriefings = source === 'briefing' ? user.briefings : [];
+                            const hasContent = count > 0 || featureBriefings.length > 0;
+                            const featureExpandKey = `${user.userId}:${source}`;
+                            const isFeatureExpanded = expandedFeatures[featureExpandKey];
 
-                          {/* Briefings for this user */}
-                          {user.briefings.length > 0 && (
-                            <div>
-                              <div className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-2">
-                                Briefings ({user.briefings.length})
-                              </div>
-                              <div className="space-y-1">
-                                {user.briefings.map(b => {
-                                  const isBriefingExpanded = expandedId === b.id;
-                                  const steps = expandedSteps[b.id];
-                                  const isLoadingBriefingSteps = loadingSteps === b.id;
-                                  return (
-                                    <div key={b.id} className="rounded-lg border border-[#0e393d]/8 bg-white overflow-hidden">
-                                      <div className="flex items-center">
-                                        <button
-                                          onClick={() => toggleExpand(b.id)}
-                                          className="flex-1 flex items-center text-left px-3 py-2.5 gap-3 hover:bg-[#fafaf8] transition"
-                                        >
-                                          <span className="text-base shrink-0">{LANG_FLAGS[b.lang] ?? b.lang}</span>
-                                          <span className="font-mono text-[10px] bg-[#0e393d]/5 px-2 py-0.5 rounded shrink-0">
-                                            {b.model_used.replace('claude-', '').replace('-4-6', ' 4.6').replace('-4-5', ' 4.5')}
-                                          </span>
-                                          <span className="tabular-nums text-[11px] text-[#1c2a2b]/50 shrink-0">
-                                            {b.tokens_used?.toLocaleString() ?? '—'} tokens
-                                          </span>
-                                          <span className="tabular-nums text-[11px] text-[#1c2a2b]/50 shrink-0">
-                                            {fmtDuration(b.duration_ms)}
-                                          </span>
-                                          <span className="text-[11px] text-[#1c2a2b]/35 ml-auto shrink-0">{fmt(b.created_at)}</span>
-                                          <svg
-                                            width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                                            className={`text-[#1c2a2b]/25 transition-transform shrink-0 ${isBriefingExpanded ? 'rotate-180' : ''}`}
-                                          >
-                                            <polyline points="6 9 12 15 18 9" />
-                                          </svg>
-                                        </button>
-                                        <button
-                                          onClick={() => deleteBriefing(b.id)}
-                                          disabled={deleting === b.id}
-                                          className="p-2 text-red-300 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-30"
-                                        >
-                                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                                          </svg>
-                                        </button>
-                                      </div>
+                            return (
+                              <div key={key}>
+                                <button
+                                  onClick={() => {
+                                    if (!hasContent) return;
+                                    setExpandedFeatures(prev => ({ ...prev, [featureExpandKey]: !prev[featureExpandKey] }));
+                                  }}
+                                  className={`w-full flex items-center gap-2 rounded-lg border px-3 py-2.5 transition text-left ${
+                                    hasContent
+                                      ? 'border-[#0e393d]/10 bg-white hover:bg-[#0e393d]/[0.02] cursor-pointer'
+                                      : 'border-[#0e393d]/5 bg-white/50 opacity-40 cursor-default'
+                                  }`}
+                                >
+                                  <span className="text-base leading-none">{icon}</span>
+                                  <span className="text-[11px] font-semibold text-[#0e393d]">{key}</span>
+                                  <span className={`text-[11px] font-medium ml-1 ${count > 0 ? 'text-[#0e393d]' : 'text-[#1c2a2b]/25'}`}>
+                                    {count} file{count !== 1 ? 's' : ''}
+                                  </span>
+                                  {source === 'briefing' && featureBriefings.length > 0 && (
+                                    <span className="text-[10px] text-[#1c2a2b]/35">
+                                      · {featureBriefings.length} briefing{featureBriefings.length !== 1 ? 's' : ''}
+                                    </span>
+                                  )}
+                                  {featureFiles.length > 0 && (
+                                    <span className="text-[10px] text-[#1c2a2b]/25 ml-auto">
+                                      {fmtSize(featureFiles.reduce((s, f) => s + (f.size_bytes ?? 0), 0))}
+                                    </span>
+                                  )}
+                                  {hasContent && (
+                                    <svg
+                                      width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                      className={`text-[#1c2a2b]/25 transition-transform shrink-0 ${isFeatureExpanded ? 'rotate-180' : ''}`}
+                                    >
+                                      <polyline points="6 9 12 15 18 9" />
+                                    </svg>
+                                  )}
+                                </button>
 
-                                      {/* Expanded briefing steps */}
-                                      {isBriefingExpanded && (
-                                        <div className="bg-[#fafaf8] border-t border-[#0e393d]/5 px-3 py-3">
-                                          {isLoadingBriefingSteps ? (
-                                            <div className="text-xs text-[#1c2a2b]/30 text-center py-3">Loading steps…</div>
-                                          ) : steps && steps.length > 0 ? (
-                                            <div className="space-y-2">
-                                              {steps.map((step, i) => (
-                                                <div key={step.id || i} className="bg-white rounded-lg border border-[#0e393d]/6 p-3">
-                                                  <div className="flex items-center gap-2 mb-1">
-                                                    <span className="w-5 h-5 rounded-full bg-[#0e393d]/8 text-[9px] font-bold text-[#0e393d] flex items-center justify-center shrink-0">
-                                                      {i + 1}
-                                                    </span>
-                                                    <span className="text-[11px] font-semibold text-[#0e393d]">{step.title}</span>
-                                                    <span className="text-[8px] text-[#1c2a2b]/25 font-mono ml-auto">{step.highlight || '—'}</span>
-                                                    <StepPlayer narration={step.narration} lang={b.lang} />
-                                                  </div>
-                                                  <p className="text-[11px] text-[#1c2a2b]/50 leading-relaxed pl-7">
-                                                    {step.narration}
-                                                  </p>
-                                                  {step.audioCacheKey && (
-                                                    <div className="flex items-center gap-2 mt-1.5 pl-7">
-                                                      {step.audioCached ? (
-                                                        <span className="inline-flex items-center gap-1 text-[8px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
-                                                          <svg width="7" height="7" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
-                                                          cached
+                                {/* Expanded feature detail */}
+                                {isFeatureExpanded && hasContent && (
+                                  <div className="mt-1 space-y-1 pl-3">
+                                    {/* ── Briefing entries (only for Health Briefing) ── */}
+                                    {source === 'briefing' && featureBriefings.map(b => {
+                                      const isBriefingExpanded = expandedId === b.id;
+                                      const steps = expandedSteps[b.id];
+                                      const isLoadingBriefingSteps = loadingSteps === b.id;
+                                      return (
+                                        <div key={b.id} className="rounded-lg border border-[#0e393d]/8 bg-white overflow-hidden">
+                                          <div className="flex items-center">
+                                            <button
+                                              onClick={() => toggleExpand(b.id)}
+                                              className="flex-1 flex items-center text-left px-3 py-2.5 gap-3 hover:bg-[#fafaf8] transition"
+                                            >
+                                              <span className="text-base shrink-0">{LANG_FLAGS[b.lang] ?? b.lang}</span>
+                                              <span className="font-mono text-[10px] bg-[#0e393d]/5 px-2 py-0.5 rounded shrink-0">
+                                                {b.model_used.replace('claude-', '').replace('-4-6', ' 4.6').replace('-4-5', ' 4.5')}
+                                              </span>
+                                              <span className="tabular-nums text-[11px] text-[#1c2a2b]/50 shrink-0">
+                                                {b.tokens_used?.toLocaleString() ?? '—'} tokens
+                                              </span>
+                                              <span className="tabular-nums text-[11px] text-[#1c2a2b]/50 shrink-0">
+                                                {fmtDuration(b.duration_ms)}
+                                              </span>
+                                              <span className="text-[11px] text-[#1c2a2b]/35 ml-auto shrink-0">{fmt(b.created_at)}</span>
+                                              <svg
+                                                width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                                className={`text-[#1c2a2b]/25 transition-transform shrink-0 ${isBriefingExpanded ? 'rotate-180' : ''}`}
+                                              >
+                                                <polyline points="6 9 12 15 18 9" />
+                                              </svg>
+                                            </button>
+                                            <button
+                                              onClick={() => deleteBriefing(b.id)}
+                                              disabled={deleting === b.id}
+                                              className="p-2 text-red-300 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-30"
+                                            >
+                                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                                              </svg>
+                                            </button>
+                                          </div>
+
+                                          {/* Expanded briefing steps */}
+                                          {isBriefingExpanded && (
+                                            <div className="bg-[#fafaf8] border-t border-[#0e393d]/5 px-3 py-3">
+                                              {isLoadingBriefingSteps ? (
+                                                <div className="text-xs text-[#1c2a2b]/30 text-center py-3">Loading steps…</div>
+                                              ) : steps && steps.length > 0 ? (
+                                                <div className="space-y-2">
+                                                  {steps.map((step, i) => (
+                                                    <div key={step.id || i} className="bg-white rounded-lg border border-[#0e393d]/6 p-3">
+                                                      <div className="flex items-center gap-2 mb-1">
+                                                        <span className="w-5 h-5 rounded-full bg-[#0e393d]/8 text-[9px] font-bold text-[#0e393d] flex items-center justify-center shrink-0">
+                                                          {i + 1}
                                                         </span>
-                                                      ) : (
-                                                        <span className="text-[8px] text-[#1c2a2b]/20 bg-[#1c2a2b]/5 px-1.5 py-0.5 rounded-full">not cached</span>
+                                                        <span className="text-[11px] font-semibold text-[#0e393d]">{step.title}</span>
+                                                        <span className="text-[8px] text-[#1c2a2b]/25 font-mono ml-auto">{step.highlight || '—'}</span>
+                                                        <StepPlayer narration={step.narration} lang={b.lang} />
+                                                      </div>
+                                                      <p className="text-[11px] text-[#1c2a2b]/50 leading-relaxed pl-7">
+                                                        {step.narration}
+                                                      </p>
+                                                      {step.audioCacheKey && (
+                                                        <div className="flex items-center gap-2 mt-1.5 pl-7">
+                                                          {step.audioCached ? (
+                                                            <span className="inline-flex items-center gap-1 text-[8px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                                                              <svg width="7" height="7" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
+                                                              cached
+                                                            </span>
+                                                          ) : (
+                                                            <span className="text-[8px] text-[#1c2a2b]/20 bg-[#1c2a2b]/5 px-1.5 py-0.5 rounded-full">not cached</span>
+                                                          )}
+                                                          <span className="text-[8px] font-mono text-[#1c2a2b]/15 truncate" title={step.audioCacheKey}>
+                                                            {step.audioCacheKey}
+                                                          </span>
+                                                        </div>
                                                       )}
-                                                      <span className="text-[8px] font-mono text-[#1c2a2b]/15 truncate" title={step.audioCacheKey}>
-                                                        {step.audioCacheKey}
-                                                      </span>
                                                     </div>
-                                                  )}
+                                                  ))}
                                                 </div>
-                                              ))}
+                                              ) : (
+                                                <div className="text-xs text-[#1c2a2b]/25 text-center py-3">No steps data</div>
+                                              )}
                                             </div>
-                                          ) : (
-                                            <div className="text-xs text-[#1c2a2b]/25 text-center py-3">No steps data</div>
                                           )}
                                         </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
+                                      );
+                                    })}
+
+                                    {/* ── Audio file entries (for non-briefing features, or briefing files not linked to a briefing row) ── */}
+                                    {featureFiles
+                                      .filter(f => source !== 'briefing' || !f.briefing_id)
+                                      .map(f => (
+                                        <div key={f.id} className="rounded-lg border border-[#0e393d]/8 bg-white overflow-hidden">
+                                          <div className="flex items-center px-3 py-2.5 gap-3">
+                                            <span className="text-base shrink-0">{LANG_FLAGS[f.lang] ?? f.lang}</span>
+                                            <span className="inline-flex items-center gap-1 text-[8px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full shrink-0">
+                                              <svg width="7" height="7" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
+                                              cached
+                                            </span>
+                                            <span className="text-[10px] text-[#1c2a2b]/30 tabular-nums shrink-0">
+                                              {fmtSize(f.size_bytes ?? 0)}
+                                            </span>
+                                            <span className="text-[8px] font-mono text-[#1c2a2b]/15 truncate flex-1 min-w-0" title={f.storage_path}>
+                                              {f.storage_path}
+                                            </span>
+                                            <span className="text-[11px] text-[#1c2a2b]/35 shrink-0">{fmt(f.created_at)}</span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                          )}
+                            );
+                          })}
                         </div>
                       )}
                     </div>

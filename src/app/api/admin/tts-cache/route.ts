@@ -43,13 +43,18 @@ export async function GET() {
   let orphanedFiles = 0;
   let briefingCount = 0;
   const bySource: Record<string, number> = {};
-  const userStats: Record<string, { name: string; email: string; files: number; sources: Record<string, number> }> = {};
+  const userStats: Record<string, {
+    name: string; email: string; files: number;
+    sources: Record<string, number>;
+    fileDetails: Array<{ id: string; source: string; storage_path: string; lang: string; size_bytes: number | null; created_at: string; briefing_id: string | null }>;
+  }> = {};
 
   try {
-    // Get all tracked files
+    // Get all tracked files (include created_at for detail view)
     const { data: tracked } = await admin
       .from('tts_cache_files')
-      .select('id, user_id, briefing_id, storage_path, lang, source, size_bytes');
+      .select('id, user_id, briefing_id, storage_path, lang, source, size_bytes, created_at')
+      .order('created_at', { ascending: false });
 
     trackedFiles = tracked?.length ?? 0;
 
@@ -61,10 +66,19 @@ export async function GET() {
 
       // Per-user accumulation
       if (!userStats[row.user_id]) {
-        userStats[row.user_id] = { name: '', email: '', files: 0, sources: {} };
+        userStats[row.user_id] = { name: '', email: '', files: 0, sources: {}, fileDetails: [] };
       }
       userStats[row.user_id].files++;
       userStats[row.user_id].sources[row.source] = (userStats[row.user_id].sources[row.source] || 0) + 1;
+      userStats[row.user_id].fileDetails.push({
+        id: row.id,
+        source: row.source,
+        storage_path: row.storage_path,
+        lang: row.lang,
+        size_bytes: row.size_bytes,
+        created_at: row.created_at,
+        briefing_id: row.briefing_id,
+      });
     }
 
     // Orphaned = in storage but not in tracking table
