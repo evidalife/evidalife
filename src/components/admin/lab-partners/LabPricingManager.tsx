@@ -2,13 +2,31 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import {
+  inputCls,
+  selectCls,
+  AdminTable,
+  AdminTableHead,
+  AdminTh,
+  AdminEmptyRow,
+  AdminPanel,
+  AdminPanelFooter,
+  AdminSectionBlock,
+  AdminField,
+  AdminBadge,
+  AdminSearchField,
+  AdminTableFooter,
+} from '@/components/admin/shared/AdminUI';
 import type { LabPartner } from './LabPartnersManager';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Product = {
   id: string;
   slug: string;
   name: Record<string, string> | string;
   price_chf: number | null;
+  price_eur: number | null;
   product_type: string;
 };
 
@@ -21,15 +39,30 @@ type PricingRow = {
   effective_from: string;
   effective_to: string | null;
   notes: string | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
-const inputCls =
-  'w-full rounded-lg border border-[#0e393d]/15 bg-white px-3 py-2 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:border-[#0e393d]/40 focus:outline-none focus:ring-2 focus:ring-[#0e393d]/10 transition';
+type Currency = 'CHF' | 'EUR';
+const CURRENCIES: Currency[] = ['CHF', 'EUR'];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function productLabel(p: Product): string {
   if (typeof p.name === 'string') return p.name;
   return p.name?.de || p.name?.en || p.slug;
 }
+
+function fmtDate(iso: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function fmtCurrency(amount: number, currency: string): string {
+  return `${amount.toFixed(2)} ${currency}`;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function LabPricingManager({
   labPartners,
@@ -41,16 +74,37 @@ export default function LabPricingManager({
   const supabase = createClient();
   const [pricing, setPricing] = useState<PricingRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null);
-  const [editCell, setEditCell] = useState<{ labId: string; productId: string } | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [showAddRow, setShowAddRow] = useState(false);
-  const [newLabId, setNewLabId] = useState('');
-  const [newProductId, setNewProductId] = useState('');
-  const [newCost, setNewCost] = useState('');
+  const [search, setSearch] = useState('');
+  const [filterCurrency, setFilterCurrency] = useState<Currency | 'all'>('all');
+
+  // Slide-over edit panel state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editLabId, setEditLabId] = useState<string | null>(null);
+  const [editProductId, setEditProductId] = useState<string | null>(null);
+  const [editRow, setEditRow] = useState<PricingRow | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Edit form state
+  const [formCost, setFormCost] = useState('');
+  const [formCurrency, setFormCurrency] = useState<Currency>('CHF');
+  const [formEffectiveFrom, setFormEffectiveFrom] = useState('');
+  const [formEffectiveTo, setFormEffectiveTo] = useState('');
+  const [formNotes, setFormNotes] = useState('');
+
+  // Section toggles for panel
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    pricing: true,
+    validity: true,
+    notes: false,
+  });
+  const toggleSection = (key: string) =>
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
 
   // Only show parent labs and standalone labs (not daughter locations) for pricing
-  const billingLabs = labPartners.filter(l => !l.parent_lab_id && l.is_active);
+  const billingLabs = labPartners.filter(l => !l.parent_lab_id);
+
+  // ─── Data Loading ─────────────────────────────────────────────────────────
 
   const loadPricing = useCallback(async () => {
     setLoading(true);
@@ -65,252 +119,424 @@ export default function LabPricingManager({
 
   useEffect(() => { loadPricing(); }, [loadPricing]);
 
-  const getPrice = (labId: string, productId: string): PricingRow | undefined => {
+  // ─── Pricing Helpers ──────────────────────────────────────────────────────
+
+  const getPrice = (labId: string, productId: string, currency: string = 'CHF'): PricingRow | undefined => {
     const today = new Date().toISOString().slice(0, 10);
     return pricing.find(
       p => p.lab_partner_id === labId && p.product_id === productId &&
+        p.currency === currency &&
         p.effective_from <= today && (!p.effective_to || p.effective_to >= today)
     );
   };
 
-  const handleCellClick = (labId: string, productId: string) => {
-    const existing = getPrice(labId, productId);
-    setEditCell({ labId, productId });
-    setEditValue(existing ? String(existing.lab_cost) : '');
+  const getAllPricesForLab = (labId: string): PricingRow[] => {
+    const today = new Date().toISOString().slice(0, 10);
+    return pricing.filter(
+      p => p.lab_partner_id === labId &&
+        p.effective_from <= today && (!p.effective_to || p.effective_to >= today)
+    );
   };
 
-  const handleCellSave = async () => {
-    if (!editCell) return;
-    const { labId, productId } = editCell;
-    const cost = parseFloat(editValue);
-    if (isNaN(cost) || cost < 0) { setEditCell(null); return; }
+  // ─── Edit Panel Logic ─────────────────────────────────────────────────────
 
-    setSaving(`${labId}-${productId}`);
-    const existing = getPrice(labId, productId);
+  const openEditPanel = (labId: string, productId: string, currency: Currency = 'CHF') => {
+    const existing = getPrice(labId, productId, currency);
+    setEditLabId(labId);
+    setEditProductId(productId);
+    setEditRow(existing ?? null);
+    setFormCost(existing ? String(existing.lab_cost) : '');
+    setFormCurrency(existing?.currency as Currency ?? currency);
+    setFormEffectiveFrom(existing?.effective_from ?? new Date().toISOString().slice(0, 10));
+    setFormEffectiveTo(existing?.effective_to ?? '');
+    setFormNotes(existing?.notes ?? '');
+    setError(null);
+    setEditOpen(true);
+  };
 
-    if (existing) {
-      await supabase
-        .from('lab_product_pricing')
-        .update({ lab_cost: cost, updated_at: new Date().toISOString() })
-        .eq('id', existing.id);
-    } else {
-      await supabase
-        .from('lab_product_pricing')
-        .insert({
-          lab_partner_id: labId,
-          product_id: productId,
-          lab_cost: cost,
-          effective_from: new Date().toISOString().slice(0, 10),
-        });
+  const handleSave = async () => {
+    if (!editLabId || !editProductId) return;
+    const cost = parseFloat(formCost);
+    if (isNaN(cost) || cost < 0) {
+      setError('Please enter a valid cost (≥ 0).');
+      return;
+    }
+    if (!formEffectiveFrom) {
+      setError('Effective from date is required.');
+      return;
     }
 
-    await loadPricing();
-    setEditCell(null);
-    setSaving(null);
+    setSaving(true);
+    setError(null);
+
+    try {
+      if (editRow) {
+        // Update existing pricing row
+        const { error: updateErr } = await supabase
+          .from('lab_product_pricing')
+          .update({
+            lab_cost: cost,
+            currency: formCurrency,
+            effective_from: formEffectiveFrom,
+            effective_to: formEffectiveTo || null,
+            notes: formNotes.trim() || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', editRow.id);
+        if (updateErr) throw updateErr;
+      } else {
+        // Insert new pricing row
+        const { error: insertErr } = await supabase
+          .from('lab_product_pricing')
+          .insert({
+            lab_partner_id: editLabId,
+            product_id: editProductId,
+            lab_cost: cost,
+            currency: formCurrency,
+            effective_from: formEffectiveFrom,
+            effective_to: formEffectiveTo || null,
+            notes: formNotes.trim() || null,
+          });
+        if (insertErr) throw insertErr;
+      }
+
+      await loadPricing();
+      setEditOpen(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save pricing.');
+    }
+    setSaving(false);
   };
 
-  const handleAddRow = async () => {
-    if (!newLabId || !newProductId || !newCost) return;
-    const cost = parseFloat(newCost);
-    if (isNaN(cost) || cost < 0) return;
+  const handleDelete = async () => {
+    if (!editRow) return;
+    if (!confirm('Remove this pricing entry? The lab will have no negotiated cost for this product.')) return;
 
-    setSaving('new');
-    await supabase
-      .from('lab_product_pricing')
-      .insert({
-        lab_partner_id: newLabId,
-        product_id: newProductId,
-        lab_cost: cost,
-        effective_from: new Date().toISOString().slice(0, 10),
-      });
-    await loadPricing();
-    setShowAddRow(false);
-    setNewLabId('');
-    setNewProductId('');
-    setNewCost('');
-    setSaving(null);
+    setSaving(true);
+    try {
+      await supabase.from('lab_product_pricing').delete().eq('id', editRow.id);
+      await loadPricing();
+      setEditOpen(false);
+    } catch { /* ignore */ }
+    setSaving(false);
   };
 
-  const labName = (id: string) => labPartners.find(l => l.id === id)?.name ?? id;
+  // ─── Filtering ────────────────────────────────────────────────────────────
 
-  // Find labs that have at least one pricing entry
   const labsWithPricing = [...new Set(pricing.map(p => p.lab_partner_id))];
-  // Add billing labs that don't have pricing yet
   const allDisplayLabs = [...new Set([...labsWithPricing, ...billingLabs.map(l => l.id)])];
+
+  const filteredLabs = allDisplayLabs.filter(labId => {
+    const lab = labPartners.find(l => l.id === labId);
+    if (!lab) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (!lab.name.toLowerCase().includes(q) && !(lab.lab_code ?? '').toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
+  const currentLabName = editLabId ? (labPartners.find(l => l.id === editLabId)?.name ?? '—') : '—';
+  const currentProductName = editProductId ? productLabel(products.find(p => p.id === editProductId)!) : '—';
 
   return (
     <div className="space-y-4">
+      {/* Header row with search and filter */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-serif text-[#0e393d]">Lab Pricing</h2>
-          <p className="text-xs text-[#1c2a2b]/50 mt-0.5">
-            Fixed cost per test that Evida pays each lab. Set at the organization level (parent labs).
-          </p>
+        <AdminSearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Search labs…"
+          className="w-64"
+        />
+        <div className="flex items-center gap-3">
+          {/* Currency filter */}
+          <div className="flex rounded-lg border border-[#0e393d]/10 overflow-hidden bg-white">
+            <button
+              onClick={() => setFilterCurrency('all')}
+              className={`px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                filterCurrency === 'all'
+                  ? 'bg-[#0e393d] text-white'
+                  : 'text-[#1c2a2b]/50 hover:text-[#0e393d] hover:bg-[#0e393d]/5'
+              }`}
+            >
+              All
+            </button>
+            {CURRENCIES.map(c => (
+              <button
+                key={c}
+                onClick={() => setFilterCurrency(c)}
+                className={`px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                  filterCurrency === c
+                    ? 'bg-[#0e393d] text-white'
+                    : 'text-[#1c2a2b]/50 hover:text-[#0e393d] hover:bg-[#0e393d]/5'
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
         </div>
-        <button
-          onClick={() => setShowAddRow(!showAddRow)}
-          className="px-4 py-2 rounded-lg bg-[#0e393d] text-white text-sm font-medium hover:bg-[#0e393d]/90 transition"
-        >
-          + Add Price
-        </button>
       </div>
 
-      {/* Add new pricing row */}
-      {showAddRow && (
-        <div className="bg-white rounded-xl border border-[#ceab84]/30 p-4 space-y-3">
-          <div className="grid grid-cols-4 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-[#0e393d]/70 mb-1">Lab Organization</label>
-              <select className={inputCls} value={newLabId} onChange={e => setNewLabId(e.target.value)}>
-                <option value="">Select lab…</option>
-                {billingLabs.map(l => (
-                  <option key={l.id} value={l.id}>{l.name} ({l.lab_code})</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#0e393d]/70 mb-1">Product</label>
-              <select className={inputCls} value={newProductId} onChange={e => setNewProductId(e.target.value)}>
-                <option value="">Select product…</option>
-                {products.map(p => (
-                  <option key={p.id} value={p.id}>{productLabel(p)} ({p.price_chf} CHF)</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#0e393d]/70 mb-1">Lab Cost (CHF)</label>
+      {/* Pricing matrix */}
+      {loading ? (
+        <div className="rounded-xl border border-[#0e393d]/10 bg-white p-12 text-center text-sm text-[#1c2a2b]/40">
+          Loading pricing data…
+        </div>
+      ) : (
+        <AdminTable>
+          <AdminTableHead>
+            <AdminTh label="Lab Organization" />
+            {products.map(p => (
+              <th key={p.id} className="px-3 py-3 text-center">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/50">
+                  {productLabel(p)}
+                </span>
+                <div className="font-normal text-[10px] text-[#0e393d]/30 mt-0.5">
+                  {p.price_chf != null && `CHF ${p.price_chf}`}
+                  {p.price_chf != null && p.price_eur != null && ' / '}
+                  {p.price_eur != null && `EUR ${p.price_eur}`}
+                </div>
+              </th>
+            ))}
+          </AdminTableHead>
+          <tbody className="divide-y divide-[#0e393d]/5">
+            {filteredLabs.map(labId => {
+              const lab = labPartners.find(l => l.id === labId);
+              if (!lab) return null;
+              const daughters = labPartners.filter(l => l.parent_lab_id === labId);
+
+              return (
+                <tr key={labId} className="hover:bg-[#fafaf8] transition-colors">
+                  <td className="px-3 py-3">
+                    <div className="font-medium text-[#0e393d]">{lab.name}</div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {lab.lab_code && (
+                        <span className="text-[10px] text-[#0e393d]/30 font-mono">{lab.lab_code}</span>
+                      )}
+                      {daughters.length > 0 && (
+                        <span className="text-[10px] text-[#0e393d]/40">
+                          {daughters.length} location{daughters.length > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  {products.map(prod => {
+                    const chfPrice = getPrice(labId, prod.id, 'CHF');
+                    const eurPrice = getPrice(labId, prod.id, 'EUR');
+                    const showChf = filterCurrency === 'all' || filterCurrency === 'CHF';
+                    const showEur = filterCurrency === 'all' || filterCurrency === 'EUR';
+                    const hasAny = chfPrice || eurPrice;
+
+                    const chfMargin = chfPrice && prod.price_chf
+                      ? (Number(prod.price_chf) - Number(chfPrice.lab_cost))
+                      : null;
+                    const eurMargin = eurPrice && prod.price_eur
+                      ? (Number(prod.price_eur) - Number(eurPrice.lab_cost))
+                      : null;
+
+                    return (
+                      <td
+                        key={prod.id}
+                        className="px-3 py-3 text-center cursor-pointer group"
+                        onClick={() => openEditPanel(labId, prod.id, filterCurrency !== 'all' ? filterCurrency : 'CHF')}
+                      >
+                        {hasAny ? (
+                          <div className="space-y-1">
+                            {showChf && chfPrice && (
+                              <div>
+                                <span className="font-semibold text-[#0e393d]">
+                                  {Number(chfPrice.lab_cost).toFixed(2)}
+                                </span>
+                                <span className="text-[10px] text-[#0e393d]/30 ml-1">CHF</span>
+                                {chfMargin !== null && (
+                                  <div className="text-[10px] text-emerald-600/70">
+                                    +{chfMargin.toFixed(2)}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {showEur && eurPrice && (
+                              <div>
+                                <span className="font-semibold text-[#0e393d]">
+                                  {Number(eurPrice.lab_cost).toFixed(2)}
+                                </span>
+                                <span className="text-[10px] text-[#0e393d]/30 ml-1">EUR</span>
+                                {eurMargin !== null && (
+                                  <div className="text-[10px] text-emerald-600/70">
+                                    +{eurMargin.toFixed(2)}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {showChf && !chfPrice && showEur && !eurPrice && (
+                              <span className="text-[#0e393d]/15 group-hover:text-[#ceab84] transition text-xs">
+                                — set —
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[#0e393d]/15 group-hover:text-[#ceab84] transition text-xs">
+                            — set —
+                          </span>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+            {filteredLabs.length === 0 && (
+              <AdminEmptyRow
+                colSpan={products.length + 1}
+                message="No lab organizations found"
+                hint="Add lab partners first, or adjust your search"
+              />
+            )}
+          </tbody>
+        </AdminTable>
+      )}
+
+      <AdminTableFooter
+        showing={filteredLabs.length}
+        total={allDisplayLabs.length}
+        hasFilters={!!search || filterCurrency !== 'all'}
+        onClearFilters={() => { setSearch(''); setFilterCurrency('all'); }}
+      />
+
+      {/* ─── Slide-over Edit Panel ──────────────────────────────────────────── */}
+      <AdminPanel
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        title={editRow ? 'Edit Pricing' : 'Set Pricing'}
+        subtitle={`${currentLabName} × ${currentProductName}`}
+        width="max-w-md"
+        headerRight={
+          editRow ? (
+            <button
+              onClick={handleDelete}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition"
+            >
+              Remove
+            </button>
+          ) : undefined
+        }
+        footer={
+          <AdminPanelFooter
+            error={error}
+            saving={saving}
+            onCancel={() => setEditOpen(false)}
+            onSave={handleSave}
+            saveLabel={editRow ? 'Update Pricing' : 'Set Pricing'}
+          />
+        }
+      >
+        {/* Pricing Section */}
+        <AdminSectionBlock
+          title="Pricing"
+          open={openSections.pricing ?? true}
+          onToggle={() => toggleSection('pricing')}
+        >
+          <div className="grid grid-cols-2 gap-4">
+            <AdminField label="Lab Cost">
               <input
                 type="number"
                 step="0.01"
                 min="0"
                 className={inputCls}
-                value={newCost}
-                onChange={e => setNewCost(e.target.value)}
+                value={formCost}
+                onChange={e => setFormCost(e.target.value)}
                 placeholder="e.g. 85.00"
               />
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={handleAddRow}
-                disabled={saving === 'new'}
-                className="w-full py-2 rounded-lg bg-[#ceab84] text-white text-sm font-medium hover:bg-[#b8956e] disabled:opacity-50 transition"
+            </AdminField>
+            <AdminField label="Currency">
+              <select
+                className={selectCls}
+                value={formCurrency}
+                onChange={e => setFormCurrency(e.target.value as Currency)}
               >
-                {saving === 'new' ? 'Saving…' : 'Save'}
-              </button>
+                {CURRENCIES.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </AdminField>
+          </div>
+
+          {/* Margin preview */}
+          {formCost && editProductId && (() => {
+            const prod = products.find(p => p.id === editProductId);
+            const cost = parseFloat(formCost);
+            const sellPrice = formCurrency === 'EUR' ? prod?.price_eur : prod?.price_chf;
+            if (!prod || isNaN(cost) || sellPrice == null) return null;
+            const margin = sellPrice - cost;
+            const marginPct = ((margin / sellPrice) * 100).toFixed(1);
+            return (
+              <div className="rounded-lg bg-emerald-50/50 border border-emerald-200/40 px-4 py-3 mt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-emerald-700/70">Evida Margin</span>
+                  <span className="text-sm font-semibold text-emerald-700">
+                    {margin.toFixed(2)} {formCurrency} ({marginPct}%)
+                  </span>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-[10px] text-emerald-600/50">Sell price: {sellPrice} {formCurrency}</span>
+                  <span className="text-[10px] text-emerald-600/50">Lab cost: {cost.toFixed(2)} {formCurrency}</span>
+                </div>
+              </div>
+            );
+          })()}
+        </AdminSectionBlock>
+
+        {/* Validity Section */}
+        <AdminSectionBlock
+          title="Validity Period"
+          open={openSections.validity ?? true}
+          onToggle={() => toggleSection('validity')}
+        >
+          <div className="grid grid-cols-2 gap-4">
+            <AdminField label="Effective From" hint="When this price takes effect">
+              <input
+                type="date"
+                className={inputCls}
+                value={formEffectiveFrom}
+                onChange={e => setFormEffectiveFrom(e.target.value)}
+              />
+            </AdminField>
+            <AdminField label="Effective To" hint="Leave blank for no end date">
+              <input
+                type="date"
+                className={inputCls}
+                value={formEffectiveTo}
+                onChange={e => setFormEffectiveTo(e.target.value)}
+              />
+            </AdminField>
+          </div>
+          {editRow && (
+            <div className="text-[10px] text-[#1c2a2b]/30 mt-1">
+              Created: {fmtDate(editRow.created_at ?? null)} · Last updated: {fmtDate(editRow.updated_at ?? null)}
             </div>
-          </div>
-        </div>
-      )}
+          )}
+        </AdminSectionBlock>
 
-      {/* Pricing matrix */}
-      {loading ? (
-        <div className="bg-white rounded-xl border border-[#0e393d]/10 p-8 text-center text-sm text-[#0e393d]/40">
-          Loading pricing data…
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-[#0e393d]/10 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-[#fafaf8] text-xs uppercase tracking-wide text-[#0e393d]/50">
-                  <th className="text-left px-5 py-3 font-medium">Lab Organization</th>
-                  {products.map(p => (
-                    <th key={p.id} className="text-center px-4 py-3 font-medium">
-                      <div>{productLabel(p)}</div>
-                      <div className="font-normal text-[10px] text-[#0e393d]/30 mt-0.5">
-                        Sells for {p.price_chf} CHF
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {allDisplayLabs.map(labId => {
-                  const lab = labPartners.find(l => l.id === labId);
-                  if (!lab) return null;
-                  // Count daughter locations
-                  const daughters = labPartners.filter(l => l.parent_lab_id === labId);
-
-                  return (
-                    <tr key={labId} className="border-t border-[#0e393d]/5 hover:bg-[#fafaf8]/50">
-                      <td className="px-5 py-3">
-                        <div className="font-medium text-[#0e393d]">{lab.name}</div>
-                        {daughters.length > 0 && (
-                          <div className="text-[10px] text-[#0e393d]/40 mt-0.5">
-                            {daughters.length} location{daughters.length > 1 ? 's' : ''}: {daughters.map(d => d.name.replace(/^Run-in Labor /, '')).join(', ')}
-                          </div>
-                        )}
-                      </td>
-                      {products.map(prod => {
-                        const price = getPrice(labId, prod.id);
-                        const isEditing = editCell?.labId === labId && editCell?.productId === prod.id;
-                        const margin = price && prod.price_chf
-                          ? (Number(prod.price_chf) - Number(price.lab_cost))
-                          : null;
-
-                        return (
-                          <td
-                            key={prod.id}
-                            className="px-4 py-3 text-center cursor-pointer group"
-                            onClick={() => !isEditing && handleCellClick(labId, prod.id)}
-                          >
-                            {isEditing ? (
-                              <div className="flex items-center gap-1 justify-center">
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  className="w-20 rounded border border-[#ceab84] px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#ceab84]/40"
-                                  value={editValue}
-                                  onChange={e => setEditValue(e.target.value)}
-                                  onKeyDown={e => {
-                                    if (e.key === 'Enter') handleCellSave();
-                                    if (e.key === 'Escape') setEditCell(null);
-                                  }}
-                                  autoFocus
-                                />
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleCellSave(); }}
-                                  className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-                                >
-                                  OK
-                                </button>
-                              </div>
-                            ) : price ? (
-                              <div>
-                                <span className="font-semibold text-[#0e393d]">
-                                  {Number(price.lab_cost).toFixed(2)}
-                                </span>
-                                <span className="text-[10px] text-[#0e393d]/30 ml-1">CHF</span>
-                                {margin !== null && (
-                                  <div className="text-[10px] text-emerald-600/70 mt-0.5">
-                                    Margin: {margin.toFixed(2)}
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-[#0e393d]/15 group-hover:text-[#ceab84] transition text-xs">
-                                — click to set —
-                              </span>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-                {allDisplayLabs.length === 0 && (
-                  <tr>
-                    <td colSpan={products.length + 1} className="px-5 py-8 text-center text-sm text-[#0e393d]/40">
-                      No lab organizations found. Add lab partners first.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+        {/* Notes Section */}
+        <AdminSectionBlock
+          title="Notes"
+          open={openSections.notes ?? false}
+          onToggle={() => toggleSection('notes')}
+        >
+          <AdminField label="Internal Notes" hint="Not visible to lab partners">
+            <textarea
+              className={inputCls + ' min-h-[80px] resize-y'}
+              value={formNotes}
+              onChange={e => setFormNotes(e.target.value)}
+              placeholder="E.g. negotiated during Q1 2026 partnership renewal…"
+            />
+          </AdminField>
+        </AdminSectionBlock>
+      </AdminPanel>
     </div>
   );
 }

@@ -8,7 +8,7 @@ export default async function LabPartnersPage() {
 
   const [{ data: labPartners }, { data: products }] = await Promise.all([
     supabase.from('lab_partners').select('*').order('name', { ascending: true }),
-    admin.from('products').select('id, slug, name, price_chf, product_type').eq('is_active', true).is('deleted_at', null).order('sort_order'),
+    admin.from('products').select('id, slug, name, price_chf, price_eur, product_type').eq('is_active', true).is('deleted_at', null).order('sort_order'),
   ]);
 
   return (

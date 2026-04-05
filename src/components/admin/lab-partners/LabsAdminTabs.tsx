@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { StatCard, StatCardRow } from '@/components/admin/shared/AdminUI';
 import LabPartnersManager, { type LabPartner } from './LabPartnersManager';
 import LabPricingManager from './LabPricingManager';
 import LabSettlementsManager from './LabSettlementsManager';
@@ -10,6 +11,7 @@ type Product = {
   slug: string;
   name: Record<string, string> | string;
   price_chf: number | null;
+  price_eur: number | null;
   product_type: string;
 };
 
@@ -30,9 +32,33 @@ export default function LabsAdminTabs({
 }) {
   const [activeTab, setActiveTab] = useState<TabKey>('partners');
 
+  // ─── Overview Stats ──────────────────────────────────────────────────────
+  const totalLabs = initialLabPartners.length;
+  const activeLabs = initialLabPartners.filter(l => l.is_active).length;
+  const parentOrgs = initialLabPartners.filter(l => !l.parent_lab_id).length;
+  const daughterLocs = initialLabPartners.filter(l => l.parent_lab_id).length;
+
   return (
-    <div>
-      {/* Tab bar */}
+    <div className="p-8">
+      {/* Page Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="font-serif text-2xl text-[#0e393d]">Lab Partners</h1>
+          <p className="text-sm text-[#1c2a2b]/40 mt-1">
+            Manage lab partnerships, pricing agreements, and settlement payouts
+          </p>
+        </div>
+      </div>
+
+      {/* Overview KPI cards */}
+      <StatCardRow>
+        <StatCard value={totalLabs} label="Total Labs" detail={`${activeLabs} active`} />
+        <StatCard value={parentOrgs} label="Organizations" variant="default" detail="Billing entities" />
+        <StatCard value={daughterLocs} label="Locations" variant="purple" detail="Daughter labs" />
+        <StatCard value={activeLabs} label="Active" variant="emerald" detail={`${totalLabs - activeLabs} inactive`} />
+      </StatCardRow>
+
+      {/* Tab bar — pill style matching existing labs design */}
       <div className="flex gap-1 mb-6 bg-[#0e393d]/5 p-1 rounded-lg w-fit">
         {TABS.map(tab => (
           <button
