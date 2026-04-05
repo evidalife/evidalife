@@ -991,20 +991,15 @@ function NfSyncTab() {
   return (
     <div className="p-8 space-y-6 max-w-2xl">
       {/* Stats cards */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-5 gap-3">
         <StatCard label="Total Content" value={stats?.totalNfContent ?? 0} />
-        <StatCard
-          label="Videos"
-          value={stats?.typeCounts?.find(t => t.content_type === 'video')?.count ?? 0}
-        />
-        <StatCard
-          label="Blog Posts"
-          value={stats?.typeCounts?.find(t => t.content_type === 'blog')?.count ?? 0}
-        />
+        <StatCard label="Videos" value={stats?.typeCounts?.find(t => t.content_type === 'video')?.count ?? 0} />
+        <StatCard label="Blog Posts" value={stats?.typeCounts?.find(t => t.content_type === 'blog')?.count ?? 0} />
+        <StatCard label="Questions" value={stats?.typeCounts?.find(t => t.content_type === 'question')?.count ?? 0} />
         <StatCard
           label="With Embeddings"
           value={stats?.withEmbeddings ?? 0}
-          sub={stats ? `${Math.round((stats.withEmbeddings / Math.max(stats.totalNfContent, 1)) * 100)}% coverage` : ''}
+          sub={stats ? `${Math.round((stats.withEmbeddings / Math.max(stats.totalNfContent, 1)) * 100)}%` : ''}
         />
       </div>
 
@@ -1044,9 +1039,28 @@ function NfSyncTab() {
           </div>
         )}
 
-        <p className="text-[10px] text-[#1c2a2b]/30 mt-3">
-          Also runs automatically every Monday at 6am via scheduled task.
-        </p>
+        {/* Cron status */}
+        {stats?.recentJobs && stats.recentJobs.length > 0 && (() => {
+          const lastJob = stats.recentJobs[0];
+          const lastDate = lastJob.completed_at ? new Date(lastJob.completed_at) : null;
+          const nextSunday = new Date();
+          nextSunday.setDate(nextSunday.getDate() + (7 - nextSunday.getDay()) % 7);
+          nextSunday.setHours(4, 0, 0, 0);
+          if (nextSunday <= new Date()) nextSunday.setDate(nextSunday.getDate() + 7);
+          return (
+            <div className="mt-3 rounded-lg bg-[#0e393d]/[.02] px-3 py-2 flex items-center justify-between">
+              <div className="text-[10px] text-[#1c2a2b]/40">
+                <span className="font-medium">Weekly cron</span> — Sundays 04:00 UTC
+                {lastDate && <> · Last run: <span className="text-[#1c2a2b]/60">{fmt(lastJob.completed_at!)}</span></>}
+                {lastJob.status === 'completed' && (lastJob.new_videos + lastJob.new_blogs + lastJob.new_questions) > 0 && (
+                  <> · Found {lastJob.new_videos + lastJob.new_blogs + lastJob.new_questions} new items</>
+                )}
+                {lastJob.new_pmids_ingested > 0 && <> · {lastJob.new_pmids_ingested} PMIDs ingested</>}
+              </div>
+              <span className={`w-1.5 h-1.5 rounded-full ${lastJob.status === 'completed' ? 'bg-emerald-400' : lastJob.status === 'failed' ? 'bg-red-400' : 'bg-amber-400'}`} />
+            </div>
+          );
+        })()}
       </div>
 
       {/* Recent content */}
@@ -1092,6 +1106,7 @@ function NfSyncTab() {
                       {job.new_questions > 0 ? `${(job.new_videos + job.new_blogs) > 0 ? ', ' : ''}${job.new_questions} Q&As` : ''}
                       {(job.new_videos + job.new_blogs + job.new_questions) === 0 ? 'No new content' : ''}
                       {job.new_pmids_found > 0 ? ` · ${job.new_pmids_found} new PMIDs` : ''}
+                      {job.new_pmids_ingested > 0 ? ` (${job.new_pmids_ingested} ingested)` : ''}
                     </p>
                   </div>
                   <span className="text-xs text-[#1c2a2b]/30 shrink-0">{fmt(job.created_at)}</span>
