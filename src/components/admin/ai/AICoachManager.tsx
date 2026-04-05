@@ -88,6 +88,22 @@ interface UserProgressRow {
   } | null;
 }
 
+interface SystemVoiceBriefing {
+  id: string;
+  slug: string;
+  title: string;
+  page: string;
+  voice_id: string;
+  status: string;
+  is_active: boolean;
+  audio_url_en: string | null;
+  audio_url_de: string | null;
+  audio_url_fr: string | null;
+  audio_url_es: string | null;
+  audio_url_it: string | null;
+  created_at: string;
+}
+
 const TABS = [
   { id: 'briefings', label: 'AI Generation', icon: '🎙️' },
   { id: 'journey', label: 'Journey Config', icon: '🗺️' },
@@ -228,6 +244,9 @@ export default function AICoachManager() {
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [expandedFeatures, setExpandedFeatures] = useState<Record<string, boolean>>({});
 
+  // System Voice Briefings state
+  const [systemBriefings, setSystemBriefings] = useState<SystemVoiceBriefing[]>([]);
+
   // Journey Config state
   const [journeyConfig, setJourneyConfig] = useState<JourneyConfig | null>(null);
   const [journeyLoading, setJourneyLoading] = useState(false);
@@ -250,6 +269,16 @@ export default function AICoachManager() {
     setCacheLoading(false);
   }, []);
 
+  const loadSystemBriefings = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/voice-briefings');
+      if (res.ok) {
+        const data = await res.json();
+        setSystemBriefings(data.briefings ?? []);
+      }
+    } catch { /* silent */ }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch('/api/admin/ai-briefings?limit=100');
@@ -268,7 +297,23 @@ export default function AICoachManager() {
       const res = await fetch('/api/admin/ai-settings');
       if (res.ok) {
         const data = await res.json();
-        setJourneyConfig(data.journey_config || null);
+        // Settings come as array of {key, value} — find journey_config
+        const settings: Array<{ key: string; value: unknown }> = data.settings ?? [];
+        const raw = settings.find(s => s.key === 'journey_config')?.value as Record<string, unknown> | undefined;
+        if (raw) {
+          // DB stores nested format {phases: {tweaks: {unlock_streak: 7}, ...}} — flatten to component format
+          const phases = raw.phases as Record<string, Record<string, unknown>> | undefined;
+          setJourneyConfig({
+            tweaks_unlock_streak: (phases?.tweaks?.unlock_streak as number) ?? 7,
+            anti_aging_unlock_streak: (phases?.anti_aging?.unlock_streak as number) ?? 14,
+            requires_biomarkers_for_anti_aging: (phases?.anti_aging?.requires_biomarkers as boolean) ?? true,
+            daily_lesson_limit: (raw.daily_lesson_limit as number) ?? 1,
+            morning_checkin_enabled: (raw.morning_checkin_enabled as boolean) ?? true,
+            auto_unlock_enabled: (raw.auto_unlock_enabled as boolean) ?? true,
+          });
+        } else {
+          setJourneyConfig(null);
+        }
       } else {
         setJourneyError('Failed to load journey config');
       }
@@ -280,10 +325,21 @@ export default function AICoachManager() {
     if (!journeyConfig) return;
     setJourneySaving(true);
     try {
+      // Convert flat component format back to nested DB format
+      const dbValue = {
+        phases: {
+          daily_dozen: { name: 'Daily Dozen', framework: 'daily_dozen', unlock: 'immediate' },
+          tweaks: { name: '21 Tweaks', framework: '21_tweaks', unlock_streak: journeyConfig.tweaks_unlock_streak, requires_phase: 'daily_dozen' },
+          anti_aging: { name: 'Anti-Aging 8', framework: 'anti_aging', unlock_streak: journeyConfig.anti_aging_unlock_streak, requires_phase: 'tweaks', requires_biomarkers: journeyConfig.requires_biomarkers_for_anti_aging },
+        },
+        daily_lesson_limit: journeyConfig.daily_lesson_limit,
+        morning_checkin_enabled: journeyConfig.morning_checkin_enabled,
+        auto_unlock_enabled: journeyConfig.auto_unlock_enabled,
+      };
       const res = await fetch('/api/admin/ai-settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: 'journey_config', value: journeyConfig }),
+        body: JSON.stringify({ journey_config: dbValue }),
       });
       if (res.ok) { setJourneyError(null); setJourneySaved(true); setTimeout(() => setJourneySaved(false), 3000); }
       else { const data = await res.json(); setJourneyError(data.error || 'Failed to save'); }
@@ -300,7 +356,7 @@ export default function AICoachManager() {
     setProgressLoading(false);
   }, []);
 
-  useEffect(() => { load(); loadCacheStats(); }, [load, loadCacheStats]);
+  useEffect(() => { load(); loadCacheStats(); loadSystemBriefings(); }, [load, loadCacheStats, loadSystemBriefings]);
 
   useEffect(() => {
     if (activeTab === 'journey' && !journeyConfig) loadJourneyConfig();
@@ -546,6 +602,53 @@ export default function AICoachManager() {
               )}
             </div>
           </div>
+
+          {/* ── Section 2b: System Voice Briefings ──────────────────────────── */}
+          {systemBriefings.length > 0 && (
+            <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm mb-6">
+              <div className="px-5 py-4 border-b border-[#0e393d]/8 bg-[#0e393d]/[0.02] flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-[#0e393d]">System Voice Briefings</h2>
+                  <p className="text-[10px] text-[#1c2a2b]/40 mt-0.5">ElevenLabs-generated voice messages for pages — managed in Site Settings</p>
+                </div>
+                <a
+                  href="/en/admin/site-settings"
+                  className="px-3 py-1.5 rounded-lg border border-[#0e393d]/10 text-xs text-[#0e393d]/40 hover:text-[#0e393d] hover:border-[#0e393d]/20 transition"
+                >
+                  Manage
+                </a>
+              </div>
+              <div className="divide-y divide-[#0e393d]/5">
+                {systemBriefings.map(vb => {
+                  const audioLangs = (['en', 'de', 'fr', 'es', 'it'] as const).filter(
+                    l => vb[`audio_url_${l}` as keyof SystemVoiceBriefing]
+                  );
+                  return (
+                    <div key={vb.id} className="flex items-center gap-4 px-5 py-3">
+                      <div className="text-lg leading-none">📢</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-[#0e393d]">{vb.title}</div>
+                        <div className="text-[10px] text-[#1c2a2b]/35">
+                          Page: <span className="font-medium">{vb.page}</span>
+                          <span className="mx-1.5">·</span>
+                          Slug: <span className="font-mono">{vb.slug}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {audioLangs.map(l => (
+                          <span key={l} className="text-[11px]">{LANG_FLAGS[l]}</span>
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-[#1c2a2b]/30">{audioLangs.length} audio files</span>
+                      <AdminBadge color={vb.is_active ? 'green' : 'gray'}>
+                        {vb.is_active ? 'Active' : 'Inactive'}
+                      </AdminBadge>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* ── Section 3: Per-User Detail ───────────────────────────────────── */}
           <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm mb-6">
