@@ -13,10 +13,17 @@ const DEFAULT_ROLE_VOICES_OAI: Record<string, string> = {
   research: 'echo',
 };
 
+// Default per-role TTS provider assignments
+const DEFAULT_PROVIDERS_BY_ROLE: Record<string, { primary: TTSProvider; backup: TTSProvider }> = {
+  briefing: { primary: 'elevenlabs', backup: 'openai' },
+  coach:    { primary: 'openai',     backup: 'browser' },
+  research: { primary: 'openai',     backup: 'browser' },
+};
+
 /**
  * Reads voice configuration from ai_settings table.
  * Optionally accepts a role ('briefing' | 'coach' | 'research') to
- * return the specific voice assigned to that feature.
+ * return the specific voice AND provider assigned to that feature.
  */
 export async function getVoiceConfig(role?: string): Promise<VoiceSessionConfig> {
   const admin = createAdminClient();
@@ -33,6 +40,7 @@ export async function getVoiceConfig(role?: string): Promise<VoiceSessionConfig>
       'voice_roles_elevenlabs',
       'voice_roles_openai',
       'voice_mode',
+      'tts_providers_by_role',
     ]);
 
   const get = (key: string, fallback: string) => {
@@ -59,6 +67,24 @@ export async function getVoiceConfig(role?: string): Promise<VoiceSessionConfig>
     ? roleVoicesOAI[role]
     : get('openai_tts_voice', 'nova');
 
+  // Resolve TTS providers for the given role
+  const providersByRole = getJson<Record<string, { primary: string; backup: string }>>(
+    'tts_providers_by_role',
+    DEFAULT_PROVIDERS_BY_ROLE,
+  );
+
+  // Global fallbacks
+  const globalPrimary = get('tts_provider', 'elevenlabs') as TTSProvider;
+  const globalBackup = get('tts_backup_provider', 'openai') as TTSProvider;
+
+  // Per-role overrides global if role is specified and config exists
+  const roleProviders = role && providersByRole[role]
+    ? providersByRole[role]
+    : null;
+
+  const resolvedPrimary = (roleProviders?.primary as TTSProvider) || globalPrimary;
+  const resolvedBackup = (roleProviders?.backup as TTSProvider) || globalBackup;
+
   return {
     mode: get('voice_mode', 'orchestrated') as 'orchestrated' | 'claude_realtime',
     stt: {
@@ -66,8 +92,8 @@ export async function getVoiceConfig(role?: string): Promise<VoiceSessionConfig>
       lang: 'en-US', // overridden per-request
     },
     tts: {
-      provider: get('tts_provider', 'elevenlabs') as TTSProvider,
-      backup_provider: get('tts_backup_provider', 'openai') as TTSProvider,
+      provider: resolvedPrimary,
+      backup_provider: resolvedBackup,
       elevenlabs_voice_id: resolvedELVoice,
       elevenlabs_model: 'eleven_multilingual_v2',
       openai_voice: resolvedOAIVoice as OpenAIVoice,
