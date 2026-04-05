@@ -58,8 +58,33 @@ export async function GET(req: NextRequest) {
     langCounts[b.lang] = (langCounts[b.lang] ?? 0) + 1;
   }
 
+  // Research sessions
+  const { data: researchSessions } = await admin
+    .from('research_sessions')
+    .select('id, user_id, query, answer, citations, lang, model_used, tokens_used, duration_ms, source_context, created_at')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  // Attach profiles to research sessions
+  const rsUserIds = [...new Set((researchSessions ?? []).map(r => r.user_id))];
+  const allUserIds = [...new Set([...userIds, ...rsUserIds])];
+  // Re-fetch profiles if new user IDs found
+  let fullProfileMap = profileMap;
+  if (rsUserIds.some(id => !profileMap.has(id))) {
+    const { data: allProfiles } = allUserIds.length
+      ? await admin.from('profiles').select('id, first_name, last_name, email').in('id', allUserIds)
+      : { data: [] };
+    fullProfileMap = new Map((allProfiles ?? []).map(p => [p.id, p]));
+  }
+
+  const researchRows = (researchSessions ?? []).map(r => ({
+    ...r,
+    user: fullProfileMap.get(r.user_id) ?? null,
+  }));
+
   return NextResponse.json({
     briefings: rows,
+    researchSessions: researchRows,
     stats: {
       total: totalCount ?? 0,
       unique_users: uniqueUserCount,

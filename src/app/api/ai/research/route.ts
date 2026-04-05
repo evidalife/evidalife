@@ -10,6 +10,7 @@
 import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { searchStudiesAdmin, searchBookChunksAdmin, enrichBookChunks } from '@/lib/research/search';
 import { formatCitation, pubmedUrl } from '@/lib/research/search';
 import type { StudyResult, BookChunkResult } from '@/lib/research/search';
@@ -349,6 +350,7 @@ export async function POST(req: NextRequest) {
         const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
         const prompt = buildBriefingResearchPrompt(flaggedMarkers, studiesByMarker, enrichedBookChunks);
 
+        const startA = Date.now();
         const claudeStream = await client.messages.stream({
           model: 'claude-sonnet-4-6',
           max_tokens: 2048, // more tokens for multi-marker analysis
@@ -356,16 +358,35 @@ export async function POST(req: NextRequest) {
           messages: [{ role: 'user', content: prompt }],
         });
 
+        let fullTextA = '';
         for await (const chunk of claudeStream) {
           if (
             chunk.type === 'content_block_delta' &&
             chunk.delta.type === 'text_delta'
           ) {
+            fullTextA += chunk.delta.text;
             await send(sseChunk('text', chunk.delta.text));
           }
         }
 
         await send(sseChunk('done', null));
+
+        // Log research session
+        const finalMsgA = await claudeStream.finalMessage();
+        try {
+          const admin = createAdminClient();
+          await admin.from('research_sessions').insert({
+            user_id: user.id,
+            query: flaggedMarkers.map(m => `${m.name}: ${m.value} ${m.unit} (${m.status})`).join(', '),
+            answer: fullTextA,
+            citations: [...bookCitsBriefing, ...citationsPayload],
+            lang: locale,
+            model_used: 'claude-sonnet-4-6',
+            tokens_used: (finalMsgA.usage?.input_tokens ?? 0) + (finalMsgA.usage?.output_tokens ?? 0),
+            duration_ms: Date.now() - startA,
+            source_context: { type: 'briefing_handoff', flaggedMarkers },
+          });
+        } catch (e) { console.error('[research] Failed to log session:', e); }
 
       // ── Mode B: Direct question (original flow) ────────────────────────────
       } else if (question) {
@@ -433,6 +454,7 @@ export async function POST(req: NextRequest) {
         await send(sseChunk('citations', [...bookCitationsPayload, ...citationsPayload]));
 
         // Stream Claude synthesis
+        const startB = Date.now();
         const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
         const prompt = buildResearchPrompt(question, studies, biomarkerContext, bookChunks);
 
@@ -443,16 +465,35 @@ export async function POST(req: NextRequest) {
           messages: [{ role: 'user', content: prompt }],
         });
 
+        let fullTextB = '';
         for await (const chunk of claudeStream) {
           if (
             chunk.type === 'content_block_delta' &&
             chunk.delta.type === 'text_delta'
           ) {
+            fullTextB += chunk.delta.text;
             await send(sseChunk('text', chunk.delta.text));
           }
         }
 
         await send(sseChunk('done', null));
+
+        // Log research session
+        const finalMsgB = await claudeStream.finalMessage();
+        try {
+          const admin = createAdminClient();
+          await admin.from('research_sessions').insert({
+            user_id: user.id,
+            query: question,
+            answer: fullTextB,
+            citations: [...bookCitationsPayload, ...citationsPayload],
+            lang: locale,
+            model_used: 'claude-sonnet-4-6',
+            tokens_used: (finalMsgB.usage?.input_tokens ?? 0) + (finalMsgB.usage?.output_tokens ?? 0),
+            duration_ms: Date.now() - startB,
+            source_context: diseaseTag ? { type: 'disease', diseaseTag } : null,
+          });
+        } catch (e) { console.error('[research] Failed to log session:', e); }
       }
     } catch (err: any) {
       await send(sseChunk('error', err.message ?? 'Unknown error'));

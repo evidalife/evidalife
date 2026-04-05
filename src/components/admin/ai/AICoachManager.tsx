@@ -51,6 +51,21 @@ interface BriefingRow {
   user: { first_name: string | null; last_name: string | null; email: string } | null;
 }
 
+interface ResearchSessionRow {
+  id: string;
+  user_id: string;
+  query: string;
+  answer: string | null;
+  citations: unknown[] | null;
+  lang: string;
+  model_used: string | null;
+  tokens_used: number | null;
+  duration_ms: number | null;
+  source_context: unknown | null;
+  created_at: string;
+  user: { first_name: string | null; last_name: string | null; email: string } | null;
+}
+
 interface Stats {
   total: number;
   unique_users: number;
@@ -239,6 +254,8 @@ export default function AICoachManager() {
   const [cacheLoading, setCacheLoading] = useState(false);
   const [purging, setPurging] = useState(false);
   const [purgingFeature, setPurgingFeature] = useState<string | null>(null);
+  const [researchSessions, setResearchSessions] = useState<ResearchSessionRow[]>([]);
+  const [expandedResearch, setExpandedResearch] = useState<string | null>(null);
 
   // Per-user expanded state
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
@@ -285,6 +302,7 @@ export default function AICoachManager() {
     if (res.ok) {
       const data = await res.json();
       setBriefings(data.briefings ?? []);
+      setResearchSessions(data.researchSessions ?? []);
       setStats(data.stats ?? null);
     }
     setLoading(false);
@@ -438,6 +456,7 @@ export default function AICoachManager() {
     sources: u.sources ?? {},
     fileDetails: u.fileDetails ?? [],
     briefings: briefings.filter(b => b.user_id === uid),
+    research: researchSessions.filter(r => r.user_id === uid),
   }));
 
   // Also include users with briefings but no cache files
@@ -453,6 +472,7 @@ export default function AICoachManager() {
         sources: {},
         fileDetails: [],
         briefings: briefings.filter(x => x.user_id === uid),
+        research: researchSessions.filter(r => r.user_id === uid),
       });
     }
   }
@@ -719,7 +739,8 @@ export default function AICoachManager() {
                             const count = user.sources[source] ?? 0;
                             const featureFiles = user.fileDetails.filter(f => f.source === source);
                             const featureBriefings = source === 'briefing' ? user.briefings : [];
-                            const hasContent = count > 0 || featureBriefings.length > 0;
+                            const featureResearch = source === 'research' ? user.research : [];
+                            const hasContent = count > 0 || featureBriefings.length > 0 || featureResearch.length > 0;
                             const featureExpandKey = `${user.userId}:${source}`;
                             const isFeatureExpanded = expandedFeatures[featureExpandKey];
 
@@ -744,6 +765,11 @@ export default function AICoachManager() {
                                   {source === 'briefing' && featureBriefings.length > 0 && (
                                     <span className="text-[10px] text-[#1c2a2b]/35">
                                       · {featureBriefings.length} briefing{featureBriefings.length !== 1 ? 's' : ''}
+                                    </span>
+                                  )}
+                                  {source === 'research' && featureResearch.length > 0 && (
+                                    <span className="text-[10px] text-[#1c2a2b]/35">
+                                      · {featureResearch.length} session{featureResearch.length !== 1 ? 's' : ''}
                                     </span>
                                   )}
                                   {featureFiles.length > 0 && (
@@ -852,27 +878,97 @@ export default function AICoachManager() {
                                       );
                                     })}
 
-                                    {/* ── Audio file entries (for non-briefing features, or briefing files not linked to a briefing row) ── */}
-                                    {featureFiles
-                                      .filter(f => source !== 'briefing' || !f.briefing_id)
-                                      .map(f => (
-                                        <div key={f.id} className="rounded-lg border border-[#0e393d]/8 bg-white overflow-hidden">
-                                          <div className="flex items-center px-3 py-2.5 gap-3">
-                                            <span className="text-base shrink-0">{LANG_FLAGS[f.lang] ?? f.lang}</span>
-                                            <span className="inline-flex items-center gap-1 text-[8px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full shrink-0">
-                                              <svg width="7" height="7" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
-                                              cached
+                                    {/* ── Research session entries (only for Research Voice) ── */}
+                                    {source === 'research' && featureResearch.map(rs => {
+                                      const isResExpanded = expandedResearch === rs.id;
+                                      return (
+                                        <div key={rs.id} className="rounded-lg border border-[#0e393d]/8 bg-white overflow-hidden">
+                                          <button
+                                            onClick={() => setExpandedResearch(isResExpanded ? null : rs.id)}
+                                            className="w-full flex items-center text-left px-3 py-2.5 gap-3 hover:bg-[#fafaf8] transition"
+                                          >
+                                            <span className="text-base shrink-0">{LANG_FLAGS[rs.lang] ?? rs.lang}</span>
+                                            {rs.model_used && (
+                                              <span className="font-mono text-[10px] bg-[#0e393d]/5 px-2 py-0.5 rounded shrink-0">
+                                                {rs.model_used.replace('claude-', '').replace('-4-6', ' 4.6').replace('-4-5', ' 4.5')}
+                                              </span>
+                                            )}
+                                            <span className="tabular-nums text-[11px] text-[#1c2a2b]/50 shrink-0">
+                                              {rs.tokens_used?.toLocaleString() ?? '—'} tokens
                                             </span>
-                                            <span className="text-[10px] text-[#1c2a2b]/30 tabular-nums shrink-0">
-                                              {fmtSize(f.size_bytes ?? 0)}
+                                            <span className="tabular-nums text-[11px] text-[#1c2a2b]/50 shrink-0">
+                                              {fmtDuration(rs.duration_ms)}
                                             </span>
-                                            <span className="text-[8px] font-mono text-[#1c2a2b]/15 truncate flex-1 min-w-0" title={f.storage_path}>
-                                              {f.storage_path}
-                                            </span>
-                                            <span className="text-[11px] text-[#1c2a2b]/35 shrink-0">{fmt(f.created_at)}</span>
-                                          </div>
+                                            <span className="text-[11px] text-[#1c2a2b]/35 ml-auto shrink-0">{fmt(rs.created_at)}</span>
+                                            <svg
+                                              width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                              className={`text-[#1c2a2b]/25 transition-transform shrink-0 ${isResExpanded ? 'rotate-180' : ''}`}
+                                            >
+                                              <polyline points="6 9 12 15 18 9" />
+                                            </svg>
+                                          </button>
+
+                                          {/* Expanded research session detail */}
+                                          {isResExpanded && (
+                                            <div className="bg-[#fafaf8] border-t border-[#0e393d]/5 px-3 py-3 space-y-3">
+                                              {/* Query */}
+                                              <div className="bg-white rounded-lg border border-[#0e393d]/6 p-3">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                  <span className="w-5 h-5 rounded-full bg-[#ceab84]/20 text-[9px] font-bold text-[#ceab84] flex items-center justify-center shrink-0">Q</span>
+                                                  <span className="text-[11px] font-semibold text-[#0e393d]">Question</span>
+                                                </div>
+                                                <p className="text-[11px] text-[#1c2a2b]/60 leading-relaxed pl-7">{rs.query}</p>
+                                              </div>
+
+                                              {/* Answer */}
+                                              {rs.answer && (
+                                                <div className="bg-white rounded-lg border border-[#0e393d]/6 p-3">
+                                                  <div className="flex items-center gap-2 mb-1">
+                                                    <span className="w-5 h-5 rounded-full bg-[#0e393d]/8 text-[9px] font-bold text-[#0e393d] flex items-center justify-center shrink-0">A</span>
+                                                    <span className="text-[11px] font-semibold text-[#0e393d]">Answer</span>
+                                                    {/* Show cached audio badge if there's a matching file */}
+                                                    {featureFiles.length > 0 && (
+                                                      <span className="inline-flex items-center gap-1 text-[8px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full ml-auto">
+                                                        <svg width="7" height="7" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
+                                                        audio cached
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  <p className="text-[11px] text-[#1c2a2b]/50 leading-relaxed pl-7 whitespace-pre-wrap">{rs.answer}</p>
+                                                </div>
+                                              )}
+
+                                              {/* Citations count */}
+                                              {rs.citations && Array.isArray(rs.citations) && rs.citations.length > 0 && (
+                                                <div className="text-[10px] text-[#1c2a2b]/30 pl-3">
+                                                  {rs.citations.length} citation{rs.citations.length !== 1 ? 's' : ''} referenced
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
                                         </div>
-                                      ))}
+                                      );
+                                    })}
+
+                                    {/* ── Audio file entries (non-briefing, non-research features only — briefing files are shown via steps, research via sessions) ── */}
+                                    {source !== 'briefing' && source !== 'research' && featureFiles.map(f => (
+                                      <div key={f.id} className="rounded-lg border border-[#0e393d]/8 bg-white overflow-hidden">
+                                        <div className="flex items-center px-3 py-2.5 gap-3">
+                                          <span className="text-base shrink-0">{LANG_FLAGS[f.lang] ?? f.lang}</span>
+                                          <span className="inline-flex items-center gap-1 text-[8px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full shrink-0">
+                                            <svg width="7" height="7" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
+                                            cached
+                                          </span>
+                                          <span className="text-[10px] text-[#1c2a2b]/30 tabular-nums shrink-0">
+                                            {fmtSize(f.size_bytes ?? 0)}
+                                          </span>
+                                          <span className="text-[8px] font-mono text-[#1c2a2b]/15 truncate flex-1 min-w-0" title={f.storage_path}>
+                                            {f.storage_path}
+                                          </span>
+                                          <span className="text-[11px] text-[#1c2a2b]/35 shrink-0">{fmt(f.created_at)}</span>
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
                                 )}
                               </div>
