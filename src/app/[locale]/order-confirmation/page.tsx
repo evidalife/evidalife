@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { getLocale } from 'next-intl/server';
 import PublicNav from '@/components/PublicNav';
 import PublicFooter from '@/components/PublicFooter';
@@ -25,7 +26,9 @@ export default async function OrderConfirmationPage() {
       <PublicNav />
       <PageHero variant="light" eyebrow={t.eyebrow} title={t.title} />
       <main className="mx-auto w-full max-w-[1060px] px-8 md:px-12 pb-20 flex-1">
-        <OrderConfirmationContent locale={lang} />
+        <Suspense fallback={<div className="py-16 text-center text-sm text-[#0e393d]/50">Loading…</div>}>
+          <OrderConfirmationContent locale={lang} />
+        </Suspense>
       </main>
       <PublicFooter />
     </div>
