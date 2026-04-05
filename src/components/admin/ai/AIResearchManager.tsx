@@ -730,10 +730,11 @@ function IngestTab({ onJobStarted }: { onJobStarted: () => void }) {
 
   // Pending NF PMIDs
   const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const [skippedCount, setSkippedCount] = useState<number>(0);
   const [ingestingPending, setIngestingPending] = useState(false);
   const [pendingResult, setPendingResult] = useState<string | null>(null);
 
-  // Load pending PMID count
+  // Load pending + skipped PMID counts
   useEffect(() => {
     (async () => {
       try {
@@ -745,6 +746,7 @@ function IngestTab({ onJobStarted }: { onJobStarted: () => void }) {
         if (res.ok) {
           const data = await res.json();
           setPendingCount(data.count ?? 0);
+          setSkippedCount(data.skipped ?? 0);
         }
       } catch { /* ignore */ }
     })();
@@ -848,27 +850,45 @@ function IngestTab({ onJobStarted }: { onJobStarted: () => void }) {
         )}
       </div>
 
-      {/* Pending NF PMIDs */}
-      {pendingCount !== null && pendingCount > 0 && (
-        <div className="rounded-xl border border-amber-200/60 bg-gradient-to-br from-white to-amber-50/20 p-5">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="text-sm font-semibold text-[#0e393d]">Pending NutritionFacts PMIDs</p>
-              <p className="text-[11px] text-[#1c2a2b]/40 mt-0.5">
-                {pendingCount} study citations found in NF content but not yet in the studies table.
-              </p>
-            </div>
-            <span className="text-2xl font-semibold text-amber-600 tabular-nums">{pendingCount}</span>
+      {/* Pending & Skipped NF PMIDs */}
+      {pendingCount !== null && (pendingCount > 0 || skippedCount > 0) && (
+        <div className="rounded-xl border border-[#0e393d]/8 bg-white p-5 space-y-4">
+          <div>
+            <p className="text-sm font-semibold text-[#0e393d]">NutritionFacts PMIDs</p>
+            <p className="text-[11px] text-[#1c2a2b]/40 mt-0.5">
+              Study citations found in NF content that are not yet in the studies table.
+            </p>
           </div>
-          <button
-            onClick={ingestPendingNfPmids}
-            disabled={ingestingPending}
-            className="w-full py-2.5 rounded-xl bg-[#ceab84] text-white text-sm font-semibold hover:bg-[#ceab84]/80 disabled:opacity-50 transition-colors"
-          >
-            {ingestingPending ? 'Ingesting...' : `Ingest ${pendingCount} Pending Studies`}
-          </button>
-          {pendingResult && (
-            <p className="text-xs text-[#1c2a2b]/60 mt-2">{pendingResult}</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-[#0e393d]/8 bg-[#f8faf9] p-3 text-center">
+              <p className="text-xl font-semibold tabular-nums text-amber-600">{pendingCount}</p>
+              <p className="text-[10px] text-[#1c2a2b]/40 mt-0.5">Pending</p>
+              <p className="text-[9px] text-[#1c2a2b]/30">New — not yet tried</p>
+            </div>
+            <div className="rounded-lg border border-[#0e393d]/8 bg-[#f8faf9] p-3 text-center">
+              <p className="text-xl font-semibold tabular-nums text-[#1c2a2b]/30">{skippedCount.toLocaleString()}</p>
+              <p className="text-[10px] text-[#1c2a2b]/40 mt-0.5">Skipped</p>
+              <p className="text-[9px] text-[#1c2a2b]/30">No abstract on PubMed</p>
+            </div>
+          </div>
+          {pendingCount > 0 && (
+            <>
+              <button
+                onClick={ingestPendingNfPmids}
+                disabled={ingestingPending}
+                className="w-full py-2.5 rounded-xl bg-[#ceab84] text-white text-sm font-semibold hover:bg-[#ceab84]/80 disabled:opacity-50 transition-colors"
+              >
+                {ingestingPending ? 'Ingesting...' : `Ingest ${pendingCount} Pending Studies`}
+              </button>
+              {pendingResult && (
+                <p className="text-xs text-[#1c2a2b]/60 mt-2">{pendingResult}</p>
+              )}
+            </>
+          )}
+          {pendingCount === 0 && (
+            <div className="rounded-lg bg-emerald-50/50 border border-emerald-200/40 p-3">
+              <p className="text-xs text-emerald-700">All NutritionFacts PMIDs are fully processed. The weekly cron job will pick up any new ones automatically.</p>
+            </div>
           )}
         </div>
       )}

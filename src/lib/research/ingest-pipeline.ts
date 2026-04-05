@@ -279,7 +279,31 @@ export async function ingestPmids(
 
     // Filter out studies without abstracts (not useful for RAG)
     const studiesWithAbstracts = pubmedStudies.filter(s => s.abstract.length > 50);
+    const studiesWithoutAbstracts = pubmedStudies.filter(s => s.abstract.length <= 50);
     onProgress(`  ${pubmedStudies.length} fetched, ${studiesWithAbstracts.length} have abstracts`);
+
+    // Record PMIDs without abstracts as skipped (so they don't show as "pending" forever)
+    if (studiesWithoutAbstracts.length > 0 && !dryRun) {
+      const skippedPmids = studiesWithoutAbstracts.map(s => s.pmid);
+      // Also include PMIDs that PubMed didn't return at all
+      const returnedPmids = new Set(pubmedStudies.map(s => s.pmid));
+      const notFoundPmids = pmidBatch.filter(p => !returnedPmids.has(p));
+      const allSkipped = [...skippedPmids, ...notFoundPmids];
+
+      if (allSkipped.length > 0) {
+        try {
+          const { createClient } = await import('@supabase/supabase-js');
+          const sb = createClient(supabaseUrl, supabaseServiceKey);
+          await sb.from('skipped_pmids').upsert(
+            allSkipped.map(pmid => ({ pmid, reason: 'no_abstract', source })),
+            { onConflict: 'pmid' }
+          );
+          onProgress(`  Recorded ${allSkipped.length} skipped PMIDs (no abstract)`);
+        } catch (e) {
+          onProgress(`  Warning: Could not record skipped PMIDs: ${e}`);
+        }
+      }
+    }
 
     if (studiesWithAbstracts.length === 0) continue;
 

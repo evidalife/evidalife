@@ -187,7 +187,9 @@ export async function POST(req: NextRequest) {
   if (action === 'count_pending_nf_pmids') {
     const { data, error } = await supabase.rpc('count_pending_nf_pmids');
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ count: data ?? 0 });
+    // Also return skipped count
+    const { count: skippedCount } = await supabase.from('skipped_pmids').select('*', { count: 'exact', head: true });
+    return NextResponse.json({ count: data ?? 0, skipped: skippedCount ?? 0 });
   }
 
   // ── Ingest specific PMIDs (manual add from admin UI) ──────────────────────
