@@ -4,6 +4,15 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import PageShell from '@/components/admin/PageShell';
 import VoiceConversation from '@/components/voice/VoiceConversation';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import {
+  StatCard,
+  StatCardRow,
+  inputCls,
+  AdminBadge,
+  AdminToggle,
+} from '@/components/admin/shared/AdminUI';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface BriefingStep {
   id: string;
@@ -84,6 +93,22 @@ const TABS = [
 
 const LANG_FLAGS: Record<string, string> = { en: '🇬🇧', de: '🇨🇭', fr: '🇫🇷', es: '🇪🇸', it: '🇮🇹' };
 
+const FEATURES = [
+  { key: 'Health Briefing', icon: '🎙️', source: 'briefing', desc: 'AI health analysis narration' },
+  { key: 'Research Voice', icon: '🔬', source: 'research', desc: 'Research article narration' },
+  { key: 'Daily Check-in', icon: '🌅', source: 'voice_daily_checkin', desc: 'Morning check-in conversations' },
+  { key: 'Voice Coaching', icon: '💬', source: 'voice_coaching', desc: 'Interactive coaching sessions' },
+  { key: 'Open Conversation', icon: '🗣️', source: 'voice_freeform', desc: 'Free-form voice chats' },
+] as const;
+
+const SOURCE_TO_FEATURE: Record<string, string> = {
+  briefing: 'Health Briefing',
+  research: 'Research Voice',
+  voice_daily_checkin: 'Daily Check-in',
+  voice_coaching: 'Voice Coaching',
+  voice_freeform: 'Open Conversation',
+};
+
 function fmt(iso: string) {
   return new Date(iso).toLocaleString('de-CH', { dateStyle: 'short', timeStyle: 'short' });
 }
@@ -91,6 +116,12 @@ function fmt(iso: string) {
 function fmtDuration(ms: number | null) {
   if (!ms) return '—';
   return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function fmtSize(bytes: number): string {
+  if (bytes > 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes > 0) return `${(bytes / 1024).toFixed(0)} KB`;
+  return '0';
 }
 
 // ── Mini audio player for individual steps ──────────────────────────────────
@@ -101,18 +132,11 @@ function StepPlayer({ narration, lang }: { narration: string; lang: string }) {
   const blobUrlRef = useRef<string | null>(null);
 
   const play = useCallback(async () => {
-    // If already have audio, just toggle play/pause
     if (audioRef.current && blobUrlRef.current) {
-      if (playing) {
-        audioRef.current.pause();
-        setPlaying(false);
-      } else {
-        audioRef.current.play();
-        setPlaying(true);
-      }
+      if (playing) { audioRef.current.pause(); setPlaying(false); }
+      else { audioRef.current.play(); setPlaying(true); }
       return;
     }
-
     setLoading(true);
     try {
       const res = await fetch('/api/ai/tts', {
@@ -121,7 +145,6 @@ function StepPlayer({ narration, lang }: { narration: string; lang: string }) {
         body: JSON.stringify({ text: narration, lang, role: 'coach' }),
       });
       if (!res.ok) {
-        // Fallback to browser speech
         if ('speechSynthesis' in window) {
           const utt = new SpeechSynthesisUtterance(narration);
           utt.lang = lang === 'de' ? 'de-DE' : lang === 'fr' ? 'fr-FR' : lang === 'es' ? 'es-ES' : lang === 'it' ? 'it-IT' : 'en-US';
@@ -129,13 +152,10 @@ function StepPlayer({ narration, lang }: { narration: string; lang: string }) {
           window.speechSynthesis.cancel();
           window.speechSynthesis.speak(utt);
           setPlaying(true);
-          setLoading(false);
-          return;
         }
         setLoading(false);
         return;
       }
-
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       blobUrlRef.current = url;
@@ -144,13 +164,10 @@ function StepPlayer({ narration, lang }: { narration: string; lang: string }) {
       audio.addEventListener('ended', () => setPlaying(false));
       audio.play();
       setPlaying(true);
-    } catch {
-      // silent fail
-    }
+    } catch { /* silent */ }
     setLoading(false);
   }, [narration, lang, playing]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       audioRef.current?.pause();
@@ -182,10 +199,12 @@ function StepPlayer({ narration, lang }: { narration: string; lang: string }) {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
 export default function AICoachManager() {
   const { confirm, ConfirmDialog: confirmDialog } = useConfirmDialog();
-
-  // Tab management
   const [activeTab, setActiveTab] = useState<'briefings' | 'journey' | 'voice' | 'progress'>('briefings');
 
   // Briefings & Cache state
@@ -193,27 +212,29 @@ export default function AICoachManager() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
-
-  // Expanded briefing state
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedSteps, setExpandedSteps] = useState<Record<string, BriefingStep[]>>({});
   const [loadingSteps, setLoadingSteps] = useState<string | null>(null);
-
-  // TTS cache state
   const [cacheStats, setCacheStats] = useState<TTSCacheStats | null>(null);
   const [cacheLoading, setCacheLoading] = useState(false);
   const [purging, setPurging] = useState(false);
   const [purgingFeature, setPurgingFeature] = useState<string | null>(null);
+
+  // Per-user expanded state
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
 
   // Journey Config state
   const [journeyConfig, setJourneyConfig] = useState<JourneyConfig | null>(null);
   const [journeyLoading, setJourneyLoading] = useState(false);
   const [journeySaving, setJourneySaving] = useState(false);
   const [journeyError, setJourneyError] = useState<string | null>(null);
+  const [journeySaved, setJourneySaved] = useState(false);
 
   // User Progress state
   const [progressData, setProgressData] = useState<UserProgressRow[]>([]);
   const [progressLoading, setProgressLoading] = useState(false);
+
+  // ─── Data Loading ─────────────────────────────────────────────────────────
 
   const loadCacheStats = useCallback(async () => {
     setCacheLoading(true);
@@ -246,10 +267,7 @@ export default function AICoachManager() {
       } else {
         setJourneyError('Failed to load journey config');
       }
-    } catch (err) {
-      console.error('[loadJourneyConfig] error:', err);
-      setJourneyError('Error loading config');
-    }
+    } catch { setJourneyError('Error loading config'); }
     setJourneyLoading(false);
   }, []);
 
@@ -262,16 +280,9 @@ export default function AICoachManager() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: 'journey_config', value: journeyConfig }),
       });
-      if (res.ok) {
-        setJourneyError(null);
-      } else {
-        const data = await res.json();
-        setJourneyError(data.error || 'Failed to save');
-      }
-    } catch (err) {
-      console.error('[saveJourneyConfig] error:', err);
-      setJourneyError('Save failed');
-    }
+      if (res.ok) { setJourneyError(null); setJourneySaved(true); setTimeout(() => setJourneySaved(false), 3000); }
+      else { const data = await res.json(); setJourneyError(data.error || 'Failed to save'); }
+    } catch { setJourneyError('Save failed'); }
     setJourneySaving(false);
   }, [journeyConfig]);
 
@@ -279,33 +290,22 @@ export default function AICoachManager() {
     setProgressLoading(true);
     try {
       const res = await fetch('/api/admin/ai-coach-progress');
-      if (res.ok) {
-        const data = await res.json();
-        setProgressData(data.progress || []);
-      }
-    } catch (err) {
-      console.error('[loadProgressData] error:', err);
-    }
+      if (res.ok) { const data = await res.json(); setProgressData(data.progress || []); }
+    } catch { /* silent */ }
     setProgressLoading(false);
   }, []);
 
-  useEffect(() => {
-    load();
-    loadCacheStats();
-  }, [load, loadCacheStats]);
+  useEffect(() => { load(); loadCacheStats(); }, [load, loadCacheStats]);
 
-  // Load journey config and progress when tabs are activated
   useEffect(() => {
-    if (activeTab === 'journey' && !journeyConfig) {
-      loadJourneyConfig();
-    }
+    if (activeTab === 'journey' && !journeyConfig) loadJourneyConfig();
   }, [activeTab, journeyConfig, loadJourneyConfig]);
 
   useEffect(() => {
-    if (activeTab === 'progress' && progressData.length === 0) {
-      loadProgressData();
-    }
+    if (activeTab === 'progress' && progressData.length === 0) loadProgressData();
   }, [activeTab, progressData, loadProgressData]);
+
+  // ─── Actions ──────────────────────────────────────────────────────────────
 
   const deleteBriefing = async (id: string) => {
     if (!(await confirm({ title: 'Delete Briefing', message: 'Delete this briefing log entry?', variant: 'danger' }))) return;
@@ -317,25 +317,16 @@ export default function AICoachManager() {
         body: JSON.stringify({ id }),
       });
       const data = await res.json();
-      if (!res.ok || data.error) {
-        console.error('[deleteBriefing] failed:', data.error);
-        alert(`Delete failed: ${data.error || res.statusText}`);
-        return;
-      }
+      if (!res.ok || data.error) { alert(`Delete failed: ${data.error || res.statusText}`); return; }
       setBriefings(prev => prev.filter(b => b.id !== id));
-    } catch (err) {
-      console.error('[deleteBriefing] error:', err);
-      alert('Delete failed — check console');
-    } finally {
-      setDeleting(null);
-    }
+    } catch { alert('Delete failed — check console'); }
+    finally { setDeleting(null); }
   };
 
-  const toggleExpand = async (id: string, lang: string) => {
+  const toggleExpand = async (id: string) => {
     if (expandedId === id) { setExpandedId(null); return; }
     setExpandedId(id);
     if (expandedSteps[id]) return;
-
     setLoadingSteps(id);
     try {
       const res = await fetch('/api/admin/ai-briefings', {
@@ -347,11 +338,65 @@ export default function AICoachManager() {
         const data = await res.json();
         setExpandedSteps(prev => ({ ...prev, [id]: data.steps ?? [] }));
       }
-    } catch {
-      // silent
-    }
+    } catch { /* silent */ }
     setLoadingSteps(null);
   };
+
+  const purgeAll = async () => {
+    if (!(await confirm({ title: 'Purge All TTS Cache', message: 'Delete all cached audio files? They will be re-generated on next playback.', variant: 'danger' }))) return;
+    setPurging(true);
+    try {
+      const res = await fetch('/api/admin/tts-cache', { method: 'DELETE' });
+      if (res.ok) loadCacheStats();
+    } catch { /* silent */ }
+    setPurging(false);
+  };
+
+  const purgeFeature = async (source: string, label: string, count: number) => {
+    if (!(await confirm({ title: `Delete ${label}`, message: `Delete ${count} cached audio files for ${label}? They will be re-generated on next use.`, variant: 'danger' }))) return;
+    setPurgingFeature(source);
+    try {
+      const res = await fetch('/api/admin/tts-cache', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source }),
+      });
+      if (res.ok) loadCacheStats();
+    } catch { /* silent */ }
+    setPurgingFeature(null);
+  };
+
+  // ─── Derived data ─────────────────────────────────────────────────────────
+
+  // Build per-user data combining briefings + cache stats
+  const userEntries = Object.entries(cacheStats?.userStats ?? {}).map(([uid, u]) => ({
+    userId: uid,
+    name: u.name,
+    email: u.email,
+    totalFiles: u.files,
+    sources: u.sources ?? {},
+    briefings: briefings.filter(b => b.user_id === uid),
+  }));
+
+  // Also include users with briefings but no cache files
+  const briefingUserIds = [...new Set(briefings.map(b => b.user_id))];
+  for (const uid of briefingUserIds) {
+    if (!userEntries.find(u => u.userId === uid)) {
+      const b = briefings.find(x => x.user_id === uid)!;
+      userEntries.push({
+        userId: uid,
+        name: b.user ? [b.user.first_name, b.user.last_name].filter(Boolean).join(' ') || '—' : uid.slice(0, 8),
+        email: b.user?.email ?? '',
+        totalFiles: 0,
+        sources: {},
+        briefings: briefings.filter(x => x.user_id === uid),
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════════════════
 
   return (
     <PageShell
@@ -364,7 +409,7 @@ export default function AICoachManager() {
           {TABS.map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
               className={`px-4 py-3 text-[12px] font-semibold uppercase tracking-[.08em] transition-colors border-b-2 ${
                 activeTab === tab.id
                   ? 'border-[#0e393d] text-[#0e393d]'
@@ -378,466 +423,454 @@ export default function AICoachManager() {
         </div>
       </div>
 
-      {/* TAB: Briefings & Cache */}
+      {/* ═══ TAB: AI Generation ═══════════════════════════════════════════════ */}
       {activeTab === 'briefings' && (
         <>
-      {/* Stats cards */}
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'Total Briefings', value: stats.total.toLocaleString() },
-            { label: 'Unique Users', value: stats.unique_users.toLocaleString() },
-            { label: 'Avg / User', value: stats.avg_per_user.toFixed(1) },
-            {
-              label: 'Languages',
-              value: Object.entries(stats.lang_counts)
-                .map(([l, n]) => `${LANG_FLAGS[l] ?? l} ${n}`)
-                .join('  '),
-            },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-white rounded-xl border border-[#0e393d]/[.07] p-5">
-              <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-1.5">{label}</div>
-              <div className="text-xl font-semibold text-[#0e393d]">{value}</div>
+          {/* ── Section 1: Global Overview ───────────────────────────────────── */}
+          <StatCardRow>
+            <StatCard
+              value={stats?.total ?? 0}
+              label="Total Briefings"
+              variant="default"
+              detail={stats ? `${stats.unique_users} user${stats.unique_users !== 1 ? 's' : ''}` : undefined}
+            />
+            <StatCard
+              value={cacheStats?.totalFiles ?? 0}
+              label="Cached Audio Files"
+              variant={cacheStats && cacheStats.totalFiles > 0 ? 'emerald' : 'default'}
+              detail={cacheStats ? fmtSize(cacheStats.totalSize) : undefined}
+            />
+            <StatCard
+              value={cacheStats?.trackedFiles ?? 0}
+              label="Tracked"
+              variant="default"
+              detail={(cacheStats?.orphanedFiles ?? 0) > 0 ? `${cacheStats!.orphanedFiles} untracked` : 'All tracked'}
+            />
+            <StatCard
+              value={
+                stats
+                  ? Object.entries(stats.lang_counts).map(([l, n]) => `${LANG_FLAGS[l] ?? l} ${n}`).join('  ')
+                  : '—'
+              }
+              label="Languages"
+              variant="default"
+            />
+          </StatCardRow>
+
+          {/* ── Section 2: TTS Cache Management ─────────────────────────────── */}
+          <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm mb-6">
+            <div className="px-5 py-4 border-b border-[#0e393d]/8 bg-[#0e393d]/[0.02] flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-[#0e393d]">TTS Audio Cache</h2>
+                <p className="text-[10px] text-[#1c2a2b]/40 mt-0.5">Cached in Supabase Storage — never expires unless purged</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={loadCacheStats}
+                  disabled={cacheLoading}
+                  className="px-3 py-1.5 rounded-lg border border-[#0e393d]/10 text-xs text-[#0e393d]/40 hover:text-[#0e393d] hover:border-[#0e393d]/20 transition disabled:opacity-30"
+                >
+                  Refresh
+                </button>
+                <button
+                  onClick={purgeAll}
+                  disabled={purging || !cacheStats?.totalFiles}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200/60 transition disabled:opacity-30"
+                >
+                  {purging ? 'Purging…' : 'Purge All'}
+                </button>
+              </div>
             </div>
-          ))}
-        </div>
-      )}
 
-      {/* TTS Audio Cache */}
-      <div className="bg-white rounded-xl border border-[#0e393d]/[.07] overflow-hidden mb-8">
-        <div className="px-6 py-4 border-b border-[#0e393d]/[.06] flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-[#0e393d]">TTS Audio Cache</h2>
-            <p className="text-[10px] text-[#1c2a2b]/40 mt-0.5">Cached audio files in Supabase Storage — never expires unless purged.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={loadCacheStats}
-              disabled={cacheLoading}
-              className="text-[11px] text-[#0e393d]/50 hover:text-[#0e393d] transition-colors flex items-center gap-1.5 disabled:opacity-30"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-              </svg>
-              Refresh
-            </button>
-            <button
-              onClick={async () => {
-                if (!(await confirm({ title: 'Purge TTS Cache', message: 'Delete all cached audio files? They will be re-generated on next playback.', variant: 'danger' }))) return;
-                setPurging(true);
-                try {
-                  const res = await fetch('/api/admin/tts-cache', { method: 'DELETE' });
-                  if (res.ok) {
-                    const data = await res.json();
-                    console.log(`Purged ${data.deleted} files`);
-                    loadCacheStats();
-                  }
-                } catch { /* silent */ }
-                setPurging(false);
-              }}
-              disabled={purging || !cacheStats?.totalFiles}
-              className="text-[11px] text-red-400 hover:text-red-600 transition-colors flex items-center gap-1.5 disabled:opacity-30"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
-              </svg>
-              {purging ? 'Purging…' : 'Purge All'}
-            </button>
-          </div>
-        </div>
-        <div className="px-6 py-5">
-          {cacheLoading && !cacheStats ? (
-            <div className="text-[12px] text-[#1c2a2b]/40 text-center py-4">Loading cache stats…</div>
-          ) : cacheStats ? (
-            <div className="flex items-start gap-8">
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-1">Total Files</div>
-                <div className="text-xl font-semibold text-[#0e393d]">{cacheStats.totalFiles}</div>
-              </div>
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-1">Total Size</div>
-                <div className="text-xl font-semibold text-[#0e393d]">
-                  {cacheStats.totalSize > 1024 * 1024
-                    ? `${(cacheStats.totalSize / (1024 * 1024)).toFixed(1)} MB`
-                    : cacheStats.totalSize > 0
-                    ? `${(cacheStats.totalSize / 1024).toFixed(0)} KB`
-                    : '0'}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-1">Tracked</div>
-                <div className="text-xl font-semibold text-emerald-600">{cacheStats.trackedFiles ?? '—'}</div>
-              </div>
-              {(cacheStats.orphanedFiles ?? 0) > 0 && (
-                <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-1">Untracked</div>
-                  <div className="text-xl font-semibold text-amber-500">{cacheStats.orphanedFiles}</div>
-                </div>
-              )}
-              {Object.keys(cacheStats.byLang).length > 0 && (
-                <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-1">By Language</div>
-                  <div className="flex gap-3">
-                    {Object.entries(cacheStats.byLang).map(([lang, { files, size }]) => (
-                      <div key={lang} className="text-[12px] text-[#1c2a2b]/60">
-                        <span className="mr-1">{LANG_FLAGS[lang] ?? lang}</span>
-                        <span className="font-medium text-[#0e393d]">{files}</span>
-                        <span className="text-[10px] text-[#1c2a2b]/30 ml-1">
-                          ({size > 1024 * 1024
-                            ? `${(size / (1024 * 1024)).toFixed(1)}MB`
-                            : `${(size / 1024).toFixed(0)}KB`})
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* ── By Feature (5 categories) ── */}
-              {cacheStats.byFeature && Object.keys(cacheStats.byFeature).length > 0 && (
-                <div className="basis-full mt-3 pt-3 border-t border-[#0e393d]/[.06]">
-                  <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-2">By Feature</div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-                    {[
-                      { key: 'Health Briefing', icon: '🎙️', deleteSource: 'briefing' },
-                      { key: 'Research Voice', icon: '🔬', deleteSource: 'research' },
-                      { key: 'Daily Check-in', icon: '🌅', deleteSource: 'voice_daily_checkin' },
-                      { key: 'Voice Coaching', icon: '💬', deleteSource: 'voice_coaching' },
-                      { key: 'Open Conversation', icon: '🎙️', deleteSource: 'voice_freeform' },
-                    ].map(({ key, icon, deleteSource }) => {
-                      const feat = cacheStats.byFeature?.[key];
-                      const count = feat?.count ?? 0;
-                      if (count === 0) return (
-                        <div key={key} className="rounded-lg border border-[#0e393d]/[.05] bg-[#fafaf8] px-3 py-2 opacity-40">
-                          <div className="text-[11px] text-[#1c2a2b]/50">{icon} {key}</div>
-                          <div className="text-sm font-semibold text-[#0e393d]/30 mt-0.5">0</div>
-                        </div>
-                      );
-                      return (
-                        <div key={key} className="rounded-lg border border-[#0e393d]/[.08] bg-white px-3 py-2">
-                          <div className="flex items-center justify-between">
-                            <div className="text-[11px] text-[#1c2a2b]/60">{icon} {key}</div>
+            {/* Feature cards grid */}
+            <div className="px-5 py-4">
+              {cacheLoading && !cacheStats ? (
+                <div className="text-xs text-[#1c2a2b]/40 text-center py-4">Loading cache stats…</div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {FEATURES.map(({ key, icon, source, desc }) => {
+                    const feat = cacheStats?.byFeature?.[key];
+                    const count = feat?.count ?? 0;
+                    return (
+                      <div
+                        key={key}
+                        className={`rounded-xl border px-4 py-3 transition ${
+                          count > 0
+                            ? 'border-[#0e393d]/10 bg-white'
+                            : 'border-[#0e393d]/5 bg-[#fafaf8] opacity-50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="text-lg leading-none">{icon}</div>
+                          {count > 0 && (
                             <button
-                              onClick={async () => {
-                                if (!(await confirm({ title: `Delete ${key}`, message: `Delete ${count} cached audio files for ${key}? They will be re-generated on next use.`, variant: 'danger' }))) return;
-                                setPurgingFeature(deleteSource);
-                                try {
-                                  const res = await fetch('/api/admin/tts-cache', {
-                                    method: 'DELETE',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ source: deleteSource }),
-                                  });
-                                  if (res.ok) loadCacheStats();
-                                } catch { /* silent */ }
-                                setPurgingFeature(null);
-                              }}
-                              disabled={purgingFeature === deleteSource}
-                              className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-30"
+                              onClick={() => purgeFeature(source, key, count)}
+                              disabled={purgingFeature === source}
+                              className="p-1 rounded-md text-red-300 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-30"
                               title={`Delete ${key} cache`}
                             >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                                 <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
                               </svg>
                             </button>
-                          </div>
-                          <div className="text-sm font-semibold text-[#0e393d] mt-0.5">{count} <span className="font-normal text-[10px] text-[#1c2a2b]/30">files</span></div>
+                          )}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Legacy source breakdown (for old data) */}
-              {cacheStats.bySource && Object.keys(cacheStats.bySource).some(s => s === 'voice_turn' || s === 'chat') && (
-                <div className="basis-full mt-2">
-                  <div className="text-[10px] text-[#1c2a2b]/25 italic">
-                    Legacy sources: {Object.entries(cacheStats.bySource).filter(([s]) => s === 'voice_turn' || s === 'chat').map(([s, c]) => `${c} ${s}`).join(', ')}
-                    {' — these will be remapped to feature categories on next generation'}
-                  </div>
-                </div>
-              )}
-
-              {cacheStats.userStats && Object.keys(cacheStats.userStats).length > 0 && (
-                <div className="basis-full mt-3 pt-3 border-t border-[#0e393d]/[.06]">
-                  <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-2">Per User</div>
-                  <div className="space-y-1">
-                    {Object.entries(cacheStats.userStats).map(([uid, { name, email, files, sources }]) => (
-                      <div key={uid} className="flex items-center gap-3 text-[12px]">
-                        <span className="font-medium text-[#0e393d]">{name}</span>
-                        <span className="text-[#1c2a2b]/30">{email}</span>
-                        <span className="ml-auto font-medium text-[#0e393d]">{files} files</span>
-                        {sources && Object.keys(sources).length > 0 && (
-                          <span className="text-[10px] text-[#1c2a2b]/40">
-                            ({Object.entries(sources).map(([s, c]) => `${c} ${s}`).join(', ')})
-                          </span>
-                        )}
+                        <div className="text-2xl font-semibold text-[#0e393d] mt-1">{count}</div>
+                        <div className="text-[11px] text-[#1c2a2b]/50 mt-0.5">{key}</div>
+                        <div className="text-[9px] text-[#1c2a2b]/25 mt-0.5">{desc}</div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Language breakdown */}
+              {cacheStats && Object.keys(cacheStats.byLang).length > 0 && (
+                <div className="flex gap-4 mt-4 pt-3 border-t border-[#0e393d]/5">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[#0e393d]/30">By Language</span>
+                  {Object.entries(cacheStats.byLang).map(([lang, { files, size }]) => (
+                    <span key={lang} className="text-xs text-[#1c2a2b]/50">
+                      {LANG_FLAGS[lang] ?? lang}
+                      <span className="font-medium text-[#0e393d] ml-1">{files}</span>
+                      <span className="text-[10px] text-[#1c2a2b]/25 ml-1">({fmtSize(size)})</span>
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
-          ) : (
-            <div className="text-[12px] text-[#1c2a2b]/30 text-center py-4">No cache data</div>
-          )}
-        </div>
-      </div>
-
-      {/* Briefing log table */}
-      <div className="bg-white rounded-xl border border-[#0e393d]/[.07] overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#0e393d]/[.06] flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-[#0e393d]">Recent Briefings</h2>
-          <button
-            onClick={load}
-            className="text-[11px] text-[#0e393d]/50 hover:text-[#0e393d] transition-colors flex items-center gap-1.5"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-            </svg>
-            Refresh
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-16 text-sm text-[#1c2a2b]/40">Loading…</div>
-        ) : briefings.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-2">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0e393d" strokeWidth="1.2" opacity="0.2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-            <div className="text-sm text-[#1c2a2b]/40">No briefings generated yet</div>
           </div>
-        ) : (
-          <div className="divide-y divide-[#0e393d]/[.04]">
-            {briefings.map(b => {
-              const isExpanded = expandedId === b.id;
-              const steps = expandedSteps[b.id];
-              const isLoadingSteps = loadingSteps === b.id;
-              return (
-                <div key={b.id}>
-                  <div className="flex items-center hover:bg-[#fafaf8] transition-colors">
-                    <button onClick={() => toggleExpand(b.id, b.lang)} className="flex-1 flex items-center text-left px-5 py-3 gap-5">
-                      <div className="min-w-0 flex-1">
-                        {b.user ? (
-                          <div>
-                            <span className="font-medium text-[12px] text-[#0e393d]">
-                              {[b.user.first_name, b.user.last_name].filter(Boolean).join(' ') || '—'}
-                            </span>
-                            <span className="text-[10px] text-[#1c2a2b]/35 ml-2">{b.user.email}</span>
-                          </div>
-                        ) : (
-                          <span className="text-[12px] text-[#1c2a2b]/30">{b.user_id.slice(0, 8)}…</span>
-                        )}
-                      </div>
-                      <span className="text-base shrink-0">{LANG_FLAGS[b.lang] ?? b.lang}</span>
-                      <span className="font-mono text-[10px] bg-[#0e393d]/[.05] px-2 py-0.5 rounded shrink-0">
-                        {b.model_used.replace('claude-', '').replace('-4-6', ' 4.6').replace('-4-5', ' 4.5')}
-                      </span>
-                      <span className="tabular-nums text-[12px] text-[#1c2a2b]/60 shrink-0 w-14 text-right">
-                        {b.tokens_used?.toLocaleString() ?? '—'}
-                      </span>
-                      <span className="tabular-nums text-[12px] text-[#1c2a2b]/60 shrink-0 w-12 text-right">
-                        {fmtDuration(b.duration_ms)}
-                      </span>
-                      <span className="text-[12px] text-[#1c2a2b]/40 shrink-0 w-32 text-right">{fmt(b.created_at)}</span>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                        className={`text-[#1c2a2b]/30 transition-transform shrink-0 ml-2 ${isExpanded ? 'rotate-180' : ''}`}>
-                        <polyline points="6 9 12 15 18 9" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => deleteBriefing(b.id)}
-                      disabled={deleting === b.id}
-                      className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-30"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                      </svg>
-                    </button>
-                  </div>
 
-                  {/* Expanded steps */}
-                  {isExpanded && (
-                    <div className="bg-[#fafaf8] border-t border-[#0e393d]/6 px-5 py-4">
-                      {isLoadingSteps ? (
-                        <div className="flex justify-center py-4 text-[12px] text-[#1c2a2b]/40">Loading steps…</div>
-                      ) : steps && steps.length > 0 ? (
-                        <div className="space-y-3">
-                          <div className="text-[10px] font-semibold uppercase tracking-[.12em] text-[#ceab84] mb-2">
-                            Briefing Steps ({steps.length})
-                          </div>
-                          {steps.map((step, i) => (
-                            <div key={step.id || i} className="bg-white rounded-lg border border-[#0e393d]/8 p-4">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="w-6 h-6 rounded-full bg-[#0e393d]/8 text-[10px] font-bold text-[#0e393d] flex items-center justify-center">
-                                  {i + 1}
-                                </span>
-                                <span className="text-[12px] font-semibold text-[#0e393d]">{step.title}</span>
-                                <span className="text-[9px] text-[#1c2a2b]/30 font-mono ml-auto">highlight: {step.highlight || '—'}</span>
-                                <StepPlayer narration={step.narration} lang={b.lang} />
-                              </div>
-                              <p className="text-[12px] text-[#1c2a2b]/60 leading-relaxed pl-8">
-                                {step.narration}
-                              </p>
-                              {step.audioCacheKey && (
-                                <div className="flex items-center gap-2 mt-2 pl-8">
-                                  {step.audioCached ? (
-                                    <span className="inline-flex items-center gap-1 text-[9px] font-medium text-[#0C9C6C] bg-[#0C9C6C]/8 px-2 py-0.5 rounded-full">
-                                      <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
-                                      cached
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 text-[9px] font-medium text-[#1c2a2b]/30 bg-[#1c2a2b]/5 px-2 py-0.5 rounded-full">
-                                      not cached
-                                    </span>
-                                  )}
-                                  <span className="text-[9px] font-mono text-[#1c2a2b]/20" title={step.audioCacheKey}>
-                                    {step.audioCacheKey}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          ))}
+          {/* ── Section 3: Per-User Detail ───────────────────────────────────── */}
+          <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm mb-6">
+            <div className="px-5 py-4 border-b border-[#0e393d]/8 bg-[#0e393d]/[0.02]">
+              <h2 className="text-sm font-semibold text-[#0e393d]">Users</h2>
+              <p className="text-[10px] text-[#1c2a2b]/40 mt-0.5">Content generated per user — click to expand details</p>
+            </div>
+
+            {userEntries.length === 0 ? (
+              <div className="px-5 py-12 text-center text-sm text-[#1c2a2b]/30">No user data yet</div>
+            ) : (
+              <div className="divide-y divide-[#0e393d]/5">
+                {userEntries.map(user => {
+                  const isExpanded = expandedUser === user.userId;
+                  return (
+                    <div key={user.userId}>
+                      <button
+                        onClick={() => setExpandedUser(isExpanded ? null : user.userId)}
+                        className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-[#fafaf8] transition text-left"
+                      >
+                        {/* User info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-[#0e393d] text-sm">{user.name}</div>
+                          <div className="text-[10px] text-[#1c2a2b]/35 truncate">{user.email}</div>
                         </div>
-                      ) : (
-                        <div className="text-[12px] text-[#1c2a2b]/30 text-center py-4">No steps data stored for this briefing</div>
+
+                        {/* Feature mini-badges */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {FEATURES.map(({ key, icon, source }) => {
+                            const count = user.sources[source] ?? 0;
+                            return (
+                              <div
+                                key={key}
+                                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] ${
+                                  count > 0
+                                    ? 'bg-[#0e393d]/8 text-[#0e393d] font-medium'
+                                    : 'bg-[#0e393d]/3 text-[#1c2a2b]/20'
+                                }`}
+                                title={key}
+                              >
+                                <span className="text-[10px] leading-none">{icon}</span>
+                                {count}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Total & expand arrow */}
+                        <div className="text-xs text-[#0e393d]/50 font-medium shrink-0 w-16 text-right">
+                          {user.totalFiles} file{user.totalFiles !== 1 ? 's' : ''}
+                        </div>
+                        <div className="text-xs text-[#0e393d]/50 font-medium shrink-0 w-20 text-right">
+                          {user.briefings.length} briefing{user.briefings.length !== 1 ? 's' : ''}
+                        </div>
+                        <svg
+                          width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                          className={`text-[#1c2a2b]/30 transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
+                        >
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                      </button>
+
+                      {/* Expanded user detail */}
+                      {isExpanded && (
+                        <div className="bg-[#fafaf8] border-t border-[#0e393d]/5 px-5 py-4 space-y-4">
+                          {/* Feature breakdown for this user */}
+                          <div>
+                            <div className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-2">
+                              Audio Cache by Feature
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                              {FEATURES.map(({ key, icon, source }) => {
+                                const count = user.sources[source] ?? 0;
+                                return (
+                                  <div
+                                    key={key}
+                                    className={`rounded-lg border px-3 py-2 ${
+                                      count > 0
+                                        ? 'border-[#0e393d]/10 bg-white'
+                                        : 'border-[#0e393d]/5 bg-white/50 opacity-40'
+                                    }`}
+                                  >
+                                    <div className="text-[11px] text-[#1c2a2b]/50">{icon} {key}</div>
+                                    <div className="text-lg font-semibold text-[#0e393d] mt-0.5">{count} <span className="text-[10px] font-normal text-[#1c2a2b]/30">files</span></div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Briefings for this user */}
+                          {user.briefings.length > 0 && (
+                            <div>
+                              <div className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-2">
+                                Briefings ({user.briefings.length})
+                              </div>
+                              <div className="space-y-1">
+                                {user.briefings.map(b => {
+                                  const isBriefingExpanded = expandedId === b.id;
+                                  const steps = expandedSteps[b.id];
+                                  const isLoadingBriefingSteps = loadingSteps === b.id;
+                                  return (
+                                    <div key={b.id} className="rounded-lg border border-[#0e393d]/8 bg-white overflow-hidden">
+                                      <div className="flex items-center">
+                                        <button
+                                          onClick={() => toggleExpand(b.id)}
+                                          className="flex-1 flex items-center text-left px-3 py-2.5 gap-3 hover:bg-[#fafaf8] transition"
+                                        >
+                                          <span className="text-base shrink-0">{LANG_FLAGS[b.lang] ?? b.lang}</span>
+                                          <span className="font-mono text-[10px] bg-[#0e393d]/5 px-2 py-0.5 rounded shrink-0">
+                                            {b.model_used.replace('claude-', '').replace('-4-6', ' 4.6').replace('-4-5', ' 4.5')}
+                                          </span>
+                                          <span className="tabular-nums text-[11px] text-[#1c2a2b]/50 shrink-0">
+                                            {b.tokens_used?.toLocaleString() ?? '—'} tokens
+                                          </span>
+                                          <span className="tabular-nums text-[11px] text-[#1c2a2b]/50 shrink-0">
+                                            {fmtDuration(b.duration_ms)}
+                                          </span>
+                                          <span className="text-[11px] text-[#1c2a2b]/35 ml-auto shrink-0">{fmt(b.created_at)}</span>
+                                          <svg
+                                            width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                            className={`text-[#1c2a2b]/25 transition-transform shrink-0 ${isBriefingExpanded ? 'rotate-180' : ''}`}
+                                          >
+                                            <polyline points="6 9 12 15 18 9" />
+                                          </svg>
+                                        </button>
+                                        <button
+                                          onClick={() => deleteBriefing(b.id)}
+                                          disabled={deleting === b.id}
+                                          className="p-2 text-red-300 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-30"
+                                        >
+                                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                                          </svg>
+                                        </button>
+                                      </div>
+
+                                      {/* Expanded briefing steps */}
+                                      {isBriefingExpanded && (
+                                        <div className="bg-[#fafaf8] border-t border-[#0e393d]/5 px-3 py-3">
+                                          {isLoadingBriefingSteps ? (
+                                            <div className="text-xs text-[#1c2a2b]/30 text-center py-3">Loading steps…</div>
+                                          ) : steps && steps.length > 0 ? (
+                                            <div className="space-y-2">
+                                              {steps.map((step, i) => (
+                                                <div key={step.id || i} className="bg-white rounded-lg border border-[#0e393d]/6 p-3">
+                                                  <div className="flex items-center gap-2 mb-1">
+                                                    <span className="w-5 h-5 rounded-full bg-[#0e393d]/8 text-[9px] font-bold text-[#0e393d] flex items-center justify-center shrink-0">
+                                                      {i + 1}
+                                                    </span>
+                                                    <span className="text-[11px] font-semibold text-[#0e393d]">{step.title}</span>
+                                                    <span className="text-[8px] text-[#1c2a2b]/25 font-mono ml-auto">{step.highlight || '—'}</span>
+                                                    <StepPlayer narration={step.narration} lang={b.lang} />
+                                                  </div>
+                                                  <p className="text-[11px] text-[#1c2a2b]/50 leading-relaxed pl-7">
+                                                    {step.narration}
+                                                  </p>
+                                                  {step.audioCacheKey && (
+                                                    <div className="flex items-center gap-2 mt-1.5 pl-7">
+                                                      {step.audioCached ? (
+                                                        <span className="inline-flex items-center gap-1 text-[8px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                                                          <svg width="7" height="7" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
+                                                          cached
+                                                        </span>
+                                                      ) : (
+                                                        <span className="text-[8px] text-[#1c2a2b]/20 bg-[#1c2a2b]/5 px-1.5 py-0.5 rounded-full">not cached</span>
+                                                      )}
+                                                      <span className="text-[8px] font-mono text-[#1c2a2b]/15 truncate" title={step.audioCacheKey}>
+                                                        {step.audioCacheKey}
+                                                      </span>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <div className="text-xs text-[#1c2a2b]/25 text-center py-3">No steps data</div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
-      </div>
         </>
       )}
 
-      {/* TAB: Journey Config */}
+      {/* ═══ TAB: Journey Config ════════════════════════════════════════════ */}
       {activeTab === 'journey' && (
         <div className="max-w-2xl">
           {journeyLoading ? (
             <div className="flex items-center justify-center py-12 text-sm text-[#1c2a2b]/40">Loading journey configuration…</div>
           ) : journeyConfig ? (
-            <div className="bg-white rounded-xl border border-[#0e393d]/[.07] overflow-hidden">
-              <div className="px-6 py-4 border-b border-[#0e393d]/[.06]">
-                <h2 className="text-sm font-semibold text-[#0e393d]">Journey Configuration</h2>
-                <p className="text-[10px] text-[#1c2a2b]/40 mt-0.5">Configure the progressive journey system parameters.</p>
+            <div className="space-y-6">
+              {/* Journey explainer */}
+              <div className="rounded-xl border border-[#0e393d]/10 bg-gradient-to-br from-white to-[#0e393d]/[0.02] px-5 py-4">
+                <h3 className="text-xs font-semibold uppercase tracking-widest text-[#ceab84] mb-2">How the Journey Works</h3>
+                <p className="text-xs text-[#1c2a2b]/50 leading-relaxed">
+                  Users progress through 3 phases of lifestyle lessons. They start with <strong className="text-[#0e393d]">Daily Dozen</strong> (Dr. Greger&apos;s 12 daily health recommendations). After maintaining a streak, they unlock <strong className="text-[#0e393d]">21 Tweaks</strong> (weight management optimizations). The final phase, <strong className="text-[#0e393d]">Anti-Aging 8</strong>, unlocks after a longer streak and optionally requires biomarker data. Each day, the AI coach assigns lessons up to the daily limit and tracks completion.
+                </p>
               </div>
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-[11px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-2">
-                      Tweaks Unlock Streak
-                    </label>
-                    <input
-                      type="number"
-                      value={journeyConfig.tweaks_unlock_streak}
-                      onChange={e => setJourneyConfig({ ...journeyConfig, tweaks_unlock_streak: parseInt(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 text-sm border border-[#0e393d]/[.1] rounded-lg focus:outline-none focus:border-[#0e393d]/30"
-                    />
-                    <p className="text-[10px] text-[#1c2a2b]/30 mt-1">Days of streak required</p>
-                  </div>
 
+              {/* Config card */}
+              <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm">
+                <div className="px-5 py-4 border-b border-[#0e393d]/8 bg-[#0e393d]/[0.02] flex items-center justify-between">
                   <div>
-                    <label className="block text-[11px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-2">
-                      Anti-Aging Unlock Streak
-                    </label>
-                    <input
-                      type="number"
-                      value={journeyConfig.anti_aging_unlock_streak}
-                      onChange={e => setJourneyConfig({ ...journeyConfig, anti_aging_unlock_streak: parseInt(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 text-sm border border-[#0e393d]/[.1] rounded-lg focus:outline-none focus:border-[#0e393d]/30"
-                    />
-                    <p className="text-[10px] text-[#1c2a2b]/30 mt-1">Days of streak required</p>
+                    <h2 className="text-sm font-semibold text-[#0e393d]">Journey Configuration</h2>
+                    <p className="text-[10px] text-[#1c2a2b]/40 mt-0.5">Configure unlock thresholds and daily limits</p>
                   </div>
+                  <button
+                    onClick={saveJourneyConfig}
+                    disabled={journeySaving}
+                    className={`px-5 py-2 rounded-xl text-sm font-medium shadow-sm transition ${
+                      journeySaved
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-[#0e393d] text-white hover:bg-[#0e393d]/90 shadow-[#0e393d]/20'
+                    } disabled:opacity-50`}
+                  >
+                    {journeySaving ? 'Saving…' : journeySaved ? 'Saved ✓' : 'Save'}
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="p-5 space-y-5">
+                  {/* Phase unlock thresholds */}
                   <div>
-                    <label className="block text-[11px] font-semibold uppercase tracking-[.1em] text-[#1c2a2b]/40 mb-2">
-                      Daily Lesson Limit
-                    </label>
-                    <input
-                      type="number"
-                      value={journeyConfig.daily_lesson_limit}
-                      onChange={e => setJourneyConfig({ ...journeyConfig, daily_lesson_limit: parseInt(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 text-sm border border-[#0e393d]/[.1] rounded-lg focus:outline-none focus:border-[#0e393d]/30"
-                    />
-                    <p className="text-[10px] text-[#1c2a2b]/30 mt-1">Max lessons per day</p>
+                    <div className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-3">Phase Unlock Thresholds</div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-[#0e393d]/70 mb-1">21 Tweaks — Streak Days</label>
+                        <input
+                          type="number"
+                          value={journeyConfig.tweaks_unlock_streak}
+                          onChange={e => setJourneyConfig({ ...journeyConfig, tweaks_unlock_streak: parseInt(e.target.value) || 0 })}
+                          className={inputCls}
+                        />
+                        <p className="mt-1 text-[10px] text-[#1c2a2b]/35">Days of Daily Dozen streak to unlock Tweaks</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-[#0e393d]/70 mb-1">Anti-Aging 8 — Streak Days</label>
+                        <input
+                          type="number"
+                          value={journeyConfig.anti_aging_unlock_streak}
+                          onChange={e => setJourneyConfig({ ...journeyConfig, anti_aging_unlock_streak: parseInt(e.target.value) || 0 })}
+                          className={inputCls}
+                        />
+                        <p className="mt-1 text-[10px] text-[#1c2a2b]/35">Days of streak to unlock Anti-Aging phase</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                <div className="space-y-3">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={journeyConfig.requires_biomarkers_for_anti_aging}
-                      onChange={e => setJourneyConfig({ ...journeyConfig, requires_biomarkers_for_anti_aging: e.target.checked })}
-                      className="w-4 h-4 accent-[#0e393d]"
-                    />
-                    <span className="text-[12px] text-[#0e393d]">Requires Biomarkers for Anti-Aging</span>
-                  </label>
-
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={journeyConfig.morning_checkin_enabled}
-                      onChange={e => setJourneyConfig({ ...journeyConfig, morning_checkin_enabled: e.target.checked })}
-                      className="w-4 h-4 accent-[#0e393d]"
-                    />
-                    <span className="text-[12px] text-[#0e393d]">Morning Check-In Enabled</span>
-                  </label>
-
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={journeyConfig.auto_unlock_enabled}
-                      onChange={e => setJourneyConfig({ ...journeyConfig, auto_unlock_enabled: e.target.checked })}
-                      className="w-4 h-4 accent-[#0e393d]"
-                    />
-                    <span className="text-[12px] text-[#0e393d]">Auto-Unlock Enabled</span>
-                  </label>
-                </div>
-
-                {journeyError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                    <p className="text-[12px] text-red-700">{journeyError}</p>
+                  {/* Daily limit */}
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-3">Daily Limits</div>
+                    <div className="max-w-xs">
+                      <label className="block text-xs font-medium text-[#0e393d]/70 mb-1">Max Lessons Per Day</label>
+                      <input
+                        type="number"
+                        value={journeyConfig.daily_lesson_limit}
+                        onChange={e => setJourneyConfig({ ...journeyConfig, daily_lesson_limit: parseInt(e.target.value) || 0 })}
+                        className={inputCls}
+                      />
+                      <p className="mt-1 text-[10px] text-[#1c2a2b]/35">How many lessons the coach assigns each day</p>
+                    </div>
                   </div>
-                )}
 
-                <button
-                  onClick={saveJourneyConfig}
-                  disabled={journeySaving}
-                  className="w-full px-4 py-2.5 bg-[#0e393d] text-white text-[12px] font-semibold rounded-lg hover:bg-[#0e393d]/90 transition-colors disabled:opacity-50"
-                >
-                  {journeySaving ? 'Saving…' : 'Save Configuration'}
-                </button>
+                  {/* Toggles */}
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-widest text-[#ceab84] mb-3">Features</div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between rounded-lg border border-[#0e393d]/8 px-4 py-3">
+                        <div>
+                          <div className="text-sm text-[#0e393d]">Morning Check-In</div>
+                          <div className="text-[10px] text-[#1c2a2b]/35">Daily voice check-in reminder for users</div>
+                        </div>
+                        <AdminToggle
+                          checked={journeyConfig.morning_checkin_enabled}
+                          onChange={v => setJourneyConfig({ ...journeyConfig, morning_checkin_enabled: v })}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg border border-[#0e393d]/8 px-4 py-3">
+                        <div>
+                          <div className="text-sm text-[#0e393d]">Auto-Unlock Phases</div>
+                          <div className="text-[10px] text-[#1c2a2b]/35">Automatically unlock next phase when streak threshold is met</div>
+                        </div>
+                        <AdminToggle
+                          checked={journeyConfig.auto_unlock_enabled}
+                          onChange={v => setJourneyConfig({ ...journeyConfig, auto_unlock_enabled: v })}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg border border-[#0e393d]/8 px-4 py-3">
+                        <div>
+                          <div className="text-sm text-[#0e393d]">Require Biomarkers for Anti-Aging</div>
+                          <div className="text-[10px] text-[#1c2a2b]/35">User must have lab results before unlocking Anti-Aging 8</div>
+                        </div>
+                        <AdminToggle
+                          checked={journeyConfig.requires_biomarkers_for_anti_aging}
+                          onChange={v => setJourneyConfig({ ...journeyConfig, requires_biomarkers_for_anti_aging: v })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {journeyError && (
+                    <div className="rounded-lg bg-red-50 border border-red-200/60 px-4 py-3 text-xs text-red-700">{journeyError}</div>
+                  )}
+                </div>
               </div>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-12 gap-2">
               <div className="text-sm text-[#1c2a2b]/40">No journey configuration found</div>
-              <button
-                onClick={loadJourneyConfig}
-                className="text-[12px] text-[#0e393d] hover:text-[#0e393d]/70 transition-colors"
-              >
-                Try loading again
-              </button>
+              <button onClick={loadJourneyConfig} className="text-xs text-[#0e393d] hover:text-[#0e393d]/70 transition">Try loading again</button>
             </div>
           )}
         </div>
       )}
 
-      {/* TAB: Voice Test */}
+      {/* ═══ TAB: Voice Test ═══════════════════════════════════════════════ */}
       {activeTab === 'voice' && (
         <div className="flex flex-col items-center gap-4">
           <div className="bg-white rounded-xl border border-[#0e393d]/[.07] p-6 w-full max-w-2xl">
-            <p className="text-[12px] text-[#1c2a2b]/60 text-center mb-6">
+            <p className="text-xs text-[#1c2a2b]/50 text-center mb-6">
               Test voice conversation modes here. Credits are not deducted for admin users.
             </p>
             <div className="flex justify-center">
@@ -847,19 +880,15 @@ export default function AICoachManager() {
         </div>
       )}
 
-      {/* TAB: User Progress */}
+      {/* ═══ TAB: User Progress ═══════════════════════════════════════════ */}
       {activeTab === 'progress' && (
-        <div className="bg-white rounded-xl border border-[#0e393d]/[.07] overflow-hidden">
-          <div className="px-6 py-4 border-b border-[#0e393d]/[.06] flex items-center justify-between">
+        <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden shadow-sm">
+          <div className="px-5 py-4 border-b border-[#0e393d]/8 bg-[#0e393d]/[0.02] flex items-center justify-between">
             <h2 className="text-sm font-semibold text-[#0e393d]">User Lesson Progress</h2>
             <button
               onClick={loadProgressData}
-              className="text-[11px] text-[#0e393d]/50 hover:text-[#0e393d] transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-lg border border-[#0e393d]/10 text-xs text-[#0e393d]/40 hover:text-[#0e393d] hover:border-[#0e393d]/20 transition"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-              </svg>
               Refresh
             </button>
           </div>
@@ -868,78 +897,39 @@ export default function AICoachManager() {
             <div className="flex items-center justify-center py-16 text-sm text-[#1c2a2b]/40">Loading…</div>
           ) : progressData.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-2">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0e393d" strokeWidth="1.2" opacity="0.2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-              <div className="text-sm text-[#1c2a2b]/40">No lesson progress yet</div>
+              <div className="text-sm text-[#1c2a2b]/30">No lesson progress yet</div>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-[#fafaf8] border-b border-[#0e393d]/[.06]">
+                <thead className="bg-[#0e393d]/[0.03] border-b border-[#0e393d]/8">
                   <tr>
-                    <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">
-                      User
-                    </th>
-                    <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">
-                      Lesson
-                    </th>
-                    <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">
-                      Framework
-                    </th>
-                    <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">
-                      Assigned By
-                    </th>
-                    <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">
-                      Assigned
-                    </th>
-                    <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[.08em] text-[#1c2a2b]/40">
-                      Completed
-                    </th>
+                    {['User', 'Lesson', 'Framework', 'Status', 'Assigned By', 'Assigned', 'Completed'].map(h => (
+                      <th key={h} className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[#0e393d]/50">{h}</th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#0e393d]/[.04]">
+                <tbody className="divide-y divide-[#0e393d]/5">
                   {progressData.map(row => (
                     <tr key={row.id} className="hover:bg-[#fafaf8] transition-colors">
-                      <td className="px-6 py-3 text-[12px] text-[#0e393d]">
+                      <td className="px-3 py-3 text-xs text-[#0e393d]">
                         {row.profiles ? (
                           <div>
-                            <div className="font-medium">
-                              {[row.profiles.first_name, row.profiles.last_name].filter(Boolean).join(' ') || '—'}
-                            </div>
-                            <div className="text-[10px] text-[#1c2a2b]/40">{row.profiles.email}</div>
+                            <div className="font-medium">{[row.profiles.first_name, row.profiles.last_name].filter(Boolean).join(' ') || '—'}</div>
+                            <div className="text-[10px] text-[#1c2a2b]/35">{row.profiles.email}</div>
                           </div>
-                        ) : (
-                          <span className="text-[#1c2a2b]/30">{row.user_id.slice(0, 8)}…</span>
-                        )}
+                        ) : <span className="text-[#1c2a2b]/30">{row.user_id.slice(0, 8)}…</span>}
                       </td>
-                      <td className="px-6 py-3 text-[12px] text-[#0e393d]">
-                        {row.lifestyle_lessons?.title_en || '—'}
-                      </td>
-                      <td className="px-6 py-3 text-[12px] text-[#1c2a2b]/60">
-                        {row.lifestyle_lessons?.framework || '—'}
-                      </td>
-                      <td className="px-6 py-3 text-[12px]">
-                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium ${
-                          row.status === 'completed' ? 'bg-[#0C9C6C]/10 text-[#0C9C6C]' :
-                          row.status === 'in_progress' ? 'bg-[#0e393d]/10 text-[#0e393d]' :
-                          'bg-[#1c2a2b]/5 text-[#1c2a2b]/60'
-                        }`}>
+                      <td className="px-3 py-3 text-xs text-[#0e393d]">{row.lifestyle_lessons?.title_en || '—'}</td>
+                      <td className="px-3 py-3 text-xs text-[#1c2a2b]/50">{row.lifestyle_lessons?.framework || '—'}</td>
+                      <td className="px-3 py-3">
+                        <AdminBadge color={row.status === 'completed' ? 'green' : row.status === 'in_progress' ? 'teal' : 'gray'}>
                           {row.status}
-                        </span>
+                        </AdminBadge>
                       </td>
-                      <td className="px-6 py-3 text-[12px] text-[#1c2a2b]/60">
-                        {row.assigned_by || '—'}
-                      </td>
-                      <td className="px-6 py-3 text-[12px] text-[#1c2a2b]/60 whitespace-nowrap">
-                        {fmt(row.assigned_at)}
-                      </td>
-                      <td className="px-6 py-3 text-[12px] text-[#1c2a2b]/60 whitespace-nowrap">
-                        {row.completed_at ? fmt(row.completed_at) : '—'}
-                      </td>
+                      <td className="px-3 py-3 text-xs text-[#1c2a2b]/50">{row.assigned_by || '—'}</td>
+                      <td className="px-3 py-3 text-xs text-[#1c2a2b]/40 whitespace-nowrap">{fmt(row.assigned_at)}</td>
+                      <td className="px-3 py-3 text-xs text-[#1c2a2b]/40 whitespace-nowrap">{row.completed_at ? fmt(row.completed_at) : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
