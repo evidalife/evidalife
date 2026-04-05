@@ -7,16 +7,26 @@ import { useVoiceInput } from '@/hooks/useVoiceInput';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Citation {
-  pmid: string;
+  pmid: string | null;
   title: string;
   authors: string[];
   journal: string;
   publication_year: number | null;
   doi: string | null;
   similarity: number;
-  url: string;
+  url: string | null;
   citation: string;
+  is_book_chunk?: boolean;
 }
+
+const BOOK_URLS: Record<string, string> = {
+  'How Not to Age': 'https://nutritionfacts.org/book/how-not-to-age/',
+  'How Not to Die': 'https://nutritionfacts.org/book/how-not-to-die/',
+  'How Not to Diet': 'https://nutritionfacts.org/book/how-not-to-diet/',
+  'Lower LDL Cholesterol Naturally with Food': 'https://nutritionfacts.org/book/portfolio/',
+  'Ultra-Processed Foods': 'https://nutritionfacts.org/book/ultra-processed/',
+  'Ozempic': 'https://nutritionfacts.org/book/ozempic/',
+};
 
 interface Message {
   id: string;
@@ -229,7 +239,9 @@ function CitationCard({ citation, index }: { citation: Citation; index: number }
         onClick={() => setExpanded(e => !e)}
         className="w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-[#0e393d]/[.02] transition-colors"
       >
-        <span className="mt-0.5 shrink-0 w-6 h-6 rounded-lg bg-[#0e393d] text-white text-[10px] font-bold flex items-center justify-center">
+        <span className={`mt-0.5 shrink-0 w-6 h-6 rounded-lg text-white text-[10px] font-bold flex items-center justify-center ${
+          citation.is_book_chunk ? 'bg-[#ceab84]' : 'bg-[#0e393d]'
+        }`}>
           {index + 1}
         </span>
         <div className="flex-1 min-w-0">
@@ -253,25 +265,52 @@ function CitationCard({ citation, index }: { citation: Citation; index: number }
                 {citation.similarity}% match
               </span>
             )}
-            <a
-              href={citation.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] font-semibold text-[#0e393d] hover:underline"
-              onClick={e => e.stopPropagation()}
-            >
-              View on PubMed →
-            </a>
-            {citation.doi && (
-              <a
-                href={`https://doi.org/${citation.doi}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] text-[#1c2a2b]/35 hover:underline"
-                onClick={e => e.stopPropagation()}
-              >
-                DOI
-              </a>
+            {citation.is_book_chunk ? (
+              <>
+                {/* Link to NutritionFacts.org book page */}
+                {(() => {
+                  const bookUrl = Object.entries(BOOK_URLS).find(([title]) => citation.journal?.includes(title))?.[1];
+                  return bookUrl ? (
+                    <a
+                      href={bookUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-semibold text-[#0e393d] hover:underline"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      View Book →
+                    </a>
+                  ) : null;
+                })()}
+                <span className="text-[10px] font-medium text-[#ceab84] bg-[#ceab84]/10 rounded-full px-2 py-0.5">
+                  Book Content
+                </span>
+              </>
+            ) : (
+              <>
+                {citation.url && (
+                  <a
+                    href={citation.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-semibold text-[#0e393d] hover:underline"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    View on PubMed →
+                  </a>
+                )}
+                {citation.doi && (
+                  <a
+                    href={`https://doi.org/${citation.doi}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-[#1c2a2b]/35 hover:underline"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    DOI
+                  </a>
+                )}
+              </>
             )}
           </div>
         </div>
