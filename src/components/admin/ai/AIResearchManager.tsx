@@ -1008,7 +1008,6 @@ function NfSyncTab() {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState('');
   const [expandedJob, setExpandedJob] = useState<string | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadStats = useCallback(async () => {
     try {
@@ -1021,19 +1020,10 @@ function NfSyncTab() {
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    loadStats();
-    // Auto-refresh while syncing
-    intervalRef.current = setInterval(() => {
-      if (stats?.recentJobs?.some(j => j.status === 'running' || j.status === 'pending')) {
-        loadStats();
-      }
-    }, 3000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [loadStats, stats?.recentJobs]);
+  useEffect(() => { loadStats(); }, [loadStats]);
 
   const triggerSync = async () => {
-    if (!confirm('Start NutritionFacts.org sync? This will check for new videos, blogs, and Q&As.')) return;
+    if (!confirm('Start NutritionFacts.org sync? This checks for new content and may take 30–60 seconds.')) return;
     setSyncing(true);
     setError('');
     try {
@@ -1043,8 +1033,8 @@ function NfSyncTab() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Unknown error');
-      // Refresh stats to show new job
-      setTimeout(loadStats, 1000);
+      // Sync runs synchronously — result is ready
+      loadStats();
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -1054,7 +1044,7 @@ function NfSyncTab() {
 
   if (loading) return <div className="p-8 text-sm text-[#1c2a2b]/35">Loading NutritionFacts stats...</div>;
 
-  const isRunning = stats?.recentJobs?.some(j => j.status === 'running' || j.status === 'pending');
+  const isRunning = syncing;
 
   return (
     <div className="p-8 space-y-6 max-w-2xl">

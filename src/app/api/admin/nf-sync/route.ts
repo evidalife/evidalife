@@ -169,9 +169,6 @@ export async function GET() {
   const supabase = createAdminClient();
 
   // NF content counts by type (video, blog, question)
-  const { data: videos } = await supabase.from('nf_content').select('*', { count: 'exact', head: true }).eq('content_type', 'video');
-  const { data: blogs } = await supabase.from('nf_content').select('*', { count: 'exact', head: true }).eq('content_type', 'blog');
-  const { data: questions } = await supabase.from('nf_content').select('*', { count: 'exact', head: true }).eq('content_type', 'question');
   const { count: videoCount } = await supabase.from('nf_content').select('*', { count: 'exact', head: true }).eq('content_type', 'video');
   const { count: blogCount } = await supabase.from('nf_content').select('*', { count: 'exact', head: true }).eq('content_type', 'blog');
   const { count: questionCount } = await supabase.from('nf_content').select('*', { count: 'exact', head: true }).eq('content_type', 'question');
@@ -241,144 +238,163 @@ export async function POST(req: NextRequest) {
   const logLines: string[] = [];
   const log = (msg: string) => { logLines.push(msg); console.log(`[nf-sync] ${msg}`); };
 
-  // Run sync in background
-  (async () => {
-    try {
-      // Get existing slugs
-      const { data: existing } = await supabase
+  // Run sync synchronously (Vercel kills background tasks after response is sent)
+  try {
+    // Get existing slugs — paginate to avoid 1000-row default limit
+    const allSlugs: string[] = [];
+    let offset = 0;
+    const PAGE = 1000;
+    while (true) {
+      const { data: page } = await supabase
         .from('nf_content')
-        .select('slug');
-      const existingSlugs = new Set((existing ?? []).map((r: any) => r.slug));
-      log(`Existing NF content: ${existingSlugs.size} items`);
+        .select('slug')
+        .order('created_at', { ascending: true })
+        .range(offset, offset + PAGE - 1);
+      if (!page || page.length === 0) break;
+      allSlugs.push(...page.map((r: any) => r.slug));
+      if (page.length < PAGE) break;
+      offset += PAGE;
+    }
+    const existingSlugs = new Set(allSlugs);
+    log(`Existing NF content: ${existingSlugs.size} items`);
 
-      // Fetch new content from WP REST API
-      const [newVideos, newBlogs, newQuestions] = await Promise.all([
-        fetchNewWpPosts('video', existingSlugs),
-        fetchNewWpPosts('posts', existingSlugs),
-        fetchNewWpPosts('questions', existingSlugs, 10, 2),
-      ]);
+    // Fetch new content from WP REST API
+    const [newVideos, newBlogs, newQuestions] = await Promise.all([
+      fetchNewWpPosts('video', existingSlugs),
+      fetchNewWpPosts('posts', existingSlugs),
+      fetchNewWpPosts('questions', existingSlugs, 10, 2),
+    ]);
 
-      log(`New videos: ${newVideos.length}, blogs: ${newBlogs.length}, questions: ${newQuestions.length}`);
+    log(`New videos: ${newVideos.length}, blogs: ${newBlogs.length}, questions: ${newQuestions.length}`);
 
-      const allNew = [
-        ...newVideos.map(p => ({ ...p, content_type: 'video' })),
-        ...newBlogs.map(p => ({ ...p, content_type: 'blog' })),
-        ...newQuestions.map(p => ({ ...p, content_type: 'question' })),
-      ];
+    const allNew = [
+      ...newVideos.map(p => ({ ...p, content_type: 'video' })),
+      ...newBlogs.map(p => ({ ...p, content_type: 'blog' })),
+      ...newQuestions.map(p => ({ ...p, content_type: 'question' })),
+    ];
 
-      if (allNew.length === 0) {
-        log('No new content found — sync complete');
-        await supabase.from('nf_sync_jobs').update({
-          status: 'completed',
-          log_lines: logLines,
-          completed_at: new Date().toISOString(),
-        }).eq('id', jobId);
-        return;
-      }
+    if (allNew.length === 0) {
+      log('No new content found — sync complete');
+      await supabase.from('nf_sync_jobs').update({
+        status: 'completed',
+        log_lines: logLines,
+        completed_at: new Date().toISOString(),
+      }).eq('id', jobId);
+      return NextResponse.json({ jobId, status: 'completed', newContent: 0 });
+    }
 
-      // For each new item, fetch the full page to get transcript + PMIDs
-      let newPmidsSet = new Set<string>();
-      const insertRows: any[] = [];
+    // For each new item, fetch the full page to get transcript + PMIDs
+    let newPmidsSet = new Set<string>();
+    const insertRows: any[] = [];
 
-      for (const item of allNew) {
+    for (const item of allNew) {
+      try {
+        const pageRes = await fetch(item.link, {
+          headers: { 'User-Agent': 'Evidalife Research Engine/1.0' },
+        });
+        if (!pageRes.ok) {
+          log(`  Skipped ${item.slug}: HTTP ${pageRes.status}`);
+          continue;
+        }
+        const html = await pageRes.text();
+
+        const transcript = extractTranscript(html);
+        const pmids = extractPmids(html);
+
+        if (!transcript && item.content_type === 'video') {
+          log(`  Skipped ${item.slug}: no transcript found`);
+          continue;
+        }
+
+        // Generate embedding
+        const embeddingText = `${item.title.rendered}\n\n${transcript}`;
+        let embedding: number[] | null = null;
         try {
-          const pageRes = await fetch(item.link, {
-            headers: { 'User-Agent': 'Evidalife Research Engine/1.0' },
-          });
-          if (!pageRes.ok) {
-            log(`  Skipped ${item.slug}: HTTP ${pageRes.status}`);
-            continue;
-          }
-          const html = await pageRes.text();
-
-          const transcript = extractTranscript(html);
-          const pmids = extractPmids(html);
-
-          if (!transcript && item.content_type === 'video') {
-            log(`  Skipped ${item.slug}: no transcript found`);
-            continue;
-          }
-
-          // Generate embedding
-          const embeddingText = `${item.title.rendered}\n\n${transcript}`;
-          let embedding: number[] | null = null;
-          try {
-            embedding = await embedText(embeddingText, OPENAI_API_KEY);
-          } catch (e: any) {
-            log(`  Embedding failed for ${item.slug}: ${e.message}`);
-          }
-
-          // Detect biomarkers and diseases
-          const biomarkerSlugs = detectKeywords(embeddingText, BIOMARKER_KEYWORDS);
-          const diseaseTags = detectKeywords(embeddingText, DISEASE_KEYWORDS);
-
-          insertRows.push({
-            slug: item.slug,
-            title: item.title.rendered.replace(/&#8217;/g, "'").replace(/&#8211;/g, '–').replace(/&amp;/g, '&').replace(/&#8230;/g, '…'),
-            content_type: item.content_type,
-            transcript: transcript || item.title.rendered,
-            pmids: pmids.length > 0 ? pmids : null,
-            url: item.link,
-            embedding: embedding ? JSON.stringify(embedding) : null,
-            biomarker_slugs: biomarkerSlugs.length > 0 ? biomarkerSlugs : null,
-            disease_tags: diseaseTags.length > 0 ? diseaseTags : null,
-          });
-
-          for (const pmid of pmids) newPmidsSet.add(pmid);
-          log(`  ${item.content_type}: ${item.slug} — ${pmids.length} PMIDs, ${transcript.length} chars`);
-
-          // Small delay to be polite to NF servers
-          await new Promise(r => setTimeout(r, 300));
+          embedding = await embedText(embeddingText, OPENAI_API_KEY);
         } catch (e: any) {
-          log(`  Error on ${item.slug}: ${e.message}`);
+          log(`  Embedding failed for ${item.slug}: ${e.message}`);
         }
+
+        // Detect biomarkers and diseases
+        const biomarkerSlugs = detectKeywords(embeddingText, BIOMARKER_KEYWORDS);
+        const diseaseTags = detectKeywords(embeddingText, DISEASE_KEYWORDS);
+
+        insertRows.push({
+          slug: item.slug,
+          title: item.title.rendered.replace(/&#8217;/g, "'").replace(/&#8211;/g, '–').replace(/&amp;/g, '&').replace(/&#8230;/g, '…'),
+          content_type: item.content_type,
+          transcript: transcript || item.title.rendered,
+          pmids: pmids.length > 0 ? pmids : null,
+          url: item.link,
+          embedding: embedding ? JSON.stringify(embedding) : null,
+          biomarker_slugs: biomarkerSlugs.length > 0 ? biomarkerSlugs : null,
+          disease_tags: diseaseTags.length > 0 ? diseaseTags : null,
+        });
+
+        for (const pmid of pmids) newPmidsSet.add(pmid);
+        log(`  ${item.content_type}: ${item.slug} — ${pmids.length} PMIDs, ${transcript.length} chars`);
+
+        // Small delay to be polite to NF servers
+        await new Promise(r => setTimeout(r, 300));
+      } catch (e: any) {
+        log(`  Error on ${item.slug}: ${e.message}`);
       }
+    }
 
-      // Insert new content
-      if (insertRows.length > 0) {
-        const { error: insertError } = await supabase
-          .from('nf_content')
-          .upsert(insertRows, { onConflict: 'slug' });
+    // Insert new content
+    if (insertRows.length > 0) {
+      const { error: insertError } = await supabase
+        .from('nf_content')
+        .upsert(insertRows, { onConflict: 'slug' });
 
-        if (insertError) {
-          log(`Insert error: ${insertError.message}`);
-        } else {
-          log(`Inserted ${insertRows.length} new content items`);
-        }
+      if (insertError) {
+        log(`Insert error: ${insertError.message}`);
+      } else {
+        log(`Inserted ${insertRows.length} new content items`);
       }
+    }
 
-      // Check which PMIDs are new (not in studies table)
+    // Check which PMIDs are new (not in studies table)
+    const newPmidArr = [...newPmidsSet];
+    let trulyNewPmids: string[] = [];
+    if (newPmidArr.length > 0) {
       const { data: existingStudies } = await supabase
         .from('studies')
         .select('pmid')
-        .in('pmid', [...newPmidsSet]);
+        .in('pmid', newPmidArr);
 
       const existingPmidSet = new Set((existingStudies ?? []).map((s: any) => s.pmid));
-      const trulyNewPmids = [...newPmidsSet].filter(p => !existingPmidSet.has(p));
-      log(`PMIDs found: ${newPmidsSet.size} total, ${trulyNewPmids.length} new`);
-
-      // Update job with results
-      await supabase.from('nf_sync_jobs').update({
-        status: 'completed',
-        new_videos: newVideos.length,
-        new_blogs: newBlogs.length,
-        new_questions: newQuestions.length,
-        new_pmids_found: trulyNewPmids.length,
-        total_embedded: insertRows.filter(r => r.embedding).length,
-        log_lines: logLines,
-        completed_at: new Date().toISOString(),
-      }).eq('id', jobId);
-
-    } catch (err: any) {
-      log(`Fatal error: ${err.message}`);
-      await supabase.from('nf_sync_jobs').update({
-        status: 'failed',
-        error_message: err.message,
-        log_lines: logLines,
-        completed_at: new Date().toISOString(),
-      }).eq('id', jobId);
+      trulyNewPmids = newPmidArr.filter(p => !existingPmidSet.has(p));
     }
-  })();
+    log(`PMIDs found: ${newPmidsSet.size} total, ${trulyNewPmids.length} new`);
 
-  return NextResponse.json({ jobId, status: 'started' });
+    // Update job with results
+    await supabase.from('nf_sync_jobs').update({
+      status: 'completed',
+      new_videos: newVideos.length,
+      new_blogs: newBlogs.length,
+      new_questions: newQuestions.length,
+      new_pmids_found: trulyNewPmids.length,
+      total_embedded: insertRows.filter(r => r.embedding).length,
+      log_lines: logLines,
+      completed_at: new Date().toISOString(),
+    }).eq('id', jobId);
+
+    return NextResponse.json({
+      jobId,
+      status: 'completed',
+      newContent: insertRows.length,
+      newPmids: trulyNewPmids.length,
+    });
+
+  } catch (err: any) {
+    log(`Fatal error: ${err.message}`);
+    await supabase.from('nf_sync_jobs').update({
+      status: 'failed',
+      error_message: err.message,
+      log_lines: logLines,
+      completed_at: new Date().toISOString(),
+    }).eq('id', jobId);
+    return NextResponse.json({ jobId, status: 'failed', error: err.message }, { status: 500 });
+  }
 }
