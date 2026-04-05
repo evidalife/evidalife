@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-export const maxDuration = 60;
+export const maxDuration = 300; // 5 min — PMID ingestion can take a while
 
 // ── Auth guard ────────────────────────────────────────────────────────────────
 async function requireAdmin() {
@@ -181,6 +181,75 @@ export async function POST(req: NextRequest) {
     const { error } = await supabase.from('studies').delete().in('id', ids);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true, deleted: ids.length });
+  }
+
+  // ── Count pending NF PMIDs (cited in nf_content but not in studies) ────────
+  if (action === 'count_pending_nf_pmids') {
+    const { data, error } = await supabase.rpc('count_pending_nf_pmids');
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ count: data ?? 0 });
+  }
+
+  // ── Ingest specific PMIDs (manual add from admin UI) ──────────────────────
+  if (action === 'ingest_pmids') {
+    const { pmids } = body;
+    if (!pmids?.length) return NextResponse.json({ error: 'pmids required' }, { status: 400 });
+    if (pmids.length > 200) return NextResponse.json({ error: 'Max 200 PMIDs per request' }, { status: 400 });
+
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!OPENAI_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+      return NextResponse.json({ error: 'Missing env vars' }, { status: 500 });
+    }
+
+    try {
+      const { ingestPmids: runIngest } = await import('@/lib/research/ingest-pipeline');
+      const errors: string[] = [];
+      const result = await runIngest(pmids, {
+        supabaseUrl: SUPABASE_URL,
+        supabaseServiceKey: SUPABASE_SERVICE_KEY,
+        openaiApiKey: OPENAI_API_KEY,
+        pubmedApiKey: process.env.PUBMED_API_KEY,
+        source: 'manual',
+        batchSize: Math.min(pmids.length, 100),
+        onProgress: (msg: string) => {
+          if (msg.toLowerCase().includes('error')) errors.push(msg);
+        },
+      });
+      return NextResponse.json({ inserted: result.inserted, skipped: result.skipped, errors });
+    } catch (e: any) {
+      return NextResponse.json({ error: e.message }, { status: 500 });
+    }
+  }
+
+  // ── Ingest all pending NF PMIDs ───────────────────────────────────────────
+  if (action === 'ingest_pending_nf_pmids') {
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!OPENAI_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+      return NextResponse.json({ error: 'Missing env vars' }, { status: 500 });
+    }
+
+    try {
+      // Get pending PMIDs via RPC
+      const { data: pendingPmids, error: rpcErr } = await supabase.rpc('get_pending_nf_pmids');
+      if (rpcErr) return NextResponse.json({ error: rpcErr.message }, { status: 500 });
+      if (!pendingPmids?.length) return NextResponse.json({ inserted: 0, skipped: 0 });
+
+      const { ingestPmids: runIngest } = await import('@/lib/research/ingest-pipeline');
+      const result = await runIngest(pendingPmids, {
+        supabaseUrl: SUPABASE_URL,
+        supabaseServiceKey: SUPABASE_SERVICE_KEY,
+        openaiApiKey: OPENAI_API_KEY,
+        pubmedApiKey: process.env.PUBMED_API_KEY,
+        source: 'nutritionfacts',
+      });
+      return NextResponse.json({ inserted: result.inserted, skipped: result.skipped });
+    } catch (e: any) {
+      return NextResponse.json({ error: e.message }, { status: 500 });
+    }
   }
 
   // Validate source

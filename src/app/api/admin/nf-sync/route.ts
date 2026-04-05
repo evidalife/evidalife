@@ -368,6 +368,35 @@ export async function POST(req: NextRequest) {
     }
     log(`PMIDs found: ${newPmidsSet.size} total, ${trulyNewPmids.length} new`);
 
+    // Auto-ingest new PMIDs into the studies table
+    let pmidsIngested = 0;
+    if (trulyNewPmids.length > 0) {
+      const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const PUBMED_API_KEY = process.env.PUBMED_API_KEY;
+
+      if (OPENAI_API_KEY && SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+        try {
+          log(`Auto-ingesting ${trulyNewPmids.length} new PMIDs into studies table...`);
+          const { ingestPmids } = await import('@/lib/research/ingest-pipeline');
+          const result = await ingestPmids(trulyNewPmids, {
+            supabaseUrl: SUPABASE_URL,
+            supabaseServiceKey: SUPABASE_SERVICE_KEY,
+            openaiApiKey: OPENAI_API_KEY,
+            pubmedApiKey: PUBMED_API_KEY,
+            source: 'nutritionfacts',
+            onProgress: (msg: string) => log(msg),
+          });
+          pmidsIngested = result.inserted;
+          log(`Auto-ingest complete: ${result.inserted} inserted, ${result.skipped} skipped, ${result.errors} errors`);
+        } catch (e: any) {
+          log(`Auto-ingest error: ${e.message}`);
+        }
+      } else {
+        log('Skipping auto-ingest: missing env vars');
+      }
+    }
+
     // Update job with results
     await supabase.from('nf_sync_jobs').update({
       status: 'completed',
@@ -375,6 +404,7 @@ export async function POST(req: NextRequest) {
       new_blogs: newBlogs.length,
       new_questions: newQuestions.length,
       new_pmids_found: trulyNewPmids.length,
+      new_pmids_ingested: pmidsIngested,
       total_embedded: insertRows.filter(r => r.embedding).length,
       log_lines: logLines,
       completed_at: new Date().toISOString(),
@@ -385,6 +415,7 @@ export async function POST(req: NextRequest) {
       status: 'completed',
       newContent: insertRows.length,
       newPmids: trulyNewPmids.length,
+      pmidsIngested,
     });
 
   } catch (err: any) {

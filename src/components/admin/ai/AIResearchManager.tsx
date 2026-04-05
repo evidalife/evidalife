@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ interface Study {
   created_at: string;
 }
 
-type Tab = 'overview' | 'studies' | 'ingest' | 'nf-sync' | 'jobs';
+type Tab = 'overview' | 'studies' | 'ingest' | 'nf-sync';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -723,62 +723,165 @@ function StudyExpandedView({ study, onUpdate }: { study: Study; onUpdate: () => 
 // ── Ingestion tab ─────────────────────────────────────────────────────────────
 
 function IngestTab({ onJobStarted }: { onJobStarted: () => void }) {
-  const [source, setSource] = useState('pubmed_nutrition');
-  const [limit, setLimit] = useState(100);
-  const [dryRun, setDryRun] = useState(true);
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<{ jobId: string } | null>(null);
-  const [error, setError] = useState('');
+  const [pmidInput, setPmidInput] = useState('');
+  const [ingesting, setIngesting] = useState(false);
+  const [ingestResult, setIngestResult] = useState<{ inserted: number; skipped: number; errors: string[] } | null>(null);
+  const [ingestError, setIngestError] = useState('');
 
-  const trigger = async () => {
-    if (!confirm(`${dryRun ? 'Dry run' : 'LIVE ingestion'}: ${limit} studies from "${source}"?`)) return;
-    setRunning(true);
-    setError('');
-    setResult(null);
+  // Pending NF PMIDs
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const [ingestingPending, setIngestingPending] = useState(false);
+  const [pendingResult, setPendingResult] = useState<string | null>(null);
+
+  // Load pending PMID count
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/ai-research', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'count_pending_nf_pmids' }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setPendingCount(data.count ?? 0);
+        }
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  const ingestPmids = async () => {
+    const ids = pmidInput
+      .split(/[\n,\s]+/)
+      .map(s => s.trim().replace(/^PMID:\s*/i, '').replace(/^https?:\/\/pubmed.*\/(\d+).*$/, '$1'))
+      .filter(s => /^\d{5,}$/.test(s));
+
+    if (ids.length === 0) {
+      setIngestError('Enter at least one valid PMID (5+ digit number)');
+      return;
+    }
+
+    if (!confirm(`Ingest ${ids.length} study${ids.length > 1 ? 'ies' : ''} from PubMed?`)) return;
+
+    setIngesting(true);
+    setIngestError('');
+    setIngestResult(null);
     try {
       const res = await fetch('/api/admin/ai-research', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source, limit, dryRun }),
+        body: JSON.stringify({ action: 'ingest_pmids', pmids: ids }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Unknown error');
-      setResult(data);
+      setIngestResult(data);
       onJobStarted();
+      setPmidInput('');
     } catch (e: any) {
-      setError(e.message);
+      setIngestError(e.message);
     } finally {
-      setRunning(false);
+      setIngesting(false);
     }
   };
 
-  const estCost = (limit * 300 / 1_000_000 * 0.02).toFixed(4);
+  const ingestPendingNfPmids = async () => {
+    if (!confirm(`Ingest ${pendingCount} pending PMIDs from NutritionFacts.org content? This fetches abstracts from PubMed and generates embeddings.`)) return;
+    setIngestingPending(true);
+    setPendingResult(null);
+    try {
+      const res = await fetch('/api/admin/ai-research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'ingest_pending_nf_pmids' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Unknown error');
+      setPendingResult(`Ingested ${data.inserted} new studies, ${data.skipped} already existed`);
+      setPendingCount(0);
+      onJobStarted();
+    } catch (e: any) {
+      setPendingResult(`Error: ${e.message}`);
+    } finally {
+      setIngestingPending(false);
+    }
+  };
 
   return (
     <div className="p-8 max-w-2xl space-y-6">
-      {/* Phase 1 — completed */}
-      <div className="rounded-xl border border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30 p-5">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-50 text-emerald-600">completed</span>
-          <p className="text-sm font-semibold text-[#0e393d]">Phase 1 — Greger / NutritionFacts</p>
+      {/* Add studies by PMID */}
+      <div className="rounded-xl border border-[#0e393d]/8 bg-white p-6 space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-[#0e393d]">Add Studies by PMID</h2>
+          <p className="text-[11px] text-[#1c2a2b]/40 mt-0.5">
+            Enter one or more PubMed IDs. Fetches abstract, generates embedding, detects biomarkers & diseases.
+          </p>
         </div>
-        <p className="text-xs text-[#1c2a2b]/60">
-          18,253 studies from 6 books + NutritionFacts.org · 4,027 NF content items · 2,353 book chunks — all embedded and searchable.
-          Weekly auto-sync checks for new NutritionFacts.org content (see NutritionFacts tab).
-        </p>
+        <textarea
+          value={pmidInput}
+          onChange={e => setPmidInput(e.target.value)}
+          placeholder={"Enter PMIDs — one per line, comma-separated, or paste PubMed URLs\n\nExamples:\n38123456\n38234567, 38345678\nhttps://pubmed.ncbi.nlm.nih.gov/38123456/"}
+          rows={5}
+          className="w-full rounded-lg border border-[#0e393d]/15 px-3 py-2 text-sm text-[#1c2a2b] placeholder-[#1c2a2b]/25 focus:outline-none focus:border-[#0e393d]/40 font-mono"
+        />
+        <button
+          onClick={ingestPmids}
+          disabled={ingesting || !pmidInput.trim()}
+          className="w-full py-2.5 rounded-xl bg-[#0e393d] text-white text-sm font-semibold hover:bg-[#0e393d]/80 disabled:opacity-50 transition-colors"
+        >
+          {ingesting ? 'Ingesting...' : 'Ingest Studies'}
+        </button>
+
+        {ingestResult && (
+          <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
+            <p className="text-xs font-semibold text-emerald-800">
+              {ingestResult.inserted} new studies ingested{ingestResult.skipped > 0 ? `, ${ingestResult.skipped} already in DB` : ''}
+            </p>
+            {ingestResult.errors.length > 0 && (
+              <p className="text-xs text-amber-700 mt-1">{ingestResult.errors.length} errors: {ingestResult.errors.slice(0, 3).join(', ')}</p>
+            )}
+          </div>
+        )}
+        {ingestError && (
+          <div className="rounded-lg bg-red-50 border border-red-200 p-3">
+            <p className="text-xs text-red-700">{ingestError}</p>
+          </div>
+        )}
       </div>
+
+      {/* Pending NF PMIDs */}
+      {pendingCount !== null && pendingCount > 0 && (
+        <div className="rounded-xl border border-amber-200/60 bg-gradient-to-br from-white to-amber-50/20 p-5">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <p className="text-sm font-semibold text-[#0e393d]">Pending NutritionFacts PMIDs</p>
+              <p className="text-[11px] text-[#1c2a2b]/40 mt-0.5">
+                {pendingCount} study citations found in NF content but not yet in the studies table.
+              </p>
+            </div>
+            <span className="text-2xl font-semibold text-amber-600 tabular-nums">{pendingCount}</span>
+          </div>
+          <button
+            onClick={ingestPendingNfPmids}
+            disabled={ingestingPending}
+            className="w-full py-2.5 rounded-xl bg-[#ceab84] text-white text-sm font-semibold hover:bg-[#ceab84]/80 disabled:opacity-50 transition-colors"
+          >
+            {ingestingPending ? 'Ingesting...' : `Ingest ${pendingCount} Pending Studies`}
+          </button>
+          {pendingResult && (
+            <p className="text-xs text-[#1c2a2b]/60 mt-2">{pendingResult}</p>
+          )}
+        </div>
+      )}
 
       {/* Phase 2/3 — planned */}
       <div className="rounded-xl border border-[#0e393d]/8 bg-white p-5 space-y-4">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-50 text-blue-600">next</span>
-          <p className="text-sm font-semibold text-[#0e393d]">Phase 2 & 3 — PubMed Expansion</p>
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-50 text-blue-600">planned</span>
+          <p className="text-sm font-semibold text-[#0e393d]">PubMed Expansion (Phase 2 & 3)</p>
         </div>
         <p className="text-xs text-[#1c2a2b]/60 leading-relaxed">
-          Expand the research database with targeted PubMed searches: systematic reviews, meta-analyses, RCTs,
-          and cohort studies on nutrition, longevity, biomarkers, and disease prevention.
-          This requires targeted search queries with article-type filters and quality classification — best done
-          together via the CLI for control over what gets ingested.
+          Large-scale expansion with systematic reviews, RCTs, and cohort studies. Requires targeted PubMed queries
+          with article-type filters — done together in Cowork for quality control.
         </p>
         <div className="space-y-2">
           {[
@@ -795,186 +898,25 @@ function IngestTab({ onJobStarted }: { onJobStarted: () => void }) {
             </div>
           ))}
         </div>
-        <p className="text-[10px] text-[#1c2a2b]/30">
-          Estimated total: ~67K additional studies · ~$19–29 in embedding costs
-        </p>
       </div>
 
-      {/* Quick PubMed search — for small exploratory batches */}
-      <div className="rounded-xl border border-[#0e393d]/8 bg-white p-6 space-y-5">
-        <div>
-          <h2 className="text-sm font-semibold text-[#0e393d]">Quick PubMed Search</h2>
-          <p className="text-[11px] text-[#1c2a2b]/40 mt-0.5">
-            Run a small exploratory batch from PubMed. For large-scale Phase 2/3 ingestion, use the CLI for better control.
-          </p>
+      {/* Full-text — future */}
+      <div className="rounded-xl border border-[#0e393d]/8 bg-white p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-400">future</span>
+          <p className="text-sm font-semibold text-[#0e393d]">Full-Text Ingestion</p>
         </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs font-medium text-[#1c2a2b]/60 block mb-1.5">Search Topic</label>
-            <select value={source} onChange={e => setSource(e.target.value)}
-              className="w-full rounded-lg border border-[#0e393d]/15 px-3 py-2 text-sm focus:outline-none focus:border-[#0e393d]/40">
-              <option value="pubmed_nutrition">PubMed — Nutrition & Diet Studies</option>
-              <option value="pubmed_longevity">PubMed — Longevity & Aging Studies</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-[#1c2a2b]/60 block mb-1.5">Max Studies</label>
-            <input type="number" value={limit} min={10} max={10000} step={50}
-              onChange={e => setLimit(parseInt(e.target.value) || 100)}
-              className="w-full rounded-lg border border-[#0e393d]/15 px-3 py-2 text-sm focus:outline-none focus:border-[#0e393d]/40" />
-            <p className="text-[11px] text-[#1c2a2b]/35 mt-1">
-              Estimated embedding cost: ~${estCost} USD (excl. studies already in DB)
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setDryRun(!dryRun)}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${dryRun ? 'bg-[#0e393d]' : 'bg-gray-200'}`}
-            >
-              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${dryRun ? 'translate-x-4' : 'translate-x-0.5'}`} />
-            </button>
-            <div>
-              <p className="text-sm text-[#0e393d] font-medium">Dry Run</p>
-              <p className="text-[11px] text-[#1c2a2b]/40">Preview what would be fetched without writing to DB</p>
-            </div>
-          </div>
-
-          {!dryRun && (
-            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
-              <p className="text-xs font-semibold text-amber-800">Live ingestion mode</p>
-              <p className="text-xs text-amber-700 mt-0.5">This will write to the studies table and incur OpenAI API costs.</p>
-            </div>
-          )}
-        </div>
-
-        <button onClick={trigger} disabled={running}
-          className="w-full py-2.5 rounded-xl bg-[#0e393d] text-white text-sm font-semibold hover:bg-[#0e393d]/80 disabled:opacity-50 transition-colors">
-          {running ? 'Starting...' : dryRun ? 'Run Dry Run' : 'Start Ingestion'}
-        </button>
-
-        {result && (
-          <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
-            <p className="text-xs font-semibold text-emerald-800">Job started!</p>
-            <p className="text-xs text-emerald-700 mt-0.5">Job ID: {result.jobId} — switch to Jobs tab to monitor.</p>
-          </div>
-        )}
-
-        {error && (
-          <div className="rounded-lg bg-red-50 border border-red-200 p-3">
-            <p className="text-xs font-semibold text-red-800">Error</p>
-            <p className="text-xs text-red-700 mt-0.5">{error}</p>
-          </div>
-        )}
+        <p className="text-xs text-[#1c2a2b]/60 leading-relaxed">
+          Download full study text from PMC (free open-access) for studies already in the database.
+          This enables deeper RAG answers with methodology details, full results, and discussion sections
+          beyond what abstracts provide. PDF upload for paywalled studies planned.
+        </p>
       </div>
     </div>
   );
 }
 
 // ── Jobs tab ──────────────────────────────────────────────────────────────────
-
-function JobsTab() {
-  const [jobs, setJobs] = useState<IngestionJob[]>([]);
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  const loadJobs = useCallback(async () => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('ingestion_jobs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(20);
-    setJobs((data ?? []) as IngestionJob[]);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    loadJobs();
-    // Auto-refresh if any job is running
-    intervalRef.current = setInterval(() => {
-      if (jobs.some(j => j.status === 'running' || j.status === 'pending')) {
-        loadJobs();
-      }
-    }, 3000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [loadJobs, jobs]);
-
-  if (loading) return <div className="p-8 text-sm text-[#1c2a2b]/35">Loading jobs...</div>;
-
-  // Context banner about CLI jobs
-  const cliBanner = (
-    <div className="rounded-xl border border-[#0e393d]/8 bg-[#0e393d]/[.02] p-4 mb-4">
-      <p className="text-xs font-semibold text-[#0e393d] mb-1">Job History Note</p>
-      <p className="text-[11px] text-[#1c2a2b]/50 leading-relaxed">
-        This tab shows jobs triggered from the web UI. The initial database build (18K studies, 4K NF content,
-        2.3K book chunks) was done via CLI scripts and is not listed here. NutritionFacts.org sync jobs appear
-        in the NutritionFacts tab.
-      </p>
-    </div>
-  );
-
-  if (jobs.length === 0) return (
-    <div className="p-8">
-      {cliBanner}
-      <p className="text-sm text-[#1c2a2b]/35">No web-triggered ingestion jobs yet.</p>
-    </div>
-  );
-
-  return (
-    <div className="p-8 space-y-3">
-      {cliBanner}
-      {jobs.map(job => (
-        <div key={job.id} className="rounded-xl border border-[#0e393d]/8 bg-white overflow-hidden">
-          <button
-            onClick={() => setExpanded(expanded === job.id ? null : job.id)}
-            className="w-full px-5 py-4 flex items-center gap-4 hover:bg-[#0e393d]/[.01] transition-colors text-left"
-          >
-            <Badge status={job.status} />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-[#0e393d]">
-                {SOURCE_LABELS[job.source] ?? job.source}
-                {job.dry_run && <span className="ml-2 text-[10px] text-[#1c2a2b]/40 font-normal">(dry run)</span>}
-              </p>
-              <p className="text-xs text-[#1c2a2b]/40 mt-0.5">
-                Limit: {job.limit_count ?? '—'} · Found: {job.total_found} · Stored: {job.total_stored} · Skipped: {job.total_skipped}
-              </p>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-xs text-[#1c2a2b]/40">{fmt(job.created_at)}</p>
-              {job.started_at && job.completed_at && (
-                <p className="text-[10px] text-[#1c2a2b]/25">
-                  {Math.round((new Date(job.completed_at).getTime() - new Date(job.started_at).getTime()) / 1000)}s
-                </p>
-              )}
-            </div>
-            <span className="text-[#1c2a2b]/25 text-xs">{expanded === job.id ? '▲' : '▼'}</span>
-          </button>
-
-          {expanded === job.id && (
-            <div className="border-t border-[#0e393d]/8 px-5 py-4">
-              {job.error_message && (
-                <div className="rounded-lg bg-red-50 border border-red-200 p-3 mb-3">
-                  <p className="text-xs font-semibold text-red-800">Error</p>
-                  <p className="text-xs text-red-700 mt-0.5">{job.error_message}</p>
-                </div>
-              )}
-              {job.log_lines?.length > 0 && (
-                <div className="rounded-lg bg-[#0e393d]/[.03] p-3 font-mono text-[10px] text-[#1c2a2b]/60 max-h-64 overflow-y-auto space-y-0.5">
-                  {job.log_lines.map((line, i) => <p key={i}>{line}</p>)}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // ── NutritionFacts Sync tab ──────────────────────────────────────────────────
 
@@ -1202,7 +1144,6 @@ export default function AIResearchManager() {
     { id: 'studies', label: 'Studies' },
     { id: 'ingest', label: 'Ingest' },
     { id: 'nf-sync', label: 'NutritionFacts' },
-    { id: 'jobs', label: 'Jobs' },
   ];
 
   // Computed totals for key indicators
@@ -1265,9 +1206,8 @@ export default function AIResearchManager() {
         : stats ? <OverviewTab stats={stats} /> : <div className="p-8 text-sm text-red-500">Failed to load stats</div>
       )}
       {tab === 'studies' && <StudiesTab />}
-      {tab === 'ingest' && <IngestTab onJobStarted={() => { loadStats(); setTab('jobs'); }} />}
+      {tab === 'ingest' && <IngestTab onJobStarted={() => { loadStats(); }} />}
       {tab === 'nf-sync' && <NfSyncTab />}
-      {tab === 'jobs' && <JobsTab />}
     </div>
   );
 }
