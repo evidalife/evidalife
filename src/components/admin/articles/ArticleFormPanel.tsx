@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import CoverImageUploader from '@/components/shared/CoverImageUploader';
 import GalleryUploader from '@/components/shared/GalleryUploader';
+import MarkdownToolbar from '@/components/shared/MarkdownToolbar';
 import {
   AdminSectionBlock,
   AdminField,
@@ -97,58 +98,6 @@ function AiBtn({
     >
       {status === 'loading' ? loading : status === 'done' ? done : idle}
     </button>
-  );
-}
-
-// ─── Markdown Toolbar Component ───────────────────────────────────────────────
-
-function MarkdownToolbar({ textareaRef }: { textareaRef: React.RefObject<HTMLTextAreaElement | null> }) {
-  const insertMarkdown = (before: string, after: string = '') => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = textarea.value.substring(start, end);
-    const replacement = selected ? `${before}${selected}${after}` : `${before}${after}`;
-
-    const newValue = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
-    textarea.value = newValue;
-    textarea.focus();
-    const newPos = start + before.length + selected.length;
-    textarea.setSelectionRange(newPos, newPos);
-
-    // Trigger change event for React to pick up the change
-    const event = new Event('change', { bubbles: true });
-    textarea.dispatchEvent(event);
-  };
-
-  const tools = [
-    { label: '**Bold**', before: '**', after: '**' },
-    { label: '*Italic*', before: '*', after: '*' },
-    { label: '## Heading', before: '## ', after: '' },
-    { label: '- List', before: '- ', after: '' },
-    { label: '1. Numbered', before: '1. ', after: '' },
-    { label: '> Quote', before: '> ', after: '' },
-    { label: '--- Divider', before: '---', after: '' },
-  ];
-
-  return (
-    <div className="flex gap-1 flex-wrap mb-2 p-2 rounded-lg bg-[#fafaf8] border border-[#0e393d]/8">
-      {tools.map(({ label, before, after }) => (
-        <button
-          key={label}
-          type="button"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            insertMarkdown(before, after);
-          }}
-          className="px-2 py-1 rounded border border-[#0e393d]/20 text-[11px] font-medium text-[#1c2a2b] hover:bg-white transition"
-        >
-          {label}
-        </button>
-      ))}
-    </div>
   );
 }
 
@@ -626,11 +575,22 @@ export default function ArticleFormPanel({
                     onChange={(e) => setLF('excerpt', lang, e.target.value)}
                     placeholder={lang === 'de' ? 'Kurze Zusammenfassung…' : 'Short summary…'} />
                 </AdminField>
-                <AdminField label={`Content (${lang.toUpperCase()})`} hint="Markdown supported — headings, bold, lists, links">
-                  <MarkdownToolbar textareaRef={contentTextareaRef} />
-                  <textarea ref={contentTextareaRef} className={inputCls + ' resize-y font-mono text-xs leading-relaxed'} rows={14}
-                    value={form.content[lang]} onChange={(e) => setLF('content', lang, e.target.value)}
-                    placeholder={lang === 'de' ? '## Einleitung\n\nHülsenfrüchte sind…' : '## Introduction\n\nLegumes are…'} />
+                <AdminField label={`Content (${lang.toUpperCase()})`} hint="Markdown supported — headings, bold, lists, links, photos, recipe embeds">
+                  <div className="rounded-lg border border-[#0e393d]/15 overflow-hidden focus-within:border-[#0e393d]/40 focus-within:ring-2 focus-within:ring-[#0e393d]/10 transition">
+                    <MarkdownToolbar
+                      textareaRef={contentTextareaRef}
+                      value={form.content[lang]}
+                      onChange={(v) => setLF('content', lang, v)}
+                      showPhoto
+                      showLink
+                      showRecipe
+                    />
+                    <textarea ref={contentTextareaRef}
+                      className="w-full bg-white px-3 py-2 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:outline-none resize-y font-mono text-xs leading-relaxed"
+                      rows={14}
+                      value={form.content[lang]} onChange={(e) => setLF('content', lang, e.target.value)}
+                      placeholder={lang === 'de' ? '## Einleitung\n\nHülsenfrüchte sind…' : '## Introduction\n\nLegumes are…'} />
+                  </div>
                 </AdminField>
               </div>
             </AdminSectionBlock>

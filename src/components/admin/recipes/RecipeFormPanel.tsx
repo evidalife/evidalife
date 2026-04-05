@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import CoverImageUploader from '@/components/shared/CoverImageUploader';
 import GalleryUploader from '@/components/shared/GalleryUploader';
+import MarkdownToolbar from '@/components/shared/MarkdownToolbar';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -430,63 +431,7 @@ function PrepNotesCombobox({ value, displayValue, noteOptions, onSelect, onClear
   );
 }
 
-// ─── Markdown Toolbar ─────────────────────────────────────────────────────────
-
-function MarkdownToolbar({ taRef, value, onChange }: {
-  taRef: React.RefObject<HTMLTextAreaElement | null>;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const insert = (before: string, after = '', defaultText = '') => {
-    const ta = taRef.current;
-    if (!ta) return;
-    const s = ta.selectionStart;
-    const e = ta.selectionEnd;
-    const sel = value.slice(s, e) || defaultText;
-    const next = value.slice(0, s) + before + sel + after + value.slice(e);
-    onChange(next);
-    requestAnimationFrame(() => {
-      ta.focus();
-      const cur = s + before.length + sel.length + after.length;
-      ta.setSelectionRange(cur, cur);
-    });
-  };
-
-  const btns: { label: string; title: string; fn: () => void }[] = [
-    { label: 'B',       title: 'Bold',          fn: () => insert('**', '**', 'bold') },
-    { label: 'I',       title: 'Italic',         fn: () => insert('*', '*', 'italic') },
-    { label: '## H',    title: 'Heading',        fn: () => insert('\n## ', '', 'Heading') },
-    { label: '– List',  title: 'Bullet list',    fn: () => insert('\n- ', '', 'Item') },
-    { label: '1. Num',  title: 'Numbered list',  fn: () => insert('\n1. ', '', 'Item') },
-    { label: '> Quote', title: 'Blockquote',     fn: () => insert('\n> ', '', 'Quote') },
-    { label: '---',     title: 'Divider',        fn: () => insert('\n\n---\n\n') },
-    {
-      label: '📷 Photo',
-      title: 'Insert photo reference',
-      fn: () => {
-        const matches = value.match(/!\[photo:\d+\]/g);
-        const n = (matches ? matches.length : 0) + 1;
-        insert(`![photo:${n}]`);
-      },
-    },
-  ];
-
-  return (
-    <div className="flex flex-wrap gap-1 px-2 py-1.5 border-b border-[#0e393d]/8 bg-[#fafaf8]">
-      {btns.map((b) => (
-        <button
-          key={b.label}
-          type="button"
-          title={b.title}
-          onMouseDown={(e) => { e.preventDefault(); b.fn(); }}
-          className="rounded px-1.5 py-0.5 text-[11px] font-medium text-[#1c2a2b]/60 hover:bg-[#0e393d]/8 hover:text-[#0e393d] transition select-none"
-        >
-          {b.label}
-        </button>
-      ))}
-    </div>
-  );
-}
+// ─── Markdown Toolbar (shared from @/components/shared/MarkdownToolbar) ──────
 
 // ─── Quick-Add Ingredient Modal ───────────────────────────────────────────────
 
@@ -1323,9 +1268,11 @@ export default function RecipeFormPanel({ recipeId, onClose, onSaved, onDeleted 
                   <Field label={`Instructions (${lang.toUpperCase()})`} hint="Markdown supported">
                     <div className="rounded-lg border border-[#0e393d]/15 overflow-hidden focus-within:border-[#0e393d]/40 focus-within:ring-2 focus-within:ring-[#0e393d]/10 transition">
                       <MarkdownToolbar
-                        taRef={instructionRef}
+                        textareaRef={instructionRef}
                         value={form.instructions[lang]}
                         onChange={(v) => setLangField('instructions', lang, v)}
+                        showPhoto
+                        showLink
                       />
                       <textarea
                         ref={instructionRef}

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import CoverImageUploader from '@/components/shared/CoverImageUploader';
 import GalleryUploader from '@/components/shared/GalleryUploader';
+import MarkdownToolbar from '@/components/shared/MarkdownToolbar';
 import { PRODUCT_TYPES } from '@/components/admin/lab-results/shared';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -183,51 +184,7 @@ function SectionBadge({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─── Markdown toolbar ─────────────────────────────────────────────────────────
-
-function MarkdownToolbar({ taRef, value, onChange }: {
-  taRef: React.RefObject<HTMLTextAreaElement | null>;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const insert = (before: string, after = '', defaultText = '') => {
-    const ta = taRef.current;
-    if (!ta) return;
-    const s = ta.selectionStart;
-    const e = ta.selectionEnd;
-    const sel = value.slice(s, e) || defaultText;
-    const next = value.slice(0, s) + before + sel + after + value.slice(e);
-    onChange(next);
-    requestAnimationFrame(() => {
-      ta.focus();
-      const cur = s + before.length + sel.length + after.length;
-      ta.setSelectionRange(cur, cur);
-    });
-  };
-
-  const btns = [
-    { label: 'B',       title: 'Bold',          fn: () => insert('**', '**', 'bold') },
-    { label: 'I',       title: 'Italic',         fn: () => insert('*', '*', 'italic') },
-    { label: '## H',    title: 'Heading',        fn: () => insert('\n## ', '', 'Heading') },
-    { label: '– List',  title: 'Bullet list',    fn: () => insert('\n- ', '', 'Item') },
-    { label: '1. Num',  title: 'Numbered list',  fn: () => insert('\n1. ', '', 'Item') },
-    { label: '> Tip',   title: 'Tip block',      fn: () => insert('\n> ', '', 'Tip') },
-    { label: '---',     title: 'Divider',        fn: () => insert('\n\n---\n\n') },
-  ];
-
-  return (
-    <div className="flex flex-wrap gap-1 px-2 py-1.5 border-b border-[#0e393d]/8 bg-[#fafaf8]">
-      {btns.map((b) => (
-        <button key={b.label} type="button" title={b.title}
-          onMouseDown={(e) => { e.preventDefault(); b.fn(); }}
-          className="rounded px-1.5 py-0.5 text-[11px] font-medium text-[#1c2a2b]/60 hover:bg-[#0e393d]/8 hover:text-[#0e393d] transition select-none"
-        >
-          {b.label}
-        </button>
-      ))}
-    </div>
-  );
-}
+// ─── Markdown toolbar (shared from @/components/shared/MarkdownToolbar) ──────
 
 // ─── Quick Import components ──────────────────────────────────────────────────
 
@@ -909,8 +866,9 @@ export default function ProductsManager({ initialProducts }: { initialProducts: 
 
                   <Field label={`Description (${lang.toUpperCase()})`} hint="Markdown supported">
                     <div className="rounded-lg border border-[#0e393d]/15 overflow-hidden focus-within:border-[#0e393d]/40 focus-within:ring-2 focus-within:ring-[#0e393d]/10 transition">
-                      <MarkdownToolbar taRef={descRef} value={form.description[lang]}
-                        onChange={(v) => setLangField('description', lang, v)} />
+                      <MarkdownToolbar textareaRef={descRef} value={form.description[lang]}
+                        onChange={(v) => setLangField('description', lang, v)}
+                        showPhoto showLink />
                       <textarea
                         ref={descRef}
                         className="w-full bg-white px-3 py-2 text-sm text-[#1c2a2b] placeholder:text-[#1c2a2b]/30 focus:outline-none resize-y"
