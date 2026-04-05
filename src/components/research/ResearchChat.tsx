@@ -476,18 +476,33 @@ export default function ResearchChat({
     msgId: string | null;     // which message is being spoken
   } | null>(null);
 
-  /** Clean text for speaking: strip citations, markdown, disclaimers */
+  /** Clean text for speaking: strip citations, markdown, references, disclaimers.
+   *  Everything the user sees in the chat (citations, links, studies) stays visible
+   *  but is NOT read aloud — only the conversational answer content is spoken. */
   const cleanForSpeech = useCallback((text: string): string => {
     let clean = text;
+    // Strip markdown bold/italic markers
     clean = clean.replace(/\*{1,3}/g, '');
+    // Strip inline citation numbers like [1], [2,3], [1-3]
     clean = clean.replace(/\[\d+(?:[,\-–]\d+)*\]/g, '');
+    // Strip markdown links — keep display text, drop URL: [text](url) → text
     clean = clean.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    // Remove horizontal rules
     clean = clean.replace(/^-{3,}$/gm, '');
-    clean = clean.replace(/For educational purposes only[.][\s\S]*/, '').trim();
-    clean = clean.replace(/\n(?:Sources|References|Citations):?\s*\n[\s\S]*$/i, '').trim();
+    // Remove disclaimer/educational warning (various phrasings)
+    clean = clean.replace(/(?:This is educational|For educational purposes|This information is for educational)[\s\S]*$/i, '').trim();
+    // Remove "Sources:", "References:", "Citations:" section and everything after
+    clean = clean.replace(/\n(?:Sources|References|Citations|Studies cited):?\s*[\n:][\s\S]*$/i, '').trim();
+    // Remove numbered reference lists like "1. Author et al. (2024)..."
+    clean = clean.replace(/\n\d+\.\s+[A-Z][^.]*et al\.[\s\S]*$/i, '').trim();
+    // Collapse multiple newlines into a pause
     clean = clean.replace(/\n{2,}/g, '. ').trim();
+    // Collapse remaining single newlines
     clean = clean.replace(/\n/g, ' ').trim();
+    // Clean up double periods, extra spaces
     clean = clean.replace(/\.\s*\./g, '.').replace(/ {2,}/g, ' ');
+    // Remove trailing incomplete sentence fragments (no period at end)
+    // clean = clean.replace(/[^.!?]+$/, '').trim(); // disabled — let flush handle it
     return clean;
   }, []);
 
@@ -607,46 +622,48 @@ export default function ResearchChat({
   }, []);
 
   /** Feed a text chunk into the streaming TTS buffer.
-   *  Detects sentence boundaries and fires TTS requests for complete sentences.
-   *  Works on the RAW streamed text (not cleaned) to keep buffer tracking simple.
-   *  Cleaning happens just before sending to TTS. */
+   *  Groups 2-3 sentences together for natural-sounding TTS chunks,
+   *  then fires each chunk to the TTS API. */
   const feedStreamingTTS = useCallback((chunk: string) => {
     const st = streamTTSRef.current;
     if (!st || st.stopped) return;
 
     st.buffer += chunk;
 
-    // Keep extracting complete sentences from the buffer.
-    // A sentence ends at . ! ? followed by whitespace (or end of known text).
-    // We work on raw text to keep the buffer in sync.
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      // Find sentence-ending punctuation followed by a space (next sentence started)
-      const match = st.buffer.match(/^([\s\S]*?[.!?])(\s+[\s\S]*)$/);
-      if (!match) break;
+    // Strategy: accumulate raw text, then look for good split points.
+    // We want chunks of ~150-400 chars (2-3 sentences) for natural TTS pacing.
+    // Split at sentence boundaries (. ! ?) followed by a space.
 
-      const rawSentence = match[1];
-      const remainder = match[2];
+    // Find ALL sentence-end positions in the buffer
+    const sentenceEndPattern = /[.!?](?:\s|$)/g;
+    let lastGoodSplit = -1;
+    let m: RegExpExecArray | null;
 
-      // Only fire if we have enough content (avoid tiny fragments like "Dr. ")
-      const cleaned = cleanForSpeech(rawSentence);
-      if (cleaned.length < 60) {
-        // Too short — probably an abbreviation or partial. Wait for more text.
-        break;
+    while ((m = sentenceEndPattern.exec(st.buffer)) !== null) {
+      const pos = m.index + 1; // position right after the punctuation
+      // Only consider as a split point if we have enough text
+      if (pos >= 100) {
+        lastGoodSplit = pos;
+        // If chunk is getting long enough (>250 chars), split here
+        if (pos >= 250) break;
       }
+    }
 
-      // Extract and fire
-      st.buffer = remainder.trimStart();
-      if (cleaned.length > 10) {
+    if (lastGoodSplit > 0) {
+      const rawChunk = st.buffer.slice(0, lastGoodSplit);
+      st.buffer = st.buffer.slice(lastGoodSplit).trimStart();
+
+      const cleaned = cleanForSpeech(rawChunk);
+      if (cleaned.length > 20) {
         fetchChunkAudio(cleaned);
       }
     }
 
     // Safety valve: if buffer grows very large without a sentence break, flush it
-    if (st.buffer.length > 500) {
+    if (st.buffer.length > 600) {
       const cleaned = cleanForSpeech(st.buffer);
       st.buffer = '';
-      if (cleaned.length > 10) {
+      if (cleaned.length > 20) {
         fetchChunkAudio(cleaned);
       }
     }

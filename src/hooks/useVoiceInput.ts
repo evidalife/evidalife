@@ -301,9 +301,15 @@ export function useVoiceInput({
   }, []);
 
   // ── Web Speech API: browser-native STT ────────────────────────────
-  // Silence timer for Web Speech auto-stop (supplements browser's own detection)
+  // Silence timer for auto-stop — fires when no final result arrives
   const webSpeechSilenceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastSpeechActivityRef = useRef<number>(0);
+
+  const clearWebSpeechTimer = () => {
+    if (webSpeechSilenceRef.current) {
+      clearTimeout(webSpeechSilenceRef.current);
+      webSpeechSilenceRef.current = null;
+    }
+  };
 
   const startWebSpeech = useCallback(() => {
     const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -316,31 +322,30 @@ export function useVoiceInput({
     if (recognitionRef.current) {
       try { recognitionRef.current.abort(); } catch { /* ignore */ }
     }
-    if (webSpeechSilenceRef.current) {
-      clearTimeout(webSpeechSilenceRef.current);
-      webSpeechSilenceRef.current = null;
-    }
+    clearWebSpeechTimer();
 
     const recognition = new SpeechRecognitionCtor();
     recognition.lang = LANG_MAP[lang] || lang;
     recognition.interimResults = true;
-    recognition.continuous = continuous;
+    // IMPORTANT: keep continuous=true so it doesn't randomly stop mid-sentence.
+    // We handle auto-stop ourselves via onspeechend + a safety timer after final result.
+    recognition.continuous = continuous || true;
     recognition.maxAlternatives = 1;
 
     let finalTranscript = '';
-    lastSpeechActivityRef.current = Date.now();
+    let hasFinalResult = false;
 
-    /** Reset silence timer — auto-stop after 2s of no speech activity */
-    const resetSilenceTimer = () => {
-      if (continuous) return; // Don't auto-stop in continuous mode
-      lastSpeechActivityRef.current = Date.now();
-      if (webSpeechSilenceRef.current) clearTimeout(webSpeechSilenceRef.current);
+    /** After a final result arrives, set a short timer to stop.
+     *  This gives the engine time to produce additional final segments
+     *  (e.g. if the user pauses mid-thought) before we close. */
+    const scheduleAutoStop = () => {
+      if (continuous) return;
+      clearWebSpeechTimer();
       webSpeechSilenceRef.current = setTimeout(() => {
-        // Only stop if we have some transcript (user actually spoke)
-        if (finalTranscript.trim() && recognitionRef.current) {
+        if (recognitionRef.current) {
           try { recognitionRef.current.stop(); } catch { /* ignore */ }
         }
-      }, 2000);
+      }, 1500); // 1.5s after last final result
     };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -349,19 +354,35 @@ export function useVoiceInput({
         const result = event.results[i];
         if (result.isFinal) {
           finalTranscript += result[0].transcript;
+          hasFinalResult = true;
+          // Got a final segment — schedule auto-stop
+          scheduleAutoStop();
         } else {
           interim += result[0].transcript;
+          // Still getting interim results — push back the timer
+          if (hasFinalResult) {
+            clearWebSpeechTimer();
+          }
         }
       }
       setInterimTranscript(interim || finalTranscript);
-      resetSilenceTimer();
+    };
+
+    // onspeechend: browser detected end of speech audio
+    recognition.onspeechend = () => {
+      if (!continuous && recognitionRef.current) {
+        // Give 1s for any final results to arrive, then stop
+        clearWebSpeechTimer();
+        webSpeechSilenceRef.current = setTimeout(() => {
+          if (recognitionRef.current) {
+            try { recognitionRef.current.stop(); } catch { /* ignore */ }
+          }
+        }, 1000);
+      }
     };
 
     recognition.onend = () => {
-      if (webSpeechSilenceRef.current) {
-        clearTimeout(webSpeechSilenceRef.current);
-        webSpeechSilenceRef.current = null;
-      }
+      clearWebSpeechTimer();
       setIsListening(false);
       setInterimTranscript('');
       const text = correctMedicalTerms(finalTranscript.trim());
@@ -372,10 +393,7 @@ export function useVoiceInput({
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      if (webSpeechSilenceRef.current) {
-        clearTimeout(webSpeechSilenceRef.current);
-        webSpeechSilenceRef.current = null;
-      }
+      clearWebSpeechTimer();
       if (event.error !== 'no-speech' && event.error !== 'aborted') {
         onErrorRef.current?.(event.error);
       }
@@ -389,13 +407,13 @@ export function useVoiceInput({
     setIsListening(true);
     setInterimTranscript('');
 
-    // Start initial silence timer — if user doesn't speak at all for 5s, stop
+    // Safety: max recording time 30s (prevents mic staying on forever)
     if (!continuous) {
-      webSpeechSilenceRef.current = setTimeout(() => {
+      setTimeout(() => {
         if (recognitionRef.current) {
           try { recognitionRef.current.stop(); } catch { /* ignore */ }
         }
-      }, 5000);
+      }, 30000);
     }
   }, [lang, continuous]);
 
