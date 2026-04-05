@@ -67,6 +67,8 @@ const I18N: Record<Lang, {
   listening: string;
   stopListening: string;
   askByVoice: string;
+  stopSpeaking: string;
+  welcomeGreeting: string;
   suggestions: string[];
 }> = {
   en: {
@@ -79,6 +81,8 @@ const I18N: Record<Lang, {
     listening: 'Listening...',
     stopListening: 'Stop listening',
     askByVoice: 'Ask by voice',
+    stopSpeaking: 'Stop speaking',
+    welcomeGreeting: 'Welcome to Evida Research. You have the full voice experience. Click the microphone and ask me anything by voice — I will answer you both spoken and written. Or simply type your question below.',
     suggestions: [
       'Which dietary interventions reduce hsCRP?',
       'Does plant-based diet lower LDL cholesterol?',
@@ -98,6 +102,8 @@ const I18N: Record<Lang, {
     listening: 'Hört zu...',
     stopListening: 'Aufnahme stoppen',
     askByVoice: 'Per Stimme fragen',
+    stopSpeaking: 'Vorlesen stoppen',
+    welcomeGreeting: 'Willkommen bei Evida Research. Du hast das volle Spracherlebnis. Klicke auf das Mikrofon und stelle mir eine Frage per Stimme — ich antworte dir gesprochen und geschrieben. Oder tippe einfach deine Frage unten ein.',
     suggestions: [
       'Welche Ernährungsmaßnahmen senken hsCRP?',
       'Senkt eine pflanzliche Ernährung das LDL-Cholesterin?',
@@ -117,6 +123,8 @@ const I18N: Record<Lang, {
     listening: 'Écoute en cours...',
     stopListening: 'Arrêter l\'écoute',
     askByVoice: 'Poser par la voix',
+    stopSpeaking: 'Arrêter la lecture',
+    welcomeGreeting: 'Bienvenue sur Evida Research. Vous disposez de l\'expérience vocale complète. Cliquez sur le microphone et posez-moi n\'importe quelle question par la voix — je vous répondrai à l\'oral et à l\'écrit. Ou tapez simplement votre question ci-dessous.',
     suggestions: [
       'Quelles interventions diététiques réduisent la hsCRP ?',
       'Le régime végétal réduit-il le cholestérol LDL ?',
@@ -136,6 +144,8 @@ const I18N: Record<Lang, {
     listening: 'Escuchando...',
     stopListening: 'Dejar de escuchar',
     askByVoice: 'Preguntar por voz',
+    stopSpeaking: 'Detener lectura',
+    welcomeGreeting: 'Bienvenido a Evida Research. Tienes la experiencia de voz completa. Haz clic en el micrófono y pregúntame lo que quieras por voz — te responderé hablando y por escrito. O simplemente escribe tu pregunta abajo.',
     suggestions: [
       '¿Qué intervenciones dietéticas reducen la hsCRP?',
       '¿La dieta basada en plantas reduce el colesterol LDL?',
@@ -155,6 +165,8 @@ const I18N: Record<Lang, {
     listening: 'In ascolto...',
     stopListening: 'Interrompi ascolto',
     askByVoice: 'Chiedi a voce',
+    stopSpeaking: 'Ferma lettura',
+    welcomeGreeting: 'Benvenuto su Evida Research. Hai l\'esperienza vocale completa. Clicca sul microfono e chiedimi qualsiasi cosa a voce — ti risponderò parlando e per iscritto. Oppure scrivi semplicemente la tua domanda qui sotto.',
     suggestions: [
       'Quali interventi dietetici riducono la hsCRP?',
       'La dieta vegetale riduce il colesterolo LDL?',
@@ -441,6 +453,7 @@ export default function ResearchChat({
   const [briefingHandoffDone, setBriefingHandoffDone] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // ── TTS playback state ──────────────────────────────────────────────
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
@@ -594,28 +607,47 @@ export default function ResearchChat({
   }, []);
 
   /** Feed a text chunk into the streaming TTS buffer.
-   *  Automatically detects sentence boundaries and fires TTS requests. */
+   *  Detects sentence boundaries and fires TTS requests for complete sentences.
+   *  Works on the RAW streamed text (not cleaned) to keep buffer tracking simple.
+   *  Cleaning happens just before sending to TTS. */
   const feedStreamingTTS = useCallback((chunk: string) => {
     const st = streamTTSRef.current;
     if (!st || st.stopped) return;
 
     st.buffer += chunk;
 
-    // Clean the buffer for speech (strip markdown/citations as they stream in)
-    const cleaned = cleanForSpeech(st.buffer);
+    // Keep extracting complete sentences from the buffer.
+    // A sentence ends at . ! ? followed by whitespace (or end of known text).
+    // We work on raw text to keep the buffer in sync.
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // Find sentence-ending punctuation followed by a space (next sentence started)
+      const match = st.buffer.match(/^([\s\S]*?[.!?])(\s+[\s\S]*)$/);
+      if (!match) break;
 
-    // Look for sentence boundaries (. ! ?) followed by a space or end
-    // Only fire if we have enough text (>80 chars) to avoid tiny fragments
-    const sentenceEnd = cleaned.search(/[.!?]\s+(?=[A-Z])/);
-    if (sentenceEnd > 80) {
-      const sentence = cleaned.slice(0, sentenceEnd + 1).trim();
-      // Keep the remainder (from the raw buffer, proportionally)
-      const ratio = (sentenceEnd + 1) / cleaned.length;
-      const rawCutPoint = Math.round(st.buffer.length * ratio);
-      st.buffer = st.buffer.slice(rawCutPoint);
+      const rawSentence = match[1];
+      const remainder = match[2];
 
-      if (sentence.length > 10) {
-        fetchChunkAudio(sentence);
+      // Only fire if we have enough content (avoid tiny fragments like "Dr. ")
+      const cleaned = cleanForSpeech(rawSentence);
+      if (cleaned.length < 60) {
+        // Too short — probably an abbreviation or partial. Wait for more text.
+        break;
+      }
+
+      // Extract and fire
+      st.buffer = remainder.trimStart();
+      if (cleaned.length > 10) {
+        fetchChunkAudio(cleaned);
+      }
+    }
+
+    // Safety valve: if buffer grows very large without a sentence break, flush it
+    if (st.buffer.length > 500) {
+      const cleaned = cleanForSpeech(st.buffer);
+      st.buffer = '';
+      if (cleaned.length > 10) {
+        fetchChunkAudio(cleaned);
       }
     }
   }, [cleanForSpeech, fetchChunkAudio]);
@@ -657,6 +689,19 @@ export default function ResearchChat({
     }
     setSpeakingMsgId(null);
   }, []);
+
+  /** Stop everything: abort SSE stream + stop all TTS */
+  const stopAll = useCallback(() => {
+    // Abort the SSE fetch
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    // Stop all TTS
+    stopTTS();
+    // Reset voice-initiated flag
+    voiceInitiatedRef.current = false;
+  }, [stopTTS]);
 
   /** Play TTS for a completed message (manual speaker button).
    *  Sends the full cleaned text in one request. */
@@ -728,6 +773,72 @@ export default function ResearchChat({
     },
   });
 
+  // ── Welcome greeting: play pre-generated audio from Voice Briefings ─
+  const greetingPlayedRef = useRef(false);
+  const [greetingAudioUrl, setGreetingAudioUrl] = useState<string | null>(null);
+  const [greetingText, setGreetingText] = useState<string | null>(null);
+
+  // Fetch greeting from voice-briefings API on mount
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchGreeting() {
+      try {
+        const res = await fetch(`/api/voice-briefings?page=research`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const briefings = data.briefings ?? data ?? [];
+        // Find the first active research briefing
+        const greeting = Array.isArray(briefings) ? briefings[0] : null;
+        if (!greeting || cancelled) return;
+
+        const audioKey = `audio_url_${lang}` as keyof typeof greeting;
+        const scriptKey = `script_${lang}` as keyof typeof greeting;
+        const audioUrl = greeting[audioKey] as string | null;
+        const script = greeting[scriptKey] as string | null;
+
+        if (!cancelled) {
+          if (audioUrl) setGreetingAudioUrl(audioUrl);
+          if (script) setGreetingText(script);
+        }
+      } catch { /* silent */ }
+    }
+    fetchGreeting();
+    return () => { cancelled = true; };
+  }, [lang]);
+
+  // Auto-play greeting audio once when available
+  useEffect(() => {
+    if (!greetingAudioUrl || greetingPlayedRef.current || messages.length > 0) return;
+    const timer = setTimeout(() => {
+      if (greetingPlayedRef.current) return;
+      greetingPlayedRef.current = true;
+      setSpeakingMsgId('__greeting__');
+
+      const audio = warmAudioRef.current || new Audio();
+      warmAudioRef.current = null;
+      audio.volume = 1;
+      audio.src = greetingAudioUrl;
+      ttsAudioRef.current = audio;
+
+      audio.onended = () => {
+        ttsAudioRef.current = null;
+        setSpeakingMsgId(null);
+      };
+      audio.onerror = () => {
+        ttsAudioRef.current = null;
+        setSpeakingMsgId(null);
+      };
+
+      audio.play().catch(() => {
+        // Autoplay blocked — user will see the text and can click play
+        ttsAudioRef.current = null;
+        setSpeakingMsgId(null);
+      });
+    }, 1000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [greetingAudioUrl]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -763,11 +874,16 @@ export default function ResearchChat({
 
     let finalContent = '';
 
+    // Create AbortController so we can cancel the stream
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     try {
       const res = await fetch('/api/ai/research', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal: abortController.signal,
       });
 
       if (!res.ok || !res.body) throw new Error(`Request failed: ${res.status}`);
@@ -822,11 +938,19 @@ export default function ResearchChat({
         }
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      setMessages(prev =>
-        prev.map(m => m.isStreaming ? { ...m, content: `Something went wrong: ${message}`, isStreaming: false } : m)
-      );
+      // Don't show error for user-initiated abort
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setMessages(prev =>
+          prev.map(m => m.isStreaming ? { ...m, isStreaming: false } : m)
+        );
+      } else {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        setMessages(prev =>
+          prev.map(m => m.isStreaming ? { ...m, content: `Something went wrong: ${message}`, isStreaming: false } : m)
+        );
+      }
     } finally {
+      abortControllerRef.current = null;
       setIsLoading(false);
       inputRef.current?.focus();
     }
@@ -898,9 +1022,48 @@ export default function ResearchChat({
             <h2 className="font-serif text-2xl sm:text-3xl text-[#0e393d] mb-3">
               {t.heading}
             </h2>
-            <p className="text-sm text-[#1c2a2b]/45 max-w-md mb-10 leading-relaxed">
+            <p className="text-sm text-[#1c2a2b]/45 max-w-md mb-6 leading-relaxed">
               {t.subtitle}
             </p>
+
+            {/* Voice welcome banner */}
+            {voice.supported && (greetingText || t.welcomeGreeting) && (
+              <div className="flex items-start gap-3 mb-8 max-w-md text-left bg-[#0e393d]/[.03] border border-[#0e393d]/[.08] rounded-xl px-4 py-3">
+                <button
+                  onClick={() => {
+                    if (speakingMsgId === '__greeting__') {
+                      stopTTS();
+                    } else if (greetingAudioUrl) {
+                      // Play from pre-generated audio
+                      stopTTS();
+                      setSpeakingMsgId('__greeting__');
+                      const audio = new Audio(greetingAudioUrl);
+                      audio.volume = 1;
+                      ttsAudioRef.current = audio;
+                      audio.onended = () => { ttsAudioRef.current = null; setSpeakingMsgId(null); };
+                      audio.onerror = () => { ttsAudioRef.current = null; setSpeakingMsgId(null); };
+                      audio.play().catch(() => { setSpeakingMsgId(null); });
+                    } else {
+                      // Fallback: generate via TTS API
+                      playTTS(greetingText || t.welcomeGreeting, '__greeting__');
+                    }
+                  }}
+                  className="shrink-0 w-8 h-8 rounded-lg bg-[#0e393d] flex items-center justify-center mt-0.5 hover:bg-[#0e393d]/80 transition"
+                  title={speakingMsgId === '__greeting__' ? t.stopSpeaking : (locale === 'de' ? 'Abspielen' : 'Play')}
+                >
+                  {speakingMsgId === '__greeting__' ? (
+                    <StopIcon className="w-3.5 h-3.5 text-red-400" />
+                  ) : (
+                    <SpeakerIcon className="w-4 h-4 text-[#ceab84]" />
+                  )}
+                </button>
+                <div>
+                  <p className="text-[13px] text-[#0e393d] leading-relaxed">
+                    {greetingText || t.welcomeGreeting}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {biomarkerContext && (
               <div className="flex items-center gap-2 mb-6 bg-emerald-50 rounded-full px-4 py-2">
@@ -978,6 +1141,27 @@ export default function ResearchChat({
               </span>
             </div>
           )}
+          {/* Stop button — visible while AI is generating or speaking */}
+          {(speakingMsgId || isLoading) && (
+            <button
+              onClick={stopAll}
+              className="flex items-center gap-2 mb-2.5 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-[12px] font-medium hover:bg-red-100 transition-colors"
+            >
+              <StopIcon className="w-3.5 h-3.5" />
+              <span>
+                {isLoading && speakingMsgId
+                  ? (locale === 'de' ? 'Antwort & Stimme stoppen' : 'Stop answer & voice')
+                  : isLoading
+                    ? (locale === 'de' ? 'Antwort stoppen' : 'Stop generating')
+                    : t.stopSpeaking}
+              </span>
+              <span className="ml-auto flex gap-0.5">
+                <span className="w-1 h-3 bg-red-400 rounded-full animate-pulse" />
+                <span className="w-1 h-4 bg-red-400 rounded-full animate-pulse" style={{ animationDelay: '0.15s' }} />
+                <span className="w-1 h-2.5 bg-red-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
+              </span>
+            </button>
+          )}
           <div className="flex gap-2.5 items-end">
             <textarea
               ref={inputRef}
@@ -1010,13 +1194,23 @@ export default function ResearchChat({
                 {voice.isListening ? <StopIcon /> : <MicIcon />}
               </button>
             )}
-            <button
-              onClick={() => sendQuestion(input)}
-              disabled={isLoading || !input.trim()}
-              className="shrink-0 w-11 h-11 rounded-xl bg-[#0e393d] text-white flex items-center justify-center hover:bg-[#0e393d]/85 transition disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-            >
-              {isLoading ? <SpinnerIcon /> : <SendIcon />}
-            </button>
+            {isLoading ? (
+              <button
+                onClick={stopAll}
+                className="shrink-0 w-11 h-11 rounded-xl bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition shadow-sm"
+                title={locale === 'de' ? 'Stoppen' : 'Stop'}
+              >
+                <StopIcon />
+              </button>
+            ) : (
+              <button
+                onClick={() => sendQuestion(input)}
+                disabled={!input.trim()}
+                className="shrink-0 w-11 h-11 rounded-xl bg-[#0e393d] text-white flex items-center justify-center hover:bg-[#0e393d]/85 transition disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+              >
+                <SendIcon />
+              </button>
+            )}
           </div>
         </div>
       </div>

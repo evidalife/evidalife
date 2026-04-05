@@ -174,6 +174,7 @@ export function useVoiceInput({
   useEffect(() => {
     return () => {
       if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
+      if (webSpeechSilenceRef.current) { clearTimeout(webSpeechSilenceRef.current); webSpeechSilenceRef.current = null; }
       if (recognitionRef.current) {
         try { recognitionRef.current.abort(); } catch { /* ignore */ }
         recognitionRef.current = null;
@@ -300,6 +301,10 @@ export function useVoiceInput({
   }, []);
 
   // ── Web Speech API: browser-native STT ────────────────────────────
+  // Silence timer for Web Speech auto-stop (supplements browser's own detection)
+  const webSpeechSilenceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSpeechActivityRef = useRef<number>(0);
+
   const startWebSpeech = useCallback(() => {
     const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognitionCtor) {
@@ -311,6 +316,10 @@ export function useVoiceInput({
     if (recognitionRef.current) {
       try { recognitionRef.current.abort(); } catch { /* ignore */ }
     }
+    if (webSpeechSilenceRef.current) {
+      clearTimeout(webSpeechSilenceRef.current);
+      webSpeechSilenceRef.current = null;
+    }
 
     const recognition = new SpeechRecognitionCtor();
     recognition.lang = LANG_MAP[lang] || lang;
@@ -319,6 +328,20 @@ export function useVoiceInput({
     recognition.maxAlternatives = 1;
 
     let finalTranscript = '';
+    lastSpeechActivityRef.current = Date.now();
+
+    /** Reset silence timer — auto-stop after 2s of no speech activity */
+    const resetSilenceTimer = () => {
+      if (continuous) return; // Don't auto-stop in continuous mode
+      lastSpeechActivityRef.current = Date.now();
+      if (webSpeechSilenceRef.current) clearTimeout(webSpeechSilenceRef.current);
+      webSpeechSilenceRef.current = setTimeout(() => {
+        // Only stop if we have some transcript (user actually spoke)
+        if (finalTranscript.trim() && recognitionRef.current) {
+          try { recognitionRef.current.stop(); } catch { /* ignore */ }
+        }
+      }, 2000);
+    };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interim = '';
@@ -331,9 +354,14 @@ export function useVoiceInput({
         }
       }
       setInterimTranscript(interim || finalTranscript);
+      resetSilenceTimer();
     };
 
     recognition.onend = () => {
+      if (webSpeechSilenceRef.current) {
+        clearTimeout(webSpeechSilenceRef.current);
+        webSpeechSilenceRef.current = null;
+      }
       setIsListening(false);
       setInterimTranscript('');
       const text = correctMedicalTerms(finalTranscript.trim());
@@ -344,6 +372,10 @@ export function useVoiceInput({
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      if (webSpeechSilenceRef.current) {
+        clearTimeout(webSpeechSilenceRef.current);
+        webSpeechSilenceRef.current = null;
+      }
       if (event.error !== 'no-speech' && event.error !== 'aborted') {
         onErrorRef.current?.(event.error);
       }
@@ -356,6 +388,15 @@ export function useVoiceInput({
     recognition.start();
     setIsListening(true);
     setInterimTranscript('');
+
+    // Start initial silence timer — if user doesn't speak at all for 5s, stop
+    if (!continuous) {
+      webSpeechSilenceRef.current = setTimeout(() => {
+        if (recognitionRef.current) {
+          try { recognitionRef.current.stop(); } catch { /* ignore */ }
+        }
+      }, 5000);
+    }
   }, [lang, continuous]);
 
   const stopWebSpeech = useCallback(() => {

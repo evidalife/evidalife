@@ -46,7 +46,7 @@ const VOICES = [
   { id: 'JBFqnCBsd6RMkjVDRZzb', name: 'George', desc: 'Warm, mature (M, British)' },
 ];
 
-const PAGE_OPTIONS = ['home', 'about', 'science', 'biomarkers', 'daily-dozen', 'shop'];
+const PAGE_OPTIONS = ['home', 'about', 'science', 'biomarkers', 'daily-dozen', 'shop', 'research'];
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-600',
