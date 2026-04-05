@@ -46,6 +46,12 @@ Critical safety rules:
 - Acknowledge when evidence is limited, mixed, or preliminary
 - Per EU MDR 2017/745: nutrition research is supplementary to medical treatment, not a replacement
 
+Citation format:
+- Use ONLY numbered references like [1], [2], [3] etc. in the text — the numbers correspond to the numbered sources provided in the context
+- NEVER write out author names, book titles, or chapter names inline — only use [1], [2] etc.
+- You may cite multiple sources together like [1,3] or [1-3]
+- The full reference details are shown separately below your answer
+
 Response format:
 - Start directly with the key finding (no preamble)
 - Use short paragraphs — one idea per paragraph
@@ -68,6 +74,12 @@ Critical safety rules:
 - Never diagnose conditions, prescribe treatments, or replace professional healthcare
 - Always note that users should consult their doctor for personal health decisions
 - Per EU MDR 2017/745: nutrition research is supplementary to medical treatment, not a replacement
+
+Citation format:
+- Use ONLY numbered references like [1], [2], [3] etc. in the text — the numbers correspond to the numbered sources provided in the context
+- NEVER write out author names, book titles, or chapter names inline — only use [1], [2] etc.
+- You may cite multiple sources together like [1,3] or [1-3]
+- The full reference details are shown separately below your answer
 
 Response format:
 - Group findings by biomarker if multiple are flagged
@@ -99,43 +111,45 @@ function buildResearchPrompt(
   bookChunks?: BookChunkResult[],
   nfContent?: NfContentResult[]
 ): string {
-  // Book content section (highest evidence tier)
-  let bookContext = '';
+  // Build a single numbered list of ALL sources matching the citations payload order:
+  // 1. Book chunks first, 2. NF content, 3. Studies
+  let sourceNum = 0;
+  const allSources: string[] = [];
+
+  // Book content (highest evidence tier)
   if (bookChunks && bookChunks.length > 0) {
-    const bookSections = bookChunks.map((bc, i) => {
+    for (const bc of bookChunks) {
+      sourceNum++;
       const source = bc.book_title ?? 'Book';
       const section = bc.section_title ? ` > ${bc.section_title}` : '';
-      return `[Book ${i + 1}] ${source} — ${bc.chapter_title}${section}
-Evidence level: Author's synthesized analysis (highest tier)
-Content: ${bc.content.slice(0, 1200)}${bc.content.length > 1200 ? '...' : ''}`;
-    }).join('\n\n---\n\n');
-
-    bookContext = `\n\nHere are ${bookChunks.length} relevant passages from Dr. Greger's evidence-based books (HIGHEST EVIDENCE TIER — author's synthesized conclusions from hundreds of studies):\n\n${bookSections}\n`;
+      allSources.push(`[${sourceNum}] ${source} — ${bc.chapter_title}${section}
+Type: Book content (HIGHEST EVIDENCE TIER — author's synthesized analysis)
+Content: ${bc.content.slice(0, 1200)}${bc.content.length > 1200 ? '...' : ''}`);
+    }
   }
 
-  const studyContext = studies
-    .map((s, i) => {
-      const citation = formatCitation(s);
-      const tierLabel = s.quality_tier
-        ? ['', 'Greger-cited', 'Systematic Review/Meta-analysis', 'RCT', 'Cohort/Observational', 'Other'][s.quality_tier] ?? ''
-        : '';
-      return `[${i + 1}] ${citation}
-Journal: ${s.journal ?? 'Unknown journal'}${s.publication_year ? ` (${s.publication_year})` : ''}${tierLabel ? `\nEvidence level: ${tierLabel}` : ''}
-Abstract: ${s.abstract.slice(0, 800)}${s.abstract.length > 800 ? '...' : ''}`;
-    })
-    .join('\n\n---\n\n');
-
-  // NutritionFacts.org content section
-  let nfContext = '';
+  // NutritionFacts.org content
   if (nfContent && nfContent.length > 0) {
-    const nfSections = nfContent.map((nf, i) => {
+    for (const nf of nfContent) {
+      sourceNum++;
       const typeLabel = nf.content_type === 'video' ? 'Video transcript' : nf.content_type === 'blog' ? 'Blog post' : 'Q&A';
-      return `[NF ${i + 1}] ${nf.title} (${typeLabel})
+      allSources.push(`[${sourceNum}] ${nf.title} (${typeLabel})
+Type: NutritionFacts.org
 Source: ${nf.url}
-Content: ${nf.transcript.slice(0, 1000)}${nf.transcript.length > 1000 ? '...' : ''}`;
-    }).join('\n\n---\n\n');
+Content: ${nf.transcript.slice(0, 1000)}${nf.transcript.length > 1000 ? '...' : ''}`);
+    }
+  }
 
-    nfContext = `\n\nHere are ${nfContent.length} relevant pieces from NutritionFacts.org (Dr. Greger's video transcripts, blogs, and Q&As):\n\n${nfSections}\n`;
+  // Studies
+  for (const s of studies) {
+    sourceNum++;
+    const citation = formatCitation(s);
+    const tierLabel = s.quality_tier
+      ? ['', 'Greger-cited', 'Systematic Review/Meta-analysis', 'RCT', 'Cohort/Observational', 'Other'][s.quality_tier] ?? ''
+      : '';
+    allSources.push(`[${sourceNum}] ${citation}
+Journal: ${s.journal ?? 'Unknown journal'}${s.publication_year ? ` (${s.publication_year})` : ''}${tierLabel ? `\nEvidence level: ${tierLabel}` : ''}
+Abstract: ${s.abstract.slice(0, 800)}${s.abstract.length > 800 ? '...' : ''}`);
   }
 
   const bioContext = biomarkerContext
@@ -144,12 +158,12 @@ Content: ${nf.transcript.slice(0, 1000)}${nf.transcript.length > 1000 ? '...' : 
 
   return `${bioContext}
 Research question: ${question}
-${bookContext}${nfContext}
-Here are the ${studies.length} most relevant studies from the research database:
 
-${studyContext}
+Here are ${allSources.length} numbered sources. Use ONLY these numbers [1], [2], etc. when citing — never write out author names or book titles inline:
 
-Based on the book content, NutritionFacts.org content, and studies above, please provide a clear, evidence-based answer to the research question. Lead with insights from the book content when available (cite as [Book Title, Chapter]), reference NutritionFacts.org content when relevant (cite as [NutritionFacts.org, Title]), then support with study citations using their author/year format.`;
+${allSources.join('\n\n---\n\n')}
+
+Based on the sources above, please provide a clear, evidence-based answer to the research question. Cite sources using their numbers only, e.g. [1], [3,5], [1-3].`;
 }
 
 function buildBriefingResearchPrompt(
@@ -157,46 +171,56 @@ function buildBriefingResearchPrompt(
   studiesByMarker: Map<string, StudyResult[]>,
   bookChunks?: BookChunkResult[]
 ): string {
-  // Add book content section at the top if available
-  let bookSection = '';
+  // Build a single numbered list of ALL sources matching the citations payload order:
+  // 1. Book chunks first, 2. All studies (deduplicated across markers)
+  let sourceNum = 0;
+  const allSources: string[] = [];
+
+  // Book content first (highest evidence tier)
   if (bookChunks && bookChunks.length > 0) {
-    const bookContext = bookChunks.map((bc, i) => {
+    for (const bc of bookChunks) {
+      sourceNum++;
       const source = bc.book_title ?? 'Book';
       const section = bc.section_title ? ` > ${bc.section_title}` : '';
-      return `  [Book ${i + 1}] ${source} — ${bc.chapter_title}${section}
-  Evidence level: Author's synthesized analysis (highest tier)
-  Content: ${bc.content.slice(0, 1000)}${bc.content.length > 1000 ? '...' : ''}`;
-    }).join('\n\n');
-    bookSection = `\n\nRelevant book content (HIGHEST EVIDENCE TIER — author's synthesized conclusions):\n${bookContext}\n`;
+      allSources.push(`[${sourceNum}] ${source} — ${bc.chapter_title}${section}
+Type: Book content (HIGHEST EVIDENCE TIER — author's synthesized analysis)
+Content: ${bc.content.slice(0, 1000)}${bc.content.length > 1000 ? '...' : ''}`);
+    }
   }
 
-  const sections: string[] = [];
-
+  // Collect all studies across markers (deduplicated)
+  const seenPmids = new Set<string>();
   for (const marker of flaggedMarkers) {
     const studies = studiesByMarker.get(marker.slug) ?? [];
-    if (studies.length === 0) continue;
-
-    const mapping = getMappingBySlug(marker.slug);
-    const label = mapping?.label ?? marker.name;
-
-    const studyContext = studies.map((s, i) => {
+    for (const s of studies) {
+      if (seenPmids.has(s.pmid)) continue;
+      seenPmids.add(s.pmid);
+      sourceNum++;
       const citation = formatCitation(s);
       const tierLabel = s.quality_tier
         ? ['', 'Greger-cited', 'Systematic Review/Meta-analysis', 'RCT', 'Cohort/Observational', 'Other'][s.quality_tier] ?? ''
         : '';
-      return `  [${i + 1}] ${citation}
-  Journal: ${s.journal ?? 'Unknown journal'}${s.publication_year ? ` (${s.publication_year})` : ''}${tierLabel ? `\n  Evidence level: ${tierLabel}` : ''}
-  Abstract: ${s.abstract.slice(0, 600)}${s.abstract.length > 600 ? '...' : ''}`;
-    }).join('\n\n');
-
-    sections.push(
-      `## ${label}: ${marker.value} ${marker.unit} (${marker.status})\n` +
-      `Research question: ${getResearchQuestion(marker.slug) ?? `What does research say about improving ${label}?`}\n\n` +
-      `Relevant studies:\n${studyContext}`
-    );
+      allSources.push(`[${sourceNum}] ${citation}
+Journal: ${s.journal ?? 'Unknown journal'}${s.publication_year ? ` (${s.publication_year})` : ''}${tierLabel ? `\nEvidence level: ${tierLabel}` : ''}
+Abstract: ${s.abstract.slice(0, 600)}${s.abstract.length > 600 ? '...' : ''}`);
+    }
   }
 
-  return `The user's health briefing flagged the following biomarkers as out of optimal range. Please analyse the research for each one. Lead with insights from book content when available.${bookSection}\n\n${sections.join('\n\n---\n\n')}`;
+  // Build marker context
+  const markerSummary = flaggedMarkers.map(m => {
+    const mapping = getMappingBySlug(m.slug);
+    const label = mapping?.label ?? m.name;
+    return `- ${label}: ${m.value} ${m.unit} (${m.status})`;
+  }).join('\n');
+
+  return `The user's health briefing flagged the following biomarkers as out of optimal range:
+${markerSummary}
+
+Here are ${allSources.length} numbered sources. Use ONLY these numbers [1], [2], etc. when citing — never write out author names or book titles inline:
+
+${allSources.join('\n\n---\n\n')}
+
+Please analyse the research for each flagged biomarker. Cite sources using their numbers only, e.g. [1], [3,5], [1-3].`;
 }
 
 function sseChunk(type: string, data: unknown): string {

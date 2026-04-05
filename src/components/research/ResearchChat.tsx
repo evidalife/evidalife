@@ -248,7 +248,7 @@ function CitationCard({ citation, index }: { citation: Citation; index: number }
       : firstAuthor;
 
   return (
-    <div className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden transition-shadow hover:shadow-sm">
+    <div id={`citation-${index}`} className="rounded-xl border border-[#0e393d]/10 bg-white overflow-hidden transition-all hover:shadow-sm">
       <button
         onClick={() => setExpanded(e => !e)}
         className="w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-[#0e393d]/[.02] transition-colors"
@@ -356,9 +356,32 @@ function renderMarkdownLite(text: string) {
   return text
     .split('\n')
     .map((line, i, arr) => {
-      const parts = line.split(/(\*\*[^*]+\*\*)/g).map((part, j) => {
+      // Split on bold markers AND citation numbers like [1], [2,3], [1-3]
+      const parts = line.split(/(\*\*[^*]+\*\*|\[\d+(?:[,\-–]\d+)*\])/g).map((part, j) => {
         if (part.startsWith('**') && part.endsWith('**')) {
           return <strong key={j} className="font-semibold text-[#0e393d]">{part.slice(2, -2)}</strong>;
+        }
+        // Clickable citation number — scrolls to citation card
+        const citeMatch = part.match(/^\[(\d+(?:[,\-–]\d+)*)\]$/);
+        if (citeMatch) {
+          const nums = citeMatch[1].split(/[,\-–]/).map(n => parseInt(n.trim(), 10));
+          const firstNum = nums[0];
+          return (
+            <button
+              key={j}
+              onClick={() => {
+                const el = document.getElementById(`citation-${firstNum - 1}`);
+                el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Brief highlight
+                el?.classList.add('ring-2', 'ring-[#ceab84]');
+                setTimeout(() => el?.classList.remove('ring-2', 'ring-[#ceab84]'), 2000);
+              }}
+              className="inline-flex items-center justify-center text-[11px] font-bold text-[#0e393d] bg-[#0e393d]/[.07] hover:bg-[#0e393d]/[.14] rounded px-1 py-0 mx-0.5 align-baseline cursor-pointer transition-colors"
+              title={`View source ${citeMatch[1]}`}
+            >
+              {part}
+            </button>
+          );
         }
         return <span key={j}>{part}</span>;
       });
