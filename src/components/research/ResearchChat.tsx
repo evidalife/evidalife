@@ -451,63 +451,220 @@ export default function ResearchChat({
   // Created on user gesture (mic click), reused for TTS playback later.
   const warmAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  // ── Streaming TTS engine ───────────────────────────────────────────
+  // Buffers streamed text, detects sentence boundaries, fires parallel
+  // TTS requests per chunk, and queues audio for gapless playback.
+  const streamTTSRef = useRef<{
+    buffer: string;           // text accumulator waiting for sentence boundary
+    audioQueue: string[];     // object URLs of audio blobs ready to play
+    pendingFetches: number;   // how many TTS fetches are in-flight
+    isPlaying: boolean;       // is an audio element currently playing
+    stopped: boolean;         // user hit stop or component unmounted
+    msgId: string | null;     // which message is being spoken
+  } | null>(null);
+
+  /** Clean text for speaking: strip citations, markdown, disclaimers */
+  const cleanForSpeech = useCallback((text: string): string => {
+    let clean = text;
+    clean = clean.replace(/\*{1,3}/g, '');
+    clean = clean.replace(/\[\d+(?:[,\-–]\d+)*\]/g, '');
+    clean = clean.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    clean = clean.replace(/^-{3,}$/gm, '');
+    clean = clean.replace(/For educational purposes only[.][\s\S]*/, '').trim();
+    clean = clean.replace(/\n(?:Sources|References|Citations):?\s*\n[\s\S]*$/i, '').trim();
+    clean = clean.replace(/\n{2,}/g, '. ').trim();
+    clean = clean.replace(/\n/g, ' ').trim();
+    clean = clean.replace(/\.\s*\./g, '.').replace(/ {2,}/g, ' ');
+    return clean;
+  }, []);
+
   /** Call on a user gesture (click) to unlock audio playback for later */
   const warmUpAudio = useCallback(() => {
-    // Create and "play" a silent audio to unlock autoplay
     const audio = new Audio();
-    // Tiny silent WAV (44 bytes)
     audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
     audio.volume = 0;
     audio.play().then(() => {
       audio.pause();
       warmAudioRef.current = audio;
-    }).catch(() => {
-      // Gesture didn't unlock — we'll try again on playTTS
+    }).catch(() => {});
+  }, []);
+
+  /** Play next audio in the queue, chaining until empty */
+  const playNextInQueue = useCallback(() => {
+    const st = streamTTSRef.current;
+    if (!st || st.stopped) return;
+    if (st.audioQueue.length === 0) {
+      st.isPlaying = false;
+      // If no more fetches pending and queue empty → done speaking
+      if (st.pendingFetches === 0) {
+        setSpeakingMsgId(null);
+        streamTTSRef.current = null;
+      }
+      return;
+    }
+
+    st.isPlaying = true;
+    const url = st.audioQueue.shift()!;
+    const audio = warmAudioRef.current || new Audio();
+    warmAudioRef.current = null;
+    audio.volume = 1;
+    audio.src = url;
+    ttsAudioRef.current = audio;
+
+    audio.onended = () => {
+      URL.revokeObjectURL(url);
+      ttsAudioRef.current = null;
+      playNextInQueue();
+    };
+    audio.onerror = () => {
+      URL.revokeObjectURL(url);
+      ttsAudioRef.current = null;
+      playNextInQueue();
+    };
+
+    audio.play().catch(() => {
+      // Autoplay blocked — try browser speech fallback for remaining text
+      URL.revokeObjectURL(url);
+      ttsAudioRef.current = null;
+      st.isPlaying = false;
     });
   }, []);
 
-  const stopTTS = useCallback(() => {
+  /** Fire a TTS request for a text chunk and add result to audio queue */
+  const fetchChunkAudio = useCallback(async (text: string) => {
+    const st = streamTTSRef.current;
+    if (!st || st.stopped) return;
+
+    st.pendingFetches++;
+    try {
+      const res = await fetch('/api/ai/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, lang: locale, role: 'research', source: 'research' }),
+      });
+
+      if (!res.ok) throw new Error(`TTS ${res.status}`);
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+
+      if (st.stopped) { URL.revokeObjectURL(url); return; }
+
+      st.audioQueue.push(url);
+      // If nothing is playing yet, start playback
+      if (!st.isPlaying) {
+        playNextInQueue();
+      }
+    } catch (err) {
+      console.warn('[StreamingTTS] chunk fetch failed:', err);
+    } finally {
+      if (st) st.pendingFetches--;
+      // Check if everything is done
+      if (st && st.pendingFetches === 0 && st.audioQueue.length === 0 && !st.isPlaying) {
+        setSpeakingMsgId(null);
+        streamTTSRef.current = null;
+      }
+    }
+  }, [locale, playNextInQueue]);
+
+  /** Start a streaming TTS session for a message */
+  const startStreamingTTS = useCallback((msgId: string) => {
+    // Stop any existing TTS
+    if (streamTTSRef.current) {
+      streamTTSRef.current.stopped = true;
+    }
     if (ttsAudioRef.current) {
       ttsAudioRef.current.pause();
       ttsAudioRef.current.src = '';
       ttsAudioRef.current = null;
     }
-    // Also stop browser SpeechSynthesis fallback
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+
+    streamTTSRef.current = {
+      buffer: '',
+      audioQueue: [],
+      pendingFetches: 0,
+      isPlaying: false,
+      stopped: false,
+      msgId,
+    };
+    setSpeakingMsgId(msgId);
+  }, []);
+
+  /** Feed a text chunk into the streaming TTS buffer.
+   *  Automatically detects sentence boundaries and fires TTS requests. */
+  const feedStreamingTTS = useCallback((chunk: string) => {
+    const st = streamTTSRef.current;
+    if (!st || st.stopped) return;
+
+    st.buffer += chunk;
+
+    // Clean the buffer for speech (strip markdown/citations as they stream in)
+    const cleaned = cleanForSpeech(st.buffer);
+
+    // Look for sentence boundaries (. ! ?) followed by a space or end
+    // Only fire if we have enough text (>80 chars) to avoid tiny fragments
+    const sentenceEnd = cleaned.search(/[.!?]\s+(?=[A-Z])/);
+    if (sentenceEnd > 80) {
+      const sentence = cleaned.slice(0, sentenceEnd + 1).trim();
+      // Keep the remainder (from the raw buffer, proportionally)
+      const ratio = (sentenceEnd + 1) / cleaned.length;
+      const rawCutPoint = Math.round(st.buffer.length * ratio);
+      st.buffer = st.buffer.slice(rawCutPoint);
+
+      if (sentence.length > 10) {
+        fetchChunkAudio(sentence);
+      }
+    }
+  }, [cleanForSpeech, fetchChunkAudio]);
+
+  /** Flush any remaining text in the buffer as a final TTS chunk */
+  const flushStreamingTTS = useCallback(() => {
+    const st = streamTTSRef.current;
+    if (!st || st.stopped) return;
+
+    const remaining = cleanForSpeech(st.buffer).trim();
+    st.buffer = '';
+
+    if (remaining.length > 10) {
+      fetchChunkAudio(remaining);
+    } else if (st.pendingFetches === 0 && st.audioQueue.length === 0 && !st.isPlaying) {
+      // Nothing left to speak
+      setSpeakingMsgId(null);
+      streamTTSRef.current = null;
+    }
+  }, [cleanForSpeech, fetchChunkAudio]);
+
+  const stopTTS = useCallback(() => {
+    // Stop streaming TTS
+    if (streamTTSRef.current) {
+      streamTTSRef.current.stopped = true;
+      // Revoke any queued audio URLs
+      for (const url of streamTTSRef.current.audioQueue) {
+        URL.revokeObjectURL(url);
+      }
+      streamTTSRef.current = null;
+    }
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause();
+      ttsAudioRef.current.src = '';
+      ttsAudioRef.current = null;
+    }
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
     setSpeakingMsgId(null);
   }, []);
 
-  /** Extract clean spoken text: full answer minus citations, markdown, disclaimers.
-   *  Citations and study references stay visible in the chat but are NOT read aloud. */
-  const extractSpokenText = useCallback((text: string): string => {
-    let clean = text;
-    // Strip markdown bold/italic markers
-    clean = clean.replace(/\*{1,3}/g, '');
-    // Strip inline citation numbers like [1], [2,3], [1-3]
-    clean = clean.replace(/\[\d+(?:[,\-–]\d+)*\]/g, '');
-    // Strip markdown links — keep display text, drop URL: [text](url) → text
-    clean = clean.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
-    // Remove horizontal rules
-    clean = clean.replace(/^-{3,}$/gm, '');
-    // Remove the standard disclaimer suffix
-    clean = clean.replace(/For educational purposes only[.][\s\S]*/, '').trim();
-    // Remove "Sources:" or "References:" section at the end
-    clean = clean.replace(/\n(?:Sources|References|Citations):?\s*\n[\s\S]*$/i, '').trim();
-    // Collapse multiple newlines into a single pause
-    clean = clean.replace(/\n{2,}/g, '. ').trim();
-    // Collapse remaining single newlines
-    clean = clean.replace(/\n/g, ' ').trim();
-    // Clean up double periods or spaces
-    clean = clean.replace(/\.\s*\./g, '.').replace(/ {2,}/g, ' ');
-    return clean;
-  }, []);
-
+  /** Play TTS for a completed message (manual speaker button).
+   *  Sends the full cleaned text in one request. */
   const playTTS = useCallback(async (text: string, msgId?: string) => {
     stopTTS();
 
-    const spokenText = extractSpokenText(text);
+    const spokenText = cleanForSpeech(text);
+    if (!spokenText || spokenText.length < 10) return;
     if (msgId) setSpeakingMsgId(msgId);
 
     try {
@@ -517,19 +674,11 @@ export default function ResearchChat({
         body: JSON.stringify({ text: spokenText, lang: locale, role: 'research', source: 'research' }),
       });
 
-      if (!res.ok) {
-        const errBody = await res.text().catch(() => '');
-        console.warn('[ResearchChat TTS] API returned', res.status, errBody);
-        throw new Error(`TTS ${res.status}`);
-      }
-
-      const ttsSource = res.headers.get('X-TTS-Source');
-      console.info('[ResearchChat TTS] provider:', ttsSource);
+      if (!res.ok) throw new Error(`TTS ${res.status}`);
 
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
 
-      // Reuse the pre-warmed audio element if available (bypasses autoplay)
       const audio = warmAudioRef.current || new Audio();
       warmAudioRef.current = null;
       audio.volume = 1;
@@ -550,7 +699,6 @@ export default function ResearchChat({
       await audio.play();
     } catch (err) {
       console.warn('[ResearchChat TTS] fallback to browser speech:', err);
-      // Fallback to browser SpeechSynthesis
       if (typeof window !== 'undefined' && window.speechSynthesis) {
         const SPEECH_LANG: Record<string, string> = { en: 'en-US', de: 'de-DE', fr: 'fr-FR', es: 'es-ES', it: 'it-IT' };
         const utter = new SpeechSynthesisUtterance(spokenText);
@@ -563,7 +711,7 @@ export default function ResearchChat({
         setSpeakingMsgId(null);
       }
     }
-  }, [locale, stopTTS, extractSpokenText]);
+  }, [locale, stopTTS, cleanForSpeech]);
 
   // Cleanup TTS on unmount
   useEffect(() => { return () => { stopTTS(); }; }, [stopTTS]);
@@ -608,6 +756,11 @@ export default function ResearchChat({
     setMessages(prev => [...prev, userMsg, assistantMsg]);
     setIsLoading(true);
 
+    // Start streaming TTS session if this query was voice-initiated
+    if (voiceInitiatedRef.current) {
+      startStreamingTTS(assistantId);
+    }
+
     let finalContent = '';
 
     try {
@@ -645,15 +798,18 @@ export default function ResearchChat({
               setMessages(prev =>
                 prev.map(m => m.id === assistantId ? { ...m, content: m.content + data } : m)
               );
+              // Feed text chunk into streaming TTS (if voice-initiated)
+              if (voiceInitiatedRef.current && streamTTSRef.current) {
+                feedStreamingTTS(data);
+              }
             } else if (type === 'done') {
               setMessages(prev =>
                 prev.map(m => m.id === assistantId ? { ...m, isStreaming: false } : m)
               );
-              // Auto-speak if voice-initiated
-              if (voiceInitiatedRef.current && finalContent) {
+              // Flush remaining TTS buffer
+              if (voiceInitiatedRef.current) {
                 voiceInitiatedRef.current = false;
-                // Small delay to let React render the final state
-                setTimeout(() => { playTTS(finalContent, assistantId); }, 200);
+                flushStreamingTTS();
               }
             } else if (type === 'error') {
               setMessages(prev =>
@@ -674,7 +830,7 @@ export default function ResearchChat({
       setIsLoading(false);
       inputRef.current?.focus();
     }
-  }, [playTTS]);
+  }, [startStreamingTTS, feedStreamingTTS, flushStreamingTTS]);
 
   // Auto-trigger briefing handoff when flagged markers are provided
   useEffect(() => {
